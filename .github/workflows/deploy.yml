@@ -1,0 +1,28 @@
+name: Deploy POS Frontend
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          port: ${{ secrets.PORT }}
+          script_stop: true
+          script: |
+            set -e
+            cd /home/postcode/pos-frontend
+            test -f .env.production
+            git checkout main
+            git pull --ff-only origin main
+            docker compose up -d --build --remove-orphans
