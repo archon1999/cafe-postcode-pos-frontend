@@ -22,7 +22,9 @@ The workflow SSHes into the server and runs:
 cd /home/postcode/pos-frontend
 git checkout production
 git pull --ff-only origin production
-docker compose up -d --build --remove-orphans
+npm install
+npm run prod:build
+npx gzipper@latest compress ./dist
 ```
 
 ## Required files on the server
@@ -34,27 +36,11 @@ VITE_API_BASE_URL='https://cafe-postcode.uz/api'
 VITE_API_TIMEOUT='15000'
 ```
 
-## Runtime port
+## Server requirements
 
-The container is exposed only on localhost:
+Install Node.js and make sure `npm` and `npx` are available for the SSH user.
 
-- `127.0.0.1:8082`
+After the build finishes, compressed assets are written into `dist/`.
 
-Put your public Nginx reverse proxy in front of that port.
-
-## Example host Nginx config
-
-```nginx
-server {
-    listen 80;
-    server_name pos.cafe-postcode.uz;
-
-    location / {
-        proxy_pass http://127.0.0.1:8082;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
+Serve `/home/postcode/pos-frontend/dist` with your own Nginx configuration.
 ```

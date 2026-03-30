@@ -1,9 +1,0 @@
-services:
-  pos-frontend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: cafe-postcode-pos-frontend
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:8082:80"
