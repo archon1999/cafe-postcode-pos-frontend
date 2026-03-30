@@ -1,0 +1,17 @@
+{
+  "name": "Restaurant POS",
+  "short_name": "POS",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0c111d",
+  "theme_color": "#2f7cff",
+  "description": "Tablet-first restaurant POS progressive web app.",
+  "icons": [
+    {
+      "src": "/icons/pos-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
