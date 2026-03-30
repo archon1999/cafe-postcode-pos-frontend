@@ -3,7 +3,7 @@ name: Deploy POS Frontend
 on:
   push:
     branches:
-      - main
+      - production
   workflow_dispatch:
 
 jobs:
@@ -23,6 +23,6 @@ jobs:
             set -e
             cd /home/postcode/pos-frontend
             test -f .env.production
-            git checkout main
-            git pull --ff-only origin main
+            git checkout production
+            git pull --ff-only origin production
             docker compose up -d --build --remove-orphans

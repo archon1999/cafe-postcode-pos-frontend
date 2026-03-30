@@ -2,7 +2,12 @@
 
 ## CI/CD
 
-This repository deploys on every push to `main` via GitHub Actions over SSH.
+This repository uses:
+
+- `develop` for ongoing development
+- `production` for deployment
+
+Deployment runs on every push to `production` via GitHub Actions over SSH.
 
 Required GitHub repository secrets:
 
@@ -15,8 +20,8 @@ The workflow SSHes into the server and runs:
 
 ```bash
 cd /home/postcode/pos-frontend
-git checkout main
-git pull --ff-only origin main
+git checkout production
+git pull --ff-only origin production
 docker compose up -d --build --remove-orphans
 ```
 
