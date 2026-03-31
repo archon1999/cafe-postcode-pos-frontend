@@ -368,12 +368,12 @@ export function OpenChecksPage() {
     selectedTab === 'closed' &&
       latestSucceededPayment?.id &&
       !latestSucceededPayment?.isRefunded &&
-      session?.user.permissionCodes.includes('payment.refund'),
+      session?.user.permissionCodes.includes('payments.refund'),
   );
   const canReprint = Boolean(
     selectedTab === 'closed' &&
       latestReceipt?.id &&
-      session?.user.permissionCodes.includes('receipt.reprint'),
+      session?.user.permissionCodes.includes('receipts.reprint'),
   );
 
   const detailPanel = selectedOrder ? (

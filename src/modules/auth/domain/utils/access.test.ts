@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 
-import type { PosFeatureConfig, PosSessionPayload, PosUser } from '../entities';
+import type { PosFeatureConfig, PosSessionPayload, PosUser } from "../entities";
 
 import {
   canAccessCashier,
@@ -12,16 +12,16 @@ import {
   isCashierBuilderMode,
   isHallMode,
   shouldShowDock,
-} from './access';
+} from "./access";
 
 const baseFeatureConfig: PosFeatureConfig = {
-  id: 'feature-1',
+  id: "feature-1",
   hallEnabled: true,
   kitchenEnabled: true,
   cashierEnabled: true,
   ownerDashboardEnabled: false,
-  orderEntryMode: 'hall',
-  kitchenMode: 'display',
+  orderEntryMode: "hall",
+  kitchenMode: "display",
   enabledModules: [],
   enabledRoles: [],
   allowedPermissionCodes: [],
@@ -31,14 +31,14 @@ const baseFeatureConfig: PosFeatureConfig = {
 
 function createUser(overrides: Partial<PosUser> = {}): PosUser {
   return {
-    id: 'user-1',
-    username: 'operator',
-    fullName: 'POS Operator',
+    id: "user-1",
+    username: "operator",
+    fullName: "POS Operator",
     restaurantAccessActive: true,
     permissionCodes: [],
     role: {
-      id: 'role-1',
-      name: 'Waiter',
+      id: "role-1",
+      name: "Waiter",
     },
     ...overrides,
   };
@@ -46,27 +46,27 @@ function createUser(overrides: Partial<PosUser> = {}): PosUser {
 
 function createSession(user: PosUser, featureConfig: PosFeatureConfig): PosSessionPayload {
   return {
-    token: 'token',
+    token: "token",
     user,
     featureConfig,
     restaurantAccessActive: true,
   };
 }
 
-describe('auth access utils', () => {
-  it('detects hall and cashier-builder modes from feature config', () => {
+describe("auth access utils", () => {
+  it("detects hall and cashier-builder modes from feature config", () => {
     expect(isHallMode(baseFeatureConfig)).toBe(true);
     expect(isCashierBuilderMode(baseFeatureConfig)).toBe(false);
     expect(
       isCashierBuilderMode({
         ...baseFeatureConfig,
-        orderEntryMode: 'cashier_builder',
+        orderEntryMode: "cashier_builder",
       }),
     ).toBe(true);
   });
 
-  it('grants waiter access only when hall mode is enabled', () => {
-    const waiter = createUser({ permissionCodes: ['hall.view', 'orders.create'] });
+  it("grants waiter access only when hall mode is enabled", () => {
+    const waiter = createUser({ permissionCodes: ["halls.list", "orders.create"] });
 
     expect(canAccessWaiter(waiter, baseFeatureConfig)).toBe(true);
     expect(
@@ -77,25 +77,25 @@ describe('auth access utils', () => {
     ).toBe(false);
   });
 
-  it('routes kitchen roles to the kitchen queue before cashier or waiter paths', () => {
+  it("routes kitchen roles to the kitchen queue before cashier or waiter paths", () => {
     const chef = createUser({
-      permissionCodes: ['kitchen.view', 'kitchen.update'],
+      permissionCodes: ["kitchen_queue.view", "kitchen_tickets.status_update"],
       role: {
-        id: 'role-chef',
-        name: 'Chef',
+        id: "role-chef",
+        name: "Chef",
       },
     });
 
     expect(canAccessKitchen(chef, baseFeatureConfig)).toBe(true);
-    expect(getPosHomePath(createSession(chef, baseFeatureConfig))).toBe('/kitchen/queue');
+    expect(getPosHomePath(createSession(chef, baseFeatureConfig))).toBe("/kitchen/queue");
   });
 
-  it('routes cashier users to builder or open checks based on order entry mode', () => {
+  it("routes cashier users to builder or open checks based on order entry mode", () => {
     const cashier = createUser({
-      permissionCodes: ['payments.manage', 'cashshift.open'],
+      permissionCodes: ["open_checks.list", "cash_shifts.open"],
       role: {
-        id: 'role-cashier',
-        name: 'Cashier',
+        id: "role-cashier",
+        name: "Cashier",
       },
     });
 
@@ -105,19 +105,19 @@ describe('auth access utils', () => {
       getPosHomePath(
         createSession(cashier, {
           ...baseFeatureConfig,
-          orderEntryMode: 'cashier_builder',
+          orderEntryMode: "cashier_builder",
         }),
       ),
-    ).toBe('/cashier/builder');
-    expect(getPosHomePath(createSession(cashier, baseFeatureConfig))).toBe('/cashier/open-checks');
+    ).toBe("/cashier/builder");
+    expect(getPosHomePath(createSession(cashier, baseFeatureConfig))).toBe("/cashier/open-checks");
   });
 
-  it('falls back to lock screen when no module access is available', () => {
+  it("falls back to lock screen when no module access is available", () => {
     const blockedUser = createUser({
       permissionCodes: [],
       role: {
-        id: 'role-guest',
-        name: 'Guest',
+        id: "role-guest",
+        name: "Guest",
       },
     });
 
@@ -130,32 +130,32 @@ describe('auth access utils', () => {
           cashierEnabled: false,
         }),
       ),
-    ).toBe('/lock-screen');
+    ).toBe("/lock-screen");
   });
 
-  it('hides dock when only one top-level surface is available', () => {
+  it("hides dock when only one top-level surface is available", () => {
     const chef = createUser({
-      permissionCodes: ['kitchen.view'],
+      permissionCodes: ["kitchen_queue.view"],
       role: {
-        id: 'role-chef',
-        name: 'Chef',
+        id: "role-chef",
+        name: "Chef",
       },
     });
 
-    expect(getAccessiblePosSurfaces(createSession(chef, baseFeatureConfig))).toEqual(['kitchen']);
+    expect(getAccessiblePosSurfaces(createSession(chef, baseFeatureConfig))).toEqual(["kitchen"]);
     expect(shouldShowDock(createSession(chef, baseFeatureConfig))).toBe(false);
   });
 
-  it('shows dock when multiple surfaces are available', () => {
+  it("shows dock when multiple surfaces are available", () => {
     const cashier = createUser({
-      permissionCodes: ['hall.view', 'payments.manage', 'cashshift.view'],
+      permissionCodes: ["halls.list", "open_checks.list", "cash_shifts.view"],
       role: {
-        id: 'role-cashier',
-        name: 'Cashier',
+        id: "role-cashier",
+        name: "Cashier",
       },
     });
 
-    expect(getAccessiblePosSurfaces(createSession(cashier, baseFeatureConfig))).toEqual(['halls', 'cashier']);
+    expect(getAccessiblePosSurfaces(createSession(cashier, baseFeatureConfig))).toEqual(["halls", "cashier"]);
     expect(shouldShowDock(createSession(cashier, baseFeatureConfig))).toBe(true);
   });
 });
