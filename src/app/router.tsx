@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react';
-import { Navigate, createBrowserRouter, useLocation } from 'react-router';
+import { Navigate, createBrowserRouter } from 'react-router';
 
 import {
   LoginPage,
@@ -7,7 +7,6 @@ import {
   PosPublicOnlyRoute,
   PosRestaurantPublicOnlyRoute,
   RestaurantLoginPage,
-  canAccessCashier,
   canAccessCashierBuilder,
   canAccessCashierPayments,
   canAccessKitchen,
@@ -15,7 +14,7 @@ import {
   getPosHomePath,
   usePosSession,
 } from 'modules/auth';
-import { CashierBuilderPage, CashierShiftPage, OpenChecksPage, PaymentPage, useCashierContextQuery } from 'modules/cashier';
+import { CashierBuilderPage, OpenChecksPage, PaymentPage } from 'modules/cashier';
 import { KitchenQueuePage } from 'modules/kitchen';
 import { HallsPage, TableSessionPage } from 'modules/waiter';
 import { LockScreenPage } from '../shared/layout/LockScreenPage';
@@ -23,28 +22,6 @@ import { LockScreenPage } from '../shared/layout/LockScreenPage';
 function PosHomeRedirect() {
   const { session } = usePosSession();
   return <Navigate to={getPosHomePath(session)} replace />;
-}
-
-function CashierShiftGuard({ children }: { children: ReactElement }) {
-  const location = useLocation();
-  const { session } = usePosSession();
-  const hasCashierAccess = canAccessCashier(session?.user, session?.featureConfig ?? null);
-  const contextQuery = useCashierContextQuery({ enabled: hasCashierAccess });
-
-  if (!hasCashierAccess) {
-    return <Navigate to={getPosHomePath(session)} replace />;
-  }
-
-  if (contextQuery.isLoading && !contextQuery.data) {
-    return null;
-  }
-
-  if (!contextQuery.data?.currentShift) {
-    const next = encodeURIComponent(`${location.pathname}${location.search}`);
-    return <Navigate to={`/cashier/shift?next=${next}`} replace />;
-  }
-
-  return children;
 }
 
 function PosAccessGuard({
@@ -95,16 +72,10 @@ export const posRouter = createBrowserRouter([
         ),
       },
       {
-        path: 'cashier/shift',
-        element: <CashierShiftPage />,
-      },
-      {
         path: 'cashier/builder',
         element: (
           <PosAccessGuard canAccess={(session) => canAccessCashierBuilder(session?.user, session?.featureConfig ?? null)}>
-            <CashierShiftGuard>
-              <CashierBuilderPage />
-            </CashierShiftGuard>
+            <CashierBuilderPage />
           </PosAccessGuard>
         ),
       },
@@ -112,9 +83,7 @@ export const posRouter = createBrowserRouter([
         path: 'cashier/open-checks',
         element: (
           <PosAccessGuard canAccess={(session) => canAccessCashierPayments(session?.user, session?.featureConfig ?? null)}>
-            <CashierShiftGuard>
-              <OpenChecksPage />
-            </CashierShiftGuard>
+            <OpenChecksPage />
           </PosAccessGuard>
         ),
       },
@@ -122,9 +91,7 @@ export const posRouter = createBrowserRouter([
         path: 'cashier/payment',
         element: (
           <PosAccessGuard canAccess={(session) => canAccessCashierPayments(session?.user, session?.featureConfig ?? null)}>
-            <CashierShiftGuard>
-              <PaymentPage />
-            </CashierShiftGuard>
+            <PaymentPage />
           </PosAccessGuard>
         ),
       },

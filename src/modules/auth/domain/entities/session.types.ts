@@ -9,7 +9,6 @@ export type PosUser = {
   permissionCodes: string[];
   role?: {
     id: string;
-    code: string;
     name: string;
   } | null;
 };

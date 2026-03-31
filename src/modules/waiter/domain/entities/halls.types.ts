@@ -20,9 +20,20 @@ export type ActiveSession = {
   serviceState?: ActiveSessionServiceState;
 };
 
+export type HallZone = {
+  id: string;
+  name: string;
+  isPrivate?: boolean;
+  sortOrder?: number;
+  isActive?: boolean;
+};
+
 export type DiningTable = {
   id: string;
   name: string;
+  zone?: string | null;
+  zoneName?: string | null;
+  zoneIsPrivate?: boolean | null;
   tableNumber: number;
   seatCount: number;
   status: DiningTableStatus;
@@ -41,6 +52,7 @@ export type Hall = {
   name: string;
   level?: number | string;
   gridColumns?: number | string;
+  zones?: HallZone[];
   tables: DiningTable[];
 };
 

@@ -5,7 +5,6 @@ import { useNavigate } from 'react-router';
 
 import { isCashierBuilderMode, usePosSession } from 'modules/auth';
 import {
-  useCashierContextQuery,
   useCashierOpenChecksQuery,
   useCashierRefundMutation,
   useCashierReprintMutation,
@@ -340,7 +339,6 @@ export function OpenChecksPage() {
   const [selectedTab, setSelectedTab] = useState<'open' | 'closed'>('open');
   const [selectedOrderId, setSelectedOrderId] = useState<string>('');
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
-  const cashierContextQuery = useCashierContextQuery({ enabled: Boolean(session?.token), refetchInterval: 15000 });
   const refundMutation = useCashierRefundMutation();
   const reprintMutation = useCashierReprintMutation();
 
@@ -375,8 +373,7 @@ export function OpenChecksPage() {
   const canReprint = Boolean(
     selectedTab === 'closed' &&
       latestReceipt?.id &&
-      session?.user.permissionCodes.includes('receipt.reprint') &&
-      cashierContextQuery.data?.currentShift,
+      session?.user.permissionCodes.includes('receipt.reprint'),
   );
 
   const detailPanel = selectedOrder ? (
@@ -518,7 +515,6 @@ export function OpenChecksPage() {
         locale={locale}
         onClose={() => setSettingsAnchor(null)}
         onLocaleChange={setLocale}
-        onShift={() => navigate('/cashier/shift')}
         onRefresh={isMobile ? () => window.location.reload() : undefined}
         onLock={isMobile ? () => navigate('/lock-screen') : undefined}
         onThemeToggle={() => setThemeMode(themeMode === 'dark' ? 'light' : 'dark')}

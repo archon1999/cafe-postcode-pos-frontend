@@ -15,7 +15,7 @@ import {
   useMediaQuery,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router';
 
 import { getPosHomePath, isHallMode, usePosSession } from 'modules/auth';
@@ -24,7 +24,6 @@ import {
   type DiningTable,
   clampGuestCount,
   getHallGridColumns,
-  getHallGridRows,
   getSupportedSeatCount,
   getTableCoreShape,
   getTableGridPlacement,
@@ -35,8 +34,8 @@ import {
   shouldShowAttentionDot,
   type TableVisualState,
 } from 'modules/waiter/domain';
-import { getPosCopy } from 'shared/locale/copy';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
+import { getPosCopy } from 'shared/locale/copy';
 import { formatElapsedMinutes } from 'shared/pos/utils';
 import {
   PosHallsPageSkeleton,
@@ -59,6 +58,18 @@ function formatFloorLabel(locale: string, level: number) {
   }
 
   return `${level}-qavat`;
+}
+
+function getAllZonesLabel(locale: string) {
+  if (locale === 'uz-crl') {
+    return 'Барчаси';
+  }
+
+  if (locale === 'ru') {
+    return 'Все';
+  }
+
+  return 'Barchasi';
 }
 
 const tablePalette: Record<
@@ -382,6 +393,7 @@ function HallsPageContent() {
   const copy = getPosCopy(locale);
   const [selectedLevel, setSelectedLevel] = useState<string>('');
   const [selectedHallId, setSelectedHallId] = useState<string>('');
+  const [selectedZoneId, setSelectedZoneId] = useState<string>('all');
   const [selectedTable, setSelectedTable] = useState<DiningTable | null>(null);
   const [guestCount, setGuestCount] = useState(2);
   const [settingsAnchor, setSettingsAnchor] = useState<HTMLElement | null>(null);
@@ -394,34 +406,58 @@ function HallsPageContent() {
     guestCount,
     onSuccess: (sessionId) => {
       setSelectedTable(null);
-      navigate(`/waiter/table-session?sessionId=${sessionId}`);
+      void navigate(`/waiter/table-session?sessionId=${sessionId}`);
     },
   });
 
   const halls = useMemo(() => hallsQuery.data ?? [], [hallsQuery.data]);
   const isInitialLoading = hallsQuery.isLoading && !hallsQuery.data;
-  const availableLevels = useMemo(
-    () =>
-      Array.from(
-        new Set(halls.map((hall) => Number(hall.level ?? 1)).filter((level) => Number.isFinite(level) && level > 0)),
-      ).sort((left, right) => left - right),
-    [halls],
-  );
+  const availableLevels = useMemo(() => (halls.length ? [1] : []), [halls.length]);
   const activeLevel = selectedLevel || String(availableLevels[0] ?? 1);
   const floorTabs = useMemo(
     () => availableLevels.map((level) => ({ value: String(level), label: formatFloorLabel(locale, level) })),
     [availableLevels, locale],
   );
-  const levelScopedHalls = useMemo(
-    () => halls.filter((hall) => String(Number(hall.level ?? 1)) === activeLevel),
-    [activeLevel, halls],
-  );
+  const levelScopedHalls = useMemo(() => halls, [halls]);
   const selectedHall = useMemo(() => {
     const defaultHall = levelScopedHalls[0];
     const hallId = selectedHallId || defaultHall?.id;
     return levelScopedHalls.find((hall) => hall.id === hallId) ?? defaultHall;
   }, [levelScopedHalls, selectedHallId]);
   const hallTabs = levelScopedHalls.map((hall) => ({ value: hall.id, label: hall.name }));
+  const zoneTabs = useMemo(() => {
+    const zones = (selectedHall?.zones ?? []).filter((zone) => zone.isActive !== false);
+    if (!zones.length) {
+      return [];
+    }
+
+    return [
+      { value: 'all', label: getAllZonesLabel(locale) },
+      ...zones.map((zone) => ({ value: zone.id, label: zone.name })),
+    ];
+  }, [locale, selectedHall?.zones]);
+  const visibleTables = useMemo(() => {
+    const tables = selectedHall?.tables ?? [];
+    if (!selectedZoneId || selectedZoneId === 'all') {
+      return tables;
+    }
+    return tables.filter((table) => table.zone === selectedZoneId);
+  }, [selectedHall?.tables, selectedZoneId]);
+
+  useEffect(() => {
+    if (!zoneTabs.length) {
+      if (selectedZoneId !== 'all') {
+        setSelectedZoneId('all');
+      }
+      return;
+    }
+
+    const zoneExists = zoneTabs.some((zone) => zone.value === selectedZoneId);
+    if (!zoneExists) {
+      setSelectedZoneId('all');
+    }
+  }, [selectedZoneId, zoneTabs]);
+
   const hallStats = useMemo(() => {
     const stats = {
       available: 0,
@@ -430,13 +466,13 @@ function HallsPageContent() {
       blocked: 0,
     };
 
-    for (const table of selectedHall?.tables ?? []) {
+    for (const table of visibleTables) {
       const status = getTableStatus(table);
       stats[status] += 1;
     }
 
     return stats;
-  }, [selectedHall]);
+  }, [visibleTables]);
 
   const legendItems = [
     { key: 'available', label: copy.available, count: hallStats.available, color: '#666a70' },
@@ -447,11 +483,18 @@ function HallsPageContent() {
       : []),
   ];
   const gridColumns = getHallGridColumns(selectedHall);
-  const gridRows = getHallGridRows(selectedHall);
+  const gridRows = useMemo(
+    () =>
+      visibleTables.reduce((maxRows, table) => {
+        const placement = getTableGridPlacement(table, gridColumns);
+        return Math.max(maxRows, placement.positionY + placement.height);
+      }, 1),
+    [gridColumns, visibleTables],
+  );
 
   const handleTableSelect = (currentTable: DiningTable) => {
     if (currentTable.activeSession) {
-      navigate(`/waiter/table-session?sessionId=${currentTable.activeSession.id}`);
+      void navigate(`/waiter/table-session?sessionId=${currentTable.activeSession.id}`);
       return;
     }
 
@@ -611,12 +654,11 @@ function HallsPageContent() {
               onClick={(event) => setSettingsAnchor(event.currentTarget)}
             />
             {!isMobile ? (
-              <PosIconAction icon="solar:lock-password-bold-duotone" onClick={() => navigate('/lock-screen')} />
+              <PosIconAction icon="solar:lock-password-bold-duotone" onClick={() => void navigate('/lock-screen')} />
             ) : null}
           </Stack>
         </Stack>
-      }
-    >
+      }>
       <Box
         sx={(theme) => ({
           flex: 1,
@@ -652,6 +694,12 @@ function HallsPageContent() {
           </Stack>
         </Stack>
 
+        {zoneTabs.length ? (
+          <Box sx={{ mb: 2.5, flexShrink: 0 }}>
+            <PosSectionTabs value={selectedZoneId} items={zoneTabs} onChange={setSelectedZoneId} scrollable />
+          </Box>
+        ) : null}
+
         <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', pb: 1 }}>
           <Box
             data-testid="hall-layout-grid"
@@ -664,7 +712,7 @@ function HallsPageContent() {
               minHeight: gridRows * HALL_GRID_ROW_HEIGHT,
               alignItems: 'stretch',
             }}>
-            {(selectedHall?.tables ?? [])
+            {visibleTables
               .slice()
               .sort((leftTable, rightTable) => leftTable.tableNumber - rightTable.tableNumber)
               .map((table) => {
@@ -728,11 +776,11 @@ function HallsPageContent() {
         onClose={() => setSettingsAnchor(null)}
         onLocaleChange={setLocale}
         onRefresh={isMobile ? () => window.location.reload() : undefined}
-        onLock={isMobile ? () => navigate('/lock-screen') : undefined}
+        onLock={isMobile ? () => void navigate('/lock-screen') : undefined}
         onThemeToggle={() => setThemeMode(themeMode === 'dark' ? 'light' : 'dark')}
         onSignOut={() => {
           setSession(null);
-          navigate('/pin-login', { replace: true });
+          void navigate('/pin-login', { replace: true });
         }}
         themeMode={themeMode}
       />

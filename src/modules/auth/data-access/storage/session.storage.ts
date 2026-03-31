@@ -79,17 +79,17 @@ export function normalizeSessionPayload(
 
   return {
     token: payload.token,
-      user: {
-        id: rawUser.id,
-        username: rawUser.username,
-        fullName: rawUser.fullName ?? rawUser.full_name ?? '',
-        permissionCodes: rawUser.permissionCodes ?? rawUser.permission_codes ?? [],
-        restaurantAccessActive: rawUser.restaurantAccessActive,
-        role: rawUser.role,
-      },
-      featureConfig: normalizedFeatureConfig,
-      restaurantContext: rawRestaurantContext,
-    };
+    user: {
+      id: rawUser.id,
+      username: rawUser.username,
+      fullName: rawUser.fullName ?? rawUser.full_name ?? '',
+      permissionCodes: rawUser.permissionCodes ?? rawUser.permission_codes ?? [],
+      ...(rawUser.restaurantAccessActive !== undefined ? { restaurantAccessActive: rawUser.restaurantAccessActive } : {}),
+      ...(rawUser.role ? { role: rawUser.role } : {}),
+    },
+    featureConfig: normalizedFeatureConfig,
+    ...(rawRestaurantContext ? { restaurantContext: rawRestaurantContext } : {}),
+  };
 }
 
 function readJson<T>(key: string): T | null {

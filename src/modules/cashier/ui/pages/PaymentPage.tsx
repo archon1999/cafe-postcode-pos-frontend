@@ -46,10 +46,7 @@ export function PaymentPage() {
     orderId,
     onSuccess: () => setQrDialogOpen(false),
   });
-  const currentShift = cashierContextQuery.data?.currentShift ?? null;
-  const selectedCashDesk = cashierContextQuery.data?.availableCashDesks.find(
-    (cashDesk) => cashDesk.id === currentShift?.cashDesk,
-  );
+  const selectedCashDesk = cashierContextQuery.data?.availableCashDesks[0] ?? null;
 
   const remainingTotal = useMemo(() => {
     const total = Number(orderQuery.data?.total ?? 0);
@@ -511,7 +508,6 @@ export function PaymentPage() {
         locale={locale}
         onClose={() => setSettingsAnchor(null)}
         onLocaleChange={setLocale}
-        onShift={() => navigate('/cashier/shift')}
         onRefresh={isMobile ? () => window.location.reload() : undefined}
         onLock={isMobile ? () => navigate('/lock-screen') : undefined}
         onThemeToggle={() => setThemeMode(themeMode === 'dark' ? 'light' : 'dark')}

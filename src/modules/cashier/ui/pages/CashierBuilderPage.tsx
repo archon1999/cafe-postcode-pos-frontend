@@ -878,7 +878,6 @@ function CashierBuilderPageContent() {
         locale={locale}
         onClose={() => setSettingsAnchor(null)}
         onLocaleChange={setLocale}
-        onShift={() => navigate('/cashier/shift')}
         onRefresh={isMobile ? () => window.location.reload() : undefined}
         onLock={isMobile ? () => navigate('/lock-screen') : undefined}
         onThemeToggle={() => setThemeMode(themeMode === 'dark' ? 'light' : 'dark')}

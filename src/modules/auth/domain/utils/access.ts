@@ -56,9 +56,6 @@ export function canAccessCashier(user: PosUser | null | undefined, featureConfig
     'payments.create',
     'payments.view',
     'payments.manage',
-    'cashshift.view',
-    'cashshift.open',
-    'cashshift.close',
     'receipt.reprint',
     'payment.refund',
   ]);

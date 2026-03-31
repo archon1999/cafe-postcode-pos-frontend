@@ -38,7 +38,6 @@ function createUser(overrides: Partial<PosUser> = {}): PosUser {
     permissionCodes: [],
     role: {
       id: 'role-1',
-      code: 'waiter',
       name: 'Waiter',
     },
     ...overrides,
@@ -83,7 +82,6 @@ describe('auth access utils', () => {
       permissionCodes: ['kitchen.view', 'kitchen.update'],
       role: {
         id: 'role-chef',
-        code: 'chef',
         name: 'Chef',
       },
     });
@@ -97,7 +95,6 @@ describe('auth access utils', () => {
       permissionCodes: ['payments.manage', 'cashshift.open'],
       role: {
         id: 'role-cashier',
-        code: 'cashier',
         name: 'Cashier',
       },
     });
@@ -120,7 +117,6 @@ describe('auth access utils', () => {
       permissionCodes: [],
       role: {
         id: 'role-guest',
-        code: 'guest',
         name: 'Guest',
       },
     });
@@ -142,7 +138,6 @@ describe('auth access utils', () => {
       permissionCodes: ['kitchen.view'],
       role: {
         id: 'role-chef',
-        code: 'chef',
         name: 'Chef',
       },
     });
@@ -156,7 +151,6 @@ describe('auth access utils', () => {
       permissionCodes: ['hall.view', 'payments.manage', 'cashshift.view'],
       role: {
         id: 'role-cashier',
-        code: 'cashier',
         name: 'Cashier',
       },
     });

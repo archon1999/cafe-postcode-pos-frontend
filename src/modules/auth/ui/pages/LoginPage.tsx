@@ -4,7 +4,8 @@ import { Icon } from '@iconify/react';
 import { Box, Button, Stack, Typography, alpha } from '@mui/material';
 import { useNavigate } from 'react-router';
 
-import { getPosCopy } from 'shared/locale/copy';
+import { getPosCopy, localeLabels } from 'shared/locale/copy';
+import { PosLogo } from 'shared/ui/PosLogo';
 
 import { usePinLoginMutation } from '../../application';
 import { getPosHomePath } from '../../domain';
@@ -124,6 +125,7 @@ export function LoginPage() {
         <Stack spacing={4} sx={{ width: '100%', maxWidth: 440 }}>
           <Stack direction="row" justifyContent="space-between" spacing={2}>
             <Stack spacing={0.75}>
+              <PosLogo isSingle={false} sx={{ width: 178, height: 50, mb: 0.5 }} />
               <Typography
                 variant="h3"
                 sx={{
@@ -262,7 +264,7 @@ export function LoginPage() {
                           : alpha('#ece4d7', 0.9),
                   })}
                 >
-                  {currentLocale.toUpperCase()}
+                  {localeLabels[currentLocale]}
                 </Button>
               ))}
             </Stack>

@@ -24,7 +24,7 @@ git checkout production
 git pull --ff-only origin production
 npm install
 npm run prod:build
-npx gzipper@latest compress ./dist
+gzipper compress ./dist
 ```
 
 ## Required files on the server
