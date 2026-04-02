@@ -6,34 +6,21 @@ const WAITER_PERMISSION_CODES = [
   "table_sessions.view",
   "table_sessions.create",
   "table_sessions.update",
-  "table_sessions.move",
-  "table_sessions.merge",
   "catalog_menu.view",
   "orders.list",
   "orders.view",
   "orders.create",
   "orders.update",
-  "orders.submit",
-  "order_items.list",
-  "order_items.view",
-  "order_items.create",
-  "order_items.update",
-  "order_items.delete",
 ] as const;
 const CASHIER_PERMISSION_CODES = [
   "open_checks.list",
   "payments.create",
-  "payments.refund",
-  "receipts.reprint",
-  "cash_shifts.view",
-  "cash_shifts.open",
-  "cash_shifts.close",
+  "payments.update",
 ] as const;
 const KITCHEN_PERMISSION_CODES = [
   "kitchen_queue.view",
   "kitchen_tickets.view",
-  "kitchen_tickets.status_update",
-  "kitchen_items.status_update",
+  "kitchen_tickets.update",
 ] as const;
 
 export function hasPermission(user: PosUser | null | undefined, permissionCode: string) {

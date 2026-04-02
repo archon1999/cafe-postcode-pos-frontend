@@ -79,7 +79,7 @@ describe("auth access utils", () => {
 
   it("routes kitchen roles to the kitchen queue before cashier or waiter paths", () => {
     const chef = createUser({
-      permissionCodes: ["kitchen_queue.view", "kitchen_tickets.status_update"],
+      permissionCodes: ["kitchen_queue.view", "kitchen_tickets.update"],
       role: {
         id: "role-chef",
         name: "Chef",
@@ -92,7 +92,7 @@ describe("auth access utils", () => {
 
   it("routes cashier users to builder or open checks based on order entry mode", () => {
     const cashier = createUser({
-      permissionCodes: ["open_checks.list", "cash_shifts.open"],
+      permissionCodes: ["open_checks.list", "payments.update"],
       role: {
         id: "role-cashier",
         name: "Cashier",
@@ -148,7 +148,7 @@ describe("auth access utils", () => {
 
   it("shows dock when multiple surfaces are available", () => {
     const cashier = createUser({
-      permissionCodes: ["halls.list", "open_checks.list", "cash_shifts.view"],
+      permissionCodes: ["halls.list", "open_checks.list", "payments.update"],
       role: {
         id: "role-cashier",
         name: "Cashier",
