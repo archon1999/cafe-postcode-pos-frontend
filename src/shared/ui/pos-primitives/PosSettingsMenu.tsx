@@ -35,8 +35,7 @@ export function PosSettingsMenu({
         onClick={() => {
           onThemeToggle();
           onClose();
-        }}
-      >
+        }}>
         <ListItemIcon>
           <Icon icon={themeMode === 'dark' ? 'solar:sun-2-bold-duotone' : 'solar:moon-stars-bold-duotone'} width={22} />
         </ListItemIcon>
@@ -52,8 +51,7 @@ export function PosSettingsMenu({
           onClick={() => {
             onLocaleChange(localeCode as PosLocale);
             onClose();
-          }}
-        >
+          }}>
           <ListItemIcon>
             <Icon icon="solar:global-line-duotone" width={22} />
           </ListItemIcon>
@@ -68,8 +66,7 @@ export function PosSettingsMenu({
           onClick={() => {
             onShift();
             onClose();
-          }}
-        >
+          }}>
           <ListItemIcon>
             <Icon icon="solar:clock-circle-bold-duotone" width={22} />
           </ListItemIcon>
@@ -82,8 +79,7 @@ export function PosSettingsMenu({
           onClick={() => {
             onRefresh();
             onClose();
-          }}
-        >
+          }}>
           <ListItemIcon>
             <Icon icon="solar:refresh-bold-duotone" width={22} />
           </ListItemIcon>
@@ -96,8 +92,7 @@ export function PosSettingsMenu({
           onClick={() => {
             onLock();
             onClose();
-          }}
-        >
+          }}>
           <ListItemIcon>
             <Icon icon="solar:lock-password-bold-duotone" width={22} />
           </ListItemIcon>
@@ -111,8 +106,7 @@ export function PosSettingsMenu({
         onClick={() => {
           onSignOut();
           onClose();
-        }}
-      >
+        }}>
         <ListItemIcon>
           <Icon icon="solar:logout-3-bold-duotone" width={22} />
         </ListItemIcon>

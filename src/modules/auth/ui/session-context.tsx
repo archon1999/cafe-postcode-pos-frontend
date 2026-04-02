@@ -1,6 +1,7 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
 
 import type { PosSessionContextValue, PosSessionPayload } from 'modules/auth/domain';
+import { queryClient } from 'shared/api/query-client';
 
 import {
   persistLocale,
@@ -12,7 +13,6 @@ import {
   readStoredSession,
   readStoredThemeMode,
 } from '../data-access';
-import { queryClient } from 'shared/api/query-client';
 
 const PosSessionContext = createContext<PosSessionContextValue | null>(null);
 

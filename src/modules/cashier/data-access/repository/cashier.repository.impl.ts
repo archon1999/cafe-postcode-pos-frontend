@@ -18,6 +18,7 @@ import {
 } from '../mappers';
 
 type CollectionPayload<T> = T[] | { data?: T[] };
+type CashierReceipt = NonNullable<CashierOrder['receipts']>[number];
 
 class CashierRepositoryImpl implements CashierRepository {
   async getCashierContext(): Promise<CashierContext> {
@@ -46,7 +47,11 @@ class CashierRepositoryImpl implements CashierRepository {
     return mapCashierOrder(await apiGet<CashierOrder>(`/pos/orders/${orderId}/`));
   }
 
-  async openShift(payload: { cashDeskId?: string; openingCashAmount: number; notesOpen?: string }): Promise<CashierContext> {
+  async openShift(payload: {
+    cashDeskId?: string;
+    openingCashAmount: number;
+    notesOpen?: string;
+  }): Promise<CashierContext> {
     return apiPost<CashierContext>('/pos/cashier/shifts/open/', payload);
   }
 
@@ -90,14 +95,13 @@ class CashierRepositoryImpl implements CashierRepository {
   }
 
   async refundPayment(paymentId: string, reason = '') {
-    return apiPost<{ refund: unknown; receipt: CashierOrder['receipts'][number] | null }>(
-      `/pos/payments/${paymentId}/refund/`,
-      { reason },
-    );
+    return apiPost<{ refund: unknown; receipt: CashierReceipt | null }>(`/pos/payments/${paymentId}/refund/`, {
+      reason,
+    });
   }
 
   async reprintReceipt(receiptId: string) {
-    return apiPost<{ receipt: CashierOrder['receipts'][number] | null }>(`/pos/receipts/${receiptId}/reprint/`);
+    return apiPost<{ receipt: CashierReceipt | null }>(`/pos/receipts/${receiptId}/reprint/`);
   }
 }
 

@@ -15,23 +15,23 @@ export function PosPageFrame({
   headerSx?: SxProps<Theme>;
   sx?: SxProps<Theme>;
 }) {
+  const rootSx = [{ height: '100%', minHeight: 0, overflow: 'hidden' }, ...(sx ? [sx] : [])] as SxProps<Theme>;
+  const resolvedHeaderSx = [{ flexShrink: 0 }, ...(headerSx ? [headerSx] : [])] as SxProps<Theme>;
+  const resolvedContentSx = [
+    {
+      flex: '1 1 0',
+      minHeight: 0,
+      overflow: 'hidden',
+      display: 'flex',
+      flexDirection: 'column',
+    },
+    ...(contentSx ? [contentSx] : []),
+  ] as SxProps<Theme>;
+
   return (
-    <Stack spacing={{ xs: 2, md: 2.5 }} sx={[{ height: '100%', minHeight: 0, overflow: 'hidden' }, sx]}>
-      <Box sx={[{ flexShrink: 0 }, headerSx]}>{header}</Box>
-      <Box
-        sx={[
-          {
-            flex: '1 1 0',
-            minHeight: 0,
-            overflow: 'hidden',
-            display: 'flex',
-            flexDirection: 'column',
-          },
-          contentSx,
-        ]}
-      >
-        {children}
-      </Box>
+    <Stack spacing={{ xs: 2, md: 2.5 }} sx={rootSx}>
+      <Box sx={resolvedHeaderSx}>{header}</Box>
+      <Box sx={resolvedContentSx}>{children}</Box>
     </Stack>
   );
 }

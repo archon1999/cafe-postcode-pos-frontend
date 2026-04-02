@@ -2,9 +2,9 @@ import { useMutation } from '@tanstack/react-query';
 
 import { queryClient } from 'shared/api/query-client';
 
+import { cashierRepository } from '../data-access';
 import type { CashierMenuItem, PaymentMethod } from '../domain';
 
-import { cashierRepository } from '../data-access';
 import { cashierKeys } from './keys';
 
 export function useAddCashierOrderItemMutation(options: {
@@ -67,10 +67,7 @@ export function useSubmitCashierOrderMutation(options: { orderId?: string; onSuc
   });
 }
 
-export function useCashierPaymentMutation(options: {
-  orderId: string | null;
-  onSuccess?: () => void;
-}) {
+export function useCashierPaymentMutation(options: { orderId: string | null; onSuccess?: () => void }) {
   const { orderId, onSuccess } = options;
 
   return useMutation({

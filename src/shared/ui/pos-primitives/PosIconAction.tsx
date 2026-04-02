@@ -1,8 +1,7 @@
-import type { MouseEventHandler } from 'react';
-
 import { Icon } from '@iconify/react';
 import { Button, alpha } from '@mui/material';
 import type { SxProps, Theme } from '@mui/material/styles';
+import type { MouseEventHandler } from 'react';
 
 export function PosIconAction({
   icon,
@@ -38,8 +37,7 @@ export function PosIconAction({
           },
         }),
         ...(Array.isArray(sx) ? sx : sx ? [sx] : []),
-      ]}
-    >
+      ]}>
       <Icon icon={icon} width={20} />
     </Button>
   );

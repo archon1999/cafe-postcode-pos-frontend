@@ -7,6 +7,8 @@ import type {
   PaymentMethod,
 } from '../entities';
 
+type CashierReceipt = NonNullable<CashierOrder['receipts']>[number];
+
 export interface CashierRepository {
   getCashierContext(): Promise<CashierContext>;
   getMenu(): Promise<CashierMenuCategory[]>;
@@ -20,6 +22,6 @@ export interface CashierRepository {
   removeOrderItem(itemId: string): Promise<void>;
   submitOrder(orderId: string): Promise<void>;
   payOrder(orderId: string, method: PaymentMethod, amount: number): Promise<CashierPaymentResponse>;
-  refundPayment(paymentId: string, reason?: string): Promise<{ refund: unknown; receipt: CashierOrder['receipts'][number] | null }>;
-  reprintReceipt(receiptId: string): Promise<{ receipt: CashierOrder['receipts'][number] | null }>;
+  refundPayment(paymentId: string, reason?: string): Promise<{ refund: unknown; receipt: CashierReceipt | null }>;
+  reprintReceipt(receiptId: string): Promise<{ receipt: CashierReceipt | null }>;
 }

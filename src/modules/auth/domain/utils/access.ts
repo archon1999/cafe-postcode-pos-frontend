@@ -1,27 +1,19 @@
-import type { PosFeatureConfig, PosSessionPayload, PosUser } from "../entities";
+import type { PosFeatureConfig, PosSessionPayload, PosUser } from '../entities';
 
 const WAITER_PERMISSION_CODES = [
-  "halls.list",
-  "table_sessions.list",
-  "table_sessions.view",
-  "table_sessions.create",
-  "table_sessions.update",
-  "catalog_menu.view",
-  "orders.list",
-  "orders.view",
-  "orders.create",
-  "orders.update",
+  'halls.list',
+  'table_sessions.list',
+  'table_sessions.view',
+  'table_sessions.create',
+  'table_sessions.update',
+  'catalog_menu.view',
+  'orders.list',
+  'orders.view',
+  'orders.create',
+  'orders.update',
 ] as const;
-const CASHIER_PERMISSION_CODES = [
-  "open_checks.list",
-  "payments.create",
-  "payments.update",
-] as const;
-const KITCHEN_PERMISSION_CODES = [
-  "kitchen_queue.view",
-  "kitchen_tickets.view",
-  "kitchen_tickets.update",
-] as const;
+const CASHIER_PERMISSION_CODES = ['open_checks.list', 'payments.create', 'payments.update'] as const;
+const KITCHEN_PERMISSION_CODES = ['kitchen_queue.view', 'kitchen_tickets.view', 'kitchen_tickets.update'] as const;
 
 export function hasPermission(user: PosUser | null | undefined, permissionCode: string) {
   return Boolean(user?.permissionCodes?.includes(permissionCode));
@@ -48,11 +40,11 @@ function isRestaurantAccessEnabled(user: PosUser | null | undefined, featureConf
 }
 
 export function isHallMode(featureConfig: PosFeatureConfig) {
-  return Boolean(featureConfig?.hallEnabled && featureConfig?.orderEntryMode === "hall");
+  return Boolean(featureConfig?.hallEnabled && featureConfig?.orderEntryMode === 'hall');
 }
 
 export function isCashierBuilderMode(featureConfig: PosFeatureConfig) {
-  return Boolean(featureConfig?.cashierEnabled && featureConfig?.orderEntryMode === "cashier_builder");
+  return Boolean(featureConfig?.cashierEnabled && featureConfig?.orderEntryMode === 'cashier_builder');
 }
 
 export function canAccessWaiter(user: PosUser | null | undefined, featureConfig?: PosFeatureConfig) {
@@ -72,7 +64,11 @@ export function canAccessCashier(user: PosUser | null | undefined, featureConfig
 }
 
 export function canAccessKitchen(user: PosUser | null | undefined, featureConfig?: PosFeatureConfig) {
-  if (!isRestaurantAccessEnabled(user, featureConfig) || !featureConfig?.kitchenEnabled || featureConfig.kitchenMode === "printer") {
+  if (
+    !isRestaurantAccessEnabled(user, featureConfig) ||
+    !featureConfig?.kitchenEnabled ||
+    featureConfig.kitchenMode === 'printer'
+  ) {
     return false;
   }
 
@@ -83,10 +79,10 @@ export function getAccessiblePosSurfaces(session: PosSessionPayload | null | und
   const user = session?.user;
   const featureConfig = session?.featureConfig ?? null;
   const surfaces = [
-    canAccessWaiter(user, featureConfig) ? "halls" : null,
-    canAccessCashier(user, featureConfig) ? "cashier" : null,
-    canAccessKitchen(user, featureConfig) ? "kitchen" : null,
-  ].filter(Boolean) as Array<"halls" | "cashier" | "kitchen">;
+    canAccessWaiter(user, featureConfig) ? 'halls' : null,
+    canAccessCashier(user, featureConfig) ? 'cashier' : null,
+    canAccessKitchen(user, featureConfig) ? 'kitchen' : null,
+  ].filter(Boolean) as Array<'halls' | 'cashier' | 'kitchen'>;
 
   return surfaces;
 }
@@ -111,25 +107,29 @@ export function getPosHomePath(session: PosSessionPayload | null | undefined) {
   const user = session?.user;
   const featureConfig = session?.featureConfig ?? null;
 
-  if (canAccessKitchen(user, featureConfig) && !canAccessWaiter(user, featureConfig) && !canAccessCashier(user, featureConfig)) {
-    return "/kitchen/queue";
+  if (
+    canAccessKitchen(user, featureConfig) &&
+    !canAccessWaiter(user, featureConfig) &&
+    !canAccessCashier(user, featureConfig)
+  ) {
+    return '/kitchen/queue';
   }
 
   if (canAccessCashierBuilder(user, featureConfig)) {
-    return "/cashier/builder";
+    return '/cashier/builder';
   }
 
   if (canAccessWaiter(user, featureConfig)) {
-    return "/waiter/halls";
+    return '/waiter/halls';
   }
 
   if (canAccessCashierPayments(user, featureConfig)) {
-    return "/cashier/open-checks";
+    return '/cashier/open-checks';
   }
 
   if (canAccessKitchen(user, featureConfig)) {
-    return "/kitchen/queue";
+    return '/kitchen/queue';
   }
 
-  return "/lock-screen";
+  return '/lock-screen';
 }

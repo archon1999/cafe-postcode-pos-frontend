@@ -22,9 +22,6 @@ export function groupCashierOrderItemsByStation(items: CashierOrderItem[] | unde
 export function getCurrentCashierBuilderOrder(orders: CashierOrder[] | undefined, userId: string | undefined) {
   return (orders ?? []).find(
     (order) =>
-      !order.tableSession &&
-      order.channel === 'takeaway' &&
-      order.status === 'open' &&
-      order.openedBy === userId,
+      !order.tableSession && order.channel === 'takeaway' && order.status === 'open' && order.openedBy === userId,
   );
 }

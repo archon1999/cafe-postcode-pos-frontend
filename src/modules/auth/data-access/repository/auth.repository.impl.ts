@@ -9,7 +9,6 @@ import type {
 } from 'modules/auth/domain';
 import { apiPost } from 'shared/api/client';
 
-
 import { normalizeSessionPayload } from '../storage/session.storage';
 
 function extractErrorMessage(payload: unknown): string | null {

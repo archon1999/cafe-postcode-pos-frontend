@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react';
-
 import { Navigate, Outlet, useLocation } from 'react-router';
 
 import { PosShell } from 'shared/layout/PosShell';
 
 import { getPosHomePath } from '../domain';
+
 import { usePosSession } from './session-context';
 
 export function PosPublicOnlyRoute({ children }: { children: ReactNode }) {

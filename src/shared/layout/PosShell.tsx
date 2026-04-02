@@ -79,7 +79,9 @@ export function PosShell({ children }: { children: ReactNode }) {
             ? 'linear-gradient(180deg, #1b1d20 0%, #1a1c1f 100%)'
             : 'linear-gradient(180deg, #f5ecdf 0%, #ebdfd0 100%)',
       })}>
-      <Box component="main" sx={{ flex: '1 1 0', minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <Box
+        component="main"
+        sx={{ flex: '1 1 0', minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         {children}
       </Box>
 

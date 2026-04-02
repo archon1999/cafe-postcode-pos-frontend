@@ -36,11 +36,7 @@ export function PosOrderChannelSegment({ hallLabel, takeawayLabel, channel, comp
             py: compact ? 0.9 : 1.05,
             borderRadius: 999,
             textAlign: 'center',
-            backgroundColor: item.active
-              ? theme.palette.mode === 'dark'
-                ? '#4a4a4a'
-                : '#5c5c5c'
-              : 'transparent',
+            backgroundColor: item.active ? (theme.palette.mode === 'dark' ? '#4a4a4a' : '#5c5c5c') : 'transparent',
             color: item.active
               ? '#ffffff'
               : theme.palette.mode === 'dark'

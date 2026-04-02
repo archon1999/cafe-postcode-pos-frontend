@@ -1,7 +1,6 @@
-import { useMemo } from 'react';
-
 import { Box, Stack, Typography, alpha } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
+import { useMemo } from 'react';
 import { Link, useLocation } from 'react-router';
 
 import { PosDockGlyph } from './PosDockGlyph';
@@ -77,8 +76,7 @@ export function PosBottomDock({ items }: { items: DockItem[] }) {
         pt: { xs: 1.2, md: 1.6 },
         pb: { xs: 'calc(env(safe-area-inset-bottom, 0px) + 8px)', md: 'calc(env(safe-area-inset-bottom, 0px) + 10px)' },
         overflow: 'visible',
-      }}
-    >
+      }}>
       <Box
         sx={{
           width: { xs: '100%', sm: 'min(100%, 500px)', md: 500 },
@@ -88,8 +86,7 @@ export function PosBottomDock({ items }: { items: DockItem[] }) {
           border: 0,
           backdropFilter: 'none',
           boxShadow: 'none',
-        }}
-      >
+        }}>
         <Stack
           direction="row"
           spacing={{ xs: 0.9, md: '16px' }}
@@ -101,8 +98,7 @@ export function PosBottomDock({ items }: { items: DockItem[] }) {
             '&::-webkit-scrollbar': {
               display: 'none',
             },
-          }}
-        >
+          }}>
           {items.map((item) => {
             const active = item.key === activeKey;
             const dockGlow = dockGlowMap[item.key] ?? dockGlowMap.halls;
@@ -175,8 +171,7 @@ export function PosBottomDock({ items }: { items: DockItem[] }) {
                     transform: 'translateY(-3px)',
                     borderColor: alpha('#ffffff', theme.palette.mode === 'dark' ? 0.28 : 0.62),
                   },
-                })}
-              >
+                })}>
                 {item.badge ? (
                   <Box
                     sx={{
@@ -196,8 +191,7 @@ export function PosBottomDock({ items }: { items: DockItem[] }) {
                       lineHeight: 1,
                       boxShadow: '0 12px 20px rgba(255, 64, 75, 0.3)',
                       zIndex: 2,
-                    }}
-                  >
+                    }}>
                     {item.badge > 99 ? '99+' : item.badge}
                   </Box>
                 ) : null}
@@ -212,8 +206,7 @@ export function PosBottomDock({ items }: { items: DockItem[] }) {
                     filter: active
                       ? 'drop-shadow(0 6px 12px rgba(255,255,255,0.08))'
                       : 'drop-shadow(0 4px 8px rgba(0,0,0,0.12))',
-                  }}
-                >
+                  }}>
                   <PosDockGlyph itemKey={item.key} active={active} mode={theme.palette.mode} />
                 </Box>
                 <Typography
@@ -232,8 +225,7 @@ export function PosBottomDock({ items }: { items: DockItem[] }) {
                         ? alpha('#f4f7fb', 0.64)
                         : 'inherit',
                     textShadow: active ? '0 2px 10px rgba(0,0,0,0.18)' : 'none',
-                  })}
-                >
+                  })}>
                   {item.label}
                 </Typography>
               </Box>

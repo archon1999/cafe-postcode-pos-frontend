@@ -17,6 +17,7 @@ import {
 import { CashierBuilderPage, OpenChecksPage, PaymentPage } from 'modules/cashier';
 import { KitchenQueuePage } from 'modules/kitchen';
 import { HallsPage, TableSessionPage } from 'modules/waiter';
+
 import { LockScreenPage } from '../shared/layout/LockScreenPage';
 
 function PosHomeRedirect() {
@@ -74,7 +75,8 @@ export const posRouter = createBrowserRouter([
       {
         path: 'cashier/builder',
         element: (
-          <PosAccessGuard canAccess={(session) => canAccessCashierBuilder(session?.user, session?.featureConfig ?? null)}>
+          <PosAccessGuard
+            canAccess={(session) => canAccessCashierBuilder(session?.user, session?.featureConfig ?? null)}>
             <CashierBuilderPage />
           </PosAccessGuard>
         ),
@@ -82,7 +84,8 @@ export const posRouter = createBrowserRouter([
       {
         path: 'cashier/open-checks',
         element: (
-          <PosAccessGuard canAccess={(session) => canAccessCashierPayments(session?.user, session?.featureConfig ?? null)}>
+          <PosAccessGuard
+            canAccess={(session) => canAccessCashierPayments(session?.user, session?.featureConfig ?? null)}>
             <OpenChecksPage />
           </PosAccessGuard>
         ),
@@ -90,7 +93,8 @@ export const posRouter = createBrowserRouter([
       {
         path: 'cashier/payment',
         element: (
-          <PosAccessGuard canAccess={(session) => canAccessCashierPayments(session?.user, session?.featureConfig ?? null)}>
+          <PosAccessGuard
+            canAccess={(session) => canAccessCashierPayments(session?.user, session?.featureConfig ?? null)}>
             <PaymentPage />
           </PosAccessGuard>
         ),

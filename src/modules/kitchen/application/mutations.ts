@@ -2,9 +2,9 @@ import { useMutation } from '@tanstack/react-query';
 
 import { queryClient } from 'shared/api/query-client';
 
+import { kitchenRepository } from '../data-access';
 import type { KitchenItemStatus, KitchenTicketStatus } from '../domain';
 
-import { kitchenRepository } from '../data-access';
 import { kitchenKeys } from './keys';
 
 async function invalidateKitchenRelatedQueries() {

@@ -1,6 +1,7 @@
 import axios from 'axios';
 
 import { persistSession, readStoredLocale, readStoredSession } from 'modules/auth/data-access';
+
 import { resolveApiBaseUrl } from './apiUrl';
 
 export const apiClient = axios.create({

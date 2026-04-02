@@ -7,16 +7,13 @@ const RESTAURANT_CONTEXT_KEY = 'restaurant-pos-context';
 const THEME_KEY = 'restaurant-pos-theme-mode';
 const LOCALE_KEY = 'restaurant-pos-locale';
 
-type LegacyPosUser = PosUser & {
+type SessionCompatUser = Omit<PosUser, 'fullName' | 'permissionCodes'> & {
   fullName?: string;
+  full_name?: string;
   permissionCodes?: string[];
+  permission_codes?: string[];
+  ui_mode?: string;
 };
-
-type SessionCompatUser = Omit<PosUser, 'fullName' | 'permissionCodes'> &
-  LegacyPosUser & {
-    full_name?: string;
-    permission_codes?: string[];
-  };
 
 type LegacyFeatureConfig = Partial<NonNullable<PosFeatureConfig>> & {
   id: string;
@@ -84,7 +81,9 @@ export function normalizeSessionPayload(
       username: rawUser.username,
       fullName: rawUser.fullName ?? rawUser.full_name ?? '',
       permissionCodes: rawUser.permissionCodes ?? rawUser.permission_codes ?? [],
-      ...(rawUser.restaurantAccessActive !== undefined ? { restaurantAccessActive: rawUser.restaurantAccessActive } : {}),
+      ...(rawUser.restaurantAccessActive !== undefined
+        ? { restaurantAccessActive: rawUser.restaurantAccessActive }
+        : {}),
       ...(rawUser.role ? { role: rawUser.role } : {}),
     },
     featureConfig: normalizedFeatureConfig,

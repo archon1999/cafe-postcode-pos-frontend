@@ -1,14 +1,6 @@
 import { Box } from '@mui/material';
 
-export function PosDockGlyph({
-  itemKey,
-  active,
-  mode,
-}: {
-  itemKey: string;
-  active: boolean;
-  mode: 'light' | 'dark';
-}) {
+export function PosDockGlyph({ itemKey, active, mode }: { itemKey: string; active: boolean; mode: 'light' | 'dark' }) {
   const stroke =
     mode === 'dark'
       ? active

@@ -62,6 +62,7 @@ export type TableSession = {
   hallName: string;
   guestCount: number;
   status: string;
+  assignedWaiterName?: string | null;
 };
 
 export type WaiterSessionResponse = {

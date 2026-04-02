@@ -20,15 +20,14 @@ export function groupWaiterOrderItemsByStation(items: WaiterOrderItem[] | undefi
 }
 
 export function getCurrentWaiterOrder(orders: WaiterOrder[] | undefined, sessionId: string | null) {
-  return (orders ?? []).find((order) => order.tableSession === sessionId && !['closed', 'cancelled'].includes(order.status));
+  return (orders ?? []).find(
+    (order) => order.tableSession === sessionId && !['closed', 'cancelled'].includes(order.status),
+  );
 }
 
 export function getCurrentWaiterTakeawayOrder(orders: WaiterOrder[] | undefined, userId: string | undefined) {
   return (orders ?? []).find(
     (order) =>
-      !order.tableSession &&
-      order.channel === 'takeaway' &&
-      order.status === 'open' &&
-      order.openedBy === userId,
+      !order.tableSession && order.channel === 'takeaway' && order.status === 'open' && order.openedBy === userId,
   );
 }

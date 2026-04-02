@@ -1,19 +1,14 @@
-import {
-  Box,
-  Button,
-  MenuItem,
-  Stack,
-  TextField,
-  Typography,
-  alpha,
-  useMediaQuery,
-} from '@mui/material';
+import { Box, Button, MenuItem, Stack, TextField, Typography, alpha, useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { useMemo, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router';
 
 import { canAccessCashier, getPosHomePath, isCashierBuilderMode, usePosSession } from 'modules/auth';
-import { useCashierContextQuery, useCloseCashierShiftMutation, useOpenCashierShiftMutation } from 'modules/cashier/application';
+import {
+  useCashierContextQuery,
+  useCloseCashierShiftMutation,
+  useOpenCashierShiftMutation,
+} from 'modules/cashier/application';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { getPosCopy } from 'shared/locale/copy';
 import { formatCompactMoney } from 'shared/pos/utils';
@@ -36,7 +31,9 @@ export function CashierShiftPage() {
 
   const hasCashierAccess = canAccessCashier(session?.user, session?.featureConfig ?? null);
   const contextQuery = useCashierContextQuery({ enabled: hasCashierAccess, refetchInterval: 15000 });
-  const nextPath = searchParams.get('next') || (isCashierBuilderMode(session?.featureConfig ?? null) ? '/cashier/builder' : '/cashier/open-checks');
+  const nextPath =
+    searchParams.get('next') ||
+    (isCashierBuilderMode(session?.featureConfig ?? null) ? '/cashier/builder' : '/cashier/open-checks');
   const currentShift = contextQuery.data?.currentShift ?? null;
   const availableCashDesks = contextQuery.data?.availableCashDesks ?? [];
 
@@ -51,7 +48,8 @@ export function CashierShiftPage() {
     },
   });
 
-  const selectedCashDeskIdValue = selectedCashDeskId || (availableCashDesks.length === 1 ? availableCashDesks[0]?.id ?? '' : '');
+  const selectedCashDeskIdValue =
+    selectedCashDeskId || (availableCashDesks.length === 1 ? (availableCashDesks[0]?.id ?? '') : '');
   const canOpenShift = Boolean(selectedCashDeskIdValue || availableCashDesks.length === 1);
   const expectedCloseCash = useMemo(
     () => Number(currentShift?.expectedClosingCashAmount ?? 0),

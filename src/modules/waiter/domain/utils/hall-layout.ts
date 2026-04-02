@@ -1,7 +1,14 @@
 import type { DiningTable, DiningTableShapeVariant, DiningTableStatus, Hall } from '../entities';
 
 export type SupportedSeatCount = 2 | 3 | 4 | 5 | 6;
-export type TableVisualState = 'available' | 'reserved' | 'occupied' | 'attention' | 'cooking' | 'pending_payment' | 'blocked';
+export type TableVisualState =
+  | 'available'
+  | 'reserved'
+  | 'occupied'
+  | 'attention'
+  | 'cooking'
+  | 'pending_payment'
+  | 'blocked';
 export type TableCoreShape = 'square' | 'horizontal' | 'vertical' | 'triangle';
 
 export type SeatMarker = {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { DiningTable, Hall } from '../entities';
+
 import {
   getHallGridColumns,
   getHallGridRows,

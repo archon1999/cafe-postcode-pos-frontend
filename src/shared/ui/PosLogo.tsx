@@ -31,7 +31,13 @@ export function PosLogo({ sx, isSingle = true, ...other }: PosLogoProps) {
           <stop offset="0.55" stopColor={PRIMARY_MAIN} />
           <stop offset="1" stopColor={SECONDARY_MAIN} />
         </linearGradient>
-        <radialGradient id={glowId} cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(44 16) rotate(126) scale(32 30)">
+        <radialGradient
+          id={glowId}
+          cx="0"
+          cy="0"
+          r="1"
+          gradientUnits="userSpaceOnUse"
+          gradientTransform="translate(44 16) rotate(126) scale(32 30)">
           <stop stopColor="#FFFFFF" stopOpacity="0.3" />
           <stop offset="1" stopColor="#FFFFFF" stopOpacity="0" />
         </radialGradient>
@@ -59,7 +65,12 @@ export function PosLogo({ sx, isSingle = true, ...other }: PosLogoProps) {
       <path d="M26 43.4H38" stroke={PRIMARY_DARK} strokeWidth="2.4" strokeLinecap="round" />
       <path d="M28 24C28 22.75 28.9 21.9 28.9 20.55" stroke={PRIMARY_DARK} strokeWidth="2.2" strokeLinecap="round" />
       <path d="M32.1 23.1C32.1 21.8 33 20.9 33 19.55" stroke={PRIMARY_DARK} strokeWidth="2.2" strokeLinecap="round" />
-      <path d="M36.2 24C36.2 22.75 37.1 21.9 37.1 20.55" stroke={PRIMARY_DARK} strokeWidth="2.2" strokeLinecap="round" />
+      <path
+        d="M36.2 24C36.2 22.75 37.1 21.9 37.1 20.55"
+        stroke={PRIMARY_DARK}
+        strokeWidth="2.2"
+        strokeLinecap="round"
+      />
 
       <rect x="39" y="11" width="14" height="14" rx="5" fill={WARNING_MAIN} />
       <rect x="42" y="14.6" width="7.8" height="1.9" rx="0.95" fill="#FFFFFF" />

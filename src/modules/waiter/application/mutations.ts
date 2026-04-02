@@ -2,10 +2,10 @@ import { useMutation } from '@tanstack/react-query';
 
 import { queryClient } from 'shared/api/query-client';
 
-import type { DiningTable, WaiterMenuItem } from '../domain';
-
 import { waiterRepository } from '../data-access';
+import type { DiningTable, WaiterMenuItem } from '../domain';
 import { clampGuestCount } from '../domain';
+
 import { waiterKeys } from './keys';
 
 export function useOpenTableSessionMutation(options: {
@@ -21,10 +21,7 @@ export function useOpenTableSessionMutation(options: {
         throw new Error('Dining table is not selected');
       }
 
-      return waiterRepository.openTableSession(
-        selectedTable.id,
-        clampGuestCount(guestCount, selectedTable.seatCount),
-      );
+      return waiterRepository.openTableSession(selectedTable.id, clampGuestCount(guestCount, selectedTable.seatCount));
     },
     onSuccess: async (response) => {
       await queryClient.invalidateQueries({ queryKey: waiterKeys.halls });
@@ -87,7 +84,11 @@ export function useRemoveWaiterOrderItemMutation(options: { sessionId: string | 
   });
 }
 
-export function useSubmitWaiterOrderMutation(options: { orderId?: string; sessionId: string | null; onSuccess?: () => void }) {
+export function useSubmitWaiterOrderMutation(options: {
+  orderId?: string;
+  sessionId: string | null;
+  onSuccess?: () => void;
+}) {
   const { orderId, sessionId, onSuccess } = options;
 
   return useMutation({
