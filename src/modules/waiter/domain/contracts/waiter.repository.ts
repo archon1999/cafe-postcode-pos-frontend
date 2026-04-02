@@ -10,6 +10,7 @@ import type {
 export interface WaiterRepository {
   getHalls(): Promise<Hall[]>;
   openTableSession(tableId: string, guestCount: number): Promise<WaiterSessionResponse>;
+  reserveTable(tableId: string): Promise<void>;
   getTableSession(sessionId: string): Promise<TableSession>;
   getMenu(): Promise<WaiterMenuCategory[]>;
   getOrders(): Promise<WaiterOrder[]>;

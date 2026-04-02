@@ -14,10 +14,11 @@ export function useWaiterHallsQuery() {
   });
 }
 
-export function useWaiterMenuQuery() {
+export function useWaiterMenuQuery(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: waiterKeys.menu,
     queryFn: () => waiterRepository.getMenu(),
+    enabled: options?.enabled,
   });
 }
 

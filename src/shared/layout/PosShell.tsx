@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import {
   canAccessCashier,
   canAccessCashierBuilder,
+  canAccessCashierPayments,
   canAccessKitchen,
   canAccessWaiter,
   shouldShowDock,
@@ -19,7 +20,7 @@ export function PosShell({ children }: { children: ReactNode }) {
   const { session, locale } = usePosSession();
   const copy = getPosCopy(locale);
   const featureConfig = session?.featureConfig ?? null;
-  const cashierEnabled = canAccessCashier(session?.user, featureConfig);
+  const cashierEnabled = canAccessCashierPayments(session?.user, featureConfig);
   const kitchenEnabled = canAccessKitchen(session?.user, featureConfig);
   const waiterEnabled = canAccessWaiter(session?.user, featureConfig);
   const cashierBuilderEnabled = canAccessCashierBuilder(session?.user, featureConfig);

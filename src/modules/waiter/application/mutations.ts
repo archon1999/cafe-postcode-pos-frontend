@@ -30,6 +30,27 @@ export function useOpenTableSessionMutation(options: {
   });
 }
 
+export function useReserveTableMutation(options: {
+  selectedTable: DiningTable | null;
+  onSuccess?: () => void;
+}) {
+  const { selectedTable, onSuccess } = options;
+
+  return useMutation({
+    mutationFn: async () => {
+      if (!selectedTable) {
+        throw new Error('Dining table is not selected');
+      }
+
+      await waiterRepository.reserveTable(selectedTable.id);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: waiterKeys.halls });
+      onSuccess?.();
+    },
+  });
+}
+
 export function useAddWaiterOrderItemMutation(options: {
   currentOrderId?: string;
   sessionId: string | null;

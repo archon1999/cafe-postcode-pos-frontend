@@ -15,7 +15,7 @@ import { useTheme } from '@mui/material/styles';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 
-import { isCashierBuilderMode, usePosSession } from 'modules/auth';
+import { canManageCashierPayments, isCashierBuilderMode, usePosSession } from 'modules/auth';
 import {
   useCashierContextQuery,
   useCashierPaymentMutation,
@@ -45,8 +45,12 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   const [receiptData, setReceiptData] = useState<CashierPaymentResponse | null>(null);
   const [paymentErrorToastOpen, setPaymentErrorToastOpen] = useState(false);
   const [printToastOpen, setPrintToastOpen] = useState(false);
+  const canProcessPayments = canManageCashierPayments(session?.user, session?.featureConfig ?? null);
 
-  const cashierContextQuery = useCashierContextQuery({ enabled: Boolean(session?.token), refetchInterval: 15000 });
+  const cashierContextQuery = useCashierContextQuery({
+    enabled: Boolean(session?.token) && canProcessPayments,
+    refetchInterval: canProcessPayments ? 15000 : false,
+  });
   const orderQuery = useCashierPaymentOrderQuery(orderId);
   const paymentMutation = useCashierPaymentMutation({
     orderId,
@@ -111,7 +115,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   const afterPaymentPath = isCashierBuilderMode(session?.featureConfig ?? null)
     ? '/cashier/builder'
     : '/cashier/open-checks';
-  const canSubmitPayment = Boolean(orderId && Number(amount || 0) > 0 && !paymentMutation.isPending);
+  const canSubmitPayment = Boolean(orderId && canProcessPayments && Number(amount || 0) > 0 && !paymentMutation.isPending);
   const serviceFeePercent = Number(
     orderQuery.data?.serviceFeePercent ?? (orderQuery.data?.channel === 'hall' ? 10 : 0),
   );

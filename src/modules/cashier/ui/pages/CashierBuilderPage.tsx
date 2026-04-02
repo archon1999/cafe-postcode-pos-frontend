@@ -1,13 +1,13 @@
-﻿import { Navigate } from 'react-router';
+import { Navigate } from 'react-router';
 
-import { getPosHomePath, isCashierBuilderMode, usePosSession } from 'modules/auth';
+import { canAccessCashierBuilder, getPosHomePath, usePosSession } from 'modules/auth';
 
 import { CashierBuilderPageContent } from './CashierBuilderPage/CashierBuilderPageContent';
 
 export function CashierBuilderPage() {
   const { session } = usePosSession();
 
-  if (!isCashierBuilderMode(session?.featureConfig ?? null)) {
+  if (!canAccessCashierBuilder(session?.user, session?.featureConfig ?? null)) {
     return <Navigate to={getPosHomePath(session)} replace />;
   }
 

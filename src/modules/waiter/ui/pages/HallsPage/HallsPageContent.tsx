@@ -18,8 +18,8 @@ import { useTheme } from '@mui/material/styles';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 
-import { usePosSession } from 'modules/auth';
-import { useOpenTableSessionMutation, useWaiterHallsQuery } from 'modules/waiter/application';
+import { canAccessWaiterTables, canManageTableReservations, usePosSession } from 'modules/auth';
+import { useOpenTableSessionMutation, useReserveTableMutation, useWaiterHallsQuery } from 'modules/waiter/application';
 import {
   type DiningTable,
   clampGuestCount,
@@ -386,7 +386,7 @@ function HallTableCard({
 
 export function HallsPageContent() {
   const navigate = useNavigate();
-  const { locale, setLocale, setSession, themeMode, setThemeMode } = usePosSession();
+  const { session, locale, setLocale, setSession, themeMode, setThemeMode } = usePosSession();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -409,6 +409,14 @@ export function HallsPageContent() {
       void navigate(`/waiter/table-session?sessionId=${sessionId}`);
     },
   });
+  const reserveTableMutation = useReserveTableMutation({
+    selectedTable,
+    onSuccess: () => {
+      setSelectedTable(null);
+    },
+  });
+  const canManageTables = canAccessWaiterTables(session?.user, session?.featureConfig ?? null);
+  const canReserveTables = canManageTableReservations(session?.user, session?.featureConfig ?? null);
 
   const halls = useMemo(() => hallsQuery.data ?? [], [hallsQuery.data]);
   const isInitialLoading = hallsQuery.isLoading && !hallsQuery.data;
@@ -494,7 +502,22 @@ export function HallsPageContent() {
 
   const handleTableSelect = (currentTable: DiningTable) => {
     if (currentTable.activeSession) {
+      if (!canManageTables) {
+        return;
+      }
       void navigate(`/waiter/table-session?sessionId=${currentTable.activeSession.id}`);
+      return;
+    }
+
+    if (currentTable.status === 'blocked') {
+      return;
+    }
+
+    if (currentTable.status === 'reserved' && !canReserveTables) {
+      return;
+    }
+
+    if (currentTable.status !== 'reserved' && !canManageTables && !canReserveTables) {
       return;
     }
 
@@ -761,12 +784,27 @@ export function HallsPageContent() {
             })}>
             {copy.close}
           </Button>
-          <Button
-            variant="contained"
-            onClick={() => openSessionMutation.mutate()}
-            disabled={openSessionMutation.isPending}>
-            {copy.openTable}
-          </Button>
+          {canReserveTables && selectedTable?.status !== 'reserved' ? (
+            <Button
+              variant="contained"
+              onClick={() => reserveTableMutation.mutate()}
+              disabled={reserveTableMutation.isPending || openSessionMutation.isPending}
+              sx={(theme) => ({
+                backgroundImage: 'none',
+                backgroundColor: theme.palette.mode === 'dark' ? '#7a6126' : '#d5a53d',
+                color: '#ffffff',
+              })}>
+              {copy.reserveTable}
+            </Button>
+          ) : null}
+          {selectedTable && (selectedTable.status === 'reserved' ? canReserveTables : canManageTables) ? (
+            <Button
+              variant="contained"
+              onClick={() => openSessionMutation.mutate()}
+              disabled={openSessionMutation.isPending || reserveTableMutation.isPending}>
+              {copy.openTable}
+            </Button>
+          ) : null}
         </DialogActions>
       </Dialog>
 

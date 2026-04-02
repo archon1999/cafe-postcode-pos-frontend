@@ -4,7 +4,7 @@ import { useTheme } from '@mui/material/styles';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 
-import { getPosHomePath, usePosSession } from 'modules/auth';
+import { canManageKitchenOrders, getPosHomePath, usePosSession } from 'modules/auth';
 import {
   useKitchenQueueQuery,
   useUpdateKitchenItemStatusMutation,
@@ -50,6 +50,7 @@ export function KitchenQueuePageContent() {
   const [selectedTab, setSelectedTab] = useState<'active' | 'done'>('active');
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+  const canUpdateKitchenOrders = canManageKitchenOrders(session?.user, session?.featureConfig ?? null);
 
   const queueQuery = useKitchenQueueQuery();
   const updateTicketStatusMutation = useUpdateKitchenTicketStatusMutation();
@@ -311,7 +312,7 @@ export function KitchenQueuePageContent() {
                                 </Box>
                               </Stack>
 
-                              {selectedTab === 'active' && isSelected ? (
+                              {selectedTab === 'active' && isSelected && canUpdateKitchenOrders ? (
                                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={0.9}>
                                   {canStart ? (
                                     <Button
@@ -391,7 +392,7 @@ export function KitchenQueuePageContent() {
                         );
                       })}
 
-                      {selectedTab === 'active' && selectedTicketId === ticket.id ? (
+                      {selectedTab === 'active' && selectedTicketId === ticket.id && canUpdateKitchenOrders ? (
                         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
                           {ticket.status === 'new' ? (
                             <Button

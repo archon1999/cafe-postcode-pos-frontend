@@ -1,26 +1,17 @@
 import type { PosFeatureConfig, PosSessionPayload, PosUser } from '../entities';
 
-const WAITER_PERMISSION_CODES = [
-  'halls.list',
-  'table_sessions.list',
-  'table_sessions.view',
-  'table_sessions.create',
-  'table_sessions.update',
-  'catalog_menu.view',
-  'orders.list',
-  'orders.view',
-  'orders.create',
-  'orders.update',
-] as const;
-const CASHIER_PERMISSION_CODES = ['open_checks.list', 'payments.create', 'payments.update'] as const;
-const KITCHEN_PERMISSION_CODES = ['kitchen_queue.view', 'kitchen_tickets.view', 'kitchen_tickets.update'] as const;
+const POS_HALLS_VIEW = 'pos_halls.view';
+const POS_TABLES_MANAGE = 'pos_tables.manage';
+const POS_TABLE_MENU_VIEW = 'pos_table_menu.view';
+const POS_TAKEAWAY_MENU_VIEW = 'pos_takeaway_menu.view';
+const POS_KITCHEN_ORDERS_VIEW = 'pos_kitchen_orders.view';
+const POS_KITCHEN_ORDERS_UPDATE = 'pos_kitchen_orders.update';
+const POS_OPEN_CHECKS_VIEW = 'pos_open_checks.view';
+const POS_PAYMENTS_CREATE = 'pos_payments.create';
+const POS_TABLE_RESERVATIONS_MANAGE = 'pos_table_reservations.manage';
 
 export function hasPermission(user: PosUser | null | undefined, permissionCode: string) {
   return Boolean(user?.permissionCodes?.includes(permissionCode));
-}
-
-function hasAnyPermission(user: PosUser | null | undefined, permissionCodes: readonly string[]) {
-  return permissionCodes.some((permissionCode) => hasPermission(user, permissionCode));
 }
 
 function isRestaurantAccessEnabled(user: PosUser | null | undefined, featureConfig?: PosFeatureConfig) {
@@ -39,40 +30,96 @@ function isRestaurantAccessEnabled(user: PosUser | null | undefined, featureConf
   return true;
 }
 
-export function isHallMode(featureConfig: PosFeatureConfig) {
+export function isHallMode(featureConfig: PosFeatureConfig | null) {
   return Boolean(featureConfig?.hallEnabled && featureConfig?.orderEntryMode === 'hall');
 }
 
-export function isCashierBuilderMode(featureConfig: PosFeatureConfig) {
+export function isCashierBuilderMode(featureConfig: PosFeatureConfig | null) {
   return Boolean(featureConfig?.cashierEnabled && featureConfig?.orderEntryMode === 'cashier_builder');
 }
 
-export function canAccessWaiter(user: PosUser | null | undefined, featureConfig?: PosFeatureConfig) {
-  if (!isRestaurantAccessEnabled(user, featureConfig) || !isHallMode(featureConfig ?? null)) {
+export function canAccessWaiter(user: PosUser | null | undefined, featureConfig?: PosFeatureConfig | null) {
+  if (!isRestaurantAccessEnabled(user, featureConfig ?? undefined) || !isHallMode(featureConfig ?? null)) {
     return false;
   }
 
-  return hasAnyPermission(user, WAITER_PERMISSION_CODES);
+  return hasPermission(user, POS_HALLS_VIEW);
 }
 
-export function canAccessCashier(user: PosUser | null | undefined, featureConfig?: PosFeatureConfig) {
-  if (!isRestaurantAccessEnabled(user, featureConfig) || !featureConfig?.cashierEnabled) {
+export function canAccessWaiterTables(user: PosUser | null | undefined, featureConfig?: PosFeatureConfig | null) {
+  if (!isRestaurantAccessEnabled(user, featureConfig ?? undefined) || !isHallMode(featureConfig ?? null)) {
     return false;
   }
 
-  return hasAnyPermission(user, CASHIER_PERMISSION_CODES);
+  return hasPermission(user, POS_TABLES_MANAGE);
 }
 
-export function canAccessKitchen(user: PosUser | null | undefined, featureConfig?: PosFeatureConfig) {
+export function canAccessWaiterMenu(user: PosUser | null | undefined, featureConfig?: PosFeatureConfig | null) {
+  if (!isRestaurantAccessEnabled(user, featureConfig ?? undefined) || !isHallMode(featureConfig ?? null)) {
+    return false;
+  }
+
+  return hasPermission(user, POS_TABLE_MENU_VIEW);
+}
+
+export function canManageTableReservations(user: PosUser | null | undefined, featureConfig?: PosFeatureConfig | null) {
+  if (!isRestaurantAccessEnabled(user, featureConfig ?? undefined) || !isHallMode(featureConfig ?? null)) {
+    return false;
+  }
+
+  return hasPermission(user, POS_TABLE_RESERVATIONS_MANAGE);
+}
+
+export function canAccessCashierBuilder(user: PosUser | null | undefined, featureConfig?: PosFeatureConfig | null) {
+  if (!isRestaurantAccessEnabled(user, featureConfig ?? undefined) || !isCashierBuilderMode(featureConfig ?? null)) {
+    return false;
+  }
+
+  return hasPermission(user, POS_TAKEAWAY_MENU_VIEW);
+}
+
+export function canAccessCashierPayments(user: PosUser | null | undefined, featureConfig?: PosFeatureConfig | null) {
+  if (!isRestaurantAccessEnabled(user, featureConfig ?? undefined) || !featureConfig?.cashierEnabled) {
+    return false;
+  }
+
+  return hasPermission(user, POS_OPEN_CHECKS_VIEW);
+}
+
+export function canManageCashierPayments(user: PosUser | null | undefined, featureConfig?: PosFeatureConfig | null) {
+  if (!isRestaurantAccessEnabled(user, featureConfig ?? undefined) || !featureConfig?.cashierEnabled) {
+    return false;
+  }
+
+  return hasPermission(user, POS_PAYMENTS_CREATE);
+}
+
+export function canAccessCashier(user: PosUser | null | undefined, featureConfig?: PosFeatureConfig | null) {
+  return canAccessCashierBuilder(user, featureConfig) || canAccessCashierPayments(user, featureConfig);
+}
+
+export function canAccessKitchen(user: PosUser | null | undefined, featureConfig?: PosFeatureConfig | null) {
   if (
-    !isRestaurantAccessEnabled(user, featureConfig) ||
+    !isRestaurantAccessEnabled(user, featureConfig ?? undefined) ||
     !featureConfig?.kitchenEnabled ||
     featureConfig.kitchenMode === 'printer'
   ) {
     return false;
   }
 
-  return hasAnyPermission(user, KITCHEN_PERMISSION_CODES);
+  return hasPermission(user, POS_KITCHEN_ORDERS_VIEW);
+}
+
+export function canManageKitchenOrders(user: PosUser | null | undefined, featureConfig?: PosFeatureConfig | null) {
+  if (
+    !isRestaurantAccessEnabled(user, featureConfig ?? undefined) ||
+    !featureConfig?.kitchenEnabled ||
+    featureConfig.kitchenMode === 'printer'
+  ) {
+    return false;
+  }
+
+  return hasPermission(user, POS_KITCHEN_ORDERS_UPDATE);
 }
 
 export function getAccessiblePosSurfaces(session: PosSessionPayload | null | undefined) {
@@ -91,16 +138,8 @@ export function shouldShowDock(session: PosSessionPayload | null | undefined) {
   return getAccessiblePosSurfaces(session).length > 1;
 }
 
-export function canAccessWaiterTakeaway(user: PosUser | null | undefined, featureConfig?: PosFeatureConfig) {
-  return isCashierBuilderMode(featureConfig ?? null) && canAccessCashier(user, featureConfig);
-}
-
-export function canAccessCashierBuilder(user: PosUser | null | undefined, featureConfig?: PosFeatureConfig) {
-  return isCashierBuilderMode(featureConfig ?? null) && canAccessCashier(user, featureConfig);
-}
-
-export function canAccessCashierPayments(user: PosUser | null | undefined, featureConfig?: PosFeatureConfig) {
-  return canAccessCashier(user, featureConfig);
+export function canAccessWaiterTakeaway(user: PosUser | null | undefined, featureConfig?: PosFeatureConfig | null) {
+  return canAccessCashierBuilder(user, featureConfig);
 }
 
 export function getPosHomePath(session: PosSessionPayload | null | undefined) {

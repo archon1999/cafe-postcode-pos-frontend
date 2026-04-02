@@ -34,6 +34,10 @@ class WaiterRepositoryImpl implements WaiterRepository {
     );
   }
 
+  async reserveTable(tableId: string): Promise<void> {
+    await apiPost(`/pos/halls/tables/${tableId}/reserve/`);
+  }
+
   async getTableSession(sessionId: string): Promise<TableSession> {
     return mapTableSession(await apiGet<TableSession>(`/pos/halls/table-sessions/${sessionId}/`));
   }

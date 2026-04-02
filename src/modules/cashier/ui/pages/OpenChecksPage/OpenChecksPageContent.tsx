@@ -3,7 +3,7 @@ import { useTheme } from '@mui/material/styles';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 
-import { isCashierBuilderMode, usePosSession } from 'modules/auth';
+import { canManageCashierPayments, isCashierBuilderMode, usePosSession } from 'modules/auth';
 import {
   useCashierOpenChecksQuery,
   useCashierRefundMutation,
@@ -366,6 +366,7 @@ export function OpenChecksPageContent() {
     const receipts = selectedOrder?.receipts ?? [];
     return receipts[receipts.length - 1];
   }, [selectedOrder?.receipts]);
+  const canOperatePayments = canManageCashierPayments(session?.user, session?.featureConfig ?? null);
   const receiptNumber = useMemo(() => {
     const payload = latestReceipt?.payload as Record<string, unknown> | undefined;
     const rawReceiptNumber = payload?.receiptNumber ?? payload?.receipt_number;
@@ -375,13 +376,13 @@ export function OpenChecksPageContent() {
       : (latestSucceededPayment?.id ?? copy.receiptUnavailable);
   }, [copy.receiptUnavailable, latestReceipt?.payload, latestSucceededPayment?.id]);
   const canRefund = Boolean(
-    selectedTab === 'closed' &&
+      selectedTab === 'closed' &&
       latestSucceededPayment?.id &&
       !latestSucceededPayment?.isRefunded &&
-      session?.user.permissionCodes.includes('payments.update'),
+      canOperatePayments,
   );
   const canReprint = Boolean(
-    selectedTab === 'closed' && latestReceipt?.id && session?.user.permissionCodes.includes('payments.update'),
+    selectedTab === 'closed' && latestReceipt?.id && canOperatePayments,
   );
 
   const detailPanel = selectedOrder ? (

@@ -11,6 +11,7 @@ import {
   canAccessCashierPayments,
   canAccessKitchen,
   canAccessWaiter,
+  canAccessWaiterTables,
   getPosHomePath,
   usePosSession,
 } from 'modules/auth';
@@ -63,11 +64,18 @@ export const posRouter = createBrowserRouter([
     element: <PosAuthenticatedLayout />,
     children: [
       { index: true, element: <PosHomeRedirect /> },
-      { path: 'waiter/halls', element: <HallsPage /> },
+      {
+        path: 'waiter/halls',
+        element: (
+          <PosAccessGuard canAccess={(session) => canAccessWaiter(session?.user, session?.featureConfig ?? null)}>
+            <HallsPage />
+          </PosAccessGuard>
+        ),
+      },
       {
         path: 'waiter/table-session',
         element: (
-          <PosAccessGuard canAccess={(session) => canAccessWaiter(session?.user, session?.featureConfig ?? null)}>
+          <PosAccessGuard canAccess={(session) => canAccessWaiterTables(session?.user, session?.featureConfig ?? null)}>
             <TableSessionPage />
           </PosAccessGuard>
         ),

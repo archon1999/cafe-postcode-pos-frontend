@@ -4,7 +4,7 @@ import { useTheme } from '@mui/material/styles';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 
-import { canAccessCashier, usePosSession } from 'modules/auth';
+import { canAccessCashierBuilder, canAccessCashierPayments, canAccessWaiterMenu, usePosSession } from 'modules/auth';
 import {
   useAddWaiterOrderItemMutation,
   useCurrentWaiterOrder,
@@ -57,9 +57,12 @@ export function TableSessionPageContent({ sessionId, mode }: TableSessionPageCon
   const [orderSent, setOrderSent] = useState(false);
   const [selectedCartItemKey, setSelectedCartItemKey] = useState<string | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
+  const canViewMenu = isTakeawayMode
+    ? canAccessCashierBuilder(session?.user, session?.featureConfig ?? null)
+    : canAccessWaiterMenu(session?.user, session?.featureConfig ?? null);
 
   const sessionQuery = useWaiterTableSessionQuery(sessionId);
-  const menuQuery = useWaiterMenuQuery();
+  const menuQuery = useWaiterMenuQuery({ enabled: canViewMenu });
   const hallOrderQuery = useCurrentWaiterOrder(sessionId);
   const takeawayOrderQuery = useCurrentWaiterTakeawayOrder(session?.user.id);
   const currentOrder = isTakeawayMode ? takeawayOrderQuery.currentOrder : hallOrderQuery.currentOrder;
@@ -159,7 +162,7 @@ export function TableSessionPageContent({ sessionId, mode }: TableSessionPageCon
       })),
     [categories, menuItemMeta.countMap],
   );
-  const canTakePayment = canAccessCashier(session?.user, session?.featureConfig ?? null);
+  const canTakePayment = canAccessCashierPayments(session?.user, session?.featureConfig ?? null);
 
   useEffect(() => {
     if (!selectedCartItemKey) {

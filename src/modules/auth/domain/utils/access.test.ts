@@ -5,8 +5,14 @@ import type { PosFeatureConfig, PosSessionPayload, PosUser } from '../entities';
 import {
   canAccessCashier,
   canAccessCashierBuilder,
+  canAccessCashierPayments,
   canAccessKitchen,
   canAccessWaiter,
+  canAccessWaiterMenu,
+  canAccessWaiterTables,
+  canManageCashierPayments,
+  canManageKitchenOrders,
+  canManageTableReservations,
   getAccessiblePosSurfaces,
   getPosHomePath,
   isCashierBuilderMode,
@@ -65,21 +71,29 @@ describe('auth access utils', () => {
     ).toBe(true);
   });
 
-  it('grants waiter access only when hall mode is enabled', () => {
-    const waiter = createUser({ permissionCodes: ['halls.list', 'orders.create'] });
+  it('uses separate waiter permissions for halls, tables, menu, and reservations', () => {
+    const waiter = createUser({
+      permissionCodes: ['pos_halls.view', 'pos_tables.manage', 'pos_table_menu.view', 'pos_table_reservations.manage'],
+    });
 
     expect(canAccessWaiter(waiter, baseFeatureConfig)).toBe(true);
+    expect(canAccessWaiterTables(waiter, baseFeatureConfig)).toBe(true);
+    expect(canAccessWaiterMenu(waiter, baseFeatureConfig)).toBe(true);
+    expect(canManageTableReservations(waiter, baseFeatureConfig)).toBe(true);
     expect(
-      canAccessWaiter(waiter, {
-        ...baseFeatureConfig,
-        hallEnabled: false,
-      }),
+      canAccessWaiter(
+        createUser({ permissionCodes: ['pos_tables.manage'] }),
+        {
+          ...baseFeatureConfig,
+          hallEnabled: false,
+        },
+      ),
     ).toBe(false);
   });
 
-  it('routes kitchen roles to the kitchen queue before cashier or waiter paths', () => {
+  it('routes kitchen-only roles to the kitchen queue before other surfaces', () => {
     const chef = createUser({
-      permissionCodes: ['kitchen_queue.view', 'kitchen_tickets.update'],
+      permissionCodes: ['pos_kitchen_orders.view', 'pos_kitchen_orders.update'],
       role: {
         id: 'role-chef',
         name: 'Chef',
@@ -87,12 +101,13 @@ describe('auth access utils', () => {
     });
 
     expect(canAccessKitchen(chef, baseFeatureConfig)).toBe(true);
+    expect(canManageKitchenOrders(chef, baseFeatureConfig)).toBe(true);
     expect(getPosHomePath(createSession(chef, baseFeatureConfig))).toBe('/kitchen/queue');
   });
 
-  it('routes cashier users to builder or open checks based on order entry mode', () => {
+  it('treats cashier builder and open-checks as distinct permissions', () => {
     const cashier = createUser({
-      permissionCodes: ['open_checks.list', 'payments.update'],
+      permissionCodes: ['pos_takeaway_menu.view', 'pos_open_checks.view', 'pos_payments.create'],
       role: {
         id: 'role-cashier',
         name: 'Cashier',
@@ -100,7 +115,15 @@ describe('auth access utils', () => {
     });
 
     expect(canAccessCashier(cashier, baseFeatureConfig)).toBe(true);
+    expect(canAccessCashierPayments(cashier, baseFeatureConfig)).toBe(true);
+    expect(canManageCashierPayments(cashier, baseFeatureConfig)).toBe(true);
     expect(canAccessCashierBuilder(cashier, baseFeatureConfig)).toBe(false);
+    expect(
+      canAccessCashierBuilder(cashier, {
+        ...baseFeatureConfig,
+        orderEntryMode: 'cashier_builder',
+      }),
+    ).toBe(true);
     expect(
       getPosHomePath(
         createSession(cashier, {
@@ -133,9 +156,9 @@ describe('auth access utils', () => {
     ).toBe('/lock-screen');
   });
 
-  it('hides dock when only one top-level surface is available', () => {
+  it('hides the dock when only one top-level surface is available', () => {
     const chef = createUser({
-      permissionCodes: ['kitchen_queue.view'],
+      permissionCodes: ['pos_kitchen_orders.view'],
       role: {
         id: 'role-chef',
         name: 'Chef',
@@ -146,16 +169,16 @@ describe('auth access utils', () => {
     expect(shouldShowDock(createSession(chef, baseFeatureConfig))).toBe(false);
   });
 
-  it('shows dock when multiple surfaces are available', () => {
-    const cashier = createUser({
-      permissionCodes: ['halls.list', 'open_checks.list', 'payments.update'],
+  it('shows the dock when waiter and cashier surfaces are both available', () => {
+    const mixedOperator = createUser({
+      permissionCodes: ['pos_halls.view', 'pos_open_checks.view'],
       role: {
-        id: 'role-cashier',
-        name: 'Cashier',
+        id: 'role-operator',
+        name: 'Universal operator',
       },
     });
 
-    expect(getAccessiblePosSurfaces(createSession(cashier, baseFeatureConfig))).toEqual(['halls', 'cashier']);
-    expect(shouldShowDock(createSession(cashier, baseFeatureConfig))).toBe(true);
+    expect(getAccessiblePosSurfaces(createSession(mixedOperator, baseFeatureConfig))).toEqual(['halls', 'cashier']);
+    expect(shouldShowDock(createSession(mixedOperator, baseFeatureConfig))).toBe(true);
   });
 });

@@ -1,6 +1,12 @@
-﻿import { Navigate, useSearchParams } from 'react-router';
+import { Navigate, useSearchParams } from 'react-router';
 
-import { canAccessWaiter, getPosHomePath, isHallMode, usePosSession } from 'modules/auth';
+import {
+  canAccessCashierBuilder,
+  canAccessWaiterTables,
+  getPosHomePath,
+  isHallMode,
+  usePosSession,
+} from 'modules/auth';
 
 import { TableSessionPageContent } from './TableSessionPage/TableSessionPageContent';
 
@@ -13,13 +19,17 @@ export function TableSessionPage() {
     return <Navigate to={getPosHomePath(session)} replace />;
   }
 
+  if (!canAccessWaiterTables(session?.user, session?.featureConfig ?? null)) {
+    return <Navigate to={getPosHomePath(session)} replace />;
+  }
+
   return <TableSessionPageContent sessionId={sessionId} mode="hall" />;
 }
 
 export function WaiterTakeawayPage() {
   const { session } = usePosSession();
 
-  if (!canAccessWaiter(session?.user, session?.featureConfig ?? null)) {
+  if (!canAccessCashierBuilder(session?.user, session?.featureConfig ?? null)) {
     return <Navigate to={getPosHomePath(session)} replace />;
   }
 
