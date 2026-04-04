@@ -1,7 +1,7 @@
 import { Navigate, useSearchParams } from 'react-router';
 
 import {
-  canAccessCashierBuilder,
+  canAccessTakeawayBuilder,
   canAccessWaiterTables,
   getPosHomePath,
   isHallMode,
@@ -29,7 +29,7 @@ export function TableSessionPage() {
 export function WaiterTakeawayPage() {
   const { session } = usePosSession();
 
-  if (!canAccessCashierBuilder(session?.user, session?.featureConfig ?? null)) {
+  if (!canAccessTakeawayBuilder(session?.user, session?.featureConfig ?? null)) {
     return <Navigate to={getPosHomePath(session)} replace />;
   }
 

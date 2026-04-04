@@ -15,7 +15,7 @@ import { useTheme } from '@mui/material/styles';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 
-import { canManageCashierPayments, isCashierBuilderMode, usePosSession } from 'modules/auth';
+import { canAccessTakeawayBuilder, canManageCashierPayments, usePosSession } from 'modules/auth';
 import {
   useCashierContextQuery,
   useCashierPaymentMutation,
@@ -112,9 +112,10 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     [copy.card, copy.cash, copy.qr, selectedCashDesk?.enabledPaymentMethods],
   );
 
-  const afterPaymentPath = isCashierBuilderMode(session?.featureConfig ?? null)
-    ? '/cashier/builder'
-    : '/cashier/open-checks';
+  const afterPaymentPath =
+    orderQuery.data?.channel === 'takeaway' && canAccessTakeawayBuilder(session?.user, session?.featureConfig ?? null)
+      ? '/cashier/builder'
+      : '/cashier/open-checks';
   const canSubmitPayment = Boolean(orderId && canProcessPayments && Number(amount || 0) > 0 && !paymentMutation.isPending);
   const serviceFeePercent = Number(
     orderQuery.data?.serviceFeePercent ?? (orderQuery.data?.channel === 'hall' ? 10 : 0),

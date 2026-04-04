@@ -1,7 +1,7 @@
 ﻿import { Icon } from '@iconify/react';
 import { Box, Button, Divider, Drawer, Stack, TextField, Typography, alpha, useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router';
 
 import { usePosSession } from 'modules/auth';
@@ -147,6 +147,27 @@ export function CashierBuilderPageContent() {
   const serviceFeePercent = Number(currentOrder?.serviceFeePercent ?? 0);
   const serviceFeeLabel = `${copy.serviceFee} (${serviceFeePercent}%)`;
 
+  const createActionKeyHandler =
+    (onActivate: () => void) =>
+    (event: KeyboardEvent<HTMLElement>) => {
+      if (event.key !== 'Enter' && event.key !== ' ') {
+        return;
+      }
+
+      event.preventDefault();
+      onActivate();
+    };
+
+  const handleCheckout = async () => {
+    if (!currentOrder || submitOrderMutation.isPending) {
+      return;
+    }
+
+    await submitOrderMutation.mutateAsync();
+    setCartOpen(false);
+    navigate(`/cashier/payment?orderId=${currentOrder.id}`);
+  };
+
   useEffect(() => {
     if (!selectedCartItemKey) {
       return;
@@ -228,9 +249,10 @@ export function CashierBuilderPageContent() {
               return (
                 <Box
                   key={menuItem.id}
-                  component="button"
-                  type="button"
+                  role="button"
+                  tabIndex={0}
                   onClick={() => addItemMutation.mutate(menuItem)}
+                  onKeyDown={createActionKeyHandler(() => addItemMutation.mutate(menuItem))}
                   sx={(theme) => ({
                     border: 0,
                     p: 0,
@@ -480,9 +502,12 @@ export function CashierBuilderPageContent() {
                     {items.map((item) => (
                       <Box
                         key={item.key}
-                        component="button"
-                        type="button"
+                        role="button"
+                        tabIndex={0}
                         onClick={() => setSelectedCartItemKey((current) => (current === item.key ? null : item.key))}
+                        onKeyDown={createActionKeyHandler(() =>
+                          setSelectedCartItemKey((current) => (current === item.key ? null : item.key)),
+                        )}
                         sx={(theme) => ({
                           width: '100%',
                           border: 0,
@@ -686,7 +711,7 @@ export function CashierBuilderPageContent() {
                 variant="contained"
                 sx={{ flex: 1.1 }}
                 disabled={!currentOrder || submitOrderMutation.isPending}
-                onClick={() => navigate(`/cashier/payment?orderId=${currentOrder?.id}`)}>
+                onClick={() => void handleCheckout()}>
                 {copy.goToPayment}
               </Button>
             </Stack>
@@ -736,9 +761,12 @@ export function CashierBuilderPageContent() {
                   {items.map((item) => (
                     <Box
                       key={item.key}
-                      component="button"
-                      type="button"
+                      role="button"
+                      tabIndex={0}
                       onClick={() => setSelectedCartItemKey((current) => (current === item.key ? null : item.key))}
+                      onKeyDown={createActionKeyHandler(() =>
+                        setSelectedCartItemKey((current) => (current === item.key ? null : item.key)),
+                      )}
                       sx={(theme) => ({
                         width: '100%',
                         border: 0,
@@ -864,7 +892,7 @@ export function CashierBuilderPageContent() {
                 variant="contained"
                 sx={{ flex: 1.1 }}
                 disabled={!currentOrder || submitOrderMutation.isPending}
-                onClick={() => navigate(`/cashier/payment?orderId=${currentOrder?.id}`)}>
+                onClick={() => void handleCheckout()}>
                 {copy.goToPayment}
               </Button>
             </Stack>

@@ -1,10 +1,10 @@
 ﻿import { Icon } from '@iconify/react';
 import { Box, Button, Divider, Drawer, Stack, TextField, Typography, alpha, useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router';
 
-import { canAccessCashierBuilder, canAccessCashierPayments, canAccessWaiterMenu, usePosSession } from 'modules/auth';
+import { canAccessCashierPayments, canAccessTakeawayBuilder, canAccessWaiterMenu, usePosSession } from 'modules/auth';
 import {
   useAddWaiterOrderItemMutation,
   useCurrentWaiterOrder,
@@ -58,7 +58,7 @@ export function TableSessionPageContent({ sessionId, mode }: TableSessionPageCon
   const [selectedCartItemKey, setSelectedCartItemKey] = useState<string | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
   const canViewMenu = isTakeawayMode
-    ? canAccessCashierBuilder(session?.user, session?.featureConfig ?? null)
+    ? canAccessTakeawayBuilder(session?.user, session?.featureConfig ?? null)
     : canAccessWaiterMenu(session?.user, session?.featureConfig ?? null);
 
   const sessionQuery = useWaiterTableSessionQuery(sessionId);
@@ -164,6 +164,32 @@ export function TableSessionPageContent({ sessionId, mode }: TableSessionPageCon
   );
   const canTakePayment = canAccessCashierPayments(session?.user, session?.featureConfig ?? null);
 
+  const createActionKeyHandler =
+    (onActivate: () => void) =>
+    (event: KeyboardEvent<HTMLElement>) => {
+      if (event.key !== 'Enter' && event.key !== ' ') {
+        return;
+      }
+
+      event.preventDefault();
+      onActivate();
+    };
+
+  const handleTakeawayCheckout = async () => {
+    if (!currentOrder || submitOrderMutation.isPending) {
+      return;
+    }
+
+    if (!canTakePayment) {
+      submitOrderMutation.mutate();
+      return;
+    }
+
+    await submitOrderMutation.mutateAsync();
+    setCartOpen(false);
+    navigate(`/cashier/payment?orderId=${currentOrder.id}`);
+  };
+
   useEffect(() => {
     if (!selectedCartItemKey) {
       return;
@@ -244,9 +270,10 @@ export function TableSessionPageContent({ sessionId, mode }: TableSessionPageCon
               return (
                 <Box
                   key={menuItem.id}
-                  component="button"
-                  type="button"
+                  role="button"
+                  tabIndex={0}
                   onClick={() => addItemMutation.mutate(menuItem)}
+                  onKeyDown={createActionKeyHandler(() => addItemMutation.mutate(menuItem))}
                   sx={(theme) => ({
                     border: 0,
                     p: 0,
@@ -514,9 +541,12 @@ export function TableSessionPageContent({ sessionId, mode }: TableSessionPageCon
                     {items.map((item) => (
                       <Box
                         key={item.key}
-                        component="button"
-                        type="button"
+                        role="button"
+                        tabIndex={0}
                         onClick={() => setSelectedCartItemKey((current) => (current === item.key ? null : item.key))}
+                        onKeyDown={createActionKeyHandler(() =>
+                          setSelectedCartItemKey((current) => (current === item.key ? null : item.key)),
+                        )}
                         sx={(theme) => ({
                           width: '100%',
                           border: 0,
@@ -738,16 +768,7 @@ export function TableSessionPageContent({ sessionId, mode }: TableSessionPageCon
                     variant="contained"
                     sx={{ flex: 1.15 }}
                     disabled={!currentOrder || submitOrderMutation.isPending}
-                    onClick={() => {
-                      if (!currentOrder) {
-                        return;
-                      }
-                      if (canTakePayment) {
-                        navigate(`/cashier/payment?orderId=${currentOrder.id}`);
-                        return;
-                      }
-                      submitOrderMutation.mutate();
-                    }}>
+                    onClick={() => void handleTakeawayCheckout()}>
                     {canTakePayment ? copy.goToPayment : copy.sendToCashier}
                   </Button>
                 </>
@@ -825,9 +846,12 @@ export function TableSessionPageContent({ sessionId, mode }: TableSessionPageCon
                   {items.map((item) => (
                     <Box
                       key={item.key}
-                      component="button"
-                      type="button"
+                      role="button"
+                      tabIndex={0}
                       onClick={() => setSelectedCartItemKey((current) => (current === item.key ? null : item.key))}
+                      onKeyDown={createActionKeyHandler(() =>
+                        setSelectedCartItemKey((current) => (current === item.key ? null : item.key)),
+                      )}
                       sx={(theme) => ({
                         width: '100%',
                         border: 0,
@@ -958,17 +982,7 @@ export function TableSessionPageContent({ sessionId, mode }: TableSessionPageCon
                     variant="contained"
                     sx={{ flex: 1.15 }}
                     disabled={!currentOrder || submitOrderMutation.isPending}
-                    onClick={() => {
-                      if (!currentOrder) {
-                        return;
-                      }
-                      setCartOpen(false);
-                      if (canTakePayment) {
-                        navigate(`/cashier/payment?orderId=${currentOrder.id}`);
-                        return;
-                      }
-                      submitOrderMutation.mutate();
-                    }}>
+                    onClick={() => void handleTakeawayCheckout()}>
                     {canTakePayment ? copy.goToPayment : copy.sendToCashier}
                   </Button>
                 </>

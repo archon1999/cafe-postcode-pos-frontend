@@ -3,7 +3,7 @@ import { useTheme } from '@mui/material/styles';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 
-import { canManageCashierPayments, isCashierBuilderMode, usePosSession } from 'modules/auth';
+import { canAccessTakeawayBuilder, canManageCashierPayments, usePosSession } from 'modules/auth';
 import {
   useCashierOpenChecksQuery,
   useCashierRefundMutation,
@@ -435,7 +435,7 @@ export function OpenChecksPageContent() {
           />
 
           <Stack direction="row" spacing={1.5}>
-            {isCashierBuilderMode(session?.featureConfig ?? null) ? (
+            {canAccessTakeawayBuilder(session?.user, session?.featureConfig ?? null) ? (
               <PosIconAction icon="solar:hamburger-menu-bold-duotone" onClick={() => navigate('/cashier/builder')} />
             ) : null}
             {!isMobile ? (

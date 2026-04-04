@@ -7,7 +7,7 @@ import {
   PosPublicOnlyRoute,
   PosRestaurantPublicOnlyRoute,
   RestaurantLoginPage,
-  canAccessCashierBuilder,
+  canAccessTakeawayBuilder,
   canAccessCashierPayments,
   canAccessKitchen,
   canAccessWaiter,
@@ -84,7 +84,7 @@ export const posRouter = createBrowserRouter([
         path: 'cashier/builder',
         element: (
           <PosAccessGuard
-            canAccess={(session) => canAccessCashierBuilder(session?.user, session?.featureConfig ?? null)}>
+            canAccess={(session) => canAccessTakeawayBuilder(session?.user, session?.featureConfig ?? null)}>
             <CashierBuilderPage />
           </PosAccessGuard>
         ),

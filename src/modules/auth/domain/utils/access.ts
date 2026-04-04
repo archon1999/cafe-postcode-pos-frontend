@@ -78,6 +78,14 @@ export function canAccessCashierBuilder(user: PosUser | null | undefined, featur
   return hasPermission(user, POS_TAKEAWAY_MENU_VIEW);
 }
 
+export function canAccessTakeawayBuilder(user: PosUser | null | undefined, featureConfig?: PosFeatureConfig | null) {
+  if (!isRestaurantAccessEnabled(user, featureConfig ?? undefined) || !featureConfig?.cashierEnabled) {
+    return false;
+  }
+
+  return hasPermission(user, POS_TAKEAWAY_MENU_VIEW);
+}
+
 export function canAccessCashierPayments(user: PosUser | null | undefined, featureConfig?: PosFeatureConfig | null) {
   if (!isRestaurantAccessEnabled(user, featureConfig ?? undefined) || !featureConfig?.cashierEnabled) {
     return false;
@@ -95,7 +103,7 @@ export function canManageCashierPayments(user: PosUser | null | undefined, featu
 }
 
 export function canAccessCashier(user: PosUser | null | undefined, featureConfig?: PosFeatureConfig | null) {
-  return canAccessCashierBuilder(user, featureConfig) || canAccessCashierPayments(user, featureConfig);
+  return canAccessTakeawayBuilder(user, featureConfig) || canAccessCashierPayments(user, featureConfig);
 }
 
 export function canAccessKitchen(user: PosUser | null | undefined, featureConfig?: PosFeatureConfig | null) {
@@ -139,7 +147,7 @@ export function shouldShowDock(session: PosSessionPayload | null | undefined) {
 }
 
 export function canAccessWaiterTakeaway(user: PosUser | null | undefined, featureConfig?: PosFeatureConfig | null) {
-  return canAccessCashierBuilder(user, featureConfig);
+  return canAccessTakeawayBuilder(user, featureConfig);
 }
 
 export function getPosHomePath(session: PosSessionPayload | null | undefined) {

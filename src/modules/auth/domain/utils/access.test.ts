@@ -6,6 +6,7 @@ import {
   canAccessCashier,
   canAccessCashierBuilder,
   canAccessCashierPayments,
+  canAccessTakeawayBuilder,
   canAccessKitchen,
   canAccessWaiter,
   canAccessWaiterMenu,
@@ -118,8 +119,15 @@ describe('auth access utils', () => {
     expect(canAccessCashierPayments(cashier, baseFeatureConfig)).toBe(true);
     expect(canManageCashierPayments(cashier, baseFeatureConfig)).toBe(true);
     expect(canAccessCashierBuilder(cashier, baseFeatureConfig)).toBe(false);
+    expect(canAccessTakeawayBuilder(cashier, baseFeatureConfig)).toBe(true);
     expect(
       canAccessCashierBuilder(cashier, {
+        ...baseFeatureConfig,
+        orderEntryMode: 'cashier_builder',
+      }),
+    ).toBe(true);
+    expect(
+      canAccessTakeawayBuilder(cashier, {
         ...baseFeatureConfig,
         orderEntryMode: 'cashier_builder',
       }),

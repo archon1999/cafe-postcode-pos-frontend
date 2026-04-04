@@ -3,8 +3,8 @@ import type { ReactNode } from 'react';
 
 import {
   canAccessCashier,
-  canAccessCashierBuilder,
   canAccessCashierPayments,
+  canAccessTakeawayBuilder,
   canAccessKitchen,
   canAccessWaiter,
   shouldShowDock,
@@ -23,7 +23,7 @@ export function PosShell({ children }: { children: ReactNode }) {
   const cashierEnabled = canAccessCashierPayments(session?.user, featureConfig);
   const kitchenEnabled = canAccessKitchen(session?.user, featureConfig);
   const waiterEnabled = canAccessWaiter(session?.user, featureConfig);
-  const cashierBuilderEnabled = canAccessCashierBuilder(session?.user, featureConfig);
+  const cashierBuilderEnabled = canAccessTakeawayBuilder(session?.user, featureConfig);
 
   const openChecksCountQuery = useCashierOpenChecksCountQuery(cashierEnabled);
   const kitchenActiveCountQuery = useKitchenActiveTicketCountQuery(kitchenEnabled);
