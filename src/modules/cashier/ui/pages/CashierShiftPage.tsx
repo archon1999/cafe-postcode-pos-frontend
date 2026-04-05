@@ -29,11 +29,10 @@ export function CashierShiftPage() {
   const [actualCash, setActualCash] = useState('');
   const [closingNotes, setClosingNotes] = useState('');
 
-  const hasCashierAccess = canAccessCashier(session?.user, session?.featureConfig ?? null);
+  const hasCashierAccess = canAccessCashier(session?.user);
   const contextQuery = useCashierContextQuery({ enabled: hasCashierAccess, refetchInterval: 15000 });
   const nextPath =
-    searchParams.get('next') ||
-    (isCashierBuilderMode(session?.featureConfig ?? null) ? '/cashier/builder' : '/cashier/open-checks');
+    searchParams.get('next') || (isCashierBuilderMode(session?.user) ? '/cashier/builder' : '/cashier/open-checks');
   const currentShift = contextQuery.data?.currentShift ?? null;
   const availableCashDesks = contextQuery.data?.availableCashDesks ?? [];
 

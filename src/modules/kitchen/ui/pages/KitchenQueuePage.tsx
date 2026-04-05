@@ -7,7 +7,7 @@ import { KitchenQueuePageContent } from './KitchenQueuePage/KitchenQueuePageCont
 export function KitchenQueuePage() {
   const { session } = usePosSession();
 
-  if (!canAccessKitchen(session?.user, session?.featureConfig ?? null)) {
+  if (!canAccessKitchen(session?.user)) {
     return <Navigate to={getPosHomePath(session)} replace />;
   }
 

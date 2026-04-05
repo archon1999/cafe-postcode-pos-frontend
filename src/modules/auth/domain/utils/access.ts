@@ -1,4 +1,4 @@
-import type { PosFeatureConfig, PosSessionPayload, PosUser } from '../entities';
+import type { PosSessionPayload, PosUser } from '../entities';
 
 const POS_HALLS_VIEW = 'pos_halls.view';
 const POS_TABLES_MANAGE = 'pos_tables.manage';
@@ -22,7 +22,7 @@ function hasAnyPermission(user: PosUser | null | undefined, permissionCodes: str
   return permissionCodes.some((permissionCode) => hasPermission(user, permissionCode));
 }
 
-function isRestaurantAccessEnabled(user: PosUser | null | undefined, featureConfig?: PosFeatureConfig) {
+function isRestaurantAccessEnabled(user: PosUser | null | undefined) {
   if (!user) {
     return false;
   }
@@ -31,107 +31,105 @@ function isRestaurantAccessEnabled(user: PosUser | null | undefined, featureConf
     return false;
   }
 
-  if (featureConfig?.restaurantAccessActive === false) {
-    return false;
-  }
-
   return true;
 }
 
-export function isHallMode(featureConfig: PosFeatureConfig | null) {
-  return Boolean(featureConfig?.hallEnabled && featureConfig?.orderEntryMode === 'hall');
+export function isHallMode(user: PosUser | null | undefined) {
+  if (!isRestaurantAccessEnabled(user)) {
+    return false;
+  }
+
+  return hasAnyPermission(user, [
+    POS_HALLS_VIEW,
+    POS_TABLES_MANAGE,
+    POS_TABLE_MENU_VIEW,
+    POS_TABLE_RESERVATIONS_MANAGE,
+    LEGACY_CATALOG_MENU_VIEW,
+  ]);
 }
 
-export function isCashierBuilderMode(featureConfig: PosFeatureConfig | null) {
-  return Boolean(featureConfig?.cashierEnabled && featureConfig?.orderEntryMode === 'cashier_builder');
+export function isCashierBuilderMode(user: PosUser | null | undefined) {
+  if (!isRestaurantAccessEnabled(user)) {
+    return false;
+  }
+
+  return hasAnyPermission(user, [POS_TAKEAWAY_MENU_VIEW, LEGACY_CATALOG_MENU_VIEW]);
 }
 
-export function canAccessWaiter(user: PosUser | null | undefined, featureConfig?: PosFeatureConfig | null) {
-  if (!isRestaurantAccessEnabled(user, featureConfig ?? undefined) || !isHallMode(featureConfig ?? null)) {
+export function canAccessWaiter(user: PosUser | null | undefined) {
+  if (!isHallMode(user)) {
     return false;
   }
 
   return hasPermission(user, POS_HALLS_VIEW);
 }
 
-export function canAccessWaiterTables(user: PosUser | null | undefined, featureConfig?: PosFeatureConfig | null) {
-  if (!isRestaurantAccessEnabled(user, featureConfig ?? undefined) || !isHallMode(featureConfig ?? null)) {
+export function canAccessWaiterTables(user: PosUser | null | undefined) {
+  if (!isHallMode(user)) {
     return false;
   }
 
   return hasPermission(user, POS_TABLES_MANAGE);
 }
 
-export function canAccessWaiterMenu(user: PosUser | null | undefined, featureConfig?: PosFeatureConfig | null) {
-  if (!isRestaurantAccessEnabled(user, featureConfig ?? undefined) || !isHallMode(featureConfig ?? null)) {
+export function canAccessWaiterMenu(user: PosUser | null | undefined) {
+  if (!isHallMode(user)) {
     return false;
   }
 
   return hasAnyPermission(user, [POS_TABLE_MENU_VIEW, LEGACY_CATALOG_MENU_VIEW]);
 }
 
-export function canManageTableReservations(user: PosUser | null | undefined, featureConfig?: PosFeatureConfig | null) {
-  if (!isRestaurantAccessEnabled(user, featureConfig ?? undefined) || !isHallMode(featureConfig ?? null)) {
+export function canManageTableReservations(user: PosUser | null | undefined) {
+  if (!isHallMode(user)) {
     return false;
   }
 
   return hasPermission(user, POS_TABLE_RESERVATIONS_MANAGE);
 }
 
-export function canAccessCashierBuilder(user: PosUser | null | undefined, featureConfig?: PosFeatureConfig | null) {
-  if (!isRestaurantAccessEnabled(user, featureConfig ?? undefined) || !isCashierBuilderMode(featureConfig ?? null)) {
+export function canAccessCashierBuilder(user: PosUser | null | undefined) {
+  if (!isCashierBuilderMode(user)) {
     return false;
   }
 
   return hasAnyPermission(user, [POS_TAKEAWAY_MENU_VIEW, LEGACY_CATALOG_MENU_VIEW]);
 }
 
-export function canAccessTakeawayBuilder(user: PosUser | null | undefined, featureConfig?: PosFeatureConfig | null) {
-  if (!isRestaurantAccessEnabled(user, featureConfig ?? undefined) || !featureConfig?.cashierEnabled) {
-    return false;
-  }
-
-  return hasAnyPermission(user, [POS_TAKEAWAY_MENU_VIEW, LEGACY_CATALOG_MENU_VIEW]);
+export function canAccessTakeawayBuilder(user: PosUser | null | undefined) {
+  return canAccessCashierBuilder(user);
 }
 
-export function canAccessCashierPayments(user: PosUser | null | undefined, featureConfig?: PosFeatureConfig | null) {
-  if (!isRestaurantAccessEnabled(user, featureConfig ?? undefined) || !featureConfig?.cashierEnabled) {
+export function canAccessCashierPayments(user: PosUser | null | undefined) {
+  if (!isRestaurantAccessEnabled(user)) {
     return false;
   }
 
   return hasAnyPermission(user, [POS_OPEN_CHECKS_VIEW, LEGACY_OPEN_CHECKS_VIEW]);
 }
 
-export function canManageCashierPayments(user: PosUser | null | undefined, featureConfig?: PosFeatureConfig | null) {
-  if (!isRestaurantAccessEnabled(user, featureConfig ?? undefined) || !featureConfig?.cashierEnabled) {
+export function canManageCashierPayments(user: PosUser | null | undefined) {
+  if (!isRestaurantAccessEnabled(user)) {
     return false;
   }
 
   return hasAnyPermission(user, [POS_PAYMENTS_CREATE, LEGACY_PAYMENTS_CREATE]);
 }
 
-export function canAccessCashier(user: PosUser | null | undefined, featureConfig?: PosFeatureConfig | null) {
-  return canAccessTakeawayBuilder(user, featureConfig) || canAccessCashierPayments(user, featureConfig);
+export function canAccessCashier(user: PosUser | null | undefined) {
+  return canAccessTakeawayBuilder(user) || canAccessCashierPayments(user);
 }
 
-export function canAccessKitchen(user: PosUser | null | undefined, featureConfig?: PosFeatureConfig | null) {
-  if (
-    !isRestaurantAccessEnabled(user, featureConfig ?? undefined) ||
-    !featureConfig?.kitchenEnabled ||
-    featureConfig.kitchenMode === 'printer'
-  ) {
+export function canAccessKitchen(user: PosUser | null | undefined) {
+  if (!isRestaurantAccessEnabled(user)) {
     return false;
   }
 
   return hasAnyPermission(user, [POS_KITCHEN_ORDERS_VIEW, LEGACY_KITCHEN_QUEUE_VIEW]);
 }
 
-export function canManageKitchenOrders(user: PosUser | null | undefined, featureConfig?: PosFeatureConfig | null) {
-  if (
-    !isRestaurantAccessEnabled(user, featureConfig ?? undefined) ||
-    !featureConfig?.kitchenEnabled ||
-    featureConfig.kitchenMode === 'printer'
-  ) {
+export function canManageKitchenOrders(user: PosUser | null | undefined) {
+  if (!isRestaurantAccessEnabled(user)) {
     return false;
   }
 
@@ -140,11 +138,10 @@ export function canManageKitchenOrders(user: PosUser | null | undefined, feature
 
 export function getAccessiblePosSurfaces(session: PosSessionPayload | null | undefined) {
   const user = session?.user;
-  const featureConfig = session?.featureConfig ?? null;
   const surfaces = [
-    canAccessWaiter(user, featureConfig) ? 'halls' : null,
-    canAccessCashier(user, featureConfig) ? 'cashier' : null,
-    canAccessKitchen(user, featureConfig) ? 'kitchen' : null,
+    canAccessWaiter(user) ? 'halls' : null,
+    canAccessCashier(user) ? 'cashier' : null,
+    canAccessKitchen(user) ? 'kitchen' : null,
   ].filter(Boolean) as Array<'halls' | 'cashier' | 'kitchen'>;
 
   return surfaces;
@@ -154,39 +151,34 @@ export function shouldShowDock(session: PosSessionPayload | null | undefined) {
   return getAccessiblePosSurfaces(session).length > 1;
 }
 
-export function canAccessWaiterTakeaway(user: PosUser | null | undefined, featureConfig?: PosFeatureConfig | null) {
-  return canAccessTakeawayBuilder(user, featureConfig);
+export function canAccessWaiterTakeaway(user: PosUser | null | undefined) {
+  return canAccessTakeawayBuilder(user);
 }
 
 export function getPosHomePath(session: PosSessionPayload | null | undefined) {
   const user = session?.user;
-  const featureConfig = session?.featureConfig ?? null;
 
-  if (
-    canAccessKitchen(user, featureConfig) &&
-    !canAccessWaiter(user, featureConfig) &&
-    !canAccessCashier(user, featureConfig)
-  ) {
+  if (canAccessKitchen(user) && !canAccessWaiter(user) && !canAccessCashier(user)) {
     return '/kitchen/queue';
   }
 
-  if (canAccessCashierBuilder(user, featureConfig)) {
+  if (canAccessCashierBuilder(user)) {
     return '/cashier/builder';
   }
 
-  if (canAccessWaiter(user, featureConfig)) {
+  if (canAccessWaiter(user)) {
     return '/waiter/halls';
   }
 
-  if (canAccessTakeawayBuilder(user, featureConfig)) {
+  if (canAccessTakeawayBuilder(user)) {
     return '/cashier/builder';
   }
 
-  if (canAccessCashierPayments(user, featureConfig)) {
+  if (canAccessCashierPayments(user)) {
     return '/cashier/open-checks';
   }
 
-  if (canAccessKitchen(user, featureConfig)) {
+  if (canAccessKitchen(user)) {
     return '/kitchen/queue';
   }
 

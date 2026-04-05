@@ -13,26 +13,19 @@ export type PosUser = {
   } | null;
 };
 
-export type PosFeatureConfig = {
+export type PosTariff = {
   id: string;
-  hallEnabled: boolean;
-  kitchenEnabled: boolean;
-  cashierEnabled: boolean;
-  ownerDashboardEnabled: boolean;
-  orderEntryMode: 'hall' | 'cashier_builder';
-  kitchenMode: 'display' | 'printer' | 'both';
-  enabledModules: string[];
-  enabledRoles: string[];
-  allowedRoleCodes?: string[];
-  allowedPermissionCodes?: string[];
-  restaurantAccessActive?: boolean;
+  name: string;
+  permissionCodes: string[];
+  roleCodes: string[];
 } | null;
 
 export type PosSessionPayload = {
   token: string;
   user: PosUser;
-  featureConfig: PosFeatureConfig;
   restaurantAccessActive?: boolean;
+  roleCodes?: string[];
+  tariff?: PosTariff;
   restaurantContext?: PosRestaurantContext | null;
 };
 

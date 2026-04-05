@@ -366,7 +366,7 @@ export function OpenChecksPageContent() {
     const receipts = selectedOrder?.receipts ?? [];
     return receipts[receipts.length - 1];
   }, [selectedOrder?.receipts]);
-  const canOperatePayments = canManageCashierPayments(session?.user, session?.featureConfig ?? null);
+  const canOperatePayments = canManageCashierPayments(session?.user);
   const receiptNumber = useMemo(() => {
     const payload = latestReceipt?.payload as Record<string, unknown> | undefined;
     const rawReceiptNumber = payload?.receiptNumber ?? payload?.receipt_number;
@@ -376,14 +376,9 @@ export function OpenChecksPageContent() {
       : (latestSucceededPayment?.id ?? copy.receiptUnavailable);
   }, [copy.receiptUnavailable, latestReceipt?.payload, latestSucceededPayment?.id]);
   const canRefund = Boolean(
-      selectedTab === 'closed' &&
-      latestSucceededPayment?.id &&
-      !latestSucceededPayment?.isRefunded &&
-      canOperatePayments,
+    selectedTab === 'closed' && latestSucceededPayment?.id && !latestSucceededPayment?.isRefunded && canOperatePayments,
   );
-  const canReprint = Boolean(
-    selectedTab === 'closed' && latestReceipt?.id && canOperatePayments,
-  );
+  const canReprint = Boolean(selectedTab === 'closed' && latestReceipt?.id && canOperatePayments);
 
   const detailPanel = selectedOrder ? (
     <OpenChecksDetail
@@ -435,7 +430,7 @@ export function OpenChecksPageContent() {
           />
 
           <Stack direction="row" spacing={1.5}>
-            {canAccessTakeawayBuilder(session?.user, session?.featureConfig ?? null) ? (
+            {canAccessTakeawayBuilder(session?.user) ? (
               <PosIconAction icon="solar:hamburger-menu-bold-duotone" onClick={() => navigate('/cashier/builder')} />
             ) : null}
             {!isMobile ? (

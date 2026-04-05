@@ -58,9 +58,7 @@ export function TableSessionPageContent({ sessionId, mode }: TableSessionPageCon
   const [orderSent, setOrderSent] = useState(false);
   const [selectedCartItemKey, setSelectedCartItemKey] = useState<string | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
-  const canViewMenu = isTakeawayMode
-    ? canAccessTakeawayBuilder(session?.user, session?.featureConfig ?? null)
-    : canAccessWaiterMenu(session?.user, session?.featureConfig ?? null);
+  const canViewMenu = isTakeawayMode ? canAccessTakeawayBuilder(session?.user) : canAccessWaiterMenu(session?.user);
 
   const sessionQuery = useWaiterTableSessionQuery(sessionId);
   const menuQuery = useWaiterMenuQuery({ enabled: canViewMenu });
@@ -177,7 +175,7 @@ export function TableSessionPageContent({ sessionId, mode }: TableSessionPageCon
       })),
     [categories, menuItemMeta.countMap],
   );
-  const canTakePayment = canAccessCashierPayments(session?.user, session?.featureConfig ?? null);
+  const canTakePayment = canAccessCashierPayments(session?.user);
   const isSubmitDisabled = !currentOrder || submitOrderMutation.isPending || hasPendingOperations;
 
   const createActionKeyHandler = (onActivate: () => void) => (event: KeyboardEvent<HTMLElement>) => {

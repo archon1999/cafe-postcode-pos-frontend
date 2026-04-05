@@ -415,8 +415,8 @@ export function HallsPageContent() {
       setSelectedTable(null);
     },
   });
-  const canManageTables = canAccessWaiterTables(session?.user, session?.featureConfig ?? null);
-  const canReserveTables = canManageTableReservations(session?.user, session?.featureConfig ?? null);
+  const canManageTables = canAccessWaiterTables(session?.user);
+  const canReserveTables = canManageTableReservations(session?.user);
 
   const halls = useMemo(() => hallsQuery.data ?? [], [hallsQuery.data]);
   const isInitialLoading = hallsQuery.isLoading && !hallsQuery.data;

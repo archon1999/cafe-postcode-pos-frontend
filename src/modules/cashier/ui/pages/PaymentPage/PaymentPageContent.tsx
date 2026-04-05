@@ -45,7 +45,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   const [receiptData, setReceiptData] = useState<CashierPaymentResponse | null>(null);
   const [paymentErrorToastOpen, setPaymentErrorToastOpen] = useState(false);
   const [printToastOpen, setPrintToastOpen] = useState(false);
-  const canProcessPayments = canManageCashierPayments(session?.user, session?.featureConfig ?? null);
+  const canProcessPayments = canManageCashierPayments(session?.user);
   const normalizedOrderId = orderId ?? null;
 
   const cashierContextQuery = useCashierContextQuery({
@@ -114,7 +114,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   );
 
   const afterPaymentPath =
-    orderQuery.data?.channel === 'takeaway' && canAccessTakeawayBuilder(session?.user, session?.featureConfig ?? null)
+    orderQuery.data?.channel === 'takeaway' && canAccessTakeawayBuilder(session?.user)
       ? '/cashier/builder'
       : '/cashier/open-checks';
   const canSubmitPayment = Boolean(

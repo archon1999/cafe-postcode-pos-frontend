@@ -15,11 +15,11 @@ export function TableSessionPage() {
   const { session } = usePosSession();
   const sessionId = searchParams.get('sessionId');
 
-  if (!isHallMode(session?.featureConfig ?? null)) {
+  if (!isHallMode(session?.user)) {
     return <Navigate to={getPosHomePath(session)} replace />;
   }
 
-  if (!canAccessWaiterTables(session?.user, session?.featureConfig ?? null)) {
+  if (!canAccessWaiterTables(session?.user)) {
     return <Navigate to={getPosHomePath(session)} replace />;
   }
 
@@ -29,7 +29,7 @@ export function TableSessionPage() {
 export function WaiterTakeawayPage() {
   const { session } = usePosSession();
 
-  if (!canAccessTakeawayBuilder(session?.user, session?.featureConfig ?? null)) {
+  if (!canAccessTakeawayBuilder(session?.user)) {
     return <Navigate to={getPosHomePath(session)} replace />;
   }
 

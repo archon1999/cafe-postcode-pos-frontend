@@ -17,11 +17,10 @@ import { PosBottomDock } from '../ui/pos-primitives';
 export function PosShell({ children }: { children: ReactNode }) {
   const { session, locale } = usePosSession();
   const copy = getPosCopy(locale);
-  const featureConfig = session?.featureConfig ?? null;
-  const cashierEnabled = canAccessCashierPayments(session?.user, featureConfig);
-  const kitchenEnabled = canAccessKitchen(session?.user, featureConfig);
-  const waiterEnabled = canAccessWaiter(session?.user, featureConfig);
-  const cashierBuilderEnabled = canAccessTakeawayBuilder(session?.user, featureConfig);
+  const cashierEnabled = canAccessCashierPayments(session?.user);
+  const kitchenEnabled = canAccessKitchen(session?.user);
+  const waiterEnabled = canAccessWaiter(session?.user);
+  const cashierBuilderEnabled = canAccessTakeawayBuilder(session?.user);
 
   const openChecksCountQuery = useCashierOpenChecksCountQuery(cashierEnabled);
   const kitchenActiveCountQuery = useKitchenActiveTicketCountQuery(kitchenEnabled);

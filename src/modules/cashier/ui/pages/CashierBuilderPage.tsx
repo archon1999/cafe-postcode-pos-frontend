@@ -7,7 +7,7 @@ import { CashierBuilderPageContent } from './CashierBuilderPage/CashierBuilderPa
 export function CashierBuilderPage() {
   const { session } = usePosSession();
 
-  if (!canAccessTakeawayBuilder(session?.user, session?.featureConfig ?? null)) {
+  if (!canAccessTakeawayBuilder(session?.user)) {
     return <Navigate to={getPosHomePath(session)} replace />;
   }
 

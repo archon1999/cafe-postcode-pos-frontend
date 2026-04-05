@@ -7,11 +7,11 @@ import { HallsPageContent } from './HallsPage/HallsPageContent';
 export function HallsPage() {
   const { session } = usePosSession();
 
-  if (!isHallMode(session?.featureConfig ?? null)) {
+  if (!isHallMode(session?.user)) {
     return <Navigate to={getPosHomePath(session)} replace />;
   }
 
-  if (!canAccessWaiter(session?.user, session?.featureConfig ?? null)) {
+  if (!canAccessWaiter(session?.user)) {
     return <Navigate to={getPosHomePath(session)} replace />;
   }
 

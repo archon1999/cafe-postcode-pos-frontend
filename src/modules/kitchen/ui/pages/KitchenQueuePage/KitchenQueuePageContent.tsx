@@ -50,7 +50,7 @@ export function KitchenQueuePageContent() {
   const [selectedTab, setSelectedTab] = useState<'active' | 'done'>('active');
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
-  const canUpdateKitchenOrders = canManageKitchenOrders(session?.user, session?.featureConfig ?? null);
+  const canUpdateKitchenOrders = canManageKitchenOrders(session?.user);
 
   const queueQuery = useKitchenQueueQuery();
   const updateTicketStatusMutation = useUpdateKitchenTicketStatusMutation();

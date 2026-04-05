@@ -30,10 +30,7 @@ export function useOpenTableSessionMutation(options: {
   });
 }
 
-export function useReserveTableMutation(options: {
-  selectedTable: DiningTable | null;
-  onSuccess?: () => void;
-}) {
+export function useReserveTableMutation(options: { selectedTable: DiningTable | null; onSuccess?: () => void }) {
   const { selectedTable, onSuccess } = options;
 
   return useMutation({

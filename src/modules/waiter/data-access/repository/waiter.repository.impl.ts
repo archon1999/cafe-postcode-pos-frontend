@@ -22,12 +22,12 @@ type CollectionPayload<T> = T[] | { data?: T[] };
 
 class WaiterRepositoryImpl implements WaiterRepository {
   async getHalls(): Promise<Hall[]> {
-    return mapHalls(unwrapCollection(await apiGet<CollectionPayload<Hall>>('/pos/halls/')));
+    return mapHalls(unwrapCollection(await apiGet<CollectionPayload<Hall>>('/pos/floor/halls/')));
   }
 
   async openTableSession(tableId: string, guestCount: number): Promise<WaiterSessionResponse> {
     return mapWaiterSessionResponse(
-      await apiPost<WaiterSessionResponse>('/pos/halls/table-sessions/', {
+      await apiPost<WaiterSessionResponse>('/pos/floor/table-sessions/', {
         table: tableId,
         guestCount,
       }),
@@ -35,11 +35,11 @@ class WaiterRepositoryImpl implements WaiterRepository {
   }
 
   async reserveTable(tableId: string): Promise<void> {
-    await apiPost(`/pos/halls/tables/${tableId}/reserve/`);
+    await apiPost(`/pos/floor/tables/${tableId}/reserve/`);
   }
 
   async getTableSession(sessionId: string): Promise<TableSession> {
-    return mapTableSession(await apiGet<TableSession>(`/pos/halls/table-sessions/${sessionId}/`));
+    return mapTableSession(await apiGet<TableSession>(`/pos/floor/table-sessions/${sessionId}/`));
   }
 
   async getMenu(): Promise<WaiterMenuCategory[]> {
@@ -49,12 +49,12 @@ class WaiterRepositoryImpl implements WaiterRepository {
   }
 
   async getOrders(): Promise<WaiterOrder[]> {
-    return mapWaiterOrders(unwrapCollection(await apiGet<CollectionPayload<WaiterOrder>>('/pos/orders/')));
+    return mapWaiterOrders(unwrapCollection(await apiGet<CollectionPayload<WaiterOrder>>('/pos/sales/orders/')));
   }
 
   async createOrder(sessionId: string, note: string): Promise<WaiterCreateOrderResponse> {
     return mapWaiterCreateOrderResponse(
-      await apiPost<WaiterCreateOrderResponse>('/pos/orders/', {
+      await apiPost<WaiterCreateOrderResponse>('/pos/sales/orders/', {
         tableSession: sessionId,
         channel: 'hall',
         note,
@@ -64,7 +64,7 @@ class WaiterRepositoryImpl implements WaiterRepository {
 
   async createTakeawayOrder(note: string): Promise<WaiterCreateOrderResponse> {
     return mapWaiterCreateOrderResponse(
-      await apiPost<WaiterCreateOrderResponse>('/pos/orders/', {
+      await apiPost<WaiterCreateOrderResponse>('/pos/sales/orders/', {
         channel: 'takeaway',
         guestCount: 1,
         note,
@@ -73,7 +73,7 @@ class WaiterRepositoryImpl implements WaiterRepository {
   }
 
   async addOrderItem(orderId: string, catalogItemId: string, note: string) {
-    await apiPost(`/pos/orders/${orderId}/items/`, {
+    await apiPost(`/pos/sales/orders/${orderId}/items/`, {
       catalogItem: catalogItemId,
       quantity: 1,
       note,
@@ -81,11 +81,11 @@ class WaiterRepositoryImpl implements WaiterRepository {
   }
 
   async removeOrderItem(itemId: string) {
-    await apiDelete(`/pos/orders/items/${itemId}/`);
+    await apiDelete(`/pos/sales/orders/items/${itemId}/`);
   }
 
   async submitOrder(orderId: string) {
-    await apiPost(`/pos/orders/${orderId}/submit/`);
+    await apiPost(`/pos/sales/orders/${orderId}/submit/`);
   }
 }
 

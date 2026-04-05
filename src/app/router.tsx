@@ -67,7 +67,7 @@ export const posRouter = createBrowserRouter([
       {
         path: 'waiter/halls',
         element: (
-          <PosAccessGuard canAccess={(session) => canAccessWaiter(session?.user, session?.featureConfig ?? null)}>
+          <PosAccessGuard canAccess={(session) => canAccessWaiter(session?.user)}>
             <HallsPage />
           </PosAccessGuard>
         ),
@@ -75,7 +75,7 @@ export const posRouter = createBrowserRouter([
       {
         path: 'waiter/table-session',
         element: (
-          <PosAccessGuard canAccess={(session) => canAccessWaiterTables(session?.user, session?.featureConfig ?? null)}>
+          <PosAccessGuard canAccess={(session) => canAccessWaiterTables(session?.user)}>
             <TableSessionPage />
           </PosAccessGuard>
         ),
@@ -83,8 +83,7 @@ export const posRouter = createBrowserRouter([
       {
         path: 'cashier/builder',
         element: (
-          <PosAccessGuard
-            canAccess={(session) => canAccessTakeawayBuilder(session?.user, session?.featureConfig ?? null)}>
+          <PosAccessGuard canAccess={(session) => canAccessTakeawayBuilder(session?.user)}>
             <CashierBuilderPage />
           </PosAccessGuard>
         ),
@@ -92,8 +91,7 @@ export const posRouter = createBrowserRouter([
       {
         path: 'cashier/open-checks',
         element: (
-          <PosAccessGuard
-            canAccess={(session) => canAccessCashierPayments(session?.user, session?.featureConfig ?? null)}>
+          <PosAccessGuard canAccess={(session) => canAccessCashierPayments(session?.user)}>
             <OpenChecksPage />
           </PosAccessGuard>
         ),
@@ -101,8 +99,7 @@ export const posRouter = createBrowserRouter([
       {
         path: 'cashier/payment',
         element: (
-          <PosAccessGuard
-            canAccess={(session) => canAccessCashierPayments(session?.user, session?.featureConfig ?? null)}>
+          <PosAccessGuard canAccess={(session) => canAccessCashierPayments(session?.user)}>
             <PaymentPage />
           </PosAccessGuard>
         ),
@@ -110,7 +107,7 @@ export const posRouter = createBrowserRouter([
       {
         path: 'kitchen/queue',
         element: (
-          <PosAccessGuard canAccess={(session) => canAccessKitchen(session?.user, session?.featureConfig ?? null)}>
+          <PosAccessGuard canAccess={(session) => canAccessKitchen(session?.user)}>
             <KitchenQueuePage />
           </PosAccessGuard>
         ),

@@ -1,5 +1,5 @@
 import type { PosThemeMode } from 'app/theme';
-import type { PosFeatureConfig, PosRestaurantContext, PosSessionPayload, PosUser } from 'modules/auth/domain';
+import type { PosRestaurantContext, PosSessionPayload, PosTariff, PosUser } from 'modules/auth/domain';
 import type { PosLocale } from 'shared/locale/copy';
 
 const STORAGE_KEY = 'restaurant-pos-session';
@@ -15,35 +15,23 @@ type SessionCompatUser = Omit<PosUser, 'fullName' | 'permissionCodes'> & {
   ui_mode?: string;
 };
 
-type LegacyFeatureConfig = Partial<NonNullable<PosFeatureConfig>> & {
+type SessionCompatTariff = Partial<NonNullable<PosTariff>> & {
   id: string;
-  hall_enabled?: boolean;
-  kitchen_enabled?: boolean;
-  cashier_enabled?: boolean;
-  owner_dashboard_enabled?: boolean;
-  order_entry_mode?: 'hall' | 'cashier_builder';
-  kitchen_mode?: 'display' | 'printer' | 'both';
-  enabled_modules?: string[];
-  enabled_roles?: string[];
+  permissionCodes?: string[];
+  permission_codes?: string[];
+  roleCodes?: string[];
+  role_codes?: string[];
 };
 
-type SessionCompatFeatureConfig = LegacyFeatureConfig & {
-  hallEnabled?: boolean;
-  kitchenEnabled?: boolean;
-  cashierEnabled?: boolean;
-  ownerDashboardEnabled?: boolean;
-  orderEntryMode?: 'hall' | 'cashier_builder';
-  kitchenMode?: 'display' | 'printer' | 'both';
-  enabledModules?: string[];
-  enabledRoles?: string[];
-};
-
-type LegacySessionPayload = Omit<PosSessionPayload, 'user' | 'featureConfig'> & {
+type LegacySessionPayload = Omit<PosSessionPayload, 'user' | 'tariff' | 'roleCodes'> & {
   user: SessionCompatUser;
   restaurant_context?: PosRestaurantContext | null;
   restaurantContext?: PosRestaurantContext | null;
-  feature_config?: LegacyFeatureConfig | null;
-  featureConfig?: SessionCompatFeatureConfig | null;
+  restaurant_access_active?: boolean;
+  restaurantAccessActive?: boolean;
+  role_codes?: string[];
+  roleCodes?: string[];
+  tariff?: SessionCompatTariff | null;
 };
 
 export function normalizeSessionPayload(
@@ -54,25 +42,23 @@ export function normalizeSessionPayload(
   }
 
   const rawUser = payload.user as SessionCompatUser;
-  const rawFeatureConfig =
-    (payload as LegacySessionPayload).featureConfig ?? (payload as LegacySessionPayload).feature_config;
   const rawRestaurantContext =
     (payload as LegacySessionPayload).restaurantContext ?? (payload as LegacySessionPayload).restaurant_context ?? null;
-
-  const normalizedFeatureConfig: PosFeatureConfig = rawFeatureConfig
+  const rawTariff = (payload as LegacySessionPayload).tariff;
+  const restaurantAccessActive =
+    rawUser.restaurantAccessActive ??
+    payload.restaurantAccessActive ??
+    (payload as LegacySessionPayload).restaurant_access_active;
+  const normalizedTariff: PosTariff = rawTariff
     ? {
-        id: rawFeatureConfig.id,
-        hallEnabled: rawFeatureConfig.hallEnabled ?? rawFeatureConfig.hall_enabled ?? false,
-        kitchenEnabled: rawFeatureConfig.kitchenEnabled ?? rawFeatureConfig.kitchen_enabled ?? false,
-        cashierEnabled: rawFeatureConfig.cashierEnabled ?? rawFeatureConfig.cashier_enabled ?? false,
-        ownerDashboardEnabled:
-          rawFeatureConfig.ownerDashboardEnabled ?? rawFeatureConfig.owner_dashboard_enabled ?? false,
-        orderEntryMode: rawFeatureConfig.orderEntryMode ?? rawFeatureConfig.order_entry_mode ?? 'hall',
-        kitchenMode: rawFeatureConfig.kitchenMode ?? rawFeatureConfig.kitchen_mode ?? 'display',
-        enabledModules: rawFeatureConfig.enabledModules ?? rawFeatureConfig.enabled_modules ?? [],
-        enabledRoles: rawFeatureConfig.enabledRoles ?? rawFeatureConfig.enabled_roles ?? [],
+        id: rawTariff.id,
+        name: rawTariff.name ?? '',
+        permissionCodes: rawTariff.permissionCodes ?? rawTariff.permission_codes ?? [],
+        roleCodes: rawTariff.roleCodes ?? rawTariff.role_codes ?? [],
       }
     : null;
+  const roleCodes =
+    payload.roleCodes ?? (payload as LegacySessionPayload).role_codes ?? normalizedTariff?.roleCodes ?? [];
 
   return {
     token: payload.token,
@@ -81,12 +67,12 @@ export function normalizeSessionPayload(
       username: rawUser.username,
       fullName: rawUser.fullName ?? rawUser.full_name ?? '',
       permissionCodes: rawUser.permissionCodes ?? rawUser.permission_codes ?? [],
-      ...(rawUser.restaurantAccessActive !== undefined
-        ? { restaurantAccessActive: rawUser.restaurantAccessActive }
-        : {}),
+      ...(restaurantAccessActive !== undefined ? { restaurantAccessActive } : {}),
       ...(rawUser.role ? { role: rawUser.role } : {}),
     },
-    featureConfig: normalizedFeatureConfig,
+    ...(restaurantAccessActive !== undefined ? { restaurantAccessActive } : {}),
+    ...(roleCodes.length ? { roleCodes } : {}),
+    ...(normalizedTariff ? { tariff: normalizedTariff } : {}),
     ...(rawRestaurantContext ? { restaurantContext: rawRestaurantContext } : {}),
   };
 }

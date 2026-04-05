@@ -22,7 +22,7 @@ type CashierReceipt = NonNullable<CashierOrder['receipts']>[number];
 
 class CashierRepositoryImpl implements CashierRepository {
   async getCashierContext(): Promise<CashierContext> {
-    return apiGet<CashierContext>('/pos/cashier/context/');
+    return apiGet<CashierContext>('/pos/billing/context/');
   }
 
   async getMenu(): Promise<CashierMenuCategory[]> {
@@ -33,18 +33,18 @@ class CashierRepositoryImpl implements CashierRepository {
 
   async getOpenOrders(): Promise<CashierOrder[]> {
     return mapCashierOrders(
-      unwrapCollection(await apiGet<CollectionPayload<CashierOrder>>('/pos/orders/?status=open')),
+      unwrapCollection(await apiGet<CollectionPayload<CashierOrder>>('/pos/sales/orders/?status=open')),
     );
   }
 
   async getOpenChecks(status: 'open' | 'closed' = 'open'): Promise<CashierOrder[]> {
     return mapCashierOrders(
-      unwrapCollection(await apiGet<CollectionPayload<CashierOrder>>(`/pos/payments/open-checks/?status=${status}`)),
+      unwrapCollection(await apiGet<CollectionPayload<CashierOrder>>(`/pos/billing/open-checks/?status=${status}`)),
     );
   }
 
   async getOrder(orderId: string): Promise<CashierOrder> {
-    return mapCashierOrder(await apiGet<CashierOrder>(`/pos/orders/${orderId}/`));
+    return mapCashierOrder(await apiGet<CashierOrder>(`/pos/sales/orders/${orderId}/`));
   }
 
   async openShift(payload: {
@@ -52,16 +52,16 @@ class CashierRepositoryImpl implements CashierRepository {
     openingCashAmount: number;
     notesOpen?: string;
   }): Promise<CashierContext> {
-    return apiPost<CashierContext>('/pos/cashier/shifts/open/', payload);
+    return apiPost<CashierContext>('/pos/billing/shifts/open/', payload);
   }
 
   async closeShift(payload: { actualClosingCashAmount: number; notesClose?: string }): Promise<CashierContext> {
-    return apiPost<CashierContext>('/pos/cashier/shifts/current/close/', payload);
+    return apiPost<CashierContext>('/pos/billing/shifts/current/close/', payload);
   }
 
   async createTakeawayOrder(note: string): Promise<CashierCreateOrderResponse> {
     return mapCashierCreateOrderResponse(
-      await apiPost<CashierCreateOrderResponse>('/pos/orders/', {
+      await apiPost<CashierCreateOrderResponse>('/pos/sales/orders/', {
         channel: 'takeaway',
         guestCount: 1,
         note,
@@ -70,7 +70,7 @@ class CashierRepositoryImpl implements CashierRepository {
   }
 
   async addOrderItem(orderId: string, catalogItemId: string, note: string) {
-    await apiPost(`/pos/orders/${orderId}/items/`, {
+    await apiPost(`/pos/sales/orders/${orderId}/items/`, {
       catalogItem: catalogItemId,
       quantity: 1,
       note,
@@ -78,16 +78,16 @@ class CashierRepositoryImpl implements CashierRepository {
   }
 
   async removeOrderItem(itemId: string) {
-    await apiDelete(`/pos/orders/items/${itemId}/`);
+    await apiDelete(`/pos/sales/orders/items/${itemId}/`);
   }
 
   async submitOrder(orderId: string) {
-    await apiPost(`/pos/orders/${orderId}/submit/`);
+    await apiPost(`/pos/sales/orders/${orderId}/submit/`);
   }
 
   async payOrder(orderId: string, method: PaymentMethod, amount: number): Promise<CashierPaymentResponse> {
     return mapCashierPaymentResponse(
-      await apiPost<CashierPaymentResponse>(`/pos/payments/orders/${orderId}/pay/`, {
+      await apiPost<CashierPaymentResponse>(`/pos/billing/orders/${orderId}/pay/`, {
         method,
         amount,
       }),
@@ -95,13 +95,13 @@ class CashierRepositoryImpl implements CashierRepository {
   }
 
   async refundPayment(paymentId: string, reason = '') {
-    return apiPost<{ refund: unknown; receipt: CashierReceipt | null }>(`/pos/payments/${paymentId}/refund/`, {
+    return apiPost<{ refund: unknown; receipt: CashierReceipt | null }>(`/pos/billing/${paymentId}/refund/`, {
       reason,
     });
   }
 
   async reprintReceipt(receiptId: string) {
-    return apiPost<{ receipt: CashierReceipt | null }>(`/pos/receipts/${receiptId}/reprint/`);
+    return apiPost<{ receipt: CashierReceipt | null }>(`/pos/billing/receipts/${receiptId}/reprint/`);
   }
 }
 
