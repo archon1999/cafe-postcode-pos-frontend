@@ -2,12 +2,10 @@ import { Box } from '@mui/material';
 import type { ReactNode } from 'react';
 
 import {
-  canAccessCashier,
   canAccessCashierPayments,
   canAccessTakeawayBuilder,
   canAccessKitchen,
   canAccessWaiter,
-  shouldShowDock,
 } from 'modules/auth/domain';
 import { usePosSession } from 'modules/auth/ui/session-context';
 import { useCashierOpenChecksCountQuery } from 'modules/cashier';
@@ -43,7 +41,7 @@ export function PosShell({ children }: { children: ReactNode }) {
           path: '/cashier/builder',
         }
       : null,
-    canAccessKitchen(session?.user, featureConfig)
+    kitchenEnabled
       ? {
           key: 'kitchen',
           label: copy.kitchen,
@@ -86,7 +84,7 @@ export function PosShell({ children }: { children: ReactNode }) {
         {children}
       </Box>
 
-      {shouldShowDock(session) && dockItems.length > 0 ? <PosBottomDock items={dockItems} /> : null}
+      {dockItems.length > 1 ? <PosBottomDock items={dockItems} /> : null}
     </Box>
   );
 }

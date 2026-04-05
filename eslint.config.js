@@ -1,5 +1,3 @@
-import storybook from 'eslint-plugin-storybook';
-
 import js from '@eslint/js';
 import globals from 'globals';
 import react from 'eslint-plugin-react';
@@ -14,20 +12,9 @@ import { globalIgnores } from 'eslint/config';
 import i18next from 'eslint-plugin-i18next';
 import pluginQuery from '@tanstack/eslint-plugin-query';
 
-const storybookFlatConfig =
-  storybook.configs?.['flat/recommended'] ??
-  storybook.configs?.recommended?.overrides?.map((override) => ({
-    files: override.files,
-    plugins: {
-      storybook,
-    },
-    rules: override.rules ?? {},
-  })) ??
-  [];
-
 export default tseslint.config(
   [
-    globalIgnores(['dist', './.storybook', './vitest.shims.d.ts']),
+    globalIgnores(['dist', './vitest.shims.d.ts']),
     {
       files: ['**/*.{ts,tsx}'],
       extends: [
@@ -100,8 +87,5 @@ export default tseslint.config(
         },
       },
     },
-    ...(Array.isArray(storybookFlatConfig)
-      ? storybookFlatConfig
-      : [storybookFlatConfig]),
   ],
 );

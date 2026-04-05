@@ -82,13 +82,10 @@ describe('auth access utils', () => {
     expect(canAccessWaiterMenu(waiter, baseFeatureConfig)).toBe(true);
     expect(canManageTableReservations(waiter, baseFeatureConfig)).toBe(true);
     expect(
-      canAccessWaiter(
-        createUser({ permissionCodes: ['pos_tables.manage'] }),
-        {
-          ...baseFeatureConfig,
-          hallEnabled: false,
-        },
-      ),
+      canAccessWaiter(createUser({ permissionCodes: ['pos_tables.manage'] }), {
+        ...baseFeatureConfig,
+        hallEnabled: false,
+      }),
     ).toBe(false);
   });
 
@@ -140,7 +137,22 @@ describe('auth access utils', () => {
         }),
       ),
     ).toBe('/cashier/builder');
-    expect(getPosHomePath(createSession(cashier, baseFeatureConfig))).toBe('/cashier/open-checks');
+    expect(getPosHomePath(createSession(cashier, baseFeatureConfig))).toBe('/cashier/builder');
+  });
+
+  it('accepts legacy cashier permission aliases for takeaway menu and payments', () => {
+    const legacyCashier = createUser({
+      permissionCodes: ['catalog_menu.view', 'open_checks.view', 'payments.create'],
+      role: {
+        id: 'role-cashier',
+        name: 'Cashier',
+      },
+    });
+
+    expect(canAccessTakeawayBuilder(legacyCashier, baseFeatureConfig)).toBe(true);
+    expect(canAccessCashierPayments(legacyCashier, baseFeatureConfig)).toBe(true);
+    expect(canManageCashierPayments(legacyCashier, baseFeatureConfig)).toBe(true);
+    expect(getPosHomePath(createSession(legacyCashier, baseFeatureConfig))).toBe('/cashier/builder');
   });
 
   it('falls back to lock screen when no module access is available', () => {
