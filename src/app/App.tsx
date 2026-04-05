@@ -2,6 +2,7 @@ import { CssBaseline, ThemeProvider } from '@mui/material';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { RouterProvider } from 'react-router';
+import { Toaster } from 'sonner';
 
 import { PosSessionProvider, usePosSession } from 'modules/auth';
 
@@ -21,6 +22,7 @@ function PosApplication() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <QueryClientProvider client={queryClient}>
+        <Toaster richColors position="top-center" />
         <RouterProvider router={posRouter} />
       </QueryClientProvider>
     </ThemeProvider>

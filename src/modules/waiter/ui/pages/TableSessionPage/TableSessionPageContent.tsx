@@ -6,17 +6,18 @@ import { useNavigate } from 'react-router';
 
 import { canAccessCashierPayments, canAccessTakeawayBuilder, canAccessWaiterMenu, usePosSession } from 'modules/auth';
 import {
-  useAddWaiterOrderItemMutation,
   useCurrentWaiterOrder,
   useCurrentWaiterTakeawayOrder,
-  useRemoveWaiterOrderItemMutation,
   useSubmitWaiterOrderMutation,
   useWaiterMenuQuery,
   useWaiterTableSessionQuery,
+  waiterKeys,
 } from 'modules/waiter/application';
+import { waiterRepository } from 'modules/waiter/data-access';
 import { getDefaultWaiterMenuCategory, groupWaiterOrderItemsByStation } from 'modules/waiter/domain';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { getPosCopy } from 'shared/locale/copy';
+import { useOptimisticBuilderOrder } from 'shared/pos/useOptimisticBuilderOrder';
 import { formatCompactMoney } from 'shared/pos/utils';
 import {
   PosBuilderPageSkeleton,
@@ -65,23 +66,37 @@ export function TableSessionPageContent({ sessionId, mode }: TableSessionPageCon
   const menuQuery = useWaiterMenuQuery({ enabled: canViewMenu });
   const hallOrderQuery = useCurrentWaiterOrder(sessionId);
   const takeawayOrderQuery = useCurrentWaiterTakeawayOrder(session?.user.id);
-  const currentOrder = isTakeawayMode ? takeawayOrderQuery.currentOrder : hallOrderQuery.currentOrder;
+  const serverOrder = isTakeawayMode ? takeawayOrderQuery.currentOrder : hallOrderQuery.currentOrder;
+  const currentOperatorName = session?.user.fullName ?? '';
+  const { currentOrder, addItem, removeItem, hasPendingOperations } = useOptimisticBuilderOrder({
+    baseOrder: serverOrder,
+    canonicalQueryKey: waiterKeys.orders,
+    canonicalQueryFn: () => waiterRepository.getOrders(),
+    channel: isTakeawayMode ? 'takeaway' : 'hall',
+    createOrder: async (note) => {
+      const response = isTakeawayMode
+        ? await waiterRepository.createTakeawayOrder(note)
+        : await waiterRepository.createOrder(sessionId as string, note);
+      return response.id;
+    },
+    defaultServiceFeePercent: isTakeawayMode ? 0 : 10,
+    removeOrderItem: (itemId) => waiterRepository.removeOrderItem(itemId),
+    selectCurrentOrder: (orders) =>
+      isTakeawayMode
+        ? orders.find(
+            (order) =>
+              !order.tableSession &&
+              order.channel === 'takeaway' &&
+              order.status === 'open' &&
+              order.openedBy === session?.user.id,
+          )
+        : orders.find((order) => order.tableSession === sessionId && !['closed', 'cancelled'].includes(order.status)),
+    addOrderItem: (orderId, menuItem, note) => waiterRepository.addOrderItem(orderId, menuItem.id, note),
+    syncErrorMessage: copy.itemSyncFailed,
+  });
   const serviceFeePercent = Number(currentOrder?.serviceFeePercent ?? (isTakeawayMode ? 0 : 10));
   const serviceFeeLabel = `${copy.serviceFee} (${serviceFeePercent}%)`;
-  const currentOperatorName = session?.user.fullName ?? '';
   const orderModeMeta = isTakeawayMode ? `${1} ${copy.guests}` : `${sessionQuery.data?.guestCount ?? 0} ${copy.guests}`;
-
-  const addItemMutation = useAddWaiterOrderItemMutation({
-    currentOrderId: currentOrder?.id,
-    sessionId,
-    createMode: isTakeawayMode ? 'takeaway' : 'hall',
-    kitchenNote,
-    onSuccess: () => setOrderSent(false),
-  });
-  const removeItemMutation = useRemoveWaiterOrderItemMutation({
-    sessionId,
-    onSuccess: () => setOrderSent(false),
-  });
   const submitOrderMutation = useSubmitWaiterOrderMutation({
     orderId: currentOrder?.id,
     sessionId,
@@ -163,20 +178,19 @@ export function TableSessionPageContent({ sessionId, mode }: TableSessionPageCon
     [categories, menuItemMeta.countMap],
   );
   const canTakePayment = canAccessCashierPayments(session?.user, session?.featureConfig ?? null);
+  const isSubmitDisabled = !currentOrder || submitOrderMutation.isPending || hasPendingOperations;
 
-  const createActionKeyHandler =
-    (onActivate: () => void) =>
-    (event: KeyboardEvent<HTMLElement>) => {
-      if (event.key !== 'Enter' && event.key !== ' ') {
-        return;
-      }
+  const createActionKeyHandler = (onActivate: () => void) => (event: KeyboardEvent<HTMLElement>) => {
+    if (event.key !== 'Enter' && event.key !== ' ') {
+      return;
+    }
 
-      event.preventDefault();
-      onActivate();
-    };
+    event.preventDefault();
+    onActivate();
+  };
 
   const handleTakeawayCheckout = async () => {
-    if (!currentOrder || submitOrderMutation.isPending) {
+    if (!currentOrder || submitOrderMutation.isPending || hasPendingOperations) {
       return;
     }
 
@@ -272,8 +286,8 @@ export function TableSessionPageContent({ sessionId, mode }: TableSessionPageCon
                   key={menuItem.id}
                   role="button"
                   tabIndex={0}
-                  onClick={() => addItemMutation.mutate(menuItem)}
-                  onKeyDown={createActionKeyHandler(() => addItemMutation.mutate(menuItem))}
+                  onClick={() => addItem(menuItem, kitchenNote)}
+                  onKeyDown={createActionKeyHandler(() => addItem(menuItem, kitchenNote))}
                   sx={(theme) => ({
                     border: 0,
                     p: 0,
@@ -361,10 +375,10 @@ export function TableSessionPageContent({ sessionId, mode }: TableSessionPageCon
                             onClick={(event) => {
                               event.stopPropagation();
                               const latestItemId = menuItemMeta.latestItemMap.get(menuItem.id);
-                              if (!latestItemId || removeItemMutation.isPending) {
+                              if (!latestItemId) {
                                 return;
                               }
-                              removeItemMutation.mutate(latestItemId);
+                              removeItem(latestItemId);
                             }}
                             sx={(theme) => ({
                               width: { xs: 28, md: 30 },
@@ -399,7 +413,7 @@ export function TableSessionPageContent({ sessionId, mode }: TableSessionPageCon
                             type="button"
                             onClick={(event) => {
                               event.stopPropagation();
-                              addItemMutation.mutate(menuItem);
+                              addItem(menuItem, kitchenNote);
                             }}
                             sx={(theme) => ({
                               width: { xs: 28, md: 30 },
@@ -610,10 +624,7 @@ export function TableSessionPageContent({ sessionId, mode }: TableSessionPageCon
                               onClick={(event) => {
                                 event.stopPropagation();
                                 const latestItemId = item.itemIds[item.itemIds.length - 1];
-                                if (removeItemMutation.isPending) {
-                                  return;
-                                }
-                                removeItemMutation.mutate(latestItemId);
+                                removeItem(latestItemId);
                               }}
                               sx={(theme) => ({
                                 width: 42,
@@ -656,7 +667,7 @@ export function TableSessionPageContent({ sessionId, mode }: TableSessionPageCon
                                 if (!menuItem) {
                                   return;
                                 }
-                                addItemMutation.mutate(menuItem);
+                                addItem(menuItem, kitchenNote);
                               }}
                               sx={(theme) => ({
                                 width: 42,
@@ -760,14 +771,14 @@ export function TableSessionPageContent({ sessionId, mode }: TableSessionPageCon
                       backgroundColor: theme.palette.mode === 'dark' ? '#464646' : '#d7cebf',
                       color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
                     })}
-                    disabled={!currentOrder || submitOrderMutation.isPending}
+                    disabled={isSubmitDisabled}
                     onClick={() => submitOrderMutation.mutate()}>
                     {submitOrderMutation.isPending ? copy.processing : copy.sendOrder}
                   </Button>
                   <Button
                     variant="contained"
                     sx={{ flex: 1.15 }}
-                    disabled={!currentOrder || submitOrderMutation.isPending}
+                    disabled={isSubmitDisabled}
                     onClick={() => void handleTakeawayCheckout()}>
                     {canTakePayment ? copy.goToPayment : copy.sendToCashier}
                   </Button>
@@ -788,7 +799,7 @@ export function TableSessionPageContent({ sessionId, mode }: TableSessionPageCon
                   <Button
                     variant="contained"
                     sx={{ flex: 1.15 }}
-                    disabled={!currentOrder || submitOrderMutation.isPending}
+                    disabled={isSubmitDisabled}
                     onClick={() => submitOrderMutation.mutate()}>
                     {submitOrderMutation.isPending ? copy.processing : copy.sendOrder}
                   </Button>
@@ -903,9 +914,7 @@ export function TableSessionPageContent({ sessionId, mode }: TableSessionPageCon
                             onClick={(event) => {
                               event.stopPropagation();
                               const latestItemId = item.itemIds[item.itemIds.length - 1];
-                              if (!removeItemMutation.isPending) {
-                                removeItemMutation.mutate(latestItemId);
-                              }
+                              removeItem(latestItemId);
                             }}
                             sx={{ minWidth: 54, px: 0 }}>
                             <Icon icon="solar:minus-circle-bold" width={18} />
@@ -919,7 +928,7 @@ export function TableSessionPageContent({ sessionId, mode }: TableSessionPageCon
                               event.stopPropagation();
                               const menuItem = menuItemById.get(item.catalogItem);
                               if (menuItem) {
-                                addItemMutation.mutate(menuItem);
+                                addItem(menuItem, kitchenNote);
                               }
                             }}
                             sx={{ minWidth: 54, px: 0 }}>
@@ -974,14 +983,14 @@ export function TableSessionPageContent({ sessionId, mode }: TableSessionPageCon
                       backgroundColor: theme.palette.mode === 'dark' ? '#464646' : '#d7cebf',
                       color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
                     })}
-                    disabled={!currentOrder || submitOrderMutation.isPending}
+                    disabled={isSubmitDisabled}
                     onClick={() => submitOrderMutation.mutate()}>
                     {submitOrderMutation.isPending ? copy.processing : copy.sendOrder}
                   </Button>
                   <Button
                     variant="contained"
                     sx={{ flex: 1.15 }}
-                    disabled={!currentOrder || submitOrderMutation.isPending}
+                    disabled={isSubmitDisabled}
                     onClick={() => void handleTakeawayCheckout()}>
                     {canTakePayment ? copy.goToPayment : copy.sendToCashier}
                   </Button>
@@ -1005,7 +1014,7 @@ export function TableSessionPageContent({ sessionId, mode }: TableSessionPageCon
                   <Button
                     variant="contained"
                     sx={{ flex: 1.15 }}
-                    disabled={!currentOrder || submitOrderMutation.isPending}
+                    disabled={isSubmitDisabled}
                     onClick={() => submitOrderMutation.mutate()}>
                     {submitOrderMutation.isPending ? copy.processing : copy.sendOrder}
                   </Button>

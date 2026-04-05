@@ -6,12 +6,12 @@ import { useNavigate } from 'react-router';
 
 import { usePosSession } from 'modules/auth';
 import {
-  useAddCashierOrderItemMutation,
   useCashierBuilderOrdersQuery,
   useCashierMenuQuery,
-  useRemoveCashierOrderItemMutation,
   useSubmitCashierOrderMutation,
+  cashierKeys,
 } from 'modules/cashier/application';
+import { cashierRepository } from 'modules/cashier/data-access';
 import {
   getCurrentCashierBuilderOrder,
   getDefaultCashierMenuCategory,
@@ -19,6 +19,7 @@ import {
 } from 'modules/cashier/domain';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { getPosCopy } from 'shared/locale/copy';
+import { useOptimisticBuilderOrder } from 'shared/pos/useOptimisticBuilderOrder';
 import { formatCompactMoney } from 'shared/pos/utils';
 import {
   PosBuilderPageSkeleton,
@@ -55,16 +56,25 @@ export function CashierBuilderPageContent() {
 
   const menuQuery = useCashierMenuQuery();
   const ordersQuery = useCashierBuilderOrdersQuery();
-  const currentOrder = useMemo(
+  const serverOrder = useMemo(
     () => getCurrentCashierBuilderOrder(ordersQuery.data, session?.user.id),
     [ordersQuery.data, session?.user.id],
   );
-
-  const addItemMutation = useAddCashierOrderItemMutation({
-    currentOrderId: currentOrder?.id,
-    kitchenNote,
+  const { currentOrder, addItem, removeItem, hasPendingOperations } = useOptimisticBuilderOrder({
+    baseOrder: serverOrder,
+    canonicalQueryKey: cashierKeys.builderOrders,
+    canonicalQueryFn: () => cashierRepository.getOpenOrders(),
+    channel: 'takeaway',
+    createOrder: async (note) => {
+      const response = await cashierRepository.createTakeawayOrder(note);
+      return response.id;
+    },
+    defaultServiceFeePercent: 0,
+    removeOrderItem: (itemId) => cashierRepository.removeOrderItem(itemId),
+    selectCurrentOrder: (orders) => getCurrentCashierBuilderOrder(orders, session?.user.id),
+    addOrderItem: (orderId, menuItem, note) => cashierRepository.addOrderItem(orderId, menuItem.id, note),
+    syncErrorMessage: copy.itemSyncFailed,
   });
-  const removeItemMutation = useRemoveCashierOrderItemMutation({});
   const submitOrderMutation = useSubmitCashierOrderMutation({
     orderId: currentOrder?.id,
     onSuccess: () => {
@@ -146,20 +156,19 @@ export function CashierBuilderPageContent() {
   );
   const serviceFeePercent = Number(currentOrder?.serviceFeePercent ?? 0);
   const serviceFeeLabel = `${copy.serviceFee} (${serviceFeePercent}%)`;
+  const isSubmitDisabled = !currentOrder || submitOrderMutation.isPending || hasPendingOperations;
 
-  const createActionKeyHandler =
-    (onActivate: () => void) =>
-    (event: KeyboardEvent<HTMLElement>) => {
-      if (event.key !== 'Enter' && event.key !== ' ') {
-        return;
-      }
+  const createActionKeyHandler = (onActivate: () => void) => (event: KeyboardEvent<HTMLElement>) => {
+    if (event.key !== 'Enter' && event.key !== ' ') {
+      return;
+    }
 
-      event.preventDefault();
-      onActivate();
-    };
+    event.preventDefault();
+    onActivate();
+  };
 
   const handleCheckout = async () => {
-    if (!currentOrder || submitOrderMutation.isPending) {
+    if (!currentOrder || submitOrderMutation.isPending || hasPendingOperations) {
       return;
     }
 
@@ -251,8 +260,8 @@ export function CashierBuilderPageContent() {
                   key={menuItem.id}
                   role="button"
                   tabIndex={0}
-                  onClick={() => addItemMutation.mutate(menuItem)}
-                  onKeyDown={createActionKeyHandler(() => addItemMutation.mutate(menuItem))}
+                  onClick={() => addItem(menuItem, kitchenNote)}
+                  onKeyDown={createActionKeyHandler(() => addItem(menuItem, kitchenNote))}
                   sx={(theme) => ({
                     border: 0,
                     p: 0,
@@ -340,10 +349,10 @@ export function CashierBuilderPageContent() {
                             onClick={(event) => {
                               event.stopPropagation();
                               const latestItemId = menuItemMeta.latestItemMap.get(menuItem.id);
-                              if (!latestItemId || removeItemMutation.isPending) {
+                              if (!latestItemId) {
                                 return;
                               }
-                              removeItemMutation.mutate(latestItemId);
+                              removeItem(latestItemId);
                             }}
                             sx={(theme) => ({
                               width: { xs: 28, md: 30 },
@@ -378,7 +387,7 @@ export function CashierBuilderPageContent() {
                             type="button"
                             onClick={(event) => {
                               event.stopPropagation();
-                              addItemMutation.mutate(menuItem);
+                              addItem(menuItem, kitchenNote);
                             }}
                             sx={(theme) => ({
                               width: { xs: 28, md: 30 },
@@ -571,10 +580,7 @@ export function CashierBuilderPageContent() {
                               onClick={(event) => {
                                 event.stopPropagation();
                                 const latestItemId = item.itemIds[item.itemIds.length - 1];
-                                if (removeItemMutation.isPending) {
-                                  return;
-                                }
-                                removeItemMutation.mutate(latestItemId);
+                                removeItem(latestItemId);
                               }}
                               sx={(theme) => ({
                                 width: 42,
@@ -617,7 +623,7 @@ export function CashierBuilderPageContent() {
                                 if (!menuItem) {
                                   return;
                                 }
-                                addItemMutation.mutate(menuItem);
+                                addItem(menuItem, kitchenNote);
                               }}
                               sx={(theme) => ({
                                 width: 42,
@@ -703,14 +709,14 @@ export function CashierBuilderPageContent() {
                   backgroundColor: theme.palette.mode === 'dark' ? '#4d535a' : '#d8cfbf',
                   color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
                 })}
-                disabled={!currentOrder || submitOrderMutation.isPending}
+                disabled={isSubmitDisabled}
                 onClick={() => submitOrderMutation.mutate()}>
                 {submitOrderMutation.isPending ? copy.processing : copy.sendOrder}
               </Button>
               <Button
                 variant="contained"
                 sx={{ flex: 1.1 }}
-                disabled={!currentOrder || submitOrderMutation.isPending}
+                disabled={isSubmitDisabled}
                 onClick={() => void handleCheckout()}>
                 {copy.goToPayment}
               </Button>
@@ -818,9 +824,7 @@ export function CashierBuilderPageContent() {
                             onClick={(event) => {
                               event.stopPropagation();
                               const latestItemId = item.itemIds[item.itemIds.length - 1];
-                              if (!removeItemMutation.isPending) {
-                                removeItemMutation.mutate(latestItemId);
-                              }
+                              removeItem(latestItemId);
                             }}
                             sx={{ minWidth: 54, px: 0 }}>
                             <Icon icon="solar:minus-circle-bold" width={18} />
@@ -834,7 +838,7 @@ export function CashierBuilderPageContent() {
                               event.stopPropagation();
                               const menuItem = menuItemById.get(item.catalogItem);
                               if (menuItem) {
-                                addItemMutation.mutate(menuItem);
+                                addItem(menuItem, kitchenNote);
                               }
                             }}
                             sx={{ minWidth: 54, px: 0 }}>
@@ -884,14 +888,14 @@ export function CashierBuilderPageContent() {
                   backgroundColor: theme.palette.mode === 'dark' ? '#4d535a' : '#d8cfbf',
                   color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
                 })}
-                disabled={!currentOrder || submitOrderMutation.isPending}
+                disabled={isSubmitDisabled}
                 onClick={() => submitOrderMutation.mutate()}>
                 {submitOrderMutation.isPending ? copy.processing : copy.sendOrder}
               </Button>
               <Button
                 variant="contained"
                 sx={{ flex: 1.1 }}
-                disabled={!currentOrder || submitOrderMutation.isPending}
+                disabled={isSubmitDisabled}
                 onClick={() => void handleCheckout()}>
                 {copy.goToPayment}
               </Button>

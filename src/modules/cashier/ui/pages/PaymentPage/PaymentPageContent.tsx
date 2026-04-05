@@ -46,14 +46,15 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   const [paymentErrorToastOpen, setPaymentErrorToastOpen] = useState(false);
   const [printToastOpen, setPrintToastOpen] = useState(false);
   const canProcessPayments = canManageCashierPayments(session?.user, session?.featureConfig ?? null);
+  const normalizedOrderId = orderId ?? null;
 
   const cashierContextQuery = useCashierContextQuery({
     enabled: Boolean(session?.token) && canProcessPayments,
     refetchInterval: canProcessPayments ? 15000 : false,
   });
-  const orderQuery = useCashierPaymentOrderQuery(orderId);
+  const orderQuery = useCashierPaymentOrderQuery(normalizedOrderId);
   const paymentMutation = useCashierPaymentMutation({
-    orderId,
+    orderId: normalizedOrderId,
     onSuccess: () => setQrDialogOpen(false),
   });
   const selectedCashDesk = cashierContextQuery.data?.availableCashDesks[0] ?? null;
@@ -116,7 +117,9 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     orderQuery.data?.channel === 'takeaway' && canAccessTakeawayBuilder(session?.user, session?.featureConfig ?? null)
       ? '/cashier/builder'
       : '/cashier/open-checks';
-  const canSubmitPayment = Boolean(orderId && canProcessPayments && Number(amount || 0) > 0 && !paymentMutation.isPending);
+  const canSubmitPayment = Boolean(
+    normalizedOrderId && canProcessPayments && Number(amount || 0) > 0 && !paymentMutation.isPending,
+  );
   const serviceFeePercent = Number(
     orderQuery.data?.serviceFeePercent ?? (orderQuery.data?.channel === 'hall' ? 10 : 0),
   );
