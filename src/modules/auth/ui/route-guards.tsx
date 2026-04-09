@@ -5,6 +5,7 @@ import { PosShell } from 'shared/layout/PosShell';
 
 import { getPosHomePath } from '../domain';
 
+import { resolveAuthNextPath } from './next-path';
 import { usePosSession } from './session-context';
 
 export function PosPublicOnlyRoute({ children }: { children: ReactNode }) {
@@ -22,6 +23,7 @@ export function PosPublicOnlyRoute({ children }: { children: ReactNode }) {
 }
 
 export function PosRestaurantPublicOnlyRoute({ children }: { children: ReactNode }) {
+  const location = useLocation();
   const { isAuthenticated, restaurantContext, session } = usePosSession();
 
   if (isAuthenticated) {
@@ -29,7 +31,7 @@ export function PosRestaurantPublicOnlyRoute({ children }: { children: ReactNode
   }
 
   if (restaurantContext) {
-    return <Navigate to="/pin-login" replace />;
+    return <Navigate to={resolveAuthNextPath(location.search)} replace />;
   }
 
   return <>{children}</>;

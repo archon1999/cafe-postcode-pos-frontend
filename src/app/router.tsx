@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react';
-import { Navigate, createBrowserRouter } from 'react-router';
+import { Navigate, createBrowserRouter, useLocation } from 'react-router';
 
 import {
   LoginPage,
@@ -16,7 +16,7 @@ import {
   usePosSession,
 } from 'modules/auth';
 import { CashierBuilderPage, OpenChecksPage, PaymentPage } from 'modules/cashier';
-import { KitchenQueuePage } from 'modules/kitchen';
+import { KitchenMonitorPage, KitchenQueuePage } from 'modules/kitchen';
 import { HallsPage, TableSessionPage } from 'modules/waiter';
 
 import { LockScreenPage } from '../shared/layout/LockScreenPage';
@@ -42,6 +42,18 @@ function PosAccessGuard({
   return children;
 }
 
+function PosMonitorRestaurantGuard({ children }: { children: ReactElement }) {
+  const location = useLocation();
+  const { restaurantContext } = usePosSession();
+
+  if (!restaurantContext) {
+    const next = encodeURIComponent(`${location.pathname}${location.search}`);
+    return <Navigate to={`/restaurant-login?next=${next}`} replace />;
+  }
+
+  return children;
+}
+
 export const posRouter = createBrowserRouter([
   {
     path: '/restaurant-login',
@@ -57,6 +69,14 @@ export const posRouter = createBrowserRouter([
       <PosPublicOnlyRoute>
         <LoginPage />
       </PosPublicOnlyRoute>
+    ),
+  },
+  {
+    path: '/monitor/queue',
+    element: (
+      <PosMonitorRestaurantGuard>
+        <KitchenMonitorPage />
+      </PosMonitorRestaurantGuard>
     ),
   },
   {

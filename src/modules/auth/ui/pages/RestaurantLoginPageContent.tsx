@@ -1,15 +1,17 @@
 ﻿import { Icon } from '@iconify/react';
 import { Box, Button, Stack, TextField, Typography, alpha } from '@mui/material';
 import { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 
 import { getPosCopy, localeLabels } from 'shared/locale/copy';
 import { PosLogo } from 'shared/ui/PosLogo';
 
 import { useRestaurantCodeMutation } from '../../application';
+import { resolveAuthNextPath } from '../next-path';
 import { usePosSession } from '../session-context';
 
 export function RestaurantLoginPageContent() {
+  const location = useLocation();
   const navigate = useNavigate();
   const { locale, setLocale, setRestaurantContext, themeMode, setThemeMode } = usePosSession();
   const copy = getPosCopy(locale);
@@ -20,7 +22,7 @@ export function RestaurantLoginPageContent() {
     onSuccess: (response) => {
       setErrorMessage('');
       setRestaurantContext(response);
-      navigate('/pin-login', { replace: true });
+      navigate(resolveAuthNextPath(location.search), { replace: true });
     },
     onError: (error) => {
       setErrorMessage(error.message || copy.invalidPin);

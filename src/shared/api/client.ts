@@ -1,10 +1,17 @@
-import axios from 'axios';
+import axios, { type AxiosRequestConfig } from 'axios';
 
 import { persistSession, readStoredLocale, readStoredSession } from 'modules/auth/data-access';
 
 import { resolveApiBaseUrl } from './apiUrl';
 
 export const apiClient = axios.create({
+  baseURL: resolveApiBaseUrl(),
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+export const publicApiClient = axios.create({
   baseURL: resolveApiBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
@@ -18,6 +25,14 @@ apiClient.interceptors.request.use((config) => {
   if (session?.token) {
     config.headers.Authorization = `Token ${session.token}`;
   }
+
+  config.headers['Accept-Language'] = locale;
+  config.headers['X-Language'] = locale;
+  return config;
+});
+
+publicApiClient.interceptors.request.use((config) => {
+  const locale = readStoredLocale();
 
   config.headers['Accept-Language'] = locale;
   config.headers['X-Language'] = locale;
@@ -43,6 +58,11 @@ apiClient.interceptors.response.use(
 
 export async function apiGet<T>(url: string) {
   const response = await apiClient.get<T>(url);
+  return response.data;
+}
+
+export async function apiGetPublic<T>(url: string, config?: AxiosRequestConfig) {
+  const response = await publicApiClient.get<T>(url, config);
   return response.data;
 }
 

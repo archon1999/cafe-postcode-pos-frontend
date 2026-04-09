@@ -13,6 +13,16 @@ export function useKitchenQueueQuery() {
   });
 }
 
+export function useKitchenMonitorQuery(restaurantId: string | null) {
+  return useQuery({
+    queryKey: kitchenKeys.monitorQueue(restaurantId),
+    enabled: Boolean(restaurantId),
+    queryFn: () => kitchenRepository.getMonitorQueue(restaurantId as string),
+    refetchInterval: 10000,
+    refetchIntervalInBackground: true,
+  });
+}
+
 export function useKitchenActiveTicketCountQuery(enabled: boolean) {
   return useQuery({
     queryKey: kitchenKeys.queue,
