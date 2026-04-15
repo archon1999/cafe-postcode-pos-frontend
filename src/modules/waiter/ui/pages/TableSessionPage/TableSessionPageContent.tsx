@@ -1,13 +1,16 @@
 ﻿import { Icon } from '@iconify/react';
 import { Box, Button, Divider, Drawer, Stack, TextField, Typography, alpha, useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
+import axios from 'axios';
 import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router';
+import { toast } from 'sonner';
 
 import { canAccessCashierPayments, canAccessTakeawayBuilder, canAccessWaiterMenu, usePosSession } from 'modules/auth';
 import {
   useCurrentWaiterOrder,
   useCurrentWaiterTakeawayOrder,
+  usePrintWaiterPrebillMutation,
   useSubmitWaiterOrderMutation,
   useWaiterMenuQuery,
   useWaiterTableSessionQuery,
@@ -19,6 +22,7 @@ import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { getPosCopy } from 'shared/locale/copy';
 import { useOptimisticBuilderOrder } from 'shared/pos/useOptimisticBuilderOrder';
 import { formatCompactMoney } from 'shared/pos/utils';
+import { printQzTrayJob } from 'shared/printing/qzTray';
 import {
   PosBuilderPageSkeleton,
   PosIconAction,
@@ -43,6 +47,54 @@ export type TableSessionPageContentProps = {
   sessionId: string | null;
   mode: 'hall' | 'takeaway';
 };
+
+function extractErrorMessage(payload: unknown): string | null {
+  if (typeof payload === 'string' && payload.trim()) {
+    return payload;
+  }
+
+  if (Array.isArray(payload)) {
+    for (const item of payload) {
+      const message = extractErrorMessage(item);
+      if (message) {
+        return message;
+      }
+    }
+    return null;
+  }
+
+  if (payload && typeof payload === 'object') {
+    const record = payload as Record<string, unknown>;
+
+    for (const key of ['detail', 'message', 'error']) {
+      const message = extractErrorMessage(record[key]);
+      if (message) {
+        return message;
+      }
+    }
+
+    for (const value of Object.values(record)) {
+      const message = extractErrorMessage(value);
+      if (message) {
+        return message;
+      }
+    }
+  }
+
+  return null;
+}
+
+function extractThrownErrorMessage(error: unknown) {
+  if (axios.isAxiosError(error)) {
+    return extractErrorMessage(error.response?.data) || error.message;
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return null;
+}
 
 export function TableSessionPageContent({ sessionId, mode }: TableSessionPageContentProps) {
   const navigate = useNavigate();
@@ -103,6 +155,7 @@ export function TableSessionPageContent({ sessionId, mode }: TableSessionPageCon
       setCartOpen(false);
     },
   });
+  const printPrebillMutation = usePrintWaiterPrebillMutation({ sessionId });
 
   const categories = menuQuery.data ?? [];
   const defaultCategory = useMemo(() => getDefaultWaiterMenuCategory(categories), [categories]);
@@ -177,6 +230,8 @@ export function TableSessionPageContent({ sessionId, mode }: TableSessionPageCon
   );
   const canTakePayment = canAccessCashierPayments(session?.user);
   const isSubmitDisabled = !currentOrder || submitOrderMutation.isPending || hasPendingOperations;
+  const isPrintDisabled =
+    !currentOrder || printPrebillMutation.isPending || submitOrderMutation.isPending || hasPendingOperations;
 
   const createActionKeyHandler = (onActivate: () => void) => (event: KeyboardEvent<HTMLElement>) => {
     if (event.key !== 'Enter' && event.key !== ' ') {
@@ -199,7 +254,66 @@ export function TableSessionPageContent({ sessionId, mode }: TableSessionPageCon
 
     await submitOrderMutation.mutateAsync();
     setCartOpen(false);
-    navigate(`/cashier/payment?orderId=${currentOrder.id}`);
+    void navigate(`/cashier/payment?orderId=${currentOrder.id}`);
+  };
+
+  const handlePrintPrebill = async () => {
+    if (!currentOrder || isPrintDisabled) {
+      return;
+    }
+
+    try {
+      const response = await printPrebillMutation.mutateAsync(currentOrder.id);
+      const result = response.result ?? {};
+      const requiresClientPrint = Boolean(result.requiresClientPrint ?? result.requires_client_print);
+      const printJob = result.printJob ?? result.print_job;
+
+      if (requiresClientPrint) {
+        try {
+          await printQzTrayJob(printJob);
+        } catch (error) {
+          const detail = extractThrownErrorMessage(error) || copy.receiptUnavailable;
+          if (response.receipt?.id) {
+            await waiterRepository
+              .markReceiptPrintResult(response.receipt.id, {
+                ok: false,
+                provider: result.provider,
+                mode: result.mode,
+                detail,
+              })
+              .catch(() => undefined);
+          }
+          toast.error(detail);
+          return;
+        }
+
+        if (response.receipt?.id) {
+          try {
+            await waiterRepository.markReceiptPrintResult(response.receipt.id, {
+              ok: true,
+              provider: result.provider,
+              mode: result.mode,
+              printedAt: new Date().toISOString(),
+            });
+          } catch (error) {
+            toast.error(extractThrownErrorMessage(error) || 'Chek chiqdi, lekin print status saqlanmadi.');
+            return;
+          }
+        }
+
+        toast.success(copy.receiptPrinted);
+        return;
+      }
+
+      if (result.ok === false) {
+        toast.error(extractErrorMessage(response.result) || copy.receiptUnavailable);
+        return;
+      }
+
+      toast.success(copy.receiptPrinted);
+    } catch (error) {
+      toast.error(extractThrownErrorMessage(error) || copy.receiptUnavailable);
+    }
   };
 
   useEffect(() => {
@@ -791,8 +905,9 @@ export function TableSessionPageContent({ sessionId, mode }: TableSessionPageCon
                       backgroundColor: theme.palette.mode === 'dark' ? '#464646' : '#d7cebf',
                       color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
                     })}
-                    onClick={() => navigate('/waiter/halls')}>
-                    {copy.close}
+                    disabled={isPrintDisabled}
+                    onClick={() => void handlePrintPrebill()}>
+                    {printPrebillMutation.isPending ? copy.processing : copy.printReceipt}
                   </Button>
                   <Button
                     variant="contained"
@@ -1003,11 +1118,9 @@ export function TableSessionPageContent({ sessionId, mode }: TableSessionPageCon
                       backgroundColor: theme.palette.mode === 'dark' ? '#464646' : '#d7cebf',
                       color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
                     })}
-                    onClick={() => {
-                      setCartOpen(false);
-                      navigate('/waiter/halls');
-                    }}>
-                    {copy.close}
+                    disabled={isPrintDisabled}
+                    onClick={() => void handlePrintPrebill()}>
+                    {printPrebillMutation.isPending ? copy.processing : copy.printReceipt}
                   </Button>
                   <Button
                     variant="contained"
@@ -1033,7 +1146,7 @@ export function TableSessionPageContent({ sessionId, mode }: TableSessionPageCon
         onThemeToggle={() => setThemeMode(themeMode === 'dark' ? 'light' : 'dark')}
         onSignOut={() => {
           setSession(null);
-          navigate('/pin-login', { replace: true });
+          void navigate('/pin-login', { replace: true });
         }}
         themeMode={themeMode}
       />

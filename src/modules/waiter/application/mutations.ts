@@ -3,7 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { queryClient } from 'shared/api/query-client';
 
 import { waiterRepository } from '../data-access';
-import type { DiningTable, WaiterMenuItem } from '../domain';
+import type { DiningTable, WaiterMenuItem, WaiterPrintPrebillResponse } from '../domain';
 import { clampGuestCount } from '../domain';
 
 import { waiterKeys } from './keys';
@@ -125,6 +125,27 @@ export function useSubmitWaiterOrderMutation(options: {
       await queryClient.invalidateQueries({ queryKey: ['cashier', 'checks', 'open'] });
       await queryClient.invalidateQueries({ queryKey: ['kitchen', 'queue'] });
       onSuccess?.();
+    },
+  });
+}
+
+export function usePrintWaiterPrebillMutation(options: {
+  sessionId: string | null;
+  onSuccess?: (response: WaiterPrintPrebillResponse) => void;
+}) {
+  const { sessionId, onSuccess } = options;
+
+  return useMutation({
+    mutationFn: async (orderId: string) => {
+      return waiterRepository.printPrebill(orderId);
+    },
+    onSuccess: async (response) => {
+      await queryClient.invalidateQueries({ queryKey: waiterKeys.orders });
+      if (sessionId) {
+        await queryClient.invalidateQueries({ queryKey: waiterKeys.sessionOrders(sessionId) });
+      }
+      await queryClient.invalidateQueries({ queryKey: ['cashier', 'checks', 'open'] });
+      onSuccess?.(response);
     },
   });
 }
