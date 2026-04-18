@@ -316,15 +316,29 @@ export function CashierBuilderPageContent() {
                       {menuItemMeta.countMap.get(menuItem.id)}
                     </Box>
                   ) : null}
-                  <Stack justifyContent="space-between" sx={{ minHeight: { xs: 114, md: 126 } }}>
-                    <Stack spacing={0.75} sx={{ p: { xs: 1.35, md: 1.85 } }}>
-                      <Typography variant="body2" color="text.secondary">
-                        {menuItem.prepStationName ?? copy.menu}
-                      </Typography>
-                      <Typography variant="h6" sx={{ pr: 1 }}>
-                        {menuItem.name}
-                      </Typography>
-                    </Stack>
+                    <Stack justifyContent="space-between" sx={{ minHeight: { xs: 114, md: 126 } }}>
+                      <Stack spacing={0.75} sx={{ p: { xs: 1.35, md: 1.85 } }}>
+                        <Typography variant="body2" color="text.secondary">
+                          {menuItem.prepStationName ?? copy.menu}
+                        </Typography>
+                        <Typography variant="h6" sx={{ pr: 1 }}>
+                          {menuItem.name}
+                        </Typography>
+                        {menuItem.description ? (
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{
+                              pr: 1,
+                              overflow: 'hidden',
+                              display: '-webkit-box',
+                              WebkitBoxOrient: 'vertical',
+                              WebkitLineClamp: 2,
+                            }}>
+                            {menuItem.description}
+                          </Typography>
+                        ) : null}
+                      </Stack>
                     <Box
                       sx={(theme) => ({
                         minHeight: 40,
