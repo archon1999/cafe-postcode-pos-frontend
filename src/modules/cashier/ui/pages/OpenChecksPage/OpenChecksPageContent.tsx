@@ -126,6 +126,7 @@ function OpenChecksDetail({
   groupedItems,
   latestSucceededPayment,
   locale,
+  onGoToMenu,
   onPay,
   onRefund,
   onReprint,
@@ -134,11 +135,13 @@ function OpenChecksDetail({
   refundAvailable,
   reprintAvailable,
   selectedTab,
+  showGoToMenu,
 }: {
   copy: ReturnType<typeof getPosCopy>;
   groupedItems: ReturnType<typeof groupCashierOrderItemsByStation>;
   latestSucceededPayment: CashierPayment | undefined;
   locale: PosLocale;
+  onGoToMenu?: () => void;
   onPay: () => void;
   onRefund: () => void;
   onReprint: () => void;
@@ -147,6 +150,7 @@ function OpenChecksDetail({
   refundAvailable: boolean;
   reprintAvailable: boolean;
   selectedTab: 'open' | 'closed';
+  showGoToMenu: boolean;
 }) {
   const serviceFeePercent = Number(order.serviceFeePercent ?? (order.channel === 'hall' ? 10 : 0));
   const serviceFeeLabel = `${copy.serviceFee} (${serviceFeePercent}%)`;
@@ -301,9 +305,25 @@ function OpenChecksDetail({
           </Typography>
         </Stack>
         {selectedTab === 'open' ? (
-          <Button variant="contained" size="large" onClick={onPay}>
-            {copy.pay}
-          </Button>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.1}>
+            {showGoToMenu ? (
+              <Button
+                variant="contained"
+                size="large"
+                sx={(theme) => ({
+                  flex: 1,
+                  backgroundImage: 'none',
+                  backgroundColor: theme.palette.mode === 'dark' ? '#4d535a' : '#d8cfbf',
+                  color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
+                })}
+                onClick={onGoToMenu}>
+                {copy.goToMenu}
+              </Button>
+            ) : null}
+            <Button variant="contained" size="large" sx={{ flex: 1.15 }} onClick={onPay}>
+              {copy.pay}
+            </Button>
+          </Stack>
         ) : (
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.1}>
             {reprintAvailable ? (
@@ -367,6 +387,9 @@ export function OpenChecksPageContent() {
     return receipts[receipts.length - 1];
   }, [selectedOrder?.receipts]);
   const canOperatePayments = canManageCashierPayments(session?.user);
+  const canGoToMenu = Boolean(
+    selectedTab === 'open' && selectedOrder?.channel === 'hall' && selectedOrder?.tableSession,
+  );
   const receiptNumber = useMemo(() => {
     const payload = latestReceipt?.payload as Record<string, unknown> | undefined;
     const rawReceiptNumber = payload?.receiptNumber ?? payload?.receipt_number;
@@ -386,6 +409,17 @@ export function OpenChecksPageContent() {
       groupedItems={groupedItems}
       latestSucceededPayment={latestSucceededPayment}
       locale={locale}
+      onGoToMenu={() => {
+        if (!selectedOrder?.tableSession) {
+          return;
+        }
+
+        const params = new URLSearchParams({
+          sessionId: selectedOrder.tableSession,
+          source: 'cashier',
+        });
+        navigate(`/waiter/table-session?${params.toString()}`);
+      }}
       onPay={() => navigate(`/cashier/payment?orderId=${selectedOrder.id}`)}
       onRefund={() => {
         if (!latestSucceededPayment?.id || refundMutation.isPending) {
@@ -404,6 +438,7 @@ export function OpenChecksPageContent() {
       refundAvailable={canRefund}
       reprintAvailable={canReprint}
       selectedTab={selectedTab}
+      showGoToMenu={canGoToMenu}
     />
   ) : null;
 

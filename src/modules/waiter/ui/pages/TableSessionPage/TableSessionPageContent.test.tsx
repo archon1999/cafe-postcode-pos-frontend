@@ -9,7 +9,9 @@ import { TableSessionPageContent } from './TableSessionPageContent';
 const navigateMock = vi.fn();
 const printPrebillMutateAsyncMock = vi.fn();
 const submitMutateMock = vi.fn();
+const useWaiterMenuQueryMock = vi.fn();
 const useOptimisticBuilderOrderMock = vi.fn();
+const canAccessTableSessionMenuMock = vi.fn();
 
 vi.mock('react-router', () => ({
   useNavigate: () => navigateMock,
@@ -24,8 +26,8 @@ vi.mock('sonner', () => ({
 
 vi.mock('modules/auth', () => ({
   canAccessCashierPayments: () => false,
+  canAccessTableSessionMenu: (...args: unknown[]) => canAccessTableSessionMenuMock(...args),
   canAccessTakeawayBuilder: () => true,
-  canAccessWaiterMenu: () => true,
   usePosSession: () => ({
     session: { user: { id: 'user-1', fullName: 'Waiter Test' } },
     locale: 'uz',
@@ -48,16 +50,7 @@ vi.mock('modules/waiter/application', () => ({
     mutate: submitMutateMock,
     mutateAsync: vi.fn(),
   }),
-  useWaiterMenuQuery: () => ({
-    isLoading: false,
-    data: [
-      {
-        id: 'cat-1',
-        name: 'Taomlar',
-        items: [{ id: 'item-1', name: 'Osh', price: 30000, prepStationName: 'Issiq oshxona' }],
-      },
-    ],
-  }),
+  useWaiterMenuQuery: (...args: unknown[]) => useWaiterMenuQueryMock(...args),
   useWaiterTableSessionQuery: () => ({
     data: { guestCount: 2 },
   }),
@@ -118,6 +111,19 @@ describe('TableSessionPageContent', () => {
     navigateMock.mockReset();
     printPrebillMutateAsyncMock.mockReset();
     submitMutateMock.mockReset();
+    canAccessTableSessionMenuMock.mockReset();
+    canAccessTableSessionMenuMock.mockReturnValue(true);
+    useWaiterMenuQueryMock.mockReset();
+    useWaiterMenuQueryMock.mockReturnValue({
+      isLoading: false,
+      data: [
+        {
+          id: 'cat-1',
+          name: 'Taomlar',
+          items: [{ id: 'item-1', name: 'Osh', price: 30000, prepStationName: 'Issiq oshxona' }],
+        },
+      ],
+    });
     useOptimisticBuilderOrderMock.mockReset();
     useOptimisticBuilderOrderMock.mockReturnValue({
       currentOrder: {
@@ -151,6 +157,16 @@ describe('TableSessionPageContent', () => {
 
     expect(printPrebillMutateAsyncMock).toHaveBeenCalledWith('order-1');
     expect(navigateMock).not.toHaveBeenCalledWith('/waiter/halls');
+  });
+
+  it('enables the hall menu query for cashier-origin session editing', () => {
+    render(<TableSessionPageContent sessionId="session-1" mode="hall" source="cashier" />);
+
+    expect(canAccessTableSessionMenuMock).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'user-1' }),
+      'cashier',
+    );
+    expect(useWaiterMenuQueryMock).toHaveBeenCalledWith({ enabled: true });
   });
 
   it('disables the hall print button while optimistic sync is pending', () => {

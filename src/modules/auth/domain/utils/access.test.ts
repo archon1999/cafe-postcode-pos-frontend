@@ -6,6 +6,9 @@ import {
   canAccessCashier,
   canAccessCashierBuilder,
   canAccessCashierPayments,
+  canAccessCashierTableSession,
+  canAccessTableSessionEditor,
+  canAccessTableSessionMenu,
   canAccessTakeawayBuilder,
   canAccessKitchen,
   canAccessWaiter,
@@ -104,6 +107,30 @@ describe('auth access utils', () => {
     expect(canAccessCashier(paymentsOnlyCashier)).toBe(true);
     expect(canAccessCashierBuilder(paymentsOnlyCashier)).toBe(false);
     expect(getPosHomePath(createSession(paymentsOnlyCashier))).toBe('/cashier/open-checks');
+  });
+
+  it('allows table-session access from open-checks only for cashier-origin requests', () => {
+    const waiter = createUser({
+      permissionCodes: ['pos_tables.manage', 'pos_table_menu.view'],
+    });
+    const cashier = createUser({
+      permissionCodes: ['pos_open_checks.view', 'pos_payments.create'],
+      role: {
+        id: 'role-cashier',
+        name: 'Cashier',
+      },
+    });
+
+    expect(canAccessTableSessionEditor(waiter)).toBe(true);
+    expect(canAccessTableSessionMenu(waiter)).toBe(true);
+
+    expect(canAccessCashierTableSession(cashier, 'cashier')).toBe(true);
+    expect(canAccessTableSessionEditor(cashier, 'cashier')).toBe(true);
+    expect(canAccessTableSessionMenu(cashier, 'cashier')).toBe(true);
+
+    expect(canAccessCashierTableSession(cashier)).toBe(false);
+    expect(canAccessTableSessionEditor(cashier)).toBe(false);
+    expect(canAccessTableSessionMenu(cashier)).toBe(false);
   });
 
   it('accepts legacy cashier permission aliases', () => {

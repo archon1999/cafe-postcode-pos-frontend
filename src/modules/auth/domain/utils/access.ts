@@ -88,6 +88,22 @@ export function canManageTableReservations(user: PosUser | null | undefined) {
   return hasPermission(user, POS_TABLE_RESERVATIONS_MANAGE);
 }
 
+export function canAccessCashierTableSession(user: PosUser | null | undefined, source?: string | null) {
+  if (!isRestaurantAccessEnabled(user)) {
+    return false;
+  }
+
+  return source === 'cashier' && canAccessCashierPayments(user);
+}
+
+export function canAccessTableSessionEditor(user: PosUser | null | undefined, source?: string | null) {
+  return canAccessWaiterTables(user) || canAccessCashierTableSession(user, source);
+}
+
+export function canAccessTableSessionMenu(user: PosUser | null | undefined, source?: string | null) {
+  return canAccessWaiterMenu(user) || canAccessCashierTableSession(user, source);
+}
+
 export function canAccessCashierBuilder(user: PosUser | null | undefined) {
   if (!isCashierBuilderMode(user)) {
     return false;

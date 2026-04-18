@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 
-import { canAccessCashierPayments, canAccessTakeawayBuilder, canAccessWaiterMenu, usePosSession } from 'modules/auth';
+import { canAccessCashierPayments, canAccessTableSessionMenu, canAccessTakeawayBuilder, usePosSession } from 'modules/auth';
 import {
   useCurrentWaiterOrder,
   useCurrentWaiterTakeawayOrder,
@@ -46,6 +46,7 @@ type AggregatedWaiterCartItem = {
 export type TableSessionPageContentProps = {
   sessionId: string | null;
   mode: 'hall' | 'takeaway';
+  source?: string | null;
 };
 
 function extractErrorMessage(payload: unknown): string | null {
@@ -96,7 +97,7 @@ function extractThrownErrorMessage(error: unknown) {
   return null;
 }
 
-export function TableSessionPageContent({ sessionId, mode }: TableSessionPageContentProps) {
+export function TableSessionPageContent({ sessionId, mode, source = null }: TableSessionPageContentProps) {
   const navigate = useNavigate();
   const { session, locale, setLocale, setSession, themeMode, setThemeMode } = usePosSession();
   const theme = useTheme();
@@ -110,7 +111,9 @@ export function TableSessionPageContent({ sessionId, mode }: TableSessionPageCon
   const [orderSent, setOrderSent] = useState(false);
   const [selectedCartItemKey, setSelectedCartItemKey] = useState<string | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
-  const canViewMenu = isTakeawayMode ? canAccessTakeawayBuilder(session?.user) : canAccessWaiterMenu(session?.user);
+  const canViewMenu = isTakeawayMode
+    ? canAccessTakeawayBuilder(session?.user)
+    : canAccessTableSessionMenu(session?.user, source);
 
   const sessionQuery = useWaiterTableSessionQuery(sessionId);
   const menuQuery = useWaiterMenuQuery({ enabled: canViewMenu });
@@ -454,15 +457,29 @@ export function TableSessionPageContent({ sessionId, mode }: TableSessionPageCon
                       {menuItemMeta.countMap.get(menuItem.id)}
                     </Box>
                   ) : null}
-                  <Stack justifyContent="space-between" sx={{ minHeight: { xs: 114, md: 126 } }}>
-                    <Stack spacing={0.85} sx={{ p: { xs: 1.35, md: 1.85 } }}>
-                      <Typography variant="body2" color="text.secondary">
-                        {menuItem.prepStationName ?? copy.menu}
-                      </Typography>
-                      <Typography variant="h6" sx={{ pr: 1 }}>
-                        {menuItem.name}
-                      </Typography>
-                    </Stack>
+                    <Stack justifyContent="space-between" sx={{ minHeight: { xs: 114, md: 126 } }}>
+                      <Stack spacing={0.85} sx={{ p: { xs: 1.35, md: 1.85 } }}>
+                        <Typography variant="body2" color="text.secondary">
+                          {menuItem.prepStationName ?? copy.menu}
+                        </Typography>
+                        <Typography variant="h6" sx={{ pr: 1 }}>
+                          {menuItem.name}
+                        </Typography>
+                        {menuItem.description ? (
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{
+                              pr: 1,
+                              overflow: 'hidden',
+                              display: '-webkit-box',
+                              WebkitBoxOrient: 'vertical',
+                              WebkitLineClamp: 2,
+                            }}>
+                            {menuItem.description}
+                          </Typography>
+                        ) : null}
+                      </Stack>
                     <Box
                       sx={(theme) => ({
                         minHeight: 40,
