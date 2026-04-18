@@ -1,7 +1,7 @@
 ﻿import { Icon } from '@iconify/react';
 import { Box, Button, Stack, Typography, alpha } from '@mui/material';
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 
 import { getPosCopy, localeLabels } from 'shared/locale/copy';
 import { PosLogo } from 'shared/ui/PosLogo';
@@ -14,8 +14,10 @@ const keypad = ['1', '2', '3', 'backspace', '4', '5', '6', '', '7', '8', '9', ''
 const PIN_LENGTH = 4;
 
 export function LoginPageContent() {
+  const location = useLocation();
   const navigate = useNavigate();
-  const { locale, restaurantContext, setLocale, setSession, themeMode, setThemeMode } = usePosSession();
+  const { locale, restaurantContext, setLocale, setRestaurantContext, setSession, themeMode, setThemeMode } =
+    usePosSession();
   const copy = getPosCopy(locale);
   const [pin, setPin] = useState('');
   const [toastOpen, setToastOpen] = useState(false);
@@ -38,7 +40,7 @@ export function LoginPageContent() {
       setToastOpen(false);
       setErrorMessage('');
       setSession(response);
-      navigate(getPosHomePath(response), { replace: true });
+      void navigate(getPosHomePath(response), { replace: true });
     },
     onError: (error) => {
       setPin('');
@@ -46,6 +48,19 @@ export function LoginPageContent() {
       setToastOpen(true);
     },
   });
+
+  const handleRestaurantSignOut = () => {
+    if (loginMutation.isPending) {
+      return;
+    }
+
+    setPin('');
+    setToastOpen(false);
+    setErrorMessage('');
+    setSession(null);
+    setRestaurantContext(null);
+    void navigate(`/restaurant-login${location.search}`, { replace: true });
+  };
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -69,7 +84,7 @@ export function LoginPageContent() {
   useEffect(() => {
     if (pin.length === PIN_LENGTH && !loginMutation.isPending) {
       if (!restaurantContext) {
-        navigate('/restaurant-login', { replace: true });
+        void navigate('/restaurant-login', { replace: true });
         return;
       }
       loginMutation.mutate({ pin, restaurantId: restaurantContext.restaurantId });
@@ -237,8 +252,12 @@ export function LoginPageContent() {
             })}
           </Box>
 
-          <Stack direction="row" spacing={1.1} justifyContent="space-between" alignItems="center">
-            <Stack direction="row" spacing={1}>
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={1.1}
+            justifyContent="space-between"
+            alignItems={{ xs: 'stretch', sm: 'center' }}>
+            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
               {(['uz', 'uz-crl', 'ru'] as const).map((currentLocale) => (
                 <Button
                   key={currentLocale}
@@ -257,6 +276,20 @@ export function LoginPageContent() {
                   {localeLabels[currentLocale]}
                 </Button>
               ))}
+
+              <Button
+                variant="contained"
+                disabled={loginMutation.isPending}
+                onClick={handleRestaurantSignOut}
+                startIcon={<Icon icon="solar:logout-3-bold-duotone" width={18} />}
+                sx={(theme) => ({
+                  minWidth: 112,
+                  backgroundImage: 'none',
+                  backgroundColor: theme.palette.mode === 'dark' ? '#25272b' : alpha('#ece4d7', 0.9),
+                  color: 'text.primary',
+                })}>
+                {copy.signOut}
+              </Button>
             </Stack>
 
             {toastOpen ? (
