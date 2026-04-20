@@ -1,6 +1,22 @@
-﻿import { Box, Button, Divider, Drawer, Stack, Typography, alpha, useMediaQuery } from '@mui/material';
+import { Icon } from '@iconify/react';
+import {
+  Box,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  Drawer,
+  IconButton,
+  Stack,
+  TextField,
+  Typography,
+  alpha,
+  useMediaQuery,
+} from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router';
 
 import { canAccessTakeawayBuilder, canManageCashierPayments, usePosSession } from 'modules/auth';
@@ -8,8 +24,13 @@ import {
   useCashierOpenChecksQuery,
   useCashierRefundMutation,
   useCashierReprintMutation,
+  useCashierUpdateOrderDisplayNameMutation,
 } from 'modules/cashier/application';
-import { groupCashierOrderItemsByStation } from 'modules/cashier/domain';
+import {
+  getCashierOrderDisplayName,
+  getCashierOrderNumberLabel,
+  groupCashierOrderItemsByStation,
+} from 'modules/cashier/domain';
 import type { CashierOrder } from 'modules/cashier/domain/entities/order.types';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { type PosLocale, getPosCopy } from 'shared/locale/copy';
@@ -23,6 +44,10 @@ import {
 } from 'shared/ui/pos-primitives';
 
 type CashierPayment = NonNullable<CashierOrder['payments']>[number];
+type MutationErrorPayload = {
+  displayName?: string[];
+  detail?: string;
+};
 
 function OpenChecksList({
   copy,
@@ -30,6 +55,7 @@ function OpenChecksList({
   orders,
   selectedOrderId,
   selectedTab,
+  onRename,
   onSelect,
 }: {
   copy: ReturnType<typeof getPosCopy>;
@@ -37,6 +63,7 @@ function OpenChecksList({
   orders: CashierOrder[];
   selectedOrderId?: string;
   selectedTab: 'open' | 'closed';
+  onRename: (order: CashierOrder) => void;
   onSelect: (orderId: string) => void;
 }) {
   return (
@@ -45,9 +72,16 @@ function OpenChecksList({
         orders.map((order) => (
           <Box
             key={order.id}
-            component="button"
-            type="button"
+            component="div"
+            role="button"
+            tabIndex={0}
             onClick={() => onSelect(order.id)}
+            onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                onSelect(order.id);
+              }
+            }}
             sx={(theme) => ({
               border: 0,
               width: '100%',
@@ -57,6 +91,7 @@ function OpenChecksList({
               py: 1.65,
               cursor: 'pointer',
               color: 'inherit',
+              outline: 0,
               backgroundColor:
                 selectedOrderId === order.id
                   ? theme.palette.mode === 'dark'
@@ -83,7 +118,25 @@ function OpenChecksList({
                   {order.channel === 'takeaway' ? 'TG' : (order.tableName?.match(/\d+/)?.[0] ?? '0')}
                 </Box>
                 <Stack spacing={0.4}>
-                  <Typography variant="h6">A{String(order.orderNumber).padStart(5, '0')}</Typography>
+                  <Stack direction="row" spacing={0.75} alignItems="center">
+                    <Typography variant="h6">{getCashierOrderDisplayName(order)}</Typography>
+                    {selectedTab === 'open' ? (
+                      <IconButton
+                        aria-label={copy.renameOrder}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onRename(order);
+                        }}
+                        sx={{ p: 0.4 }}>
+                        <Icon icon="solar:pen-2-bold-duotone" width={18} />
+                      </IconButton>
+                    ) : null}
+                  </Stack>
+                  {order.displayName?.trim() ? (
+                    <Typography variant="body2" color="text.secondary">
+                      {copy.orders}: {getCashierOrderNumberLabel(order)}
+                    </Typography>
+                  ) : null}
                   <Typography variant="body2" color="text.secondary">
                     {order.channel === 'takeaway' ? copy.takeawayLabel : `${order.guestCount} ${copy.guests}`}
                   </Typography>
@@ -126,7 +179,6 @@ function OpenChecksDetail({
   groupedItems,
   latestSucceededPayment,
   locale,
-  onGoToMenu,
   onPay,
   onRefund,
   onReprint,
@@ -135,13 +187,11 @@ function OpenChecksDetail({
   refundAvailable,
   reprintAvailable,
   selectedTab,
-  showGoToMenu,
 }: {
   copy: ReturnType<typeof getPosCopy>;
   groupedItems: ReturnType<typeof groupCashierOrderItemsByStation>;
   latestSucceededPayment: CashierPayment | undefined;
   locale: PosLocale;
-  onGoToMenu?: () => void;
   onPay: () => void;
   onRefund: () => void;
   onReprint: () => void;
@@ -150,7 +200,6 @@ function OpenChecksDetail({
   refundAvailable: boolean;
   reprintAvailable: boolean;
   selectedTab: 'open' | 'closed';
-  showGoToMenu: boolean;
 }) {
   const serviceFeePercent = Number(order.serviceFeePercent ?? (order.channel === 'hall' ? 10 : 0));
   const serviceFeeLabel = `${copy.serviceFee} (${serviceFeePercent}%)`;
@@ -184,8 +233,9 @@ function OpenChecksDetail({
           </Box>
 
           <Stack spacing={0.25}>
-            <Typography variant="body1" color="text.secondary">
-              {copy.orders}: A{String(order.orderNumber).padStart(5, '0')}
+            <Typography variant="h5">{getCashierOrderDisplayName(order)}</Typography>
+            <Typography variant="body2" color="text.secondary">
+              {copy.orders}: {getCashierOrderNumberLabel(order)}
             </Typography>
             <Typography variant="body2" color="text.secondary">
               {order.channel === 'takeaway' ? copy.takeawayLabel : `${order.guestCount} ${copy.guests}`}
@@ -306,20 +356,6 @@ function OpenChecksDetail({
         </Stack>
         {selectedTab === 'open' ? (
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.1}>
-            {showGoToMenu ? (
-              <Button
-                variant="contained"
-                size="large"
-                sx={(theme) => ({
-                  flex: 1,
-                  backgroundImage: 'none',
-                  backgroundColor: theme.palette.mode === 'dark' ? '#4d535a' : '#d8cfbf',
-                  color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
-                })}
-                onClick={onGoToMenu}>
-                {copy.goToMenu}
-              </Button>
-            ) : null}
             <Button variant="contained" size="large" sx={{ flex: 1.15 }} onClick={onPay}>
               {copy.pay}
             </Button>
@@ -361,8 +397,17 @@ export function OpenChecksPageContent() {
   const [selectedTab, setSelectedTab] = useState<'open' | 'closed'>('open');
   const [selectedOrderId, setSelectedOrderId] = useState<string>('');
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
+  const [renameOrder, setRenameOrder] = useState<CashierOrder | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [renameError, setRenameError] = useState('');
   const refundMutation = useCashierRefundMutation();
   const reprintMutation = useCashierReprintMutation();
+  const updateOrderDisplayNameMutation = useCashierUpdateOrderDisplayNameMutation({
+    onSuccess: () => {
+      setRenameOrder(null);
+      setRenameError('');
+    },
+  });
 
   const openOrdersQuery = useCashierOpenChecksQuery('open');
   const closedOrdersQuery = useCashierOpenChecksQuery('closed');
@@ -387,9 +432,6 @@ export function OpenChecksPageContent() {
     return receipts[receipts.length - 1];
   }, [selectedOrder?.receipts]);
   const canOperatePayments = canManageCashierPayments(session?.user);
-  const canGoToMenu = Boolean(
-    selectedTab === 'open' && selectedOrder?.channel === 'hall' && selectedOrder?.tableSession,
-  );
   const receiptNumber = useMemo(() => {
     const payload = latestReceipt?.payload as Record<string, unknown> | undefined;
     const rawReceiptNumber = payload?.receiptNumber ?? payload?.receipt_number;
@@ -402,6 +444,32 @@ export function OpenChecksPageContent() {
     selectedTab === 'closed' && latestSucceededPayment?.id && !latestSucceededPayment?.isRefunded && canOperatePayments,
   );
   const canReprint = Boolean(selectedTab === 'closed' && latestReceipt?.id && canOperatePayments);
+  const renameOrderNumberLabel = renameOrder ? getCashierOrderNumberLabel(renameOrder) : copy.orders;
+  const renameOrderPreview = renameOrder
+    ? getCashierOrderDisplayName({ orderNumber: renameOrder.orderNumber, displayName: renameValue })
+    : copy.orders;
+
+  const handleOpenRenameDialog = (order: CashierOrder) => {
+    setRenameOrder(order);
+    setRenameValue(order.displayName?.trim() ?? '');
+    setRenameError('');
+  };
+
+  const handleRenameSave = async () => {
+    if (!renameOrder) {
+      return;
+    }
+
+    try {
+      await updateOrderDisplayNameMutation.mutateAsync({
+        orderId: renameOrder.id,
+        displayName: renameValue.trim(),
+      });
+    } catch (error) {
+      const errorResponse = (error as { response?: { data?: MutationErrorPayload } })?.response?.data;
+      setRenameError(errorResponse?.displayName?.[0] ?? errorResponse?.detail ?? copy.renameOrderFailed);
+    }
+  };
 
   const detailPanel = selectedOrder ? (
     <OpenChecksDetail
@@ -409,17 +477,6 @@ export function OpenChecksPageContent() {
       groupedItems={groupedItems}
       latestSucceededPayment={latestSucceededPayment}
       locale={locale}
-      onGoToMenu={() => {
-        if (!selectedOrder?.tableSession) {
-          return;
-        }
-
-        const params = new URLSearchParams({
-          sessionId: selectedOrder.tableSession,
-          source: 'cashier',
-        });
-        navigate(`/waiter/table-session?${params.toString()}`);
-      }}
       onPay={() => navigate(`/cashier/payment?orderId=${selectedOrder.id}`)}
       onRefund={() => {
         if (!latestSucceededPayment?.id || refundMutation.isPending) {
@@ -438,7 +495,6 @@ export function OpenChecksPageContent() {
       refundAvailable={canRefund}
       reprintAvailable={canReprint}
       selectedTab={selectedTab}
-      showGoToMenu={canGoToMenu}
     />
   ) : null;
 
@@ -489,6 +545,7 @@ export function OpenChecksPageContent() {
             orders={visibleOrders}
             selectedOrderId={selectedOrderId}
             selectedTab={selectedTab}
+            onRename={handleOpenRenameDialog}
             onSelect={(orderId) => {
               setSelectedOrderId(orderId);
               setMobileDetailOpen(true);
@@ -510,6 +567,7 @@ export function OpenChecksPageContent() {
             orders={visibleOrders}
             selectedOrderId={selectedOrder?.id}
             selectedTab={selectedTab}
+            onRename={handleOpenRenameDialog}
             onSelect={setSelectedOrderId}
           />
           <Box sx={{ minHeight: 0 }}>{detailPanel}</Box>
@@ -539,7 +597,10 @@ export function OpenChecksPageContent() {
             <Stack spacing={0.25}>
               <Typography variant="h6">{copy.bills}</Typography>
               <Typography variant="body2" color="text.secondary">
-                {selectedOrder ? `A${String(selectedOrder.orderNumber).padStart(5, '0')}` : copy.orders}
+                {selectedOrder ? getCashierOrderDisplayName(selectedOrder) : copy.orders}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {selectedOrder ? getCashierOrderNumberLabel(selectedOrder) : copy.orders}
               </Typography>
             </Stack>
             <PosIconAction icon="solar:close-circle-bold-duotone" onClick={() => setMobileDetailOpen(false)} />
@@ -562,6 +623,47 @@ export function OpenChecksPageContent() {
         }}
         themeMode={themeMode}
       />
+
+      <Dialog open={Boolean(renameOrder)} onClose={() => setRenameOrder(null)} maxWidth="xs" fullWidth fullScreen={isMobile}>
+        <DialogTitle>{copy.renameOrder}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1.4} sx={{ pt: 1 }}>
+            <Typography variant="body2" color="text.secondary">
+              {renameOrderPreview}
+            </Typography>
+            <TextField
+              autoFocus
+              label={copy.orderName}
+              value={renameValue}
+              onChange={(event) => {
+                setRenameValue(event.target.value);
+                if (renameError) {
+                  setRenameError('');
+                }
+              }}
+              placeholder={copy.orderNamePlaceholder}
+              error={Boolean(renameError)}
+              helperText={renameError || renameOrderNumberLabel}
+              inputProps={{ maxLength: 120 }}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button
+            variant="contained"
+            onClick={() => setRenameOrder(null)}
+            sx={(theme) => ({
+              backgroundImage: 'none',
+              backgroundColor: theme.palette.mode === 'dark' ? '#4d535a' : '#d8cfbf',
+              color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
+            })}>
+            {copy.cancel}
+          </Button>
+          <Button variant="contained" onClick={() => void handleRenameSave()} disabled={updateOrderDisplayNameMutation.isPending}>
+            {copy.save}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </PosPageFrame>
   );
 }

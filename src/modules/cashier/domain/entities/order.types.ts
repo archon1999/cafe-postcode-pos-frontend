@@ -14,6 +14,7 @@ export type CashierOrder = {
   openedBy?: string | null;
   openedByName?: string | null;
   orderNumber: number;
+  displayName?: string | null;
   status: string;
   subtotal: number | string;
   serviceFee: number | string;

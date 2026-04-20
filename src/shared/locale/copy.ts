@@ -34,6 +34,7 @@ const localeDictionary = {
     back: 'Orqaga',
     close: 'Yopish',
     goToMenu: "Menyuga o'tish",
+    addOneMore: "Yana qo'shish",
     closeSession: 'Sessiyani yopish',
     openTable: 'Stolni ochish',
     reserveTable: 'Stolni bronlash',
@@ -375,6 +376,57 @@ export const localeLabels: Record<PosLocale, string> = {
   ru: 'Русский',
 };
 
+const addOneMoreLabels: Record<PosLocale, string> = {
+  uz: "Yana qo'shish",
+  'uz-crl': 'Яна қўшиш',
+  ru: 'Добавить еще',
+};
+
+const saveLabels: Record<PosLocale, string> = {
+  uz: 'Saqlash',
+  'uz-crl': 'Сақлаш',
+  ru: 'Сохранить',
+};
+
+const cancelLabels: Record<PosLocale, string> = {
+  uz: 'Bekor qilish',
+  'uz-crl': 'Бекор қилиш',
+  ru: 'Отмена',
+};
+
+const orderNameLabels: Record<PosLocale, string> = {
+  uz: 'Buyurtma nomi',
+  'uz-crl': 'Буюртма номи',
+  ru: 'Название заказа',
+};
+
+const renameOrderLabels: Record<PosLocale, string> = {
+  uz: "Buyurtma nomini o'zgartirish",
+  'uz-crl': 'Буюртма номини ўзгартириш',
+  ru: 'Переименовать заказ',
+};
+
+const orderNamePlaceholderLabels: Record<PosLocale, string> = {
+  uz: 'Masalan, VIP mijoz',
+  'uz-crl': 'Масалан, VIP мижоз',
+  ru: 'Например, VIP клиент',
+};
+
+const renameOrderFailedLabels: Record<PosLocale, string> = {
+  uz: "Buyurtma nomini saqlab bo'lmadi.",
+  'uz-crl': 'Буюртма номини сақлаб бўлмади.',
+  ru: 'Не удалось сохранить название заказа.',
+};
+
 export function getPosCopy(locale: PosLocale) {
-  return localeDictionary[locale];
+  return {
+    ...localeDictionary[locale],
+    addOneMore: addOneMoreLabels[locale],
+    save: saveLabels[locale],
+    cancel: cancelLabels[locale],
+    orderName: orderNameLabels[locale],
+    renameOrder: renameOrderLabels[locale],
+    orderNamePlaceholder: orderNamePlaceholderLabels[locale],
+    renameOrderFailed: renameOrderFailedLabels[locale],
+  };
 }

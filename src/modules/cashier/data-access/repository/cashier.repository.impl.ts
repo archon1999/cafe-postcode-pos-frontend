@@ -7,7 +7,7 @@ import type {
   CashierRepository,
   PaymentMethod,
 } from 'modules/cashier/domain';
-import { apiDelete, apiGet, apiPost, unwrapCollection } from 'shared/api/client';
+import { apiDelete, apiGet, apiPatch, apiPost, unwrapCollection } from 'shared/api/client';
 
 import {
   mapCashierCreateOrderResponse,
@@ -79,6 +79,14 @@ class CashierRepositoryImpl implements CashierRepository {
 
   async removeOrderItem(itemId: string) {
     await apiDelete(`/pos/sales/orders/items/${itemId}/`);
+  }
+
+  async updateOrderDisplayName(orderId: string, displayName: string) {
+    return mapCashierOrder(
+      await apiPatch<CashierOrder>(`/pos/sales/orders/${orderId}/`, {
+        displayName,
+      }),
+    );
   }
 
   async submitOrder(orderId: string) {

@@ -21,6 +21,7 @@ import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { getPosCopy } from 'shared/locale/copy';
 import { useOptimisticBuilderOrder } from 'shared/pos/useOptimisticBuilderOrder';
 import { formatCompactMoney } from 'shared/pos/utils';
+import { resolveApiBaseUrl } from 'shared/api/apiUrl';
 import {
   PosBuilderPageSkeleton,
   PosIconAction,
@@ -40,6 +41,18 @@ type AggregatedCashierCartItem = {
   status: string;
   itemIds: string[];
 };
+
+function resolveMenuItemImageUrl(imageUrl?: string | null) {
+  if (!imageUrl) {
+    return null;
+  }
+
+  try {
+    return new URL(imageUrl, resolveApiBaseUrl()).toString();
+  } catch {
+    return imageUrl;
+  }
+}
 
 export function CashierBuilderPageContent() {
   const navigate = useNavigate();
@@ -254,6 +267,8 @@ export function CashierBuilderPageContent() {
             }}>
             {(selectedCategory?.items ?? []).map((menuItem) => {
               const displayPrice = Number(menuItem.price ?? 0);
+              const menuItemImageUrl = resolveMenuItemImageUrl(menuItem.imageUrl);
+              const hasSelectedCount = (menuItemMeta.countMap.get(menuItem.id) ?? 0) > 0;
 
               return (
                 <Box
@@ -300,7 +315,7 @@ export function CashierBuilderPageContent() {
                       sx={(theme) => ({
                         position: 'absolute',
                         top: 10,
-                        right: 10,
+                        left: 10,
                         minWidth: 32,
                         height: 32,
                         px: 1,
@@ -316,8 +331,33 @@ export function CashierBuilderPageContent() {
                       {menuItemMeta.countMap.get(menuItem.id)}
                     </Box>
                   ) : null}
-                    <Stack justifyContent="space-between" sx={{ minHeight: { xs: 114, md: 126 } }}>
-                      <Stack spacing={0.75} sx={{ p: { xs: 1.35, md: 1.85 } }}>
+                  {menuItemImageUrl ? (
+                    <Box
+                      component="img"
+                      src={menuItemImageUrl}
+                      alt={menuItem.name}
+                      loading="lazy"
+                      sx={{
+                        position: 'absolute',
+                        top: 10,
+                        right: 10,
+                        width: { xs: 48, md: 58 },
+                        height: { xs: 48, md: 58 },
+                        objectFit: 'cover',
+                        borderRadius: '8px',
+                        boxShadow: '0 8px 18px rgba(0,0,0,0.18)',
+                        backgroundColor: alpha('#ffffff', 0.3),
+                      }}
+                    />
+                  ) : null}
+                  <Stack justifyContent="space-between" sx={{ minHeight: { xs: 114, md: 126 } }}>
+                    <Stack
+                      spacing={0.75}
+                      sx={{
+                        p: { xs: 1.35, md: 1.85 },
+                        pr: menuItemImageUrl ? { xs: 7.25, md: 9.5 } : undefined,
+                        pl: hasSelectedCount ? { xs: 5.25, md: 5.75 } : undefined,
+                      }}>
                         <Typography variant="body2" color="text.secondary">
                           {menuItem.prepStationName ?? copy.menu}
                         </Typography>
@@ -338,7 +378,7 @@ export function CashierBuilderPageContent() {
                             {menuItem.description}
                           </Typography>
                         ) : null}
-                      </Stack>
+                    </Stack>
                     <Box
                       sx={(theme) => ({
                         minHeight: 40,

@@ -71,6 +71,11 @@ export async function apiPost<T>(url: string, payload?: unknown) {
   return response.data;
 }
 
+export async function apiPatch<T>(url: string, payload?: unknown) {
+  const response = await apiClient.patch<T>(url, payload);
+  return response.data;
+}
+
 export async function apiDelete<T = void>(url: string) {
   const response = await apiClient.delete<T>(url);
   return response.data;

@@ -3,10 +3,10 @@ import { describe, expect, it } from 'vitest';
 import type { PosSessionPayload, PosUser } from '../entities';
 
 import {
+  canAddCashierPaymentOrderItems,
   canAccessCashier,
   canAccessCashierBuilder,
   canAccessCashierPayments,
-  canAccessCashierTableSession,
   canAccessTableSessionEditor,
   canAccessTableSessionMenu,
   canAccessTakeawayBuilder,
@@ -109,7 +109,7 @@ describe('auth access utils', () => {
     expect(getPosHomePath(createSession(paymentsOnlyCashier))).toBe('/cashier/open-checks');
   });
 
-  it('allows table-session access from open-checks only for cashier-origin requests', () => {
+  it('keeps hall session access limited to waiter permissions', () => {
     const waiter = createUser({
       permissionCodes: ['pos_tables.manage', 'pos_table_menu.view'],
     });
@@ -123,14 +123,28 @@ describe('auth access utils', () => {
 
     expect(canAccessTableSessionEditor(waiter)).toBe(true);
     expect(canAccessTableSessionMenu(waiter)).toBe(true);
-
-    expect(canAccessCashierTableSession(cashier, 'cashier')).toBe(true);
-    expect(canAccessTableSessionEditor(cashier, 'cashier')).toBe(true);
-    expect(canAccessTableSessionMenu(cashier, 'cashier')).toBe(true);
-
-    expect(canAccessCashierTableSession(cashier)).toBe(false);
     expect(canAccessTableSessionEditor(cashier)).toBe(false);
     expect(canAccessTableSessionMenu(cashier)).toBe(false);
+  });
+
+  it('keeps payment-page item adds behind a separate fast-food permission', () => {
+    const restaurantCashier = createUser({
+      permissionCodes: ['pos_open_checks.view', 'pos_payments.create'],
+      role: {
+        id: 'role-cashier',
+        name: 'Cashier',
+      },
+    });
+    const fastFoodCashier = createUser({
+      permissionCodes: ['pos_open_checks.view', 'pos_payments.create', 'pos_payment_order_items.create'],
+      role: {
+        id: 'role-fast-food-cashier',
+        name: 'Fast Food Cashier',
+      },
+    });
+
+    expect(canAddCashierPaymentOrderItems(restaurantCashier)).toBe(false);
+    expect(canAddCashierPaymentOrderItems(fastFoodCashier)).toBe(true);
   });
 
   it('accepts legacy cashier permission aliases', () => {

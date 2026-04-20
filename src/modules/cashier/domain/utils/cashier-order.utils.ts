@@ -19,6 +19,45 @@ export function groupCashierOrderItemsByStation(items: CashierOrderItem[] | unde
   return Array.from(groupMap.entries());
 }
 
+export function aggregateCashierOrderItems(items: CashierOrderItem[] | undefined) {
+  const aggregatedItemMap = new Map<
+    string,
+    CashierOrderItem & {
+      key: string;
+    }
+  >();
+
+  for (const item of items ?? []) {
+    const statusGroup = item.status === 'cancelled' ? 'cancelled' : 'active';
+    const aggregationKey = [item.catalogItem, item.note ?? '', statusGroup, item.prepStationName ?? ''].join('::');
+    const existing = aggregatedItemMap.get(aggregationKey);
+
+    if (existing) {
+      existing.quantity = Number(existing.quantity ?? 0) + Number(item.quantity ?? 0);
+      existing.lineTotal = Number(existing.lineTotal ?? 0) + Number(item.lineTotal ?? 0);
+      continue;
+    }
+
+    aggregatedItemMap.set(aggregationKey, {
+      ...item,
+      quantity: Number(item.quantity ?? 0),
+      lineTotal: Number(item.lineTotal ?? 0),
+      key: aggregationKey,
+    });
+  }
+
+  return Array.from(aggregatedItemMap.values());
+}
+
+export function getCashierOrderNumberLabel(order: Pick<CashierOrder, 'orderNumber'>) {
+  return `A${String(order.orderNumber).padStart(5, '0')}`;
+}
+
+export function getCashierOrderDisplayName(order: Pick<CashierOrder, 'orderNumber' | 'displayName'>) {
+  const normalizedDisplayName = order.displayName?.trim();
+  return normalizedDisplayName || getCashierOrderNumberLabel(order);
+}
+
 export function getCurrentCashierBuilderOrder(orders: CashierOrder[] | undefined, userId: string | undefined) {
   return (orders ?? []).find(
     (order) =>

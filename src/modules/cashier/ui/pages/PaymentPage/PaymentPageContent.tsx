@@ -1,9 +1,11 @@
-﻿import {
+import {
   Box,
   Button,
   Dialog,
+  DialogActions,
   DialogContent,
   DialogTitle,
+  IconButton,
   Snackbar,
   Stack,
   TextField,
@@ -15,13 +17,27 @@ import { useTheme } from '@mui/material/styles';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 
-import { canAccessTakeawayBuilder, canManageCashierPayments, usePosSession } from 'modules/auth';
+import { Icon } from '@iconify/react';
 import {
+  canAddCashierPaymentOrderItems,
+  canAccessTakeawayBuilder,
+  canManageCashierPayments,
+  usePosSession,
+} from 'modules/auth';
+import {
+  useAddCashierPaymentOrderItemMutation,
   useCashierContextQuery,
   useCashierPaymentMutation,
   useCashierPaymentOrderQuery,
+  useCashierUpdateOrderDisplayNameMutation,
 } from 'modules/cashier/application';
-import type { CashierPaymentResponse, PaymentMethod } from 'modules/cashier/domain';
+import {
+  aggregateCashierOrderItems,
+  getCashierOrderDisplayName,
+  getCashierOrderNumberLabel,
+  type CashierPaymentResponse,
+  type PaymentMethod,
+} from 'modules/cashier/domain';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { getPosCopy } from 'shared/locale/copy';
 import { formatCompactMoney, formatTime } from 'shared/pos/utils';
@@ -29,6 +45,11 @@ import { PosIconAction, PosOrderChannelSegment, PosSettingsMenu } from 'shared/u
 
 export type PaymentPageContentProps = {
   orderId?: string | null;
+};
+
+type MutationErrorPayload = {
+  displayName?: string[];
+  detail?: string;
 };
 
 export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
@@ -45,7 +66,12 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   const [receiptData, setReceiptData] = useState<CashierPaymentResponse | null>(null);
   const [paymentErrorToastOpen, setPaymentErrorToastOpen] = useState(false);
   const [printToastOpen, setPrintToastOpen] = useState(false);
+  const [addingItemId, setAddingItemId] = useState<string | null>(null);
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  const [renameValue, setRenameValue] = useState('');
+  const [renameError, setRenameError] = useState('');
   const canProcessPayments = canManageCashierPayments(session?.user);
+  const canAddPaymentItems = canAddCashierPaymentOrderItems(session?.user);
   const normalizedOrderId = orderId ?? null;
 
   const cashierContextQuery = useCashierContextQuery({
@@ -57,6 +83,16 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     orderId: normalizedOrderId,
     onSuccess: () => setQrDialogOpen(false),
   });
+  const addPaymentOrderItemMutation = useAddCashierPaymentOrderItemMutation({
+    orderId: normalizedOrderId,
+    onSuccess: () => setAddingItemId(null),
+  });
+  const updateOrderDisplayNameMutation = useCashierUpdateOrderDisplayNameMutation({
+    onSuccess: () => {
+      setRenameDialogOpen(false);
+      setRenameError('');
+    },
+  });
   const selectedCashDesk = cashierContextQuery.data?.availableCashDesks[0] ?? null;
 
   const remainingTotal = useMemo(() => {
@@ -67,6 +103,20 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
 
     return Math.max(total - paidTotal, 0);
   }, [orderQuery.data?.payments, orderQuery.data?.total]);
+  const aggregatedOrderItems = useMemo(() => aggregateCashierOrderItems(orderQuery.data?.items), [orderQuery.data?.items]);
+  const orderNumberLabel = useMemo(
+    () => getCashierOrderNumberLabel({ orderNumber: orderQuery.data?.orderNumber ?? 0 }),
+    [orderQuery.data?.orderNumber],
+  );
+  const orderDisplayName = useMemo(
+    () =>
+      getCashierOrderDisplayName({
+        orderNumber: orderQuery.data?.orderNumber ?? 0,
+        displayName: orderQuery.data?.displayName,
+      }),
+    [orderQuery.data?.displayName, orderQuery.data?.orderNumber],
+  );
+  const hasCustomOrderName = Boolean(orderQuery.data?.displayName?.trim());
 
   useEffect(() => {
     if (remainingTotal > 0) {
@@ -139,6 +189,45 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     }
   };
 
+  const handleAddOrderItem = async (itemId: string, catalogItemId: string, note?: string | null) => {
+    if (!canAddPaymentItems || addPaymentOrderItemMutation.isPending) {
+      return;
+    }
+
+    setAddingItemId(itemId);
+
+    try {
+      await addPaymentOrderItemMutation.mutateAsync({
+        catalogItemId,
+        note: note ?? '',
+      });
+    } catch {
+      setAddingItemId(null);
+    }
+  };
+
+  const handleOpenRenameDialog = () => {
+    setRenameValue(orderQuery.data?.displayName?.trim() ?? '');
+    setRenameError('');
+    setRenameDialogOpen(true);
+  };
+
+  const handleRenameOrder = async () => {
+    if (!normalizedOrderId) {
+      return;
+    }
+
+    try {
+      await updateOrderDisplayNameMutation.mutateAsync({
+        orderId: normalizedOrderId,
+        displayName: renameValue.trim(),
+      });
+    } catch (error) {
+      const errorResponse = (error as { response?: { data?: MutationErrorPayload } })?.response?.data;
+      setRenameError(errorResponse?.displayName?.[0] ?? errorResponse?.detail ?? copy.renameOrderFailed);
+    }
+  };
+
   return (
     <PosPageFrame
       header={
@@ -184,20 +273,20 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
           pb: 0.4,
         }}>
         <Box
-          sx={(theme) => ({
+          sx={(muiTheme) => ({
             borderRadius: '14px',
-            backgroundColor: theme.palette.mode === 'dark' ? '#1f2125' : '#f8f1e8',
+            backgroundColor: muiTheme.palette.mode === 'dark' ? '#1f2125' : '#f8f1e8',
             p: { xs: 1.8, md: 2.4 },
-            border: `1px solid ${alpha('#ffffff', theme.palette.mode === 'dark' ? 0.04 : 0.28)}`,
+            border: `1px solid ${alpha('#ffffff', muiTheme.palette.mode === 'dark' ? 0.04 : 0.28)}`,
           })}>
           <Stack spacing={2}>
             <Stack direction="row" spacing={1.5} alignItems="center">
               <Box
-                sx={(theme) => ({
+                sx={(muiTheme) => ({
                   minWidth: { xs: 56, md: 62 },
                   height: { xs: 56, md: 62 },
                   borderRadius: '10px',
-                  backgroundColor: theme.palette.mode === 'dark' ? '#474c54' : '#dad2c4',
+                  backgroundColor: muiTheme.palette.mode === 'dark' ? '#474c54' : '#dad2c4',
                   display: 'grid',
                   placeItems: 'center',
                   fontSize: 28,
@@ -208,8 +297,14 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
                   : (orderQuery.data?.tableName?.match(/\d+/)?.[0] ?? '0')}
               </Box>
               <Stack spacing={0.25}>
-                <Typography variant="body1" color="text.secondary">
-                  {copy.orders}: A{String(orderQuery.data?.orderNumber ?? 0).padStart(5, '0')}
+                <Stack direction="row" spacing={0.75} alignItems="center">
+                  <Typography variant="h5">{orderDisplayName}</Typography>
+                  <IconButton aria-label={copy.renameOrder} onClick={handleOpenRenameDialog} sx={{ p: 0.4 }}>
+                    <Icon icon="solar:pen-2-bold-duotone" width={18} />
+                  </IconButton>
+                </Stack>
+                <Typography variant="body2" color="text.secondary">
+                  {hasCustomOrderName ? `${copy.orders}: ${orderNumberLabel}` : copy.orders}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   {orderQuery.data?.channel === 'takeaway'
@@ -229,16 +324,16 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
             />
 
             <Stack spacing={1.15}>
-              {(orderQuery.data?.items ?? []).map((item) => (
+              {aggregatedOrderItems.map((item) => (
                 <Box
-                  key={item.id}
-                  sx={(theme) => ({
+                  key={item.key}
+                  sx={(muiTheme) => ({
                     borderRadius: '10px',
                     overflow: 'hidden',
-                    backgroundColor: theme.palette.mode === 'dark' ? '#2c2f34' : '#ede4d7',
+                    backgroundColor: muiTheme.palette.mode === 'dark' ? '#2c2f34' : '#ede4d7',
                   })}>
-                  <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 1.65 }}>
-                    <Stack spacing={0.35}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.2} sx={{ p: 1.65 }}>
+                    <Stack spacing={0.35} sx={{ minWidth: 0, flex: 1 }}>
                       <Typography
                         variant="subtitle1"
                         sx={{
@@ -247,20 +342,43 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
                         }}>
                         {item.catalogItemName} (x{item.quantity})
                       </Typography>
+                      {item.note ? (
+                        <Typography variant="body2" color="text.secondary">
+                          {item.note}
+                        </Typography>
+                      ) : null}
                       {item.status === 'cancelled' ? (
                         <Typography variant="caption" sx={{ color: 'error.main', fontWeight: 700 }}>
                           {copy.cancelled}
                         </Typography>
                       ) : null}
                     </Stack>
-                    <Typography
-                      variant="subtitle1"
-                      sx={{
-                        textDecoration: item.status === 'cancelled' ? 'line-through' : 'none',
-                        opacity: item.status === 'cancelled' ? 0.72 : 1,
-                      }}>
-                      {formatCompactMoney(item.lineTotal, locale)}
-                    </Typography>
+                    <Stack spacing={0.9} alignItems="flex-end">
+                      <Typography
+                        variant="subtitle1"
+                        sx={{
+                          whiteSpace: 'nowrap',
+                          textDecoration: item.status === 'cancelled' ? 'line-through' : 'none',
+                          opacity: item.status === 'cancelled' ? 0.72 : 1,
+                        }}>
+                        {formatCompactMoney(item.lineTotal, locale)}
+                      </Typography>
+                      {canAddPaymentItems && item.status !== 'cancelled' ? (
+                        <IconButton
+                          aria-label={copy.addOneMore}
+                          disabled={addPaymentOrderItemMutation.isPending}
+                          onClick={() => void handleAddOrderItem(item.id, item.catalogItem, item.note)}>
+                          <Icon
+                            icon={
+                              addPaymentOrderItemMutation.isPending && addingItemId === item.id
+                                ? 'solar:refresh-bold'
+                                : 'solar:add-circle-bold'
+                            }
+                            width={20}
+                          />
+                        </IconButton>
+                      ) : null}
+                    </Stack>
                   </Stack>
                 </Box>
               ))}
@@ -269,11 +387,11 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
         </Box>
 
         <Box
-          sx={(theme) => ({
+          sx={(muiTheme) => ({
             borderRadius: '14px',
-            backgroundColor: theme.palette.mode === 'dark' ? '#1f2125' : '#f8f1e8',
+            backgroundColor: muiTheme.palette.mode === 'dark' ? '#1f2125' : '#f8f1e8',
             p: { xs: 1.8, md: 2.4 },
-            border: `1px solid ${alpha('#ffffff', theme.palette.mode === 'dark' ? 0.04 : 0.28)}`,
+            border: `1px solid ${alpha('#ffffff', muiTheme.palette.mode === 'dark' ? 0.04 : 0.28)}`,
           })}>
           <Stack spacing={2.2}>
             <Typography variant="h5">{copy.paymentMethod}</Typography>
@@ -284,14 +402,14 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
                   key={option.value}
                   variant="contained"
                   onClick={() => setMethod(option.value)}
-                  sx={(theme) => ({
+                  sx={(muiTheme) => ({
                     flex: 1,
                     minWidth: { xs: '100%', sm: 120 },
                     backgroundImage: 'none',
                     backgroundColor:
                       method === option.value
-                        ? theme.palette.primary.main
-                        : theme.palette.mode === 'dark'
+                        ? muiTheme.palette.primary.main
+                        : muiTheme.palette.mode === 'dark'
                           ? '#2c2f34'
                           : '#ece4d7',
                     color: method === option.value ? '#ffffff' : 'text.primary',
@@ -360,13 +478,13 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
             </Typography>
 
             <Box
-              sx={(theme) => ({
+              sx={(muiTheme) => ({
                 width: 220,
                 height: 220,
                 mx: 'auto',
                 borderRadius: '18px',
-                backgroundColor: theme.palette.mode === 'dark' ? '#0f1012' : '#ffffff',
-                border: `10px solid ${theme.palette.mode === 'dark' ? '#f6f8fb' : '#111216'}`,
+                backgroundColor: muiTheme.palette.mode === 'dark' ? '#0f1012' : '#ffffff',
+                border: `10px solid ${muiTheme.palette.mode === 'dark' ? '#f6f8fb' : '#111216'}`,
                 backgroundImage:
                   'linear-gradient(90deg, rgba(0,0,0,0.92) 12%, transparent 12%, transparent 20%, rgba(0,0,0,0.92) 20%, rgba(0,0,0,0.92) 32%, transparent 32%, transparent 40%, rgba(0,0,0,0.92) 40%, rgba(0,0,0,0.92) 48%, transparent 48%, transparent 56%, rgba(0,0,0,0.92) 56%, rgba(0,0,0,0.92) 68%, transparent 68%, transparent 76%, rgba(0,0,0,0.92) 76%), linear-gradient(rgba(0,0,0,0.92) 12%, transparent 12%, transparent 20%, rgba(0,0,0,0.92) 20%, rgba(0,0,0,0.92) 32%, transparent 32%, transparent 40%, rgba(0,0,0,0.92) 40%, rgba(0,0,0,0.92) 48%, transparent 48%, transparent 56%, rgba(0,0,0,0.92) 56%, rgba(0,0,0,0.92) 68%, transparent 68%, transparent 76%, rgba(0,0,0,0.92) 76%)',
                 backgroundSize: '40px 40px',
@@ -386,17 +504,17 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
             />
 
             <Box
-              sx={(theme) => ({
+              sx={(muiTheme) => ({
                 height: 8,
                 borderRadius: 999,
-                backgroundColor: theme.palette.mode === 'dark' ? '#2a2d31' : '#e4daca',
+                backgroundColor: muiTheme.palette.mode === 'dark' ? '#2a2d31' : '#e4daca',
                 overflow: 'hidden',
               })}>
               <Box
-                sx={(theme) => ({
+                sx={(muiTheme) => ({
                   width: `${((5 - qrCountdown) / 5) * 100}%`,
                   height: '100%',
-                  backgroundColor: theme.palette.primary.main,
+                  backgroundColor: muiTheme.palette.primary.main,
                 })}
               />
             </Box>
@@ -411,15 +529,59 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
             <Button
               variant="contained"
               onClick={() => setQrDialogOpen(false)}
-              sx={(theme) => ({
+              sx={(muiTheme) => ({
                 backgroundImage: 'none',
-                backgroundColor: theme.palette.mode === 'dark' ? '#4d535a' : '#d8cfbf',
-                color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
+                backgroundColor: muiTheme.palette.mode === 'dark' ? '#4d535a' : '#d8cfbf',
+                color: muiTheme.palette.mode === 'dark' ? '#f5f5f5' : muiTheme.palette.text.primary,
               })}>
               {copy.cancelQr}
             </Button>
           </Stack>
         </DialogContent>
+      </Dialog>
+
+      <Dialog open={renameDialogOpen} onClose={() => setRenameDialogOpen(false)} maxWidth="xs" fullWidth fullScreen={isMobile}>
+        <DialogTitle>{copy.renameOrder}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1.4} sx={{ pt: 1 }}>
+            <Typography variant="body2" color="text.secondary">
+              {getCashierOrderDisplayName({
+                orderNumber: orderQuery.data?.orderNumber ?? 0,
+                displayName: renameValue,
+              })}
+            </Typography>
+            <TextField
+              autoFocus
+              label={copy.orderName}
+              value={renameValue}
+              onChange={(event) => {
+                setRenameValue(event.target.value);
+                if (renameError) {
+                  setRenameError('');
+                }
+              }}
+              placeholder={copy.orderNamePlaceholder}
+              error={Boolean(renameError)}
+              helperText={renameError || orderNumberLabel}
+              inputProps={{ maxLength: 120 }}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button
+            variant="contained"
+            onClick={() => setRenameDialogOpen(false)}
+            sx={(muiTheme) => ({
+              backgroundImage: 'none',
+              backgroundColor: muiTheme.palette.mode === 'dark' ? '#4d535a' : '#d8cfbf',
+              color: muiTheme.palette.mode === 'dark' ? '#f5f5f5' : muiTheme.palette.text.primary,
+            })}>
+            {copy.cancel}
+          </Button>
+          <Button variant="contained" onClick={() => void handleRenameOrder()} disabled={updateOrderDisplayNameMutation.isPending}>
+            {copy.save}
+          </Button>
+        </DialogActions>
       </Dialog>
 
       <Dialog
@@ -469,11 +631,11 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.2} sx={{ pt: 1 }}>
               <Button
                 variant="contained"
-                sx={(theme) => ({
+                sx={(muiTheme) => ({
                   flex: 1,
                   backgroundImage: 'none',
-                  backgroundColor: theme.palette.mode === 'dark' ? '#4d535a' : '#d8cfbf',
-                  color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
+                  backgroundColor: muiTheme.palette.mode === 'dark' ? '#4d535a' : '#d8cfbf',
+                  color: muiTheme.palette.mode === 'dark' ? '#f5f5f5' : muiTheme.palette.text.primary,
                 })}
                 onClick={() => {
                   setPrintToastOpen(true);
@@ -500,12 +662,12 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
         onClose={() => setPaymentErrorToastOpen(false)}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
         <Box
-          sx={(theme) => ({
+          sx={(muiTheme) => ({
             px: 2,
             py: 1.2,
             borderRadius: '12px',
-            backgroundColor: theme.palette.mode === 'dark' ? '#4c2529' : '#f6dadd',
-            color: theme.palette.mode === 'dark' ? '#ffe9eb' : '#8a1f2d',
+            backgroundColor: muiTheme.palette.mode === 'dark' ? '#4c2529' : '#f6dadd',
+            color: muiTheme.palette.mode === 'dark' ? '#ffe9eb' : '#8a1f2d',
             fontWeight: 700,
             boxShadow: '0 12px 28px rgba(0, 0, 0, 0.22)',
           })}>
@@ -519,12 +681,12 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
         onClose={() => setPrintToastOpen(false)}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
         <Box
-          sx={(theme) => ({
+          sx={(muiTheme) => ({
             px: 2,
             py: 1.2,
             borderRadius: '12px',
-            backgroundColor: theme.palette.mode === 'dark' ? '#1f4a46' : '#d8efea',
-            color: theme.palette.mode === 'dark' ? '#d7fbf7' : '#155b54',
+            backgroundColor: muiTheme.palette.mode === 'dark' ? '#1f4a46' : '#d8efea',
+            color: muiTheme.palette.mode === 'dark' ? '#d7fbf7' : '#155b54',
             fontWeight: 700,
             boxShadow: '0 12px 28px rgba(0, 0, 0, 0.22)',
           })}>

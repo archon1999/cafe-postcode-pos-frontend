@@ -9,6 +9,8 @@ import { OpenChecksPageContent } from './OpenChecksPageContent';
 const navigateMock = vi.fn();
 const openOrdersMock = vi.fn();
 const closedOrdersMock = vi.fn();
+const updateDisplayNameMutateAsyncMock = vi.fn();
+let openOrdersState: Array<Record<string, unknown>> = [];
 
 vi.mock('react-router', () => ({
   useNavigate: () => navigateMock,
@@ -40,10 +42,24 @@ vi.mock('modules/cashier/application', () => ({
     isPending: false,
     mutate: vi.fn(),
   }),
+  useCashierUpdateOrderDisplayNameMutation: (options?: { onSuccess?: (orderId: string) => void }) => ({
+    isPending: false,
+    mutateAsync: async (payload: { orderId: string; displayName: string }) => {
+      updateDisplayNameMutateAsyncMock(payload);
+      openOrdersState = openOrdersState.map((order) =>
+        order.id === payload.orderId ? { ...order, displayName: payload.displayName } : order,
+      );
+      options?.onSuccess?.(payload.orderId);
+      return { id: payload.orderId };
+    },
+  }),
 }));
 
 vi.mock('modules/cashier/domain', () => ({
   groupCashierOrderItemsByStation: () => [['Issiq oshxona', []]],
+  getCashierOrderNumberLabel: (order: { orderNumber: number }) => `A${String(order.orderNumber).padStart(5, '0')}`,
+  getCashierOrderDisplayName: (order: { orderNumber: number; displayName?: string | null }) =>
+    order.displayName?.trim() || `A${String(order.orderNumber).padStart(5, '0')}`,
 }));
 
 vi.mock('shared/layout/PosPageFrame', () => ({
@@ -85,10 +101,12 @@ describe('OpenChecksPageContent', () => {
     navigateMock.mockReset();
     openOrdersMock.mockReset();
     closedOrdersMock.mockReset();
-    openOrdersMock.mockReturnValue([
+    updateDisplayNameMutateAsyncMock.mockReset();
+    openOrdersState = [
       {
         id: 'order-1',
         orderNumber: 101,
+        displayName: '',
         status: 'open',
         subtotal: 30000,
         serviceFee: 3000,
@@ -104,17 +122,15 @@ describe('OpenChecksPageContent', () => {
         payments: [],
         receipts: [],
       },
-    ]);
+    ];
+    openOrdersMock.mockImplementation(() => openOrdersState);
     closedOrdersMock.mockReturnValue([]);
   });
 
-  it('shows the go-to-menu action for open hall checks and navigates to the session editor', () => {
+  it('does not show the go-to-menu action for open hall checks', () => {
     render(<OpenChecksPageContent />);
 
-    const button = screen.getByRole('button', { name: "Menyuga o'tish" });
-    fireEvent.click(button);
-
-    expect(navigateMock).toHaveBeenCalledWith('/waiter/table-session?sessionId=session-1&source=cashier');
+    expect(screen.queryByRole('button', { name: "Menyuga o'tish" })).toBeNull();
   });
 
   it('hides the go-to-menu action for closed checks', () => {
@@ -148,5 +164,19 @@ describe('OpenChecksPageContent', () => {
     fireEvent.click(screen.getByRole('button', { name: /Yopiq hisoblar/ }));
 
     expect(screen.queryByRole('button', { name: "Menyuga o'tish" })).toBeNull();
+  });
+
+  it('renames an open check from the dialog and renders the new title', async () => {
+    render(<OpenChecksPageContent />);
+
+    fireEvent.click(screen.getByRole('button', { name: "Buyurtma nomini o'zgartirish" }));
+    fireEvent.change(screen.getByLabelText('Buyurtma nomi'), { target: { value: '  VIP mijoz  ' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Saqlash' }));
+
+    expect(updateDisplayNameMutateAsyncMock).toHaveBeenCalledWith({
+      orderId: 'order-1',
+      displayName: 'VIP mijoz',
+    });
+    expect((await screen.findAllByText('VIP mijoz')).length).toBeGreaterThan(0);
   });
 });

@@ -24,15 +24,9 @@ vi.mock('modules/auth', () => ({
 }));
 
 vi.mock('./TableSessionPage/TableSessionPageContent', () => ({
-  TableSessionPageContent: ({
-    sessionId,
-    mode,
-    source,
-  }: {
-    sessionId: string | null;
-    mode: string;
-    source?: string | null;
-  }) => <div>{`content:${mode}:${sessionId}:${source ?? 'none'}`}</div>,
+  TableSessionPageContent: ({ sessionId, mode }: { sessionId: string | null; mode: string }) => (
+    <div>{`content:${mode}:${sessionId}`}</div>
+  ),
 }));
 
 describe('TableSessionPage', () => {
@@ -43,20 +37,17 @@ describe('TableSessionPage', () => {
     getPosHomePathMock.mockReturnValue('/lock-screen');
   });
 
-  it('allows cashier-origin session access from open-checks', () => {
-    useSearchParamsMock.mockReturnValue([new URLSearchParams('sessionId=session-1&source=cashier')]);
+  it('renders the hall session when access is allowed', () => {
+    useSearchParamsMock.mockReturnValue([new URLSearchParams('sessionId=session-1')]);
     canAccessTableSessionEditorMock.mockReturnValue(true);
 
     render(<TableSessionPage />);
 
-    expect(screen.getByText('content:hall:session-1:cashier')).toBeTruthy();
-    expect(canAccessTableSessionEditorMock).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'cashier-1' }),
-      'cashier',
-    );
+    expect(screen.getByText('content:hall:session-1')).toBeTruthy();
+    expect(canAccessTableSessionEditorMock).toHaveBeenCalledWith(expect.objectContaining({ id: 'cashier-1' }));
   });
 
-  it('redirects when a cashier opens the session page without the cashier source marker', () => {
+  it('redirects when access is denied', () => {
     useSearchParamsMock.mockReturnValue([new URLSearchParams('sessionId=session-1')]);
     canAccessTableSessionEditorMock.mockReturnValue(false);
 

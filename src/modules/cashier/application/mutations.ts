@@ -67,6 +67,20 @@ export function useSubmitCashierOrderMutation(options: { orderId?: string; onSuc
   });
 }
 
+export function useCashierUpdateOrderDisplayNameMutation(options?: { onSuccess?: (orderId: string) => void }) {
+  return useMutation({
+    mutationFn: async ({ orderId, displayName }: { orderId: string; displayName: string }) =>
+      cashierRepository.updateOrderDisplayName(orderId, displayName),
+    onSuccess: async (order) => {
+      await queryClient.invalidateQueries({ queryKey: cashierKeys.builderOrders });
+      await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('open') });
+      await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('closed') });
+      await queryClient.invalidateQueries({ queryKey: cashierKeys.paymentOrder(order.id) });
+      options?.onSuccess?.(order.id);
+    },
+  });
+}
+
 export function useCashierPaymentMutation(options: { orderId: string | null; onSuccess?: () => void }) {
   const { orderId, onSuccess } = options;
 
@@ -83,6 +97,28 @@ export function useCashierPaymentMutation(options: { orderId: string | null; onS
       await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('open') });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('closed') });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.builderOrders });
+      await queryClient.invalidateQueries({ queryKey: cashierKeys.paymentOrder(orderId) });
+      await queryClient.invalidateQueries({ queryKey: ['kitchen', 'queue'] });
+      onSuccess?.();
+    },
+  });
+}
+
+export function useAddCashierPaymentOrderItemMutation(options: { orderId: string | null; onSuccess?: () => void }) {
+  const { orderId, onSuccess } = options;
+
+  return useMutation({
+    mutationFn: async (payload: { catalogItemId: string; note?: string }) => {
+      if (!orderId) {
+        throw new Error('Order id is missing');
+      }
+
+      await cashierRepository.addOrderItem(orderId, payload.catalogItemId, payload.note ?? '');
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: cashierKeys.builderOrders });
+      await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('open') });
+      await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('closed') });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.paymentOrder(orderId) });
       await queryClient.invalidateQueries({ queryKey: ['kitchen', 'queue'] });
       onSuccess?.();

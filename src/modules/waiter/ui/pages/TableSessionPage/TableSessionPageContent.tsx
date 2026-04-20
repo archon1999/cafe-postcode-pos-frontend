@@ -113,7 +113,7 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
   const [cartOpen, setCartOpen] = useState(false);
   const canViewMenu = isTakeawayMode
     ? canAccessTakeawayBuilder(session?.user)
-    : canAccessTableSessionMenu(session?.user, source);
+    : canAccessTableSessionMenu(session?.user);
 
   const sessionQuery = useWaiterTableSessionQuery(sessionId);
   const menuQuery = useWaiterMenuQuery({ enabled: canViewMenu });

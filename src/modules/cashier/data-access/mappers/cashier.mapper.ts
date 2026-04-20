@@ -10,7 +10,11 @@ import type {
 type CashierMenuItemDto = CashierMenuItem;
 type CashierMenuCategoryDto = Omit<CashierMenuCategory, 'items'> & { items: CashierMenuItemDto[] };
 type CashierOrderItemDto = CashierOrderItem;
-type CashierOrderDto = Omit<CashierOrder, 'items'> & { items: CashierOrderItemDto[] };
+type CashierOrderDto = Omit<CashierOrder, 'items' | 'displayName'> & {
+  items: CashierOrderItemDto[];
+  displayName?: string | null;
+  display_name?: string | null;
+};
 type CashierPaymentResponseDto = CashierPaymentResponse;
 type CashierCreateOrderResponseDto = CashierCreateOrderResponse;
 
@@ -28,6 +32,7 @@ export function mapCashierMenuCategories(dtos: CashierMenuCategoryDto[]) {
 export function mapCashierOrder(dto: CashierOrderDto): CashierOrder {
   return {
     ...dto,
+    displayName: dto.displayName ?? dto.display_name ?? null,
     items: dto.items.map((item) => ({ ...item })),
   };
 }

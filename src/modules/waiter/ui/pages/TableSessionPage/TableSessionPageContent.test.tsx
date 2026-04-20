@@ -159,13 +159,10 @@ describe('TableSessionPageContent', () => {
     expect(navigateMock).not.toHaveBeenCalledWith('/waiter/halls');
   });
 
-  it('enables the hall menu query for cashier-origin session editing', () => {
-    render(<TableSessionPageContent sessionId="session-1" mode="hall" source="cashier" />);
+  it('enables the hall menu query for hall-session access', () => {
+    render(<TableSessionPageContent sessionId="session-1" mode="hall" />);
 
-    expect(canAccessTableSessionMenuMock).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'user-1' }),
-      'cashier',
-    );
+    expect(canAccessTableSessionMenuMock).toHaveBeenCalledWith(expect.objectContaining({ id: 'user-1' }));
     expect(useWaiterMenuQueryMock).toHaveBeenCalledWith({ enabled: true });
   });
 

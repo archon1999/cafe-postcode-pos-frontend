@@ -7,6 +7,7 @@ const POS_TAKEAWAY_MENU_VIEW = 'pos_takeaway_menu.view';
 const POS_KITCHEN_ORDERS_VIEW = 'pos_kitchen_orders.view';
 const POS_KITCHEN_ORDERS_UPDATE = 'pos_kitchen_orders.update';
 const POS_OPEN_CHECKS_VIEW = 'pos_open_checks.view';
+const POS_PAYMENT_ORDER_ITEMS_CREATE = 'pos_payment_order_items.create';
 const POS_PAYMENTS_CREATE = 'pos_payments.create';
 const POS_TABLE_RESERVATIONS_MANAGE = 'pos_table_reservations.manage';
 const LEGACY_CATALOG_MENU_VIEW = 'catalog_menu.view';
@@ -88,20 +89,12 @@ export function canManageTableReservations(user: PosUser | null | undefined) {
   return hasPermission(user, POS_TABLE_RESERVATIONS_MANAGE);
 }
 
-export function canAccessCashierTableSession(user: PosUser | null | undefined, source?: string | null) {
-  if (!isRestaurantAccessEnabled(user)) {
-    return false;
-  }
-
-  return source === 'cashier' && canAccessCashierPayments(user);
+export function canAccessTableSessionEditor(user: PosUser | null | undefined) {
+  return canAccessWaiterTables(user);
 }
 
-export function canAccessTableSessionEditor(user: PosUser | null | undefined, source?: string | null) {
-  return canAccessWaiterTables(user) || canAccessCashierTableSession(user, source);
-}
-
-export function canAccessTableSessionMenu(user: PosUser | null | undefined, source?: string | null) {
-  return canAccessWaiterMenu(user) || canAccessCashierTableSession(user, source);
+export function canAccessTableSessionMenu(user: PosUser | null | undefined) {
+  return canAccessWaiterMenu(user);
 }
 
 export function canAccessCashierBuilder(user: PosUser | null | undefined) {
@@ -130,6 +123,14 @@ export function canManageCashierPayments(user: PosUser | null | undefined) {
   }
 
   return hasAnyPermission(user, [POS_PAYMENTS_CREATE, LEGACY_PAYMENTS_CREATE]);
+}
+
+export function canAddCashierPaymentOrderItems(user: PosUser | null | undefined) {
+  if (!isRestaurantAccessEnabled(user)) {
+    return false;
+  }
+
+  return hasPermission(user, POS_PAYMENT_ORDER_ITEMS_CREATE);
 }
 
 export function canAccessCashier(user: PosUser | null | undefined) {

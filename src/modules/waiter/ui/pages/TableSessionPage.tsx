@@ -13,13 +13,12 @@ export function TableSessionPage() {
   const [searchParams] = useSearchParams();
   const { session } = usePosSession();
   const sessionId = searchParams.get('sessionId');
-  const source = searchParams.get('source');
 
-  if (!canAccessTableSessionEditor(session?.user, source)) {
+  if (!canAccessTableSessionEditor(session?.user)) {
     return <Navigate to={getPosHomePath(session)} replace />;
   }
 
-  return <TableSessionPageContent sessionId={sessionId} mode="hall" source={source} />;
+  return <TableSessionPageContent sessionId={sessionId} mode="hall" />;
 }
 
 export function WaiterTakeawayPage() {
