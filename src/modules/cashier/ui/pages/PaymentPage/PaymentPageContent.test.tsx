@@ -8,8 +8,12 @@ import { PaymentPageContent } from './PaymentPageContent';
 
 const navigateMock = vi.fn();
 const canAddCashierPaymentOrderItemsMock = vi.fn();
+const canAccessWaiterTablesMock = vi.fn();
+const canRemoveCashierPaymentOrderItemsMock = vi.fn();
 const addPaymentOrderItemMutateAsyncMock = vi.fn();
+const removePaymentOrderItemMutateAsyncMock = vi.fn();
 const updateDisplayNameMutateAsyncMock = vi.fn();
+let orderChannelMock = 'takeaway';
 
 vi.mock('react-router', () => ({
   useNavigate: () => navigateMock,
@@ -18,7 +22,9 @@ vi.mock('react-router', () => ({
 vi.mock('modules/auth', () => ({
   canAddCashierPaymentOrderItems: (...args: unknown[]) => canAddCashierPaymentOrderItemsMock(...args),
   canAccessTakeawayBuilder: () => false,
+  canAccessWaiterTables: (...args: unknown[]) => canAccessWaiterTablesMock(...args),
   canManageCashierPayments: () => true,
+  canRemoveCashierPaymentOrderItems: (...args: unknown[]) => canRemoveCashierPaymentOrderItemsMock(...args),
   usePosSession: () => ({
     session: { user: { id: 'cashier-1', fullName: 'Cashier Test', permissionCodes: ['pos_open_checks.view'] } },
     locale: 'uz',
@@ -33,6 +39,10 @@ vi.mock('modules/cashier/application', () => ({
   useAddCashierPaymentOrderItemMutation: () => ({
     isPending: false,
     mutateAsync: addPaymentOrderItemMutateAsyncMock,
+  }),
+  useRemoveCashierPaymentOrderItemMutation: () => ({
+    isPending: false,
+    mutateAsync: removePaymentOrderItemMutateAsyncMock,
   }),
   useCashierContextQuery: () => ({
     data: { availableCashDesks: [{ id: 'desk-1', name: 'Main cash desk', enabledPaymentMethods: ['cash'] }] },
@@ -52,7 +62,7 @@ vi.mock('modules/cashier/application', () => ({
       id: 'order-1',
       orderNumber: 101,
       displayName: 'VIP mijoz',
-      channel: 'takeaway',
+      channel: orderChannelMock,
       subtotal: 30000,
       serviceFee: 0,
       total: 30000,
@@ -116,9 +126,15 @@ describe('PaymentPageContent', () => {
     cleanup();
     navigateMock.mockReset();
     canAddCashierPaymentOrderItemsMock.mockReset();
+    canAccessWaiterTablesMock.mockReset();
+    canRemoveCashierPaymentOrderItemsMock.mockReset();
     addPaymentOrderItemMutateAsyncMock.mockReset();
+    removePaymentOrderItemMutateAsyncMock.mockReset();
     updateDisplayNameMutateAsyncMock.mockReset();
+    orderChannelMock = 'takeaway';
     canAddCashierPaymentOrderItemsMock.mockReturnValue(true);
+    canAccessWaiterTablesMock.mockReturnValue(false);
+    canRemoveCashierPaymentOrderItemsMock.mockReturnValue(false);
   });
 
   it('shows the add-one-more action only when the separate permission is present', () => {
@@ -144,6 +160,40 @@ describe('PaymentPageContent', () => {
       catalogItemId: 'catalog-1',
       note: 'Kamroq tuz',
     });
+  });
+
+  it('shows the remove-one action only for takeaway orders with the separate permission', () => {
+    canRemoveCashierPaymentOrderItemsMock.mockReturnValue(true);
+    render(<PaymentPageContent orderId="order-1" />);
+
+    expect(screen.getByRole('button', { name: 'Bittaga kamaytirish' })).toBeTruthy();
+
+    cleanup();
+    canRemoveCashierPaymentOrderItemsMock.mockReturnValue(false);
+    render(<PaymentPageContent orderId="order-1" />);
+
+    expect(screen.queryByRole('button', { name: 'Bittaga kamaytirish' })).toBeNull();
+  });
+
+  it('removes one representative item from the payment detail list', () => {
+    canRemoveCashierPaymentOrderItemsMock.mockReturnValue(true);
+    render(<PaymentPageContent orderId="order-1" />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Bittaga kamaytirish' }));
+
+    expect(removePaymentOrderItemMutateAsyncMock).toHaveBeenCalledWith('item-1');
+  });
+
+  it('shows plus for hall orders with table manage access and hides minus', () => {
+    orderChannelMock = 'hall';
+    canAddCashierPaymentOrderItemsMock.mockReturnValue(false);
+    canAccessWaiterTablesMock.mockReturnValue(true);
+    canRemoveCashierPaymentOrderItemsMock.mockReturnValue(true);
+
+    render(<PaymentPageContent orderId="order-1" />);
+
+    expect(screen.getByRole('button', { name: "Yana qo'shish" })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Bittaga kamaytirish' })).toBeNull();
   });
 
   it('renders the custom order name as the primary title', () => {

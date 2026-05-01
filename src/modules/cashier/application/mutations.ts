@@ -126,6 +126,24 @@ export function useAddCashierPaymentOrderItemMutation(options: { orderId: string
   });
 }
 
+export function useRemoveCashierPaymentOrderItemMutation(options: { orderId: string | null; onSuccess?: () => void }) {
+  const { orderId, onSuccess } = options;
+
+  return useMutation({
+    mutationFn: async (itemId: string) => {
+      await cashierRepository.removeOrderItem(itemId);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: cashierKeys.builderOrders });
+      await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('open') });
+      await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('closed') });
+      await queryClient.invalidateQueries({ queryKey: cashierKeys.paymentOrder(orderId) });
+      await queryClient.invalidateQueries({ queryKey: ['kitchen', 'queue'] });
+      onSuccess?.();
+    },
+  });
+}
+
 export function useOpenCashierShiftMutation(options?: { onSuccess?: () => void }) {
   return useMutation({
     mutationFn: (payload: { cashDeskId?: string; openingCashAmount: number; notesOpen?: string }) =>

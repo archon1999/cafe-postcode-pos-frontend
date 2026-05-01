@@ -382,6 +382,12 @@ const addOneMoreLabels: Record<PosLocale, string> = {
   ru: 'Добавить еще',
 };
 
+const removeOneLabels: Record<PosLocale, string> = {
+  uz: 'Bittaga kamaytirish',
+  'uz-crl': 'Биттага камайтириш',
+  ru: 'Уменьшить на один',
+};
+
 const saveLabels: Record<PosLocale, string> = {
   uz: 'Saqlash',
   'uz-crl': 'Сақлаш',
@@ -422,6 +428,7 @@ export function getPosCopy(locale: PosLocale) {
   return {
     ...localeDictionary[locale],
     addOneMore: addOneMoreLabels[locale],
+    removeOne: removeOneLabels[locale],
     save: saveLabels[locale],
     cancel: cancelLabels[locale],
     orderName: orderNameLabels[locale],

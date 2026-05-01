@@ -21,7 +21,9 @@ import { Icon } from '@iconify/react';
 import {
   canAddCashierPaymentOrderItems,
   canAccessTakeawayBuilder,
+  canAccessWaiterTables,
   canManageCashierPayments,
+  canRemoveCashierPaymentOrderItems,
   usePosSession,
 } from 'modules/auth';
 import {
@@ -30,6 +32,7 @@ import {
   useCashierPaymentMutation,
   useCashierPaymentOrderQuery,
   useCashierUpdateOrderDisplayNameMutation,
+  useRemoveCashierPaymentOrderItemMutation,
 } from 'modules/cashier/application';
 import {
   aggregateCashierOrderItems,
@@ -67,11 +70,11 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   const [paymentErrorToastOpen, setPaymentErrorToastOpen] = useState(false);
   const [printToastOpen, setPrintToastOpen] = useState(false);
   const [addingItemId, setAddingItemId] = useState<string | null>(null);
+  const [removingItemId, setRemovingItemId] = useState<string | null>(null);
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [renameValue, setRenameValue] = useState('');
   const [renameError, setRenameError] = useState('');
   const canProcessPayments = canManageCashierPayments(session?.user);
-  const canAddPaymentItems = canAddCashierPaymentOrderItems(session?.user);
   const normalizedOrderId = orderId ?? null;
 
   const cashierContextQuery = useCashierContextQuery({
@@ -86,6 +89,10 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   const addPaymentOrderItemMutation = useAddCashierPaymentOrderItemMutation({
     orderId: normalizedOrderId,
     onSuccess: () => setAddingItemId(null),
+  });
+  const removePaymentOrderItemMutation = useRemoveCashierPaymentOrderItemMutation({
+    orderId: normalizedOrderId,
+    onSuccess: () => setRemovingItemId(null),
   });
   const updateOrderDisplayNameMutation = useCashierUpdateOrderDisplayNameMutation({
     onSuccess: () => {
@@ -117,6 +124,11 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     [orderQuery.data?.displayName, orderQuery.data?.orderNumber],
   );
   const hasCustomOrderName = Boolean(orderQuery.data?.displayName?.trim());
+  const isTakeawayOrder = orderQuery.data?.channel === 'takeaway';
+  const canAddPaymentItems = isTakeawayOrder
+    ? canAddCashierPaymentOrderItems(session?.user)
+    : canAccessWaiterTables(session?.user);
+  const canRemovePaymentItems = Boolean(isTakeawayOrder && canRemoveCashierPaymentOrderItems(session?.user));
 
   useEffect(() => {
     if (remainingTotal > 0) {
@@ -203,6 +215,20 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
       });
     } catch {
       setAddingItemId(null);
+    }
+  };
+
+  const handleRemoveOrderItem = async (itemId: string) => {
+    if (!canRemovePaymentItems || removePaymentOrderItemMutation.isPending) {
+      return;
+    }
+
+    setRemovingItemId(itemId);
+
+    try {
+      await removePaymentOrderItemMutation.mutateAsync(itemId);
+    } catch {
+      setRemovingItemId(null);
     }
   };
 
@@ -363,20 +389,39 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
                         }}>
                         {formatCompactMoney(item.lineTotal, locale)}
                       </Typography>
-                      {canAddPaymentItems && item.status !== 'cancelled' ? (
-                        <IconButton
-                          aria-label={copy.addOneMore}
-                          disabled={addPaymentOrderItemMutation.isPending}
-                          onClick={() => void handleAddOrderItem(item.id, item.catalogItem, item.note)}>
-                          <Icon
-                            icon={
-                              addPaymentOrderItemMutation.isPending && addingItemId === item.id
-                                ? 'solar:refresh-bold'
-                                : 'solar:add-circle-bold'
-                            }
-                            width={20}
-                          />
-                        </IconButton>
+                      {item.status !== 'cancelled' && (canAddPaymentItems || canRemovePaymentItems) ? (
+                        <Stack direction="row" spacing={0.4}>
+                          {canRemovePaymentItems ? (
+                            <IconButton
+                              aria-label={copy.removeOne}
+                              disabled={removePaymentOrderItemMutation.isPending}
+                              onClick={() => void handleRemoveOrderItem(item.id)}>
+                              <Icon
+                                icon={
+                                  removePaymentOrderItemMutation.isPending && removingItemId === item.id
+                                    ? 'solar:refresh-bold'
+                                    : 'solar:minus-circle-bold'
+                                }
+                                width={20}
+                              />
+                            </IconButton>
+                          ) : null}
+                          {canAddPaymentItems ? (
+                            <IconButton
+                              aria-label={copy.addOneMore}
+                              disabled={addPaymentOrderItemMutation.isPending}
+                              onClick={() => void handleAddOrderItem(item.id, item.catalogItem, item.note)}>
+                              <Icon
+                                icon={
+                                  addPaymentOrderItemMutation.isPending && addingItemId === item.id
+                                    ? 'solar:refresh-bold'
+                                    : 'solar:add-circle-bold'
+                                }
+                                width={20}
+                              />
+                            </IconButton>
+                          ) : null}
+                        </Stack>
                       ) : null}
                     </Stack>
                   </Stack>

@@ -8,6 +8,7 @@ const POS_KITCHEN_ORDERS_VIEW = 'pos_kitchen_orders.view';
 const POS_KITCHEN_ORDERS_UPDATE = 'pos_kitchen_orders.update';
 const POS_OPEN_CHECKS_VIEW = 'pos_open_checks.view';
 const POS_PAYMENT_ORDER_ITEMS_CREATE = 'pos_payment_order_items.create';
+const POS_PAYMENT_ORDER_ITEMS_DELETE = 'pos_payment_order_items.delete';
 const POS_PAYMENTS_CREATE = 'pos_payments.create';
 const POS_TABLE_RESERVATIONS_MANAGE = 'pos_table_reservations.manage';
 const LEGACY_CATALOG_MENU_VIEW = 'catalog_menu.view';
@@ -131,6 +132,14 @@ export function canAddCashierPaymentOrderItems(user: PosUser | null | undefined)
   }
 
   return hasPermission(user, POS_PAYMENT_ORDER_ITEMS_CREATE);
+}
+
+export function canRemoveCashierPaymentOrderItems(user: PosUser | null | undefined) {
+  if (!isRestaurantAccessEnabled(user)) {
+    return false;
+  }
+
+  return hasPermission(user, POS_PAYMENT_ORDER_ITEMS_DELETE);
 }
 
 export function canAccessCashier(user: PosUser | null | undefined) {
