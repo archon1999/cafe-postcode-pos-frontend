@@ -1,0 +1,10 @@
+name: postcode-pos-frontend
+
+services:
+  frontend:
+    build:
+      context: .
+    image: postcode/pos-frontend:production
+    ports:
+      - "127.0.0.1:${POS_FRONTEND_PORT:-4300}:80"
+    restart: unless-stopped

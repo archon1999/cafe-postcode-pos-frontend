@@ -15,7 +15,8 @@
     "lint": "concurrently \"npm run lint:ts\" \"npm run lint:css\"",
     "unit": "vitest",
     "unit:watch": "vitest watch",
-    "docker:build": "docker build -t scale ."
+    "docker:build": "docker build -t postcode/pos-frontend:local .",
+    "docker:up": "docker compose --env-file .env.production up -d --build"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
