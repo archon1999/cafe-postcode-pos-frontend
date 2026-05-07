@@ -19,6 +19,9 @@ export type CashierOrder = {
   subtotal: number | string;
   serviceFee: number | string;
   serviceFeePercent?: number | string;
+  vatEnabled?: boolean;
+  vatPercent?: number | string;
+  vatAmount?: number | string;
   total: number | string;
   note: string;
   channel: string;

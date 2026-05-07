@@ -13,7 +13,14 @@ const canRemoveCashierPaymentOrderItemsMock = vi.fn();
 const addPaymentOrderItemMutateAsyncMock = vi.fn();
 const removePaymentOrderItemMutateAsyncMock = vi.fn();
 const updateDisplayNameMutateAsyncMock = vi.fn();
+const paymentMutateAsyncMock = vi.fn();
 let orderChannelMock = 'takeaway';
+let paymentMutationStateMock = {
+  isPending: false,
+  isError: false,
+  isSuccess: false,
+  error: null as unknown,
+};
 
 vi.mock('react-router', () => ({
   useNavigate: () => navigateMock,
@@ -48,10 +55,8 @@ vi.mock('modules/cashier/application', () => ({
     data: { availableCashDesks: [{ id: 'desk-1', name: 'Main cash desk', enabledPaymentMethods: ['cash'] }] },
   }),
   useCashierPaymentMutation: () => ({
-    isPending: false,
-    isError: false,
-    isSuccess: false,
-    mutateAsync: vi.fn(),
+    ...paymentMutationStateMock,
+    mutateAsync: paymentMutateAsyncMock,
   }),
   useCashierUpdateOrderDisplayNameMutation: () => ({
     isPending: false,
@@ -65,6 +70,9 @@ vi.mock('modules/cashier/application', () => ({
       channel: orderChannelMock,
       subtotal: 30000,
       serviceFee: 0,
+      vatEnabled: true,
+      vatPercent: 12,
+      vatAmount: 3214,
       total: 30000,
       openedByName: 'Ali',
       items: [
@@ -131,6 +139,13 @@ describe('PaymentPageContent', () => {
     addPaymentOrderItemMutateAsyncMock.mockReset();
     removePaymentOrderItemMutateAsyncMock.mockReset();
     updateDisplayNameMutateAsyncMock.mockReset();
+    paymentMutateAsyncMock.mockReset();
+    paymentMutationStateMock = {
+      isPending: false,
+      isError: false,
+      isSuccess: false,
+      error: null,
+    };
     orderChannelMock = 'takeaway';
     canAddCashierPaymentOrderItemsMock.mockReturnValue(true);
     canAccessWaiterTablesMock.mockReturnValue(false);
@@ -201,5 +216,32 @@ describe('PaymentPageContent', () => {
 
     expect(screen.getByText('VIP mijoz')).toBeTruthy();
     expect(screen.getByText('Buyurtma: A00101')).toBeTruthy();
+  });
+
+  it('shows included VAT in the payment totals without changing the grand total', () => {
+    render(<PaymentPageContent orderId="order-1" />);
+
+    expect(screen.getByText('QQS (12%):')).toBeTruthy();
+    expect(screen.getByText(/3\s214 so'm/)).toBeTruthy();
+    expect(screen.getAllByText(/30\s000 so'm/).length).toBeGreaterThan(0);
+  });
+
+  it('shows backend payment detail when payment mutation fails', async () => {
+    paymentMutationStateMock = {
+      isPending: false,
+      isError: true,
+      isSuccess: false,
+      error: {
+        response: {
+          data: {
+            detail: 'SoftPOS is not ready. Open standby screen and keep the app in foreground',
+          },
+        },
+      },
+    };
+
+    render(<PaymentPageContent orderId="order-1" />);
+
+    expect(await screen.findByText('SoftPOS is not ready. Open standby screen and keep the app in foreground')).toBeTruthy();
   });
 });

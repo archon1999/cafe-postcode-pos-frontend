@@ -85,12 +85,20 @@ export function useCashierPaymentMutation(options: { orderId: string | null; onS
   const { orderId, onSuccess } = options;
 
   return useMutation({
-    mutationFn: async (payload: { method: PaymentMethod; amount: number }) => {
+    mutationFn: async (payload: {
+      method: PaymentMethod;
+      amount: number;
+      manualCardOverride?: boolean;
+      manualCardReason?: string;
+    }) => {
       if (!orderId) {
         throw new Error('Order id is missing');
       }
 
-      return cashierRepository.payOrder(orderId, payload.method, payload.amount);
+      return cashierRepository.payOrder(orderId, payload.method, payload.amount, {
+        manualCardOverride: payload.manualCardOverride,
+        manualCardReason: payload.manualCardReason,
+      });
     },
     onSuccess: async (_, __) => {
       await queryClient.invalidateQueries({ queryKey: cashierKeys.context });

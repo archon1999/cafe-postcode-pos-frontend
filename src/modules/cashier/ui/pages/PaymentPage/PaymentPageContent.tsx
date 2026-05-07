@@ -44,6 +44,7 @@ import {
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { getPosCopy } from 'shared/locale/copy';
 import { formatCompactMoney, formatTime } from 'shared/pos/utils';
+import { printReceiptWithFallback } from 'shared/printing/browserReceipt';
 import { PosIconAction, PosOrderChannelSegment, PosSettingsMenu } from 'shared/ui/pos-primitives';
 
 export type PaymentPageContentProps = {
@@ -54,6 +55,15 @@ type MutationErrorPayload = {
   displayName?: string[];
   detail?: string;
 };
+
+function getMutationErrorDetail(error: unknown) {
+  const errorResponse = (error as { response?: { data?: MutationErrorPayload } })?.response?.data;
+  return errorResponse?.detail ?? '';
+}
+
+function formatPercent(value: number) {
+  return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/\.?0+$/, '');
+}
 
 export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   const navigate = useNavigate();
@@ -68,6 +78,9 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   const [qrCountdown, setQrCountdown] = useState(5);
   const [receiptData, setReceiptData] = useState<CashierPaymentResponse | null>(null);
   const [paymentErrorToastOpen, setPaymentErrorToastOpen] = useState(false);
+  const [paymentErrorMessage, setPaymentErrorMessage] = useState('');
+  const [cardFailureDialogOpen, setCardFailureDialogOpen] = useState(false);
+  const [lastCardFailureMessage, setLastCardFailureMessage] = useState('');
   const [printToastOpen, setPrintToastOpen] = useState(false);
   const [addingItemId, setAddingItemId] = useState<string | null>(null);
   const [removingItemId, setRemovingItemId] = useState<string | null>(null);
@@ -138,9 +151,15 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
 
   useEffect(() => {
     if (paymentMutation.isError) {
+      const detail = getMutationErrorDetail(paymentMutation.error) || copy.paymentFailed;
+      setPaymentErrorMessage(detail);
       setPaymentErrorToastOpen(true);
+      if (method === 'card') {
+        setLastCardFailureMessage(detail);
+        setCardFailureDialogOpen(true);
+      }
     }
-  }, [paymentMutation.isError]);
+  }, [copy.paymentFailed, paymentMutation.error, paymentMutation.isError]);
 
   useEffect(() => {
     if (!qrDialogOpen || method !== 'qr' || paymentMutation.isPending || paymentMutation.isSuccess) {
@@ -155,8 +174,9 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
       try {
         const response = await paymentMutation.mutateAsync({ method: 'qr', amount: Number(amount || 0) });
         setReceiptData(response);
-      } catch {
-        // Error toast is handled via mutation state.
+      } catch (error) {
+        setPaymentErrorMessage(getMutationErrorDetail(error) || copy.paymentFailed);
+        setPaymentErrorToastOpen(true);
       }
     }, 5000);
 
@@ -185,7 +205,14 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   const serviceFeePercent = Number(
     orderQuery.data?.serviceFeePercent ?? (orderQuery.data?.channel === 'hall' ? 10 : 0),
   );
+  const serviceFeeAmount = Number(orderQuery.data?.serviceFee ?? 0);
+  const shouldShowServiceFee = serviceFeePercent > 0 || serviceFeeAmount > 0;
   const serviceFeeLabel = `${copy.serviceFee} (${serviceFeePercent}%)`;
+  const vatEnabled = Boolean(orderQuery.data?.vatEnabled);
+  const vatPercent = Number(orderQuery.data?.vatPercent ?? 0);
+  const vatAmount = Number(orderQuery.data?.vatAmount ?? 0);
+  const shouldShowVat = vatEnabled && vatPercent > 0;
+  const vatLabel = `${copy.vat} (${formatPercent(vatPercent)}%)`;
 
   const handlePayment = async () => {
     if (method === 'qr') {
@@ -196,8 +223,30 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     try {
       const response = await paymentMutation.mutateAsync({ method, amount: Number(amount || 0) });
       setReceiptData(response);
-    } catch {
-      // Error toast is handled via mutation state.
+    } catch (error) {
+      const detail = getMutationErrorDetail(error) || copy.paymentFailed;
+      setPaymentErrorMessage(detail);
+      setPaymentErrorToastOpen(true);
+      if (method === 'card') {
+        setLastCardFailureMessage(detail);
+        setCardFailureDialogOpen(true);
+      }
+    }
+  };
+
+  const handleManualCardComplete = async () => {
+    try {
+      const response = await paymentMutation.mutateAsync({
+        method: 'card',
+        amount: Number(amount || 0),
+        manualCardOverride: true,
+        manualCardReason: lastCardFailureMessage,
+      });
+      setCardFailureDialogOpen(false);
+      setReceiptData(response);
+    } catch (error) {
+      setPaymentErrorMessage(getMutationErrorDetail(error) || copy.paymentFailed);
+      setPaymentErrorToastOpen(true);
     }
   };
 
@@ -475,14 +524,26 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
                   {formatCompactMoney(orderQuery.data?.subtotal, locale)}
                 </Typography>
               </Stack>
-              <Stack direction="row" justifyContent="space-between">
-                <Typography variant="body1" color="text.secondary">
-                  {serviceFeeLabel}:
-                </Typography>
-                <Typography variant="body1" color="text.secondary">
-                  {formatCompactMoney(orderQuery.data?.serviceFee, locale)}
-                </Typography>
-              </Stack>
+              {shouldShowServiceFee ? (
+                <Stack direction="row" justifyContent="space-between">
+                  <Typography variant="body1" color="text.secondary">
+                    {serviceFeeLabel}:
+                  </Typography>
+                  <Typography variant="body1" color="text.secondary">
+                    {formatCompactMoney(orderQuery.data?.serviceFee, locale)}
+                  </Typography>
+                </Stack>
+              ) : null}
+              {shouldShowVat ? (
+                <Stack direction="row" justifyContent="space-between">
+                  <Typography variant="body1" color="text.secondary">
+                    {vatLabel}:
+                  </Typography>
+                  <Typography variant="body1" color="text.secondary">
+                    {formatCompactMoney(vatAmount, locale)}
+                  </Typography>
+                </Stack>
+              ) : null}
               <Stack direction="row" justifyContent="space-between" alignItems="center">
                 <Typography variant="h5">{copy.grandTotal}:</Typography>
                 <Typography variant="h4">{formatCompactMoney(orderQuery.data?.total, locale)}</Typography>
@@ -585,6 +646,40 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
         </DialogContent>
       </Dialog>
 
+      <Dialog
+        open={cardFailureDialogOpen}
+        onClose={() => setCardFailureDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        fullScreen={isMobile}>
+        <DialogTitle>Karta to'lovi yakunlanmadi</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1.4} sx={{ pt: 1 }}>
+            <Typography variant="body2" color="text.secondary">
+              {lastCardFailureMessage || copy.paymentFailed}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Qayta urinib ko'ring yoki terminaldan tashqarida karta orqali to'lov qabul qilingan bo'lsa, manual card
+              sifatida yakunlang.
+            </Typography>
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button
+            variant="contained"
+            onClick={() => {
+              setCardFailureDialogOpen(false);
+              void handlePayment();
+            }}
+            disabled={paymentMutation.isPending}>
+            Qayta urinish
+          </Button>
+          <Button variant="contained" onClick={() => void handleManualCardComplete()} disabled={paymentMutation.isPending}>
+            Manual card
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <Dialog open={renameDialogOpen} onClose={() => setRenameDialogOpen(false)} maxWidth="xs" fullWidth fullScreen={isMobile}>
         <DialogTitle>{copy.renameOrder}</DialogTitle>
         <DialogContent>
@@ -683,6 +778,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
                   color: muiTheme.palette.mode === 'dark' ? '#f5f5f5' : muiTheme.palette.text.primary,
                 })}
                 onClick={() => {
+                  void printReceiptWithFallback(receiptData?.receipt?.payload ?? null);
                   setPrintToastOpen(true);
                 }}>
                 {copy.printReceipt}
@@ -716,7 +812,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
             fontWeight: 700,
             boxShadow: '0 12px 28px rgba(0, 0, 0, 0.22)',
           })}>
-          {copy.paymentFailed}
+          {paymentErrorMessage || copy.paymentFailed}
         </Box>
       </Snackbar>
 

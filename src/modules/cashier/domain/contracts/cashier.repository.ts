@@ -22,7 +22,12 @@ export interface CashierRepository {
   removeOrderItem(itemId: string): Promise<void>;
   updateOrderDisplayName(orderId: string, displayName: string): Promise<CashierOrder>;
   submitOrder(orderId: string): Promise<void>;
-  payOrder(orderId: string, method: PaymentMethod, amount: number): Promise<CashierPaymentResponse>;
+  payOrder(
+    orderId: string,
+    method: PaymentMethod,
+    amount: number,
+    options?: { manualCardOverride?: boolean; manualCardReason?: string },
+  ): Promise<CashierPaymentResponse>;
   refundPayment(paymentId: string, reason?: string): Promise<{ refund: unknown; receipt: CashierReceipt | null }>;
-  reprintReceipt(receiptId: string): Promise<{ receipt: CashierReceipt | null }>;
+  reprintReceipt(receiptId: string): Promise<{ receipt: CashierReceipt | null; result?: Record<string, unknown> }>;
 }

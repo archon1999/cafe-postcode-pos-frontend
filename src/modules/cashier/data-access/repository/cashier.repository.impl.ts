@@ -93,11 +93,18 @@ class CashierRepositoryImpl implements CashierRepository {
     await apiPost(`/pos/sales/orders/${orderId}/submit/`);
   }
 
-  async payOrder(orderId: string, method: PaymentMethod, amount: number): Promise<CashierPaymentResponse> {
+  async payOrder(
+    orderId: string,
+    method: PaymentMethod,
+    amount: number,
+    options?: { manualCardOverride?: boolean; manualCardReason?: string },
+  ): Promise<CashierPaymentResponse> {
     return mapCashierPaymentResponse(
       await apiPost<CashierPaymentResponse>(`/pos/billing/orders/${orderId}/pay/`, {
         method,
         amount,
+        manual_card_override: Boolean(options?.manualCardOverride),
+        manual_card_reason: options?.manualCardReason ?? '',
       }),
     );
   }
@@ -109,7 +116,9 @@ class CashierRepositoryImpl implements CashierRepository {
   }
 
   async reprintReceipt(receiptId: string) {
-    return apiPost<{ receipt: CashierReceipt | null }>(`/pos/billing/receipts/${receiptId}/reprint/`);
+    return apiPost<{ receipt: CashierReceipt | null; result?: Record<string, unknown> }>(
+      `/pos/billing/receipts/${receiptId}/reprint/`,
+    );
   }
 }
 

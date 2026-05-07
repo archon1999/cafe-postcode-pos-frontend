@@ -22,7 +22,7 @@ import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { getPosCopy } from 'shared/locale/copy';
 import { useOptimisticBuilderOrder } from 'shared/pos/useOptimisticBuilderOrder';
 import { formatCompactMoney } from 'shared/pos/utils';
-import { printQzTrayJob } from 'shared/printing/qzTray';
+import { printReceiptWithFallback } from 'shared/printing/browserReceipt';
 import {
   PosBuilderPageSkeleton,
   PosIconAction,
@@ -97,6 +97,10 @@ function extractThrownErrorMessage(error: unknown) {
   return null;
 }
 
+function formatPercent(value: number) {
+  return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/\.?0+$/, '');
+}
+
 export function TableSessionPageContent({ sessionId, mode, source = null }: TableSessionPageContentProps) {
   const navigate = useNavigate();
   const { session, locale, setLocale, setSession, themeMode, setThemeMode } = usePosSession();
@@ -148,7 +152,14 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
     syncErrorMessage: copy.itemSyncFailed,
   });
   const serviceFeePercent = Number(currentOrder?.serviceFeePercent ?? (isTakeawayMode ? 0 : 10));
+  const serviceFeeAmount = Number(currentOrder?.serviceFee ?? 0);
+  const shouldShowServiceFee = serviceFeePercent > 0 || serviceFeeAmount > 0;
   const serviceFeeLabel = `${copy.serviceFee} (${serviceFeePercent}%)`;
+  const vatEnabled = Boolean(currentOrder?.vatEnabled);
+  const vatPercent = Number(currentOrder?.vatPercent ?? 0);
+  const vatAmount = Number(currentOrder?.vatAmount ?? 0);
+  const shouldShowVat = vatEnabled && vatPercent > 0;
+  const vatLabel = `${copy.vat} (${formatPercent(vatPercent)}%)`;
   const orderModeMeta = isTakeawayMode ? `${1} ${copy.guests}` : `${sessionQuery.data?.guestCount ?? 0} ${copy.guests}`;
   const submitOrderMutation = useSubmitWaiterOrderMutation({
     orderId: currentOrder?.id,
@@ -269,33 +280,18 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
       const response = await printPrebillMutation.mutateAsync(currentOrder.id);
       const result = response.result ?? {};
       const requiresClientPrint = Boolean(result.requiresClientPrint ?? result.requires_client_print);
-      const printJob = result.printJob ?? result.print_job;
 
       if (requiresClientPrint) {
-        try {
-          await printQzTrayJob(printJob);
-        } catch (error) {
-          const detail = extractThrownErrorMessage(error) || copy.receiptUnavailable;
-          if (response.receipt?.id) {
-            await waiterRepository
-              .markReceiptPrintResult(response.receipt.id, {
-                ok: false,
-                provider: result.provider,
-                mode: result.mode,
-                detail,
-              })
-              .catch(() => undefined);
-          }
-          toast.error(detail);
-          return;
-        }
+        const code = String(result.code ?? '');
+        toast.info(code === 'PRINTER_NOT_CONFIGURED' ? 'Printer sozlamalari ulanmagan' : 'Printer ishlamayapti');
+        await printReceiptWithFallback(response.receipt?.payload ?? null);
 
         if (response.receipt?.id) {
           try {
             await waiterRepository.markReceiptPrintResult(response.receipt.id, {
               ok: true,
               provider: result.provider,
-              mode: result.mode,
+              code,
               printedAt: new Date().toISOString(),
             });
           } catch (error) {
@@ -874,14 +870,26 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
                 {formatCompactMoney(currentOrder?.subtotal, locale)}
               </Typography>
             </Stack>
-            <Stack direction="row" justifyContent="space-between">
-              <Typography variant="body1" color="text.secondary">
-                {serviceFeeLabel}:
-              </Typography>
-              <Typography variant="body1" color="text.secondary">
-                {formatCompactMoney(currentOrder?.serviceFee, locale)}
-              </Typography>
-            </Stack>
+            {shouldShowServiceFee ? (
+              <Stack direction="row" justifyContent="space-between">
+                <Typography variant="body1" color="text.secondary">
+                  {serviceFeeLabel}:
+                </Typography>
+                <Typography variant="body1" color="text.secondary">
+                  {formatCompactMoney(currentOrder?.serviceFee, locale)}
+                </Typography>
+              </Stack>
+            ) : null}
+            {shouldShowVat ? (
+              <Stack direction="row" justifyContent="space-between">
+                <Typography variant="body1" color="text.secondary">
+                  {vatLabel}:
+                </Typography>
+                <Typography variant="body1" color="text.secondary">
+                  {formatCompactMoney(vatAmount, locale)}
+                </Typography>
+              </Stack>
+            ) : null}
             <Stack direction="row" justifyContent="space-between" alignItems="flex-end">
               <Typography variant="h5">{copy.grandTotal}:</Typography>
               <Typography variant="h4" sx={{ lineHeight: 1.05, textAlign: 'right' }}>
@@ -1090,12 +1098,22 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
               </Typography>
               <Typography variant="body2">{formatCompactMoney(currentOrder?.subtotal, locale)}</Typography>
             </Stack>
-            <Stack direction="row" justifyContent="space-between">
-              <Typography variant="body2" color="text.secondary">
-                {serviceFeeLabel}
-              </Typography>
-              <Typography variant="body2">{formatCompactMoney(currentOrder?.serviceFee, locale)}</Typography>
-            </Stack>
+            {shouldShowServiceFee ? (
+              <Stack direction="row" justifyContent="space-between">
+                <Typography variant="body2" color="text.secondary">
+                  {serviceFeeLabel}
+                </Typography>
+                <Typography variant="body2">{formatCompactMoney(currentOrder?.serviceFee, locale)}</Typography>
+              </Stack>
+            ) : null}
+            {shouldShowVat ? (
+              <Stack direction="row" justifyContent="space-between">
+                <Typography variant="body2" color="text.secondary">
+                  {vatLabel}
+                </Typography>
+                <Typography variant="body2">{formatCompactMoney(vatAmount, locale)}</Typography>
+              </Stack>
+            ) : null}
             <Stack direction="row" justifyContent="space-between">
               <Typography variant="body2" color="text.secondary">
                 {copy.grandTotal}

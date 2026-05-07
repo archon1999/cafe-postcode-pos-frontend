@@ -20,6 +20,7 @@ vi.mock('react-router', () => ({
 vi.mock('sonner', () => ({
   toast: {
     error: vi.fn(),
+    info: vi.fn(),
     success: vi.fn(),
   },
 }));
@@ -92,8 +93,8 @@ vi.mock('shared/pos/useOptimisticBuilderOrder', () => ({
   useOptimisticBuilderOrder: (...args: unknown[]) => useOptimisticBuilderOrderMock(...args),
 }));
 
-vi.mock('shared/printing/qzTray', () => ({
-  printQzTrayJob: vi.fn(),
+vi.mock('shared/printing/browserReceipt', () => ({
+  printReceiptWithFallback: vi.fn(() => Promise.resolve(true)),
 }));
 
 vi.mock('shared/ui/pos-primitives', () => ({
@@ -132,6 +133,10 @@ describe('TableSessionPageContent', () => {
         total: 33000,
         subtotal: 30000,
         serviceFeePercent: 10,
+        serviceFee: 3000,
+        vatEnabled: true,
+        vatPercent: 12,
+        vatAmount: 3536,
         items: [],
         channel: 'hall',
       },
@@ -164,6 +169,14 @@ describe('TableSessionPageContent', () => {
 
     expect(canAccessTableSessionMenuMock).toHaveBeenCalledWith(expect.objectContaining({ id: 'user-1' }));
     expect(useWaiterMenuQueryMock).toHaveBeenCalledWith({ enabled: true });
+  });
+
+  it('shows included VAT in the order summary without changing the grand total', () => {
+    render(<TableSessionPageContent sessionId="session-1" mode="hall" />);
+
+    expect(screen.getAllByText('QQS (12%):').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/3\s536 so'm/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/33\s000 so'm/).length).toBeGreaterThan(0);
   });
 
   it('disables the hall print button while optimistic sync is pending', () => {

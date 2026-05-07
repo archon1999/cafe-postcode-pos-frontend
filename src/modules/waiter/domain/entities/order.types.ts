@@ -18,6 +18,9 @@ export type WaiterOrder = {
   subtotal: number | string;
   serviceFee: number | string;
   serviceFeePercent?: number | string;
+  vatEnabled?: boolean;
+  vatPercent?: number | string;
+  vatAmount?: number | string;
   total: number | string;
   note: string;
   channel: string;
@@ -38,32 +41,13 @@ export type WaiterCreateOrderResponse = {
   id: string;
 };
 
-export type WaiterQzPrintJob = {
-  type: 'qz-tray';
-  format: 'raw';
-  language?: 'escpos' | string;
-  flavor: 'hex' | 'base64';
-  data: string;
-  encoding?: string;
-  config: {
-    connectionType?: 'system_printer' | 'socket';
-    connection_type?: 'system_printer' | 'socket';
-    printerName?: string;
-    printer_name?: string;
-    host?: string;
-    port?: number | string;
-  };
-};
-
 export type WaiterPrintPrebillResult = {
   ok?: boolean;
   provider?: string;
-  mode?: string;
+  code?: string;
   detail?: string;
   requiresClientPrint?: boolean;
   requires_client_print?: boolean;
-  printJob?: WaiterQzPrintJob;
-  print_job?: WaiterQzPrintJob;
   [key: string]: unknown;
 };
 

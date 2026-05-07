@@ -18,6 +18,7 @@ import {
 import { useTheme } from '@mui/material/styles';
 import { useMemo, useState, type KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router';
+import { toast } from 'sonner';
 
 import { canAccessTakeawayBuilder, canManageCashierPayments, usePosSession } from 'modules/auth';
 import {
@@ -35,6 +36,7 @@ import type { CashierOrder } from 'modules/cashier/domain/entities/order.types';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { type PosLocale, getPosCopy } from 'shared/locale/copy';
 import { formatCompactMoney, formatTime } from 'shared/pos/utils';
+import { printReceiptWithFallback } from 'shared/printing/browserReceipt';
 import {
   PosIconAction,
   PosOpenChecksSkeleton,
@@ -48,6 +50,10 @@ type MutationErrorPayload = {
   displayName?: string[];
   detail?: string;
 };
+
+function formatPercent(value: number) {
+  return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/\.?0+$/, '');
+}
 
 function OpenChecksList({
   copy,
@@ -202,7 +208,14 @@ function OpenChecksDetail({
   selectedTab: 'open' | 'closed';
 }) {
   const serviceFeePercent = Number(order.serviceFeePercent ?? (order.channel === 'hall' ? 10 : 0));
+  const serviceFeeAmount = Number(order.serviceFee ?? 0);
+  const shouldShowServiceFee = serviceFeePercent > 0 || serviceFeeAmount > 0;
   const serviceFeeLabel = `${copy.serviceFee} (${serviceFeePercent}%)`;
+  const vatEnabled = Boolean(order.vatEnabled);
+  const vatPercent = Number(order.vatPercent ?? 0);
+  const vatAmount = Number(order.vatAmount ?? 0);
+  const shouldShowVat = vatEnabled && vatPercent > 0;
+  const vatLabel = `${copy.vat} (${formatPercent(vatPercent)}%)`;
 
   return (
     <Box
@@ -340,14 +353,26 @@ function OpenChecksDetail({
             {formatCompactMoney(order.subtotal, locale)}
           </Typography>
         </Stack>
-        <Stack direction="row" justifyContent="space-between">
-          <Typography variant="body1" color="text.secondary">
-            {serviceFeeLabel}:
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            {formatCompactMoney(order.serviceFee, locale)}
-          </Typography>
-        </Stack>
+        {shouldShowServiceFee ? (
+          <Stack direction="row" justifyContent="space-between">
+            <Typography variant="body1" color="text.secondary">
+              {serviceFeeLabel}:
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              {formatCompactMoney(order.serviceFee, locale)}
+            </Typography>
+          </Stack>
+        ) : null}
+        {shouldShowVat ? (
+          <Stack direction="row" justifyContent="space-between">
+            <Typography variant="body1" color="text.secondary">
+              {vatLabel}:
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              {formatCompactMoney(vatAmount, locale)}
+            </Typography>
+          </Stack>
+        ) : null}
         <Stack direction="row" justifyContent="space-between" alignItems="flex-end">
           <Typography variant="h5">{copy.grandTotal}:</Typography>
           <Typography variant="h4" sx={{ lineHeight: 1.05, textAlign: 'right' }}>
@@ -488,7 +513,27 @@ export function OpenChecksPageContent() {
         if (!latestReceipt?.id || reprintMutation.isPending) {
           return;
         }
-        reprintMutation.mutate(latestReceipt.id);
+        reprintMutation
+          .mutateAsync(latestReceipt.id)
+          .then((response) => {
+            const result = response.result ?? {};
+            const code = String(result.code ?? '');
+            if (code === 'PRINTER_NOT_CONFIGURED') {
+              toast.info('Printer sozlamalari ulanmagan');
+              void printReceiptWithFallback(response.receipt?.payload ?? latestReceipt.payload ?? null);
+              return;
+            }
+            if (code === 'PRINTER_UNAVAILABLE' || result.ok === false) {
+              toast.info('Printer ishlamayapti');
+              void printReceiptWithFallback(response.receipt?.payload ?? latestReceipt.payload ?? null);
+              return;
+            }
+            void printReceiptWithFallback(response.receipt?.payload ?? latestReceipt.payload ?? null);
+          })
+          .catch(() => {
+            toast.info('Printer ishlamayapti');
+            void printReceiptWithFallback(latestReceipt.payload ?? null);
+          });
       }}
       order={selectedOrder}
       receiptNumber={receiptNumber}
