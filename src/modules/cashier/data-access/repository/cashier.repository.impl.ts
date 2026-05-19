@@ -8,6 +8,8 @@ import type {
   CashierOrder,
   CashierPaymentResponse,
   CashierRepository,
+  MartaPaymentInitiateResponse,
+  MartaTerminalResultPayload,
   PaymentMethod,
 } from 'modules/cashier/domain';
 import { apiDelete, apiGet, apiPatch, apiPost, unwrapCollection } from 'shared/api/client';
@@ -91,7 +93,7 @@ class CashierRepositoryImpl implements CashierRepository {
 
   async closeShift(payload: {
     cashShiftId?: string;
-    actualClosingCashAmount: number;
+    actualClosingCashAmount?: number;
     notesClose?: string;
     closeFiscalShift?: boolean;
   }): Promise<CashierContext> {
@@ -114,6 +116,14 @@ class CashierRepositoryImpl implements CashierRepository {
       quantity: 1,
       note,
     });
+  }
+
+  async scanOrderMarking(orderId: string, rawCode: string, mode: 'add' | 'attach'): Promise<CashierOrder> {
+    const payload = await apiPost<{ order: CashierOrder }>(`/pos/sales/orders/${orderId}/scan-marking/`, {
+      rawCode,
+      mode,
+    });
+    return mapCashierOrder(payload.order);
   }
 
   async removeOrderItem(itemId: string) {
@@ -146,6 +156,26 @@ class CashierRepositoryImpl implements CashierRepository {
         manual_card_override: Boolean(options?.manualCardOverride),
         manual_card_reason: options?.manualCardReason ?? '',
       }),
+    );
+  }
+
+  async initiateMartaCardPayment(
+    orderId: string,
+    amount: number,
+    registerFiscal = true,
+  ): Promise<MartaPaymentInitiateResponse> {
+    return apiPost<MartaPaymentInitiateResponse>(`/pos/billing/orders/${orderId}/card-payments/initiate/`, {
+      amount,
+      register_fiscal: registerFiscal,
+    });
+  }
+
+  async completeMartaTerminalPayment(
+    paymentId: string,
+    terminalResult: MartaTerminalResultPayload,
+  ): Promise<CashierPaymentResponse> {
+    return mapCashierPaymentResponse(
+      await apiPost<CashierPaymentResponse>(`/pos/billing/payments/${paymentId}/terminal-result/`, terminalResult),
     );
   }
 

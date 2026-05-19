@@ -6,6 +6,7 @@ const POS_TABLE_MENU_VIEW = 'pos_table_menu.view';
 const POS_TAKEAWAY_MENU_VIEW = 'pos_takeaway_menu.view';
 const POS_KITCHEN_ORDERS_VIEW = 'pos_kitchen_orders.view';
 const POS_KITCHEN_ORDERS_UPDATE = 'pos_kitchen_orders.update';
+const POS_KITCHEN_ORDERS_CANCEL = 'pos_kitchen_orders.cancel';
 const POS_OPEN_CHECKS_VIEW = 'pos_open_checks.view';
 const POS_PAYMENT_ORDER_ITEMS_CREATE = 'pos_payment_order_items.create';
 const POS_PAYMENT_ORDER_ITEMS_DELETE = 'pos_payment_order_items.delete';
@@ -187,6 +188,14 @@ export function canManageKitchenOrders(user: PosUser | null | undefined) {
   }
 
   return hasPermission(user, POS_KITCHEN_ORDERS_UPDATE);
+}
+
+export function canCancelKitchenOrders(user: PosUser | null | undefined) {
+  if (!isRestaurantAccessEnabled(user)) {
+    return false;
+  }
+
+  return hasPermission(user, POS_KITCHEN_ORDERS_CANCEL);
 }
 
 export function getAccessiblePosSurfaces(session: PosSessionPayload | null | undefined) {

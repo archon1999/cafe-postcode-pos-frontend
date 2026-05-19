@@ -7,6 +7,19 @@ export type CashierOrderItem = {
   status: string;
   prepStationName?: string | null;
   note?: string;
+  markings?: Array<{
+    id: string;
+    rawCode?: string;
+    raw_code?: string;
+    gtin?: string;
+    serial?: string;
+    scannedAt?: string;
+    scanned_at?: string;
+  }>;
+  markingRequiredCount?: number;
+  marking_required_count?: number;
+  markingScannedCount?: number;
+  marking_scanned_count?: number;
 };
 
 export type CashierCheckStatus = 'open' | 'closed' | 'fiscal_unresolved';

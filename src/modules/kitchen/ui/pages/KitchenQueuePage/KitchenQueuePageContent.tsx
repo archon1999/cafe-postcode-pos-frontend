@@ -4,7 +4,7 @@ import { useTheme } from '@mui/material/styles';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 
-import { canManageKitchenOrders, getPosHomePath, usePosSession } from 'modules/auth';
+import { canCancelKitchenOrders, canManageKitchenOrders, getPosHomePath, usePosSession } from 'modules/auth';
 import {
   useKitchenQueueQuery,
   useUpdateKitchenItemStatusMutation,
@@ -51,6 +51,7 @@ export function KitchenQueuePageContent() {
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const canUpdateKitchenOrders = canManageKitchenOrders(session?.user);
+  const canCancelKitchenItems = canCancelKitchenOrders(session?.user);
 
   const queueQuery = useKitchenQueueQuery();
   const updateTicketStatusMutation = useUpdateKitchenTicketStatusMutation();
@@ -362,7 +363,7 @@ export function KitchenQueuePageContent() {
                                     </Button>
                                   ) : null}
 
-                                  {canCancel ? (
+                                  {canCancel && canCancelKitchenItems ? (
                                     <Button
                                       variant="contained"
                                       size="small"

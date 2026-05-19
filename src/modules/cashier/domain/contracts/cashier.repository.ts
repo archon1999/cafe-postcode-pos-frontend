@@ -5,6 +5,8 @@ import type {
   CashierMenuCategory,
   CashierOrder,
   CashierPaymentResponse,
+  MartaPaymentInitiateResponse,
+  MartaTerminalResultPayload,
   PaymentMethod,
 } from '../entities';
 
@@ -38,12 +40,13 @@ export interface CashierRepository {
   }): Promise<CashierContext>;
   closeShift(payload: {
     cashShiftId?: string;
-    actualClosingCashAmount: number;
+    actualClosingCashAmount?: number;
     notesClose?: string;
     closeFiscalShift?: boolean;
   }): Promise<CashierContext>;
   createTakeawayOrder(note: string): Promise<CashierCreateOrderResponse>;
   addOrderItem(orderId: string, catalogItemId: string, note: string): Promise<void>;
+  scanOrderMarking(orderId: string, rawCode: string, mode: 'add' | 'attach'): Promise<CashierOrder>;
   removeOrderItem(itemId: string): Promise<void>;
   updateOrderDisplayName(orderId: string, displayName: string): Promise<CashierOrder>;
   submitOrder(orderId: string): Promise<void>;
@@ -53,6 +56,8 @@ export interface CashierRepository {
     amount: number,
     options?: { manualCardOverride?: boolean; manualCardReason?: string; registerFiscal?: boolean },
   ): Promise<CashierPaymentResponse>;
+  initiateMartaCardPayment(orderId: string, amount: number, registerFiscal?: boolean): Promise<MartaPaymentInitiateResponse>;
+  completeMartaTerminalPayment(paymentId: string, terminalResult: MartaTerminalResultPayload): Promise<CashierPaymentResponse>;
   retryFiscalPayment(paymentId: string): Promise<{
     payment: unknown;
     receipt: CashierReceipt | null;

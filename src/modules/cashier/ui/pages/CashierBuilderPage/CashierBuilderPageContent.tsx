@@ -1,5 +1,5 @@
 ﻿import { Icon } from '@iconify/react';
-import { Box, Button, Divider, Drawer, Stack, TextField, Typography, alpha, useMediaQuery } from '@mui/material';
+import { Box, Button, Divider, Drawer, Snackbar, Stack, TextField, Typography, alpha, useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router';
@@ -20,6 +20,7 @@ import {
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { getPosCopy } from 'shared/locale/copy';
 import { useOptimisticBuilderOrder } from 'shared/pos/useOptimisticBuilderOrder';
+import { useScannerInput } from 'shared/pos/useScannerInput';
 import { formatCompactMoney } from 'shared/pos/utils';
 import { resolveApiBaseUrl } from 'shared/api/apiUrl';
 import {
@@ -66,6 +67,7 @@ export function CashierBuilderPageContent() {
   const [settingsAnchor, setSettingsAnchor] = useState<HTMLElement | null>(null);
   const [selectedCartItemKey, setSelectedCartItemKey] = useState<string | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
+  const [scanToast, setScanToast] = useState('');
 
   const menuQuery = useCashierMenuQuery();
   const ordersQuery = useCashierBuilderOrdersQuery();
@@ -93,6 +95,20 @@ export function CashierBuilderPageContent() {
     onSuccess: () => {
       setKitchenNote('');
       setCartOpen(false);
+    },
+  });
+
+  useScannerInput({
+    enabled: true,
+    onScan: async (rawCode) => {
+      try {
+        const orderId = currentOrder?.id ?? (await cashierRepository.createTakeawayOrder(kitchenNote)).id;
+        await cashierRepository.scanOrderMarking(orderId, rawCode, 'add');
+        await ordersQuery.refetch();
+        setScanToast('Mahsulot skaner orqali qo‘shildi.');
+      } catch {
+        setScanToast('Skaner qilingan markirovka bo‘yicha mahsulot topilmadi.');
+      }
     },
   });
 
@@ -972,6 +988,12 @@ export function CashierBuilderPageContent() {
           navigate('/pin-login', { replace: true });
         }}
         themeMode={themeMode}
+      />
+      <Snackbar
+        open={Boolean(scanToast)}
+        autoHideDuration={2800}
+        message={scanToast}
+        onClose={() => setScanToast('')}
       />
     </PosPageFrame>
   );

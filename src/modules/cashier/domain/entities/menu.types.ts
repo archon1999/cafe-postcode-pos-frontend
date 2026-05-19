@@ -6,6 +6,8 @@ export type CashierMenuItem = {
   kind: string;
   prepStationName?: string | null;
   price: number | string;
+  requiresMarking?: boolean;
+  markingGtin?: string | null;
 };
 
 export type CashierMenuCategory = {

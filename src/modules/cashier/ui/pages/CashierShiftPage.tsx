@@ -50,7 +50,6 @@ export function CashierShiftPage() {
   const [openingCash, setOpeningCash] = useState('0');
   const [openingNotes, setOpeningNotes] = useState('');
   const [openShiftDialogOpen, setOpenShiftDialogOpen] = useState(false);
-  const [closingCashByShift, setClosingCashByShift] = useState<Record<string, string>>({});
   const [closingNotesByShift, setClosingNotesByShift] = useState<Record<string, string>>({});
   const [closeFiscalByShift, setCloseFiscalByShift] = useState<Record<string, boolean>>({});
 
@@ -102,10 +101,6 @@ export function CashierShiftPage() {
     return <Navigate to={getPosHomePath(session)} replace />;
   }
 
-  const updateClosingCash = (shiftId: string, value: string) => {
-    setClosingCashByShift((prev) => ({ ...prev, [shiftId]: value }));
-  };
-
   const updateClosingNotes = (shiftId: string, value: string) => {
     setClosingNotesByShift((prev) => ({ ...prev, [shiftId]: value }));
   };
@@ -147,9 +142,6 @@ export function CashierShiftPage() {
   };
 
   const renderManagerShift = (shift: CashShiftSummary) => {
-    const actualCash = closingCashByShift[shift.id] ?? '';
-    const expectedCloseCash = Number(shift.expectedClosingCashAmount ?? 0);
-    const liveDifference = actualCash ? Number(actualCash || 0) - expectedCloseCash : 0;
     const isLastActiveShift = activeShifts.length === 1;
     const canCloseFiscalShift = isLastActiveShift && hasFiscalIntegration;
     const shouldCloseFiscalShift = closeFiscalByShift[shift.id] ?? true;
@@ -170,24 +162,12 @@ export function CashierShiftPage() {
           </Box>
           {renderShiftTotals(shift)}
           <TextField
-            type="number"
-            label={copy.actualCash}
-            value={actualCash}
-            onChange={(event) => updateClosingCash(shift.id, event.target.value)}
-          />
-          <TextField
             label={copy.notes}
             value={closingNotesByShift[shift.id] ?? ''}
             onChange={(event) => updateClosingNotes(shift.id, event.target.value)}
             multiline
             minRows={2}
           />
-          {actualCash ? (
-            <Stack direction="row" justifyContent="space-between">
-              <Typography color="text.secondary">{copy.cashDifference}</Typography>
-              <Typography>{formatCompactMoney(liveDifference, locale)}</Typography>
-            </Stack>
-          ) : null}
           {canCloseFiscalShift ? (
             <FormControlLabel
               control={
@@ -202,11 +182,10 @@ export function CashierShiftPage() {
           <Button
             variant="contained"
             color="error"
-            disabled={!actualCash || closeShiftMutation.isPending}
+            disabled={closeShiftMutation.isPending}
             onClick={() =>
               closeShiftMutation.mutate({
                 cashShiftId: shift.id,
-                actualClosingCashAmount: Number(actualCash || 0),
                 notesClose: closingNotesByShift[shift.id] ?? '',
                 closeFiscalShift: canCloseFiscalShift ? shouldCloseFiscalShift : false,
               })
