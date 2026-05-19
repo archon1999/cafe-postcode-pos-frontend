@@ -1,5 +1,6 @@
 import type {
   CashierContext,
+  CashierCheckStatus,
   CashierCreateOrderResponse,
   CashierMenuCategory,
   CashierOrder,
@@ -9,14 +10,38 @@ import type {
 
 type CashierReceipt = NonNullable<CashierOrder['receipts']>[number];
 
+export type CashierChecksParams = {
+  search?: string;
+  page?: number;
+  pageSize?: number;
+};
+
+export type CashierChecksResult = {
+  orders: CashierOrder[];
+  count: number;
+  page: number;
+  pageSize: number;
+  numPages: number;
+};
+
 export interface CashierRepository {
   getCashierContext(): Promise<CashierContext>;
   getMenu(): Promise<CashierMenuCategory[]>;
   getOpenOrders(): Promise<CashierOrder[]>;
-  getOpenChecks(status?: 'open' | 'closed'): Promise<CashierOrder[]>;
+  getOpenChecks(status?: CashierCheckStatus, params?: CashierChecksParams): Promise<CashierChecksResult>;
   getOrder(orderId: string): Promise<CashierOrder>;
-  openShift(payload: { cashDeskId?: string; openingCashAmount: number; notesOpen?: string }): Promise<CashierContext>;
-  closeShift(payload: { actualClosingCashAmount: number; notesClose?: string }): Promise<CashierContext>;
+  openShift(payload: {
+    cashDeskId?: string;
+    cashierId?: string;
+    openingCashAmount: number;
+    notesOpen?: string;
+  }): Promise<CashierContext>;
+  closeShift(payload: {
+    cashShiftId?: string;
+    actualClosingCashAmount: number;
+    notesClose?: string;
+    closeFiscalShift?: boolean;
+  }): Promise<CashierContext>;
   createTakeawayOrder(note: string): Promise<CashierCreateOrderResponse>;
   addOrderItem(orderId: string, catalogItemId: string, note: string): Promise<void>;
   removeOrderItem(itemId: string): Promise<void>;
@@ -26,8 +51,17 @@ export interface CashierRepository {
     orderId: string,
     method: PaymentMethod,
     amount: number,
-    options?: { manualCardOverride?: boolean; manualCardReason?: string },
+    options?: { manualCardOverride?: boolean; manualCardReason?: string; registerFiscal?: boolean },
   ): Promise<CashierPaymentResponse>;
+  retryFiscalPayment(paymentId: string): Promise<{
+    payment: unknown;
+    receipt: CashierReceipt | null;
+    receipts?: CashierReceipt[];
+    result?: Record<string, unknown>;
+    results?: Record<string, unknown>[];
+  }>;
+  openFiscalShift(payload?: { cashDeskId?: string }): Promise<Record<string, unknown>>;
+  closeFiscalShift(payload?: { cashDeskId?: string }): Promise<Record<string, unknown>>;
   refundPayment(paymentId: string, reason?: string): Promise<{ refund: unknown; receipt: CashierReceipt | null }>;
   reprintReceipt(receiptId: string): Promise<{ receipt: CashierReceipt | null; result?: Record<string, unknown> }>;
 }

@@ -8,6 +8,7 @@ import { PosLogo } from 'shared/ui/PosLogo';
 
 import { usePinLoginMutation } from '../../application';
 import { getPosHomePath } from '../../domain';
+import { resolvePosAuthBackgroundImage } from '../auth-background';
 import { usePosSession } from '../session-context';
 
 const keypad = ['1', '2', '3', 'backspace', '4', '5', '6', '', '7', '8', '9', '', '', '0', '', ''];
@@ -22,6 +23,7 @@ export function LoginPageContent() {
   const [pin, setPin] = useState('');
   const [toastOpen, setToastOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const authBackgroundImage = resolvePosAuthBackgroundImage(restaurantContext);
 
   const appendDigit = (digit: string) => {
     setToastOpen(false);
@@ -114,7 +116,7 @@ export function LoginPageContent() {
           minHeight: '100vh',
           position: 'relative',
           overflow: 'hidden',
-          backgroundImage: 'url(/pos-auth-bg-source.png)',
+          backgroundImage: `url(${authBackgroundImage})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center center',
           backgroundRepeat: 'no-repeat',

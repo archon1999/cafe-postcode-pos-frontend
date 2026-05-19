@@ -9,6 +9,8 @@ export type CashierOrderItem = {
   note?: string;
 };
 
+export type CashierCheckStatus = 'open' | 'closed' | 'fiscal_unresolved';
+
 export type CashierOrder = {
   id: string;
   openedBy?: string | null;
@@ -38,6 +40,7 @@ export type CashierOrder = {
     amount: number | string;
     status: string;
     method: 'cash' | 'card' | 'qr' | 'mixed';
+    registerFiscal?: boolean;
     refundsTotal?: number | string;
     isRefunded?: boolean;
     paidAt?: string | null;
@@ -48,6 +51,11 @@ export type CashierOrder = {
     kind?: 'prebill' | 'fiscal' | 'refund';
     reprintCount?: number;
     lastReprintedAt?: string | null;
+    fiscalRequestedAt?: string | null;
+    fiscalRegisteredAt?: string | null;
+    originalPaidAt?: string | null;
+    fiscalErrorCode?: string | null;
+    fiscalErrorMessage?: string | null;
     payload?: Record<string, unknown> | null;
     createdAt?: string;
   }>;

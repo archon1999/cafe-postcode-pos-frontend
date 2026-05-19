@@ -2,6 +2,17 @@ import type { CashierOrder } from './order.types';
 
 export type PaymentMethod = 'cash' | 'card' | 'qr';
 
+export type CashierFiscalReceipt = {
+  id: string;
+  payload?: {
+    receiptNumber?: string;
+    receipt_number?: string;
+    issuedAt?: string;
+    issued_at?: string;
+  };
+  createdAt?: string;
+} | null;
+
 export type CashierPaymentResponse = {
   order: CashierOrder;
   payment: {
@@ -9,16 +20,9 @@ export type CashierPaymentResponse = {
     method: PaymentMethod;
     amount: number | string;
     externalRef?: string;
+    providerPayload?: Record<string, unknown> | null;
     paidAt?: string;
   };
-  receipt: {
-    id: string;
-    payload?: {
-      receiptNumber?: string;
-      receipt_number?: string;
-      issuedAt?: string;
-      issued_at?: string;
-    };
-    createdAt?: string;
-  } | null;
+  receipt: CashierFiscalReceipt;
+  receipts?: CashierFiscalReceipt[];
 };

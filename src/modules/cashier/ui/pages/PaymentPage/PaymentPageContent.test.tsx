@@ -14,7 +14,9 @@ const addPaymentOrderItemMutateAsyncMock = vi.fn();
 const removePaymentOrderItemMutateAsyncMock = vi.fn();
 const updateDisplayNameMutateAsyncMock = vi.fn();
 const paymentMutateAsyncMock = vi.fn();
+const clipboardWriteTextMock = vi.fn();
 let orderChannelMock = 'takeaway';
+let enabledPaymentMethodsMock: Array<'cash' | 'card' | 'qr'> = ['cash'];
 let paymentMutationStateMock = {
   isPending: false,
   isError: false,
@@ -52,7 +54,7 @@ vi.mock('modules/cashier/application', () => ({
     mutateAsync: removePaymentOrderItemMutateAsyncMock,
   }),
   useCashierContextQuery: () => ({
-    data: { availableCashDesks: [{ id: 'desk-1', name: 'Main cash desk', enabledPaymentMethods: ['cash'] }] },
+    data: { availableCashDesks: [{ id: 'desk-1', name: 'Main cash desk', enabledPaymentMethods: enabledPaymentMethodsMock }] },
   }),
   useCashierPaymentMutation: () => ({
     ...paymentMutationStateMock,
@@ -140,6 +142,11 @@ describe('PaymentPageContent', () => {
     removePaymentOrderItemMutateAsyncMock.mockReset();
     updateDisplayNameMutateAsyncMock.mockReset();
     paymentMutateAsyncMock.mockReset();
+    clipboardWriteTextMock.mockReset();
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: clipboardWriteTextMock },
+    });
     paymentMutationStateMock = {
       isPending: false,
       isError: false,
@@ -147,6 +154,7 @@ describe('PaymentPageContent', () => {
       error: null,
     };
     orderChannelMock = 'takeaway';
+    enabledPaymentMethodsMock = ['cash'];
     canAddCashierPaymentOrderItemsMock.mockReturnValue(true);
     canAccessWaiterTablesMock.mockReturnValue(false);
     canRemoveCashierPaymentOrderItemsMock.mockReturnValue(false);
@@ -243,5 +251,47 @@ describe('PaymentPageContent', () => {
     render(<PaymentPageContent orderId="order-1" />);
 
     expect(await screen.findByText('SoftPOS is not ready. Open standby screen and keep the app in foreground')).toBeTruthy();
+  });
+
+  it('shows copyable MARTA request and response JSON for non-2xx terminal errors', async () => {
+    enabledPaymentMethodsMock = ['cash', 'card'];
+    paymentMutateAsyncMock.mockRejectedValueOnce({
+      response: {
+        data: {
+          detail: 'Terminal error',
+          payment: {
+            providerPayload: {
+              provider: 'marta-softpos',
+              status: 'ERROR',
+              requestId: 'request-500',
+              debug: {
+                transaction: {
+                  request: {
+                    method: 'GET',
+                    path: '/transaction',
+                    params: { type: 'PURCHASE', amount: 1000000, pid: 123, tin: '307678400' },
+                  },
+                  response: {
+                    httpStatus: 500,
+                    body: { ok: false, status: 'ERROR', message: 'Terminal error' },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    render(<PaymentPageContent orderId="order-1" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Karta' }));
+    fireEvent.click(screen.getByRole('button', { name: "To'lovni yakunlash" }));
+
+    expect(await screen.findByText('MARTA request/response')).toBeTruthy();
+    expect(screen.getByText(/"httpStatus": 500/)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy JSON' }));
+
+    expect(clipboardWriteTextMock).toHaveBeenCalledWith(expect.stringContaining('"path": "/transaction"'));
   });
 });

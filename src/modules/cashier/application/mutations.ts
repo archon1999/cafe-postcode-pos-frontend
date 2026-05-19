@@ -90,6 +90,7 @@ export function useCashierPaymentMutation(options: { orderId: string | null; onS
       amount: number;
       manualCardOverride?: boolean;
       manualCardReason?: string;
+      registerFiscal?: boolean;
     }) => {
       if (!orderId) {
         throw new Error('Order id is missing');
@@ -98,12 +99,14 @@ export function useCashierPaymentMutation(options: { orderId: string | null; onS
       return cashierRepository.payOrder(orderId, payload.method, payload.amount, {
         manualCardOverride: payload.manualCardOverride,
         manualCardReason: payload.manualCardReason,
+        registerFiscal: payload.registerFiscal,
       });
     },
     onSuccess: async (_, __) => {
       await queryClient.invalidateQueries({ queryKey: cashierKeys.context });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('open') });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('closed') });
+      await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('fiscal_unresolved') });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.builderOrders });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.paymentOrder(orderId) });
       await queryClient.invalidateQueries({ queryKey: ['kitchen', 'queue'] });
@@ -127,6 +130,7 @@ export function useAddCashierPaymentOrderItemMutation(options: { orderId: string
       await queryClient.invalidateQueries({ queryKey: cashierKeys.builderOrders });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('open') });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('closed') });
+      await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('fiscal_unresolved') });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.paymentOrder(orderId) });
       await queryClient.invalidateQueries({ queryKey: ['kitchen', 'queue'] });
       onSuccess?.();
@@ -145,6 +149,7 @@ export function useRemoveCashierPaymentOrderItemMutation(options: { orderId: str
       await queryClient.invalidateQueries({ queryKey: cashierKeys.builderOrders });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('open') });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('closed') });
+      await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('fiscal_unresolved') });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.paymentOrder(orderId) });
       await queryClient.invalidateQueries({ queryKey: ['kitchen', 'queue'] });
       onSuccess?.();
@@ -154,7 +159,7 @@ export function useRemoveCashierPaymentOrderItemMutation(options: { orderId: str
 
 export function useOpenCashierShiftMutation(options?: { onSuccess?: () => void }) {
   return useMutation({
-    mutationFn: (payload: { cashDeskId?: string; openingCashAmount: number; notesOpen?: string }) =>
+    mutationFn: (payload: { cashDeskId?: string; cashierId?: string; openingCashAmount: number; notesOpen?: string }) =>
       cashierRepository.openShift(payload),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: cashierKeys.context });
@@ -165,12 +170,18 @@ export function useOpenCashierShiftMutation(options?: { onSuccess?: () => void }
 
 export function useCloseCashierShiftMutation(options?: { onSuccess?: () => void }) {
   return useMutation({
-    mutationFn: (payload: { actualClosingCashAmount: number; notesClose?: string }) =>
+    mutationFn: (payload: {
+      cashShiftId?: string;
+      actualClosingCashAmount: number;
+      notesClose?: string;
+      closeFiscalShift?: boolean;
+    }) =>
       cashierRepository.closeShift(payload),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: cashierKeys.context });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('open') });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('closed') });
+      await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('fiscal_unresolved') });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.builderOrders });
       options?.onSuccess?.();
     },
@@ -185,6 +196,7 @@ export function useCashierRefundMutation(options?: { onSuccess?: () => void }) {
       await queryClient.invalidateQueries({ queryKey: cashierKeys.context });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('open') });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('closed') });
+      await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('fiscal_unresolved') });
       options?.onSuccess?.();
     },
   });
@@ -197,6 +209,38 @@ export function useCashierReprintMutation(options?: { onSuccess?: () => void }) 
       await queryClient.invalidateQueries({ queryKey: cashierKeys.context });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('closed') });
       options?.onSuccess?.();
+    },
+  });
+}
+
+export function useCashierFiscalRetryMutation(options?: { onSuccess?: () => void }) {
+  return useMutation({
+    mutationFn: (paymentId: string) => cashierRepository.retryFiscalPayment(paymentId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: cashierKeys.context });
+      await queryClient.invalidateQueries({ queryKey: ['cashier', 'checks'] });
+      options?.onSuccess?.();
+    },
+  });
+}
+
+export function useOpenFiscalShiftMutation(options?: { onSuccess?: (response: Record<string, unknown>) => void }) {
+  return useMutation({
+    mutationFn: (payload?: { cashDeskId?: string }) => cashierRepository.openFiscalShift(payload),
+    onSuccess: async (response) => {
+      await queryClient.invalidateQueries({ queryKey: cashierKeys.context });
+      options?.onSuccess?.(response);
+    },
+  });
+}
+
+export function useCloseFiscalShiftMutation(options?: { onSuccess?: (response: Record<string, unknown>) => void }) {
+  return useMutation({
+    mutationFn: (payload?: { cashDeskId?: string }) => cashierRepository.closeFiscalShift(payload),
+    onSuccess: async (response) => {
+      await queryClient.invalidateQueries({ queryKey: cashierKeys.context });
+      await queryClient.invalidateQueries({ queryKey: ['cashier', 'checks'] });
+      options?.onSuccess?.(response);
     },
   });
 }

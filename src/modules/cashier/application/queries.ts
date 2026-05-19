@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { cashierRepository } from '../data-access';
+import type { CashierCheckStatus, CashierChecksParams } from '../domain';
 
 import { cashierKeys } from './keys';
 
@@ -29,12 +30,13 @@ export function useCashierBuilderOrdersQuery() {
 }
 
 export function useCashierOpenChecksQuery(
-  status: 'open' | 'closed' = 'open',
+  status: CashierCheckStatus = 'open',
+  params?: CashierChecksParams,
   options?: { enabled?: boolean; retry?: boolean },
 ) {
   return useQuery({
-    queryKey: cashierKeys.checks(status),
-    queryFn: () => cashierRepository.getOpenChecks(status),
+    queryKey: cashierKeys.checks(status, params),
+    queryFn: () => cashierRepository.getOpenChecks(status, params),
     enabled: options?.enabled,
     retry: options?.retry,
     refetchInterval: 10000,
@@ -56,6 +58,6 @@ export function useCashierOpenChecksCountQuery(enabled: boolean) {
     queryFn: () => cashierRepository.getOpenChecks('open'),
     enabled,
     retry: false,
-    select: (orders) => orders.length,
+    select: (result) => result.count,
   });
 }

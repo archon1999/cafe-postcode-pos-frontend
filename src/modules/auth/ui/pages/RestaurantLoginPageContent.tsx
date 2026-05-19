@@ -7,6 +7,7 @@ import { getPosCopy, localeLabels } from 'shared/locale/copy';
 import { PosLogo } from 'shared/ui/PosLogo';
 
 import { useRestaurantCodeMutation } from '../../application';
+import { resolvePosAuthBackgroundImage } from '../auth-background';
 import { resolveAuthNextPath } from '../next-path';
 import { usePosSession } from '../session-context';
 
@@ -17,6 +18,7 @@ export function RestaurantLoginPageContent() {
   const copy = getPosCopy(locale);
   const [code, setCode] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const authBackgroundImage = resolvePosAuthBackgroundImage(null);
 
   const loginMutation = useRestaurantCodeMutation({
     onSuccess: (response) => {
@@ -43,7 +45,7 @@ export function RestaurantLoginPageContent() {
           minHeight: '100vh',
           position: 'relative',
           overflow: 'hidden',
-          backgroundImage: 'url(/pos-auth-bg-source.png)',
+          backgroundImage: `url(${authBackgroundImage})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center center',
           backgroundRepeat: 'no-repeat',

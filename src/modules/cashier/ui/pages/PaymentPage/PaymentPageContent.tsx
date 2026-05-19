@@ -1,10 +1,12 @@
 import {
   Box,
   Button,
+  Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControlLabel,
   IconButton,
   Snackbar,
   Stack,
@@ -24,6 +26,7 @@ import {
   canAccessWaiterTables,
   canManageCashierPayments,
   canRemoveCashierPaymentOrderItems,
+  canSkipFiscalReceipts,
   usePosSession,
 } from 'modules/auth';
 import {
@@ -54,11 +57,60 @@ export type PaymentPageContentProps = {
 type MutationErrorPayload = {
   displayName?: string[];
   detail?: string;
+  payment?: {
+    providerPayload?: Record<string, unknown> | null;
+    provider_payload?: Record<string, unknown> | null;
+  };
 };
 
 function getMutationErrorDetail(error: unknown) {
   const errorResponse = (error as { response?: { data?: MutationErrorPayload } })?.response?.data;
   return errorResponse?.detail ?? '';
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
+}
+
+function responseHttpStatus(exchange: unknown) {
+  const exchangeRecord = asRecord(exchange);
+  const response = asRecord(exchangeRecord?.response);
+  const status = response?.httpStatus ?? response?.http_status;
+  return typeof status === 'number' ? status : Number(status || 0);
+}
+
+function getMartaNon2xxDebugJson(error: unknown) {
+  const errorResponse = (error as { response?: { data?: MutationErrorPayload } })?.response?.data;
+  const payment = errorResponse?.payment;
+  const providerPayload = asRecord(payment?.providerPayload ?? payment?.provider_payload);
+  if (!providerPayload || providerPayload.provider !== 'marta-softpos') {
+    return '';
+  }
+
+  const debug = asRecord(providerPayload.debug);
+  if (!debug) {
+    return '';
+  }
+
+  const hasNon2xxResponse = Object.values(debug).some((exchange) => {
+    const status = responseHttpStatus(exchange);
+    return status >= 300;
+  });
+  if (!hasNon2xxResponse) {
+    return '';
+  }
+
+  return JSON.stringify(
+    {
+      detail: errorResponse?.detail ?? providerPayload.detail ?? providerPayload.message ?? '',
+      provider: providerPayload.provider,
+      status: providerPayload.status,
+      requestId: providerPayload.requestId ?? providerPayload.request_id,
+      debug,
+    },
+    null,
+    2,
+  );
 }
 
 function formatPercent(value: number) {
@@ -74,6 +126,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   const [settingsAnchor, setSettingsAnchor] = useState<HTMLElement | null>(null);
   const [method, setMethod] = useState<PaymentMethod>('cash');
   const [amount, setAmount] = useState('0');
+  const [registerFiscal, setRegisterFiscal] = useState(true);
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const [qrCountdown, setQrCountdown] = useState(5);
   const [receiptData, setReceiptData] = useState<CashierPaymentResponse | null>(null);
@@ -81,6 +134,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   const [paymentErrorMessage, setPaymentErrorMessage] = useState('');
   const [cardFailureDialogOpen, setCardFailureDialogOpen] = useState(false);
   const [lastCardFailureMessage, setLastCardFailureMessage] = useState('');
+  const [lastCardFailureDebugJson, setLastCardFailureDebugJson] = useState('');
   const [printToastOpen, setPrintToastOpen] = useState(false);
   const [addingItemId, setAddingItemId] = useState<string | null>(null);
   const [removingItemId, setRemovingItemId] = useState<string | null>(null);
@@ -88,6 +142,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   const [renameValue, setRenameValue] = useState('');
   const [renameError, setRenameError] = useState('');
   const canProcessPayments = canManageCashierPayments(session?.user);
+  const canDisableFiscalRegistration = canSkipFiscalReceipts(session?.user);
   const normalizedOrderId = orderId ?? null;
 
   const cashierContextQuery = useCashierContextQuery({
@@ -113,7 +168,11 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
       setRenameError('');
     },
   });
-  const selectedCashDesk = cashierContextQuery.data?.availableCashDesks[0] ?? null;
+  const selectedCashDesk = useMemo(() => {
+    const cashDesks = cashierContextQuery.data?.availableCashDesks ?? [];
+    const activeCashDeskId = cashierContextQuery.data?.currentShift?.cashDesk;
+    return cashDesks.find((cashDesk) => cashDesk.id === activeCashDeskId) ?? cashDesks[0] ?? null;
+  }, [cashierContextQuery.data?.availableCashDesks, cashierContextQuery.data?.currentShift?.cashDesk]);
 
   const remainingTotal = useMemo(() => {
     const total = Number(orderQuery.data?.total ?? 0);
@@ -150,12 +209,19 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   }, [remainingTotal]);
 
   useEffect(() => {
+    if (!canDisableFiscalRegistration) {
+      setRegisterFiscal(true);
+    }
+  }, [canDisableFiscalRegistration]);
+
+  useEffect(() => {
     if (paymentMutation.isError) {
       const detail = getMutationErrorDetail(paymentMutation.error) || copy.paymentFailed;
       setPaymentErrorMessage(detail);
       setPaymentErrorToastOpen(true);
       if (method === 'card') {
         setLastCardFailureMessage(detail);
+        setLastCardFailureDebugJson(getMartaNon2xxDebugJson(paymentMutation.error));
         setCardFailureDialogOpen(true);
       }
     }
@@ -172,7 +238,11 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     }, 1000);
     const timeoutId = window.setTimeout(async () => {
       try {
-        const response = await paymentMutation.mutateAsync({ method: 'qr', amount: Number(amount || 0) });
+        const response = await paymentMutation.mutateAsync({
+          method: 'qr',
+          amount: Number(amount || 0),
+          registerFiscal,
+        });
         setReceiptData(response);
       } catch (error) {
         setPaymentErrorMessage(getMutationErrorDetail(error) || copy.paymentFailed);
@@ -184,7 +254,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
       window.clearInterval(intervalId);
       window.clearTimeout(timeoutId);
     };
-  }, [amount, method, paymentMutation, qrDialogOpen]);
+  }, [amount, method, paymentMutation, qrDialogOpen, registerFiscal]);
 
   const paymentOptions = useMemo(
     () =>
@@ -200,7 +270,11 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
       ? '/cashier/builder'
       : '/cashier/open-checks';
   const canSubmitPayment = Boolean(
-    normalizedOrderId && canProcessPayments && Number(amount || 0) > 0 && !paymentMutation.isPending,
+    normalizedOrderId &&
+      canProcessPayments &&
+      cashierContextQuery.data?.currentShift &&
+      Number(amount || 0) > 0 &&
+      !paymentMutation.isPending,
   );
   const serviceFeePercent = Number(
     orderQuery.data?.serviceFeePercent ?? (orderQuery.data?.channel === 'hall' ? 10 : 0),
@@ -213,6 +287,53 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   const vatAmount = Number(orderQuery.data?.vatAmount ?? 0);
   const shouldShowVat = vatEnabled && vatPercent > 0;
   const vatLabel = `${copy.vat} (${formatPercent(vatPercent)}%)`;
+  const receiptDialogReceipts = useMemo(
+    () =>
+      (receiptData?.receipts?.filter(Boolean) ??
+        (receiptData?.receipt ? [receiptData.receipt] : [])),
+    [receiptData?.receipt, receiptData?.receipts],
+  );
+  const primaryReceipt = receiptDialogReceipts[0] ?? receiptData?.receipt ?? null;
+  const fallbackReceiptPayload = useMemo(() => {
+    if (!receiptData) {
+      return null;
+    }
+    const order = receiptData.order;
+    const payment = receiptData.payment;
+    const receiptNumber = payment.externalRef || getCashierOrderNumberLabel({ orderNumber: order.orderNumber });
+    const activeItems = aggregateCashierOrderItems(order.items?.filter((item) => item.status !== 'cancelled'));
+    const paymentAmount = Number(payment.amount ?? 0);
+    const isCash = payment.method === 'cash';
+
+    return {
+      snapshot: {
+        restaurant_name: session?.restaurantContext?.restaurantName ?? 'Chek',
+        restaurant_legal_name: session?.restaurantContext?.restaurantName ?? 'Chek',
+        order_number: getCashierOrderNumberLabel({ orderNumber: order.orderNumber }),
+        receipt_number: receiptNumber,
+        channel_label: 'sotuv',
+        table_label: order.tableName || order.hallName ? [order.hallName, order.tableName].filter(Boolean).join(' / ') : '',
+        cashier_name: session?.user.fullName || session?.user.username || '',
+        cashier_id: session?.user.id || '',
+        printed_at_label: payment.paidAt || new Date().toISOString(),
+        items: activeItems.map((item) => ({
+          name: item.catalogItemName,
+          quantity: item.quantity,
+          line_total: item.lineTotal,
+          note: item.note,
+        })),
+        subtotal: order.subtotal,
+        service_fee: order.serviceFee,
+        vat_enabled: order.vatEnabled,
+        vat_percent: order.vatPercent,
+        vat_amount: order.vatAmount,
+        total: paymentAmount,
+        received_cash: isCash ? paymentAmount : 0,
+        received_card: isCash ? 0 : paymentAmount,
+        order_note: order.note,
+      },
+    };
+  }, [receiptData, session?.restaurantContext?.restaurantName, session?.user.fullName, session?.user.id, session?.user.username]);
 
   const handlePayment = async () => {
     if (method === 'qr') {
@@ -221,7 +342,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     }
 
     try {
-      const response = await paymentMutation.mutateAsync({ method, amount: Number(amount || 0) });
+      const response = await paymentMutation.mutateAsync({ method, amount: Number(amount || 0), registerFiscal });
       setReceiptData(response);
     } catch (error) {
       const detail = getMutationErrorDetail(error) || copy.paymentFailed;
@@ -229,6 +350,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
       setPaymentErrorToastOpen(true);
       if (method === 'card') {
         setLastCardFailureMessage(detail);
+        setLastCardFailureDebugJson(getMartaNon2xxDebugJson(error));
         setCardFailureDialogOpen(true);
       }
     }
@@ -239,6 +361,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
       const response = await paymentMutation.mutateAsync({
         method: 'card',
         amount: Number(amount || 0),
+        registerFiscal,
         manualCardOverride: true,
         manualCardReason: lastCardFailureMessage,
       });
@@ -248,6 +371,14 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
       setPaymentErrorMessage(getMutationErrorDetail(error) || copy.paymentFailed);
       setPaymentErrorToastOpen(true);
     }
+  };
+
+  const handleCopyCardFailureDebug = async () => {
+    if (!lastCardFailureDebugJson) {
+      return;
+    }
+
+    await navigator.clipboard?.writeText(lastCardFailureDebugJson);
   };
 
   const handleAddOrderItem = async (itemId: string, catalogItemId: string, note?: string | null) => {
@@ -568,6 +699,25 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
               ) : null}
             </Stack>
 
+            {canDisableFiscalRegistration ? (
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={registerFiscal}
+                    disabled={paymentMutation.isPending}
+                    onChange={(event) => setRegisterFiscal(event.target.checked)}
+                  />
+                }
+                label="Fiscalga yuborish"
+              />
+            ) : null}
+
+            {!cashierContextQuery.data?.currentShift ? (
+              <Typography variant="body2" color="error">
+                To'lov qilish uchun avval kassa smenasini oching.
+              </Typography>
+            ) : null}
+
             <Button variant="contained" size="large" fullWidth disabled={!canSubmitPayment} onClick={handlePayment}>
               {paymentMutation.isPending ? copy.processing : copy.completePayment}
             </Button>
@@ -662,6 +812,33 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
               Qayta urinib ko'ring yoki terminaldan tashqarida karta orqali to'lov qabul qilingan bo'lsa, manual card
               sifatida yakunlang.
             </Typography>
+            {lastCardFailureDebugJson ? (
+              <Stack spacing={1}>
+                <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
+                  <Typography variant="subtitle2">MARTA request/response</Typography>
+                  <Button size="small" variant="contained" onClick={() => void handleCopyCardFailureDebug()}>
+                    Copy JSON
+                  </Button>
+                </Stack>
+                <Box
+                  component="pre"
+                  sx={(muiTheme) => ({
+                    m: 0,
+                    p: 1.2,
+                    maxHeight: 260,
+                    overflow: 'auto',
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                    borderRadius: '8px',
+                    fontSize: 12,
+                    lineHeight: 1.45,
+                    backgroundColor: muiTheme.palette.mode === 'dark' ? '#101114' : '#f0ece5',
+                    color: muiTheme.palette.text.primary,
+                  })}>
+                  {lastCardFailureDebugJson}
+                </Box>
+              </Stack>
+            ) : null}
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
@@ -736,10 +913,15 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
             <Stack direction="row" justifyContent="space-between">
               <Typography color="text.secondary">{copy.receiptNumber}</Typography>
               <Typography>
-                {receiptData?.receipt?.payload?.receiptNumber ??
-                  receiptData?.receipt?.payload?.receipt_number ??
-                  receiptData?.payment.externalRef ??
-                  '-'}
+                {receiptDialogReceipts.length > 1
+                  ? receiptDialogReceipts
+                      .map((receipt) => receipt?.payload?.receiptNumber ?? receipt?.payload?.receipt_number)
+                      .filter(Boolean)
+                      .join(', ') || receiptData?.payment.externalRef || '-'
+                  : primaryReceipt?.payload?.receiptNumber ??
+                    primaryReceipt?.payload?.receipt_number ??
+                    receiptData?.payment.externalRef ??
+                    '-'}
               </Typography>
             </Stack>
             <Stack direction="row" justifyContent="space-between">
@@ -760,8 +942,8 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
               <Typography color="text.secondary">{copy.receiptTime}</Typography>
               <Typography>
                 {formatTime(
-                  receiptData?.receipt?.payload?.issuedAt ??
-                    receiptData?.receipt?.payload?.issued_at ??
+                  primaryReceipt?.payload?.issuedAt ??
+                    primaryReceipt?.payload?.issued_at ??
                     receiptData?.payment.paidAt,
                   locale,
                 )}
@@ -778,7 +960,10 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
                   color: muiTheme.palette.mode === 'dark' ? '#f5f5f5' : muiTheme.palette.text.primary,
                 })}
                 onClick={() => {
-                  void printReceiptWithFallback(receiptData?.receipt?.payload ?? null);
+                  const receiptsToPrint = receiptDialogReceipts.length > 0 ? receiptDialogReceipts : [null];
+                  receiptsToPrint.forEach((receipt) => {
+                    void printReceiptWithFallback(receipt?.payload ?? fallbackReceiptPayload);
+                  });
                   setPrintToastOpen(true);
                 }}>
                 {copy.printReceipt}
@@ -841,6 +1026,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
         onClose={() => setSettingsAnchor(null)}
         onLocaleChange={setLocale}
         onRefresh={isMobile ? () => window.location.reload() : undefined}
+        onShift={() => navigate(`/cashier/shift?next=${encodeURIComponent(afterPaymentPath)}`)}
         onLock={isMobile ? () => navigate('/lock-screen') : undefined}
         onThemeToggle={() => setThemeMode(themeMode === 'dark' ? 'light' : 'dark')}
         onSignOut={() => {

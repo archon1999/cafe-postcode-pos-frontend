@@ -10,6 +10,9 @@ const POS_OPEN_CHECKS_VIEW = 'pos_open_checks.view';
 const POS_PAYMENT_ORDER_ITEMS_CREATE = 'pos_payment_order_items.create';
 const POS_PAYMENT_ORDER_ITEMS_DELETE = 'pos_payment_order_items.delete';
 const POS_PAYMENTS_CREATE = 'pos_payments.create';
+const POS_CASH_SHIFT_MANAGE = 'pos_cash_shift.manage';
+const POS_FISCAL_RECEIPTS_SKIP = 'pos_fiscal_receipts.skip';
+const POS_FISCAL_SHIFT_MANAGE = 'pos_fiscal_shift.manage';
 const POS_TABLE_RESERVATIONS_MANAGE = 'pos_table_reservations.manage';
 const LEGACY_CATALOG_MENU_VIEW = 'catalog_menu.view';
 const LEGACY_KITCHEN_QUEUE_VIEW = 'kitchen_queue.view';
@@ -124,6 +127,30 @@ export function canManageCashierPayments(user: PosUser | null | undefined) {
   }
 
   return hasAnyPermission(user, [POS_PAYMENTS_CREATE, LEGACY_PAYMENTS_CREATE]);
+}
+
+export function canManageCashShift(user: PosUser | null | undefined) {
+  if (!isRestaurantAccessEnabled(user)) {
+    return false;
+  }
+
+  return hasPermission(user, POS_CASH_SHIFT_MANAGE);
+}
+
+export function canSkipFiscalReceipts(user: PosUser | null | undefined) {
+  if (!isRestaurantAccessEnabled(user)) {
+    return false;
+  }
+
+  return hasPermission(user, POS_FISCAL_RECEIPTS_SKIP);
+}
+
+export function canManageFiscalShift(user: PosUser | null | undefined) {
+  if (!isRestaurantAccessEnabled(user)) {
+    return false;
+  }
+
+  return hasPermission(user, POS_FISCAL_SHIFT_MANAGE);
 }
 
 export function canAddCashierPaymentOrderItems(user: PosUser | null | undefined) {

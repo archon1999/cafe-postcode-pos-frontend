@@ -9,6 +9,7 @@ export type CashierContextCashDesk = {
   name: string;
   location: string;
   enabledPaymentMethods: Array<'cash' | 'card' | 'qr'>;
+  paymentIntegration?: string | null;
   fiscalProvider: string;
   receiptPrinterEnabled: boolean;
   terminalId: string;
@@ -16,10 +17,18 @@ export type CashierContextCashDesk = {
   isActive: boolean;
 };
 
+export type CashierContextCashier = {
+  id: string;
+  fullName: string;
+  username: string;
+};
+
 export type CashShiftSummary = {
   id: string;
   status: 'open' | 'closed';
   cashDesk?: string | null;
+  cashier?: string | null;
+  openedBy?: string | null;
   openedAt: string;
   closedAt?: string | null;
   openingCashAmount: number;
@@ -34,10 +43,13 @@ export type CashShiftSummary = {
   reprintCount: number;
   cashDeskName?: string | null;
   cashierName?: string | null;
+  openedByName?: string | null;
 };
 
 export type CashierContext = {
   branchFiscalProfile: BranchFiscalProfile;
   availableCashDesks: CashierContextCashDesk[];
+  availableCashiers: CashierContextCashier[];
   currentShift: CashShiftSummary | null;
+  activeShifts: CashShiftSummary[];
 };

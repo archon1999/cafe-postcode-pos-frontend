@@ -125,9 +125,24 @@ function money(value: unknown) {
   return numberValue(value).toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 
+function moneyFixed(value: unknown) {
+  return numberValue(value).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 function percent(value: unknown) {
   const number = numberValue(value);
   return Number.isInteger(number) ? String(number) : number.toFixed(2).replace(/\.?0+$/, '');
+}
+
+function itemQuantityValue(item: PrintableItem) {
+  const quantity = Number(item.quantity ?? 1);
+  return Number.isFinite(quantity) && quantity > 0 ? quantity : 1;
+}
+
+function itemUnitPriceValue(item: PrintableItem) {
+  const explicit = numberValue(item.unit_price ?? item.unitPrice);
+  if (explicit > 0) return explicit;
+  return numberValue(item.line_total ?? item.lineTotal) / itemQuantityValue(item);
 }
 
 function includedVatAmount(total: unknown, vatPercent: unknown) {
@@ -140,7 +155,10 @@ function includedVatAmount(total: unknown, vatPercent: unknown) {
 function dateTimeParts(value: unknown) {
   const raw = String(value ?? '').trim();
   if (!raw) return { date: '', time: '' };
-  const normalized = raw.replace('T', ' ').replace(/\.\d+.*$/, '').replace(/[+-]\d{2}:?\d{2}$/, '');
+  const normalized = raw
+    .replace('T', ' ')
+    .replace(/\.\d+.*$/, '')
+    .replace(/[+-]\d{2}:?\d{2}$/, '');
   const [date = '', time = ''] = normalized.split(/\s+/, 2);
   return { date, time: time.slice(0, 8) };
 }
@@ -154,7 +172,7 @@ function centered(value: string, width = 42) {
 
 function fiscalSnapshotFromPayload(payload: Record<string, unknown>): PrintablePayload | null {
   const request = asRecord(payload.request);
-  const receipt = asRecord(request?.receipt);
+  const receipt = asRecord(request?.receipt) ?? asRecord(request?.Receipt);
   if (!receipt) return null;
 
   const response = asRecord(payload.response);
@@ -171,10 +189,22 @@ function fiscalSnapshotFromPayload(payload: Record<string, unknown>): PrintableP
   const firstVatItem = items.map((entry) => asRecord(entry)).find((entry) => Number(entry?.VATPercent || 0) > 0);
 
   return {
-    restaurant_name: String(payload.restaurant_name ?? payload.restaurantName ?? payload.restaurant_legal_name ?? payload.restaurantLegalName ?? 'Chek'),
-    restaurant_legal_name: String(payload.restaurant_legal_name ?? payload.restaurantLegalName ?? payload.restaurant_name ?? payload.restaurantName ?? 'Chek'),
+    restaurant_name: String(
+      payload.restaurant_name ??
+        payload.restaurantName ??
+        payload.restaurant_legal_name ??
+        payload.restaurantLegalName ??
+        'Chek',
+    ),
+    restaurant_legal_name: String(
+      payload.restaurant_legal_name ??
+        payload.restaurantLegalName ??
+        payload.restaurant_name ??
+        payload.restaurantName ??
+        'Chek',
+    ),
     restaurant_address: String(payload.restaurant_address ?? payload.restaurantAddress ?? ''),
-    tax_number: extraInfo?.TIN ? String(extraInfo.TIN) : '',
+    tax_number: extraInfo?.TIN ? String(extraInfo.TIN) : String(payload.tax_number ?? payload.taxNumber ?? ''),
     receipt_number: receiptNumber,
     order_number: receiptNumber,
     channel_label: String(receipt.Operation ?? '') === '1' ? 'Qaytarish' : 'Sotuv',
@@ -185,6 +215,7 @@ function fiscalSnapshotFromPayload(payload: Record<string, unknown>): PrintableP
         name: String(item.Name ?? 'Mahsulot'),
         quantity: fiscalQuantity(item.Amount),
         line_total: fiscalMoney(item.Price),
+        unit_price: fiscalMoney(item.Price) / Number(fiscalQuantity(item.Amount) || 1),
         vat_percent: item.VATPercent ? String(item.VATPercent) : '',
         vat_amount: item.VAT ? fiscalMoney(item.VAT) : 0,
         spic: item.SPIC ? String(item.SPIC) : '',
@@ -249,67 +280,73 @@ function receiptTextFromPayload(payload: Record<string, unknown> | null | undefi
   const snapshot = snapshotFromPayload(payload);
   const items = Array.isArray(snapshot.items) ? snapshot.items : [];
   const totals = receiptTotals(snapshot);
-  const orderNumber = snapshot.order_number ?? snapshot.orderNumber ?? snapshot.receipt_number ?? snapshot.receiptNumber ?? '';
+  const orderNumber =
+    snapshot.order_number ?? snapshot.orderNumber ?? snapshot.receipt_number ?? snapshot.receiptNumber ?? '';
   const receiptNumber = snapshot.receipt_number ?? snapshot.receiptNumber;
-  const title = String(snapshot.restaurant_legal_name ?? snapshot.restaurantLegalName ?? snapshot.restaurant_name ?? snapshot.restaurantName ?? 'Chek');
+  const title = String(
+    snapshot.restaurant_legal_name ??
+      snapshot.restaurantLegalName ??
+      snapshot.restaurant_name ??
+      snapshot.restaurantName ??
+      'Chek',
+  );
   const printedAt = snapshot.printed_at_label ?? snapshot.printedAtLabel;
   const { date, time } = dateTimeParts(printedAt);
   const cashierName = snapshot.cashier_name ?? snapshot.cashierName ?? snapshot.waiter_name ?? snapshot.waiterName;
   const cashierId = snapshot.cashier_id ?? snapshot.cashierId ?? '';
   const lines = [
-    title,
-    snapshot.restaurant_address || snapshot.restaurantAddress ? String(snapshot.restaurant_address ?? snapshot.restaurantAddress) : '',
+    centered(title),
+    snapshot.restaurant_address || snapshot.restaurantAddress
+      ? centered(String(snapshot.restaurant_address ?? snapshot.restaurantAddress))
+      : '',
+    '',
+    fitLine(`CHEK: ${receiptNumber || orderNumber || '-'}`, `${date || '-'} ${time || '-'}`.trim()),
+    fitLine('POS: 1', `KASSIR: ${cashierName || '-'}`),
+    fitLine(
+      `STIR: ${String(snapshot.tax_number ?? snapshot.taxNumber ?? '-')}`,
+      `NKM S/R: ${String(snapshot.terminal_id ?? snapshot.terminalId ?? '-')}`,
+    ),
     '-'.repeat(42),
-    fitLine('STIR', String(snapshot.tax_number ?? snapshot.taxNumber ?? '-')),
-    fitLine('Sana', date || '-'),
-    fitLine('Vaqt', time || '-'),
-    fitLine('Chek', String(receiptNumber || orderNumber || '-')),
-    fitLine('Z-hisobot NO', String(snapshot.z_report_number ?? snapshot.zReportNumber ?? '-')),
-    fitLine('Kassir ismi', String(cashierName || '-')),
-    fitLine('Kassir ID', String(cashierId || '-')),
-    '-'.repeat(42),
-    centered(String(snapshot.channel_label ?? snapshot.channelLabel ?? 'sotuv').toLowerCase()),
   ].filter(Boolean);
 
   const tableLabel = snapshot.table_label ?? snapshot.tableLabel;
-  if (tableLabel) lines.push(String(tableLabel));
-  lines.push('-'.repeat(42));
+  if (tableLabel)
+    lines.push(fitLine(String(tableLabel), String(snapshot.channel_label ?? snapshot.channelLabel ?? 'sotuv')));
 
   for (const item of items) {
-    lines.push(String(item.name ?? 'Mahsulot'));
-    lines.push(fitLine(`  ${item.quantity ?? 1}`, money(item.line_total ?? item.lineTotal)));
+    const quantity = itemQuantityValue(item);
+    const unitPrice = itemUnitPriceValue(item);
+    lines.push(String(item.name ?? 'Mahsulot').toUpperCase());
+    lines.push(fitLine(`${quantity} dona x ${moneyFixed(unitPrice)}`, money(item.line_total ?? item.lineTotal)));
     const itemVatPercent = item.vat_percent ?? item.vatPercent;
     const itemVatAmount = numberValue(item.vat_amount ?? item.vatAmount);
-    if (itemVatPercent && itemVatAmount > 0) {
-      lines.push(fitLine(`  QQS (${percent(itemVatPercent)}%)`, money(itemVatAmount)));
-    }
-    if (item.barcode) lines.push(`  Shtrix-kod: ${item.barcode}`);
-    if (item.spic) lines.push(`  MXIK kodi: ${item.spic}`);
+    if (itemVatPercent)
+      lines.push(fitLine(`Sh.j. QQS: ${percent(itemVatPercent)}%`, itemVatAmount > 0 ? moneyFixed(itemVatAmount) : ''));
+    if (item.spic) lines.push(fitLine('MXIK KOD:', item.spic));
+    if (item.barcode) lines.push(fitLine('SH/K:', item.barcode));
     const unitCode = item.unit_code ?? item.unitCode;
-    if (unitCode) lines.push(`  O'lchov birligi: ${unitCode}`);
-    if (item.labels?.length) lines.push(`  Markirovka kodi: ${item.labels.join(', ')}`);
-    if (item.note) lines.push(`  ${item.note}`);
+    if (unitCode) lines.push(fitLine("O'lchov:", String(unitCode)));
+    if (item.labels?.length) lines.push(fitLine('MARKIROVKA:', item.labels.join(', ')));
+    if (item.note) lines.push(String(item.note));
+    lines.push('-'.repeat(42));
   }
 
-  lines.push('-'.repeat(42));
-  lines.push(fitLine('Chegirma', money(0)));
-  lines.push(fitLine('Jami', money(snapshot.total)));
-  if (totals.serviceFee > 0) lines.push(fitLine('Xizmat haqi', money(totals.serviceFee)));
-  if (totals.vatEnabled && totals.vatAmount > 0) lines.push(fitLine('Umumiy QQS', money(totals.vatAmount)));
-  lines.push('-'.repeat(42));
-  lines.push(fitLine('Naqd pul', money(totals.receivedCash)));
-  lines.push(fitLine('Bank kartalari', money(totals.receivedCard)));
-  lines.push('-'.repeat(42));
-  lines.push(fitLine('Jami olindi', money(snapshot.total)));
+  lines.push('='.repeat(42));
+  lines.push(fitLine('JAMI:', money(snapshot.total)));
+  if (totals.vatEnabled && totals.vatAmount > 0) lines.push(fitLine('Sh.j. QQS:', moneyFixed(totals.vatAmount)));
+  if (totals.serviceFee > 0) lines.push(fitLine('XIZMAT HAQI:', money(totals.serviceFee)));
+  lines.push('='.repeat(42));
+  if (totals.receivedCash > 0) lines.push(fitLine('NAQD PUL:', money(totals.receivedCash)));
+  if (totals.receivedCard > 0) lines.push(fitLine('BANK KARTASI:', money(totals.receivedCard)));
 
   const terminalId = snapshot.terminal_id ?? snapshot.terminalId;
   const factoryId = snapshot.factory_id ?? snapshot.factoryId;
   const fiscalSign = snapshot.fiscal_sign ?? snapshot.fiscalSign;
   if (terminalId || factoryId || fiscalSign) {
     lines.push('-'.repeat(42));
-    if (terminalId) lines.push(`Terminal S/N: ${terminalId}`);
-    if (factoryId) lines.push(`FM ID: ${factoryId}`);
-    if (fiscalSign) lines.push(`Fiskal imzo: ${fiscalSign}`);
+    if (factoryId) lines.push(`FM: ${factoryId}`);
+    if (fiscalSign) lines.push(fitLine('FB:', String(fiscalSign)));
+    if (terminalId) lines.push(`NKM S/R: ${terminalId}`);
   }
 
   const qrCodeUrl = snapshot.qr_code_url ?? snapshot.qrCodeUrl;
@@ -364,9 +401,15 @@ export async function printReceiptInBrowser(payload: Record<string, unknown> | n
   const snapshot = snapshotFromPayload(payload);
   const items = Array.isArray(snapshot.items) ? snapshot.items : [];
   const totals = receiptTotals(snapshot);
-  const orderNumber = snapshot.order_number ?? snapshot.orderNumber ?? snapshot.receipt_number ?? snapshot.receiptNumber ?? '';
+  const orderNumber =
+    snapshot.order_number ?? snapshot.orderNumber ?? snapshot.receipt_number ?? snapshot.receiptNumber ?? '';
   const receiptNumber = snapshot.receipt_number ?? snapshot.receiptNumber;
-  const title = snapshot.restaurant_legal_name ?? snapshot.restaurantLegalName ?? snapshot.restaurant_name ?? snapshot.restaurantName ?? 'Chek';
+  const title =
+    snapshot.restaurant_legal_name ??
+    snapshot.restaurantLegalName ??
+    snapshot.restaurant_name ??
+    snapshot.restaurantName ??
+    'Chek';
   const printedAt = snapshot.printed_at_label ?? snapshot.printedAtLabel;
   const { date, time } = dateTimeParts(printedAt);
   const cashierName = snapshot.cashier_name ?? snapshot.cashierName ?? snapshot.waiter_name ?? snapshot.waiterName;
@@ -385,24 +428,22 @@ export async function printReceiptInBrowser(payload: Record<string, unknown> | n
   <style>
     @page { size: 80mm auto; margin: 4mm; }
     * { box-sizing: border-box; }
-    body { font-family: Arial, sans-serif; color: #111; margin: 0; font-size: 11px; }
+    body { font-family: "Courier New", monospace; color: #111; margin: 0; font-size: 11px; font-weight: 600; }
     .receipt { width: 72mm; }
-    h1 { font-size: 13px; margin: 0 0 2px; text-align: center; }
+    h1 { font-size: 12px; margin: 0 0 2px; text-align: center; text-transform: uppercase; }
     .center { text-align: center; }
     .meta, .row, .item, .line { display: flex; justify-content: space-between; gap: 8px; }
     .meta { color: #111; margin: 1px 0; }
     .muted { color: #555; }
-    hr { border: 0; border-top: 1px solid #777; margin: 6px 0; }
+    hr { border: 0; border-top: 1px dashed #111; margin: 6px 0; }
     .dash { border-top-style: dashed; }
-    .operation { font-size: 16px; font-weight: 700; text-align: center; margin: 4px 0; text-transform: lowercase; }
-    .item-head { display: grid; grid-template-columns: 1fr 38px 78px; gap: 6px; font-weight: 700; text-align: right; border-bottom: 1px solid #ccc; padding-bottom: 2px; }
-    .item-head span:first-child { text-align: center; }
-    .item { margin: 5px 0 2px; align-items: flex-start; }
-    .name { flex: 1; overflow-wrap: anywhere; }
-    .price { min-width: 78px; text-align: right; }
-    .qty { min-width: 38px; text-align: right; }
-    .grand { font-weight: 700; font-size: 21px; }
-    .total { font-weight: 700; font-size: 13px; }
+    .equals { border-top: 2px solid #111; margin: 7px 0; }
+    .item-block { margin: 0; }
+    .item-name { font-weight: 800; text-transform: uppercase; overflow-wrap: anywhere; }
+    .price { min-width: 76px; text-align: right; }
+    .grand { font-weight: 900; font-size: 24px; }
+    .total { font-weight: 900; font-size: 21px; align-items: baseline; }
+    .total span:first-child { font-size: 22px; }
     .note, .subline { color: #222; margin: 1px 0; overflow-wrap: anywhere; }
     .subrow { display: flex; justify-content: space-between; gap: 8px; margin: 1px 0; }
     .label { color: #222; }
@@ -414,51 +455,48 @@ export async function printReceiptInBrowser(payload: Record<string, unknown> | n
     <h1>${escapeHtml(title)}</h1>
     ${snapshot.restaurant_address || snapshot.restaurantAddress ? `<div class="center muted">${escapeHtml(snapshot.restaurant_address ?? snapshot.restaurantAddress)}</div>` : ''}
     <hr />
-    <div class="meta"><span>STIR</span><span>${escapeHtml(snapshot.tax_number ?? snapshot.taxNumber ?? '-')}</span></div>
-    <div class="meta"><span>Sana</span><span>${escapeHtml(date || '-')}</span></div>
-    <div class="meta"><span>Vaqt</span><span>${escapeHtml(time || '-')}</span></div>
-    <div class="meta"><span>Chek</span><span>${escapeHtml(receiptNumber || orderNumber || '-')}</span></div>
-    <div class="meta"><span>Z-hisobot NO</span><span>${escapeHtml(snapshot.z_report_number ?? snapshot.zReportNumber ?? '-')}</span></div>
-    <div class="meta"><span>Kassir ismi</span><span>${escapeHtml(cashierName || '-')}</span></div>
-    <div class="meta"><span>Kassir ID</span><span>${escapeHtml(cashierId || '-')}</span></div>
+    <div class="meta"><span>CHEK: ${escapeHtml(receiptNumber || orderNumber || '-')}</span><span>${escapeHtml(`${date || '-'} ${time || '-'}`.trim())}</span></div>
+    <div class="meta"><span>POS: 1</span><span>KASSIR: ${escapeHtml(cashierName || '-')}</span></div>
+    <div class="meta"><span>STIR: ${escapeHtml(snapshot.tax_number ?? snapshot.taxNumber ?? '-')}</span><span>NKM S/R: ${escapeHtml(terminalId || '-')}</span></div>
     <hr />
-    <div class="operation">${escapeHtml(snapshot.channel_label ?? snapshot.channelLabel ?? 'sotuv')}</div>
-    ${snapshot.table_label || snapshot.tableLabel ? `<div class="meta"><span>${escapeHtml(snapshot.table_label ?? snapshot.tableLabel)}</span><span></span></div>` : ''}
-    <div class="item-head"><span>Nomi</span><span>Soni</span><span>Narxi</span></div>
+    ${snapshot.table_label || snapshot.tableLabel ? `<div class="meta"><span>${escapeHtml(snapshot.table_label ?? snapshot.tableLabel)}</span><span>${escapeHtml(snapshot.channel_label ?? snapshot.channelLabel ?? 'sotuv')}</span></div>` : ''}
     ${items
       .map((item) => {
+        const quantity = itemQuantityValue(item);
+        const unitPrice = itemUnitPriceValue(item);
         const itemVatPercent = item.vat_percent ?? item.vatPercent;
         const itemVatAmount = numberValue(item.vat_amount ?? item.vatAmount);
         const unitCode = item.unit_code ?? item.unitCode;
-        return `<div class="item"><span class="name">${escapeHtml(item.name)}</span><span class="qty">${escapeHtml(item.quantity ?? 1)}</span><span class="price">${money(item.line_total ?? item.lineTotal)}</span></div>${
-          itemVatAmount > 0 ? `<div class="subrow"><span class="label">QQS qiymati</span><span class="value">${money(itemVatAmount)}</span></div>` : ''
-        }${itemVatPercent ? `<div class="subrow"><span class="label">QQS foizi</span><span class="value">${escapeHtml(percent(itemVatPercent))} %</span></div>` : ''}<div class="subrow"><span class="label">Chegirma/Boshqa</span><span class="value">0/0</span></div>${
-          item.barcode ? `<div class="subrow"><span class="label">Shtrix kodi</span><span class="value">${escapeHtml(item.barcode)}</span></div>` : '<div class="subrow"><span class="label">Shtrix kodi</span><span class="value"></span></div>'
-        }${item.spic ? `<div class="subrow"><span class="label">MXIK kodi</span><span class="value">${escapeHtml(item.spic)}</span></div>` : '<div class="subrow"><span class="label">MXIK kodi</span><span class="value"></span></div>'}${
-          unitCode ? `<div class="subrow"><span class="label">O'lchov birligi</span><span class="value">${escapeHtml(unitCode)}</span></div>` : `<div class="subrow"><span class="label">O'lchov birligi</span><span class="value"></span></div>`
-        }<div class="subrow"><span class="label">Markirovka kodi</span><span class="value">${escapeHtml(item.labels?.join(', ') ?? '')}</span></div>${item.note ? `<div class="note">${escapeHtml(item.note)}</div>` : ''}`;
+        return `<div class="item-block"><div class="item-name">${escapeHtml(item.name ?? 'Mahsulot')}</div><div class="subrow"><span>${escapeHtml(quantity)} dona x ${moneyFixed(unitPrice)}</span><span class="price">${money(item.line_total ?? item.lineTotal)}</span></div>${
+          itemVatPercent
+            ? `<div class="subrow"><span>Sh.j. QQS: ${escapeHtml(percent(itemVatPercent))}%</span><span>${itemVatAmount > 0 ? moneyFixed(itemVatAmount) : ''}</span></div>`
+            : ''
+        }${item.spic ? `<div class="subrow"><span>MXIK KOD:</span><span>${escapeHtml(item.spic)}</span></div>` : ''}${
+          item.barcode ? `<div class="subrow"><span>SH/K:</span><span>${escapeHtml(item.barcode)}</span></div>` : ''
+        }${unitCode ? `<div class="subrow"><span>O'lchov:</span><span>${escapeHtml(unitCode)}</span></div>` : ''}${
+          item.labels?.length
+            ? `<div class="subrow"><span>MARKIROVKA:</span><span>${escapeHtml(item.labels.join(', '))}</span></div>`
+            : ''
+        }${item.note ? `<div class="note">${escapeHtml(item.note)}</div>` : ''}<hr /></div>`;
       })
       .join('')}
-    <hr class="dash" />
-    <div class="row"><span>Chegirma</span><span>0</span></div>
-    <div class="row"><span>Jami</span><span>${money(snapshot.total)}</span></div>
-    ${totals.serviceFee > 0 ? `<div class="row"><span>Xizmat haqi</span><span>${money(totals.serviceFee)}</span></div>` : ''}
-    ${totals.vatEnabled && totals.vatAmount > 0 ? `<div class="row"><span>Umumiy QQS</span><span>${money(totals.vatAmount)}</span></div>` : ''}
-    <hr />
-    <div class="row"><span>Naqd pul</span><span>${money(totals.receivedCash)}</span></div>
-    <div class="row"><span>Bank kartalari</span><span>${money(totals.receivedCard)}</span></div>
-    <hr />
-    <div class="row total"><span>Jami to'lov:</span><span class="grand">${money(snapshot.total)}</span></div>
+    <div class="equals"></div>
+    <div class="row total"><span>JAMI:</span><span class="grand">${money(snapshot.total)}</span></div>
+    ${totals.vatEnabled && totals.vatAmount > 0 ? `<div class="row"><span>Sh.j. QQS:</span><span>${moneyFixed(totals.vatAmount)}</span></div>` : ''}
+    ${totals.serviceFee > 0 ? `<div class="row"><span>XIZMAT HAQI:</span><span>${money(totals.serviceFee)}</span></div>` : ''}
+    <div class="equals"></div>
+    ${totals.receivedCash > 0 ? `<div class="row"><span>NAQD PUL:</span><span>${money(totals.receivedCash)}</span></div>` : ''}
+    ${totals.receivedCard > 0 ? `<div class="row"><span>BANK KARTASI:</span><span>${money(totals.receivedCard)}</span></div>` : ''}
     ${
       terminalId || factoryId || fiscalSign
-        ? `<hr />${terminalId ? `<div class="meta"><span>Terminal S/N</span><span>${escapeHtml(terminalId)}</span></div>` : ''}${
-            factoryId ? `<div class="meta"><span>FM ID</span><span>${escapeHtml(factoryId)}</span></div>` : ''
-          }${fiscalSign ? `<div class="meta"><span>Fiskal imzo</span><span>${escapeHtml(fiscalSign)}</span></div>` : ''}`
+        ? `<hr />${factoryId ? `<div class="meta"><span>FM:</span><span>${escapeHtml(factoryId)}</span></div>` : ''}${
+            fiscalSign ? `<div class="meta"><span>FB:</span><span>${escapeHtml(fiscalSign)}</span></div>` : ''
+          }${terminalId ? `<div class="meta"><span>NKM S/R:</span><span>${escapeHtml(terminalId)}</span></div>` : ''}`
         : ''
     }
     ${
       qrCodeUrl
-        ? `<hr /><div class="center">${qrImage ? `<img src="${escapeHtml(qrImage)}" alt="Soliq QR Code" style="width:34mm;height:34mm;" />` : ''}<div class="subline">Soliq QR Code</div></div>`
+        ? `<hr /><div class="center">${qrImage ? `<img src="${escapeHtml(qrImage)}" alt="Soliq QR Code" style="width:34mm;height:34mm;" />` : ''}</div>`
         : ''
     }
     ${snapshot.order_note || snapshot.orderNote ? `<hr /><div>${escapeHtml(snapshot.order_note ?? snapshot.orderNote)}</div>` : ''}
