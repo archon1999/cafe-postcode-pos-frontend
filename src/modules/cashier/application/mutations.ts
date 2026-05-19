@@ -3,7 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { queryClient } from 'shared/api/query-client';
 
 import { cashierRepository } from '../data-access';
-import type { CashierMenuItem, PaymentMethod } from '../domain';
+import type { CashierMenuItem, CashierShiftCloseResponse, PaymentMethod } from '../domain';
 
 import { cashierKeys } from './keys';
 
@@ -46,7 +46,11 @@ export function useRemoveCashierOrderItemMutation(options: { onSuccess?: () => v
   });
 }
 
-export function useCashierOrderScanMutation(options: { orderId?: string | null; mode: 'add' | 'attach'; onSuccess?: () => void }) {
+export function useCashierOrderScanMutation(options: {
+  orderId?: string | null;
+  mode: 'add' | 'attach' | 'remove';
+  onSuccess?: () => void;
+}) {
   const { orderId, mode, onSuccess } = options;
 
   return useMutation({
@@ -218,7 +222,10 @@ export function useOpenCashierShiftMutation(options?: { onSuccess?: () => void }
   });
 }
 
-export function useCloseCashierShiftMutation(options?: { onSuccess?: () => void }) {
+export function useCloseCashierShiftMutation(options?: {
+  onSuccess?: (response: CashierShiftCloseResponse) => void;
+  onError?: (error: unknown) => void;
+}) {
   return useMutation({
     mutationFn: (payload: {
       cashShiftId?: string;
@@ -227,13 +234,16 @@ export function useCloseCashierShiftMutation(options?: { onSuccess?: () => void 
       closeFiscalShift?: boolean;
     }) =>
       cashierRepository.closeShift(payload),
-    onSuccess: async () => {
+    onSuccess: async (response) => {
       await queryClient.invalidateQueries({ queryKey: cashierKeys.context });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('open') });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('closed') });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('fiscal_unresolved') });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.builderOrders });
-      options?.onSuccess?.();
+      options?.onSuccess?.(response);
+    },
+    onError: (error) => {
+      options?.onError?.(error);
     },
   });
 }
@@ -263,13 +273,19 @@ export function useCashierReprintMutation(options?: { onSuccess?: () => void }) 
   });
 }
 
-export function useCashierFiscalRetryMutation(options?: { onSuccess?: () => void }) {
+export function useCashierFiscalRetryMutation(options?: {
+  onSuccess?: (response: Awaited<ReturnType<typeof cashierRepository.retryFiscalPayment>>) => void;
+  onError?: (error: unknown) => void;
+}) {
   return useMutation({
     mutationFn: (paymentId: string) => cashierRepository.retryFiscalPayment(paymentId),
-    onSuccess: async () => {
+    onSuccess: async (response) => {
       await queryClient.invalidateQueries({ queryKey: cashierKeys.context });
       await queryClient.invalidateQueries({ queryKey: ['cashier', 'checks'] });
-      options?.onSuccess?.();
+      options?.onSuccess?.(response);
+    },
+    onError: (error) => {
+      options?.onError?.(error);
     },
   });
 }

@@ -35,6 +35,7 @@ import {
   groupCashierOrderItemsByStation,
 } from 'modules/cashier/domain';
 import type { CashierCheckStatus, CashierOrder } from 'modules/cashier/domain/entities/order.types';
+import { getApiErrorMessage } from 'shared/api/errorMessage';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { type PosLocale, getPosCopy } from 'shared/locale/copy';
 import { formatCompactMoney, formatTime } from 'shared/pos/utils';
@@ -48,6 +49,13 @@ import {
 } from 'shared/ui/pos-primitives';
 
 type CashierPayment = NonNullable<CashierOrder['payments']>[number];
+type RetryFiscalReceipt = { payload?: Record<string, unknown> | null };
+type RetryFiscalReceiptDialogState = {
+  receipts: RetryFiscalReceipt[];
+  receiptNumber: string;
+  methodLabel: string;
+  amount: number;
+};
 type ChecksQueryData = { orders?: CashierOrder[]; count?: number; numPages?: number } | CashierOrder[] | undefined;
 type MutationErrorPayload = {
   displayName?: string[];
@@ -447,10 +455,36 @@ export function OpenChecksPageContent() {
   const [renameError, setRenameError] = useState('');
   const [fiscalSearch, setFiscalSearch] = useState('');
   const [fiscalPage, setFiscalPage] = useState(1);
+  const [retryReceiptDialog, setRetryReceiptDialog] = useState<RetryFiscalReceiptDialogState | null>(null);
   const refundMutation = useCashierRefundMutation();
   const reprintMutation = useCashierReprintMutation();
   const retryFiscalMutation = useCashierFiscalRetryMutation({
-    onSuccess: () => toast.success('Fiscalga qayta yuborildi'),
+    onSuccess: (response) => {
+      const failedResult = (response.results ?? []).find((item) => item && item.ok === false);
+      if (failedResult) {
+        toast.error(String(failedResult.detail ?? failedResult.message ?? 'Fiscalga qayta yuborishda xatolik bor.'));
+        return;
+      }
+      const receipts = ((response.receipts?.length ? response.receipts : response.receipt ? [response.receipt] : []) as RetryFiscalReceipt[])
+        .filter(Boolean);
+      setRetryReceiptDialog({
+        receipts,
+        receiptNumber:
+          receipts
+            .map((receipt) => receipt.payload?.receiptNumber ?? receipt.payload?.receipt_number)
+            .filter(Boolean)
+            .join(', ') || latestSucceededPayment?.id || '-',
+        methodLabel:
+          latestSucceededPayment?.method === 'card'
+            ? copy.card
+            : latestSucceededPayment?.method === 'qr'
+              ? copy.qr
+              : copy.cash,
+        amount: Number(latestSucceededPayment?.amount ?? 0),
+      });
+      toast.success('Fiscalga qayta yuborildi');
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error, 'Fiscalga qayta yuborishda xatolik bor.')),
   });
   const updateOrderDisplayNameMutation = useCashierUpdateOrderDisplayNameMutation({
     onSuccess: () => {
@@ -724,6 +758,59 @@ export function OpenChecksPageContent() {
           <Box sx={{ flex: 1, minHeight: 0, px: 2, pb: 2 }}>{detailPanel}</Box>
         </Stack>
       </Drawer>
+
+      <Dialog
+        open={Boolean(retryReceiptDialog)}
+        onClose={() => setRetryReceiptDialog(null)}
+        maxWidth="xs"
+        fullWidth
+        fullScreen={isMobile}>
+        <DialogTitle>{copy.receiptTitle}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1.5} sx={{ pt: 1 }}>
+            <Stack direction="row" justifyContent="space-between">
+              <Typography color="text.secondary">{copy.receiptNumber}</Typography>
+              <Typography>{retryReceiptDialog?.receiptNumber ?? '-'}</Typography>
+            </Stack>
+            <Stack direction="row" justifyContent="space-between">
+              <Typography color="text.secondary">{copy.receiptMethod}</Typography>
+              <Typography>{retryReceiptDialog?.methodLabel ?? '-'}</Typography>
+            </Stack>
+            <Stack direction="row" justifyContent="space-between">
+              <Typography color="text.secondary">{copy.receiptAmount}</Typography>
+              <Typography>{formatCompactMoney(retryReceiptDialog?.amount ?? 0, locale)}</Typography>
+            </Stack>
+
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.2} sx={{ pt: 1 }}>
+              <Button
+                variant="contained"
+                sx={(theme) => ({
+                  flex: 1,
+                  backgroundImage: 'none',
+                  backgroundColor: theme.palette.mode === 'dark' ? '#4d535a' : '#d8cfbf',
+                  color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
+                })}
+                onClick={() => {
+                  (retryReceiptDialog?.receipts ?? []).forEach((receipt) => {
+                    void printReceiptWithFallback(receipt.payload ?? null);
+                  });
+                }}>
+                {copy.printReceipt}
+              </Button>
+              <Button
+                variant="contained"
+                sx={{ flex: 1 }}
+                onClick={() => {
+                  setRetryReceiptDialog(null);
+                  setSelectedOrderId('');
+                  void fiscalUnresolvedQuery.refetch();
+                }}>
+                {copy.finishReceipt}
+              </Button>
+            </Stack>
+          </Stack>
+        </DialogContent>
+      </Dialog>
 
       <PosSettingsMenu
         anchorEl={settingsAnchor}

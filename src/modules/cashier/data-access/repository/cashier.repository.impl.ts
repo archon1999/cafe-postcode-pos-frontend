@@ -8,6 +8,7 @@ import type {
   CashierOrder,
   CashierPaymentResponse,
   CashierRepository,
+  CashierShiftCloseResponse,
   MartaPaymentInitiateResponse,
   MartaTerminalResultPayload,
   PaymentMethod,
@@ -96,8 +97,8 @@ class CashierRepositoryImpl implements CashierRepository {
     actualClosingCashAmount?: number;
     notesClose?: string;
     closeFiscalShift?: boolean;
-  }): Promise<CashierContext> {
-    return apiPost<CashierContext>('/pos/billing/shifts/current/close/', payload);
+  }): Promise<CashierShiftCloseResponse> {
+    return apiPost<CashierShiftCloseResponse>('/pos/billing/shifts/current/close/', payload);
   }
 
   async createTakeawayOrder(note: string): Promise<CashierCreateOrderResponse> {
@@ -118,7 +119,7 @@ class CashierRepositoryImpl implements CashierRepository {
     });
   }
 
-  async scanOrderMarking(orderId: string, rawCode: string, mode: 'add' | 'attach'): Promise<CashierOrder> {
+  async scanOrderMarking(orderId: string, rawCode: string, mode: 'add' | 'attach' | 'remove'): Promise<CashierOrder> {
     const payload = await apiPost<{ order: CashierOrder }>(`/pos/sales/orders/${orderId}/scan-marking/`, {
       rawCode,
       mode,

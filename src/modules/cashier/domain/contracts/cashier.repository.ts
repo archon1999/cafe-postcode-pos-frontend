@@ -5,6 +5,7 @@ import type {
   CashierMenuCategory,
   CashierOrder,
   CashierPaymentResponse,
+  CashierShiftCloseResponse,
   MartaPaymentInitiateResponse,
   MartaTerminalResultPayload,
   PaymentMethod,
@@ -43,10 +44,10 @@ export interface CashierRepository {
     actualClosingCashAmount?: number;
     notesClose?: string;
     closeFiscalShift?: boolean;
-  }): Promise<CashierContext>;
+  }): Promise<CashierShiftCloseResponse>;
   createTakeawayOrder(note: string): Promise<CashierCreateOrderResponse>;
   addOrderItem(orderId: string, catalogItemId: string, note: string): Promise<void>;
-  scanOrderMarking(orderId: string, rawCode: string, mode: 'add' | 'attach'): Promise<CashierOrder>;
+  scanOrderMarking(orderId: string, rawCode: string, mode: 'add' | 'attach' | 'remove'): Promise<CashierOrder>;
   removeOrderItem(itemId: string): Promise<void>;
   updateOrderDisplayName(orderId: string, displayName: string): Promise<CashierOrder>;
   submitOrder(orderId: string): Promise<void>;

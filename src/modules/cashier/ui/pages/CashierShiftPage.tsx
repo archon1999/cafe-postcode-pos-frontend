@@ -6,6 +6,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Divider,
   FormControlLabel,
   MenuItem,
   Stack,
@@ -17,6 +18,7 @@ import {
 import { useTheme } from '@mui/material/styles';
 import { useMemo, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router';
+import { toast } from 'sonner';
 
 import {
   canAccessCashier,
@@ -30,7 +32,8 @@ import {
   useCloseCashierShiftMutation,
   useOpenCashierShiftMutation,
 } from 'modules/cashier/application';
-import type { CashShiftSummary } from 'modules/cashier/domain';
+import type { CashierShiftCloseResponse, CashShiftSummary } from 'modules/cashier/domain';
+import { getApiErrorMessage } from 'shared/api/errorMessage';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { getPosCopy } from 'shared/locale/copy';
 import { formatCompactMoney } from 'shared/pos/utils';
@@ -50,6 +53,7 @@ export function CashierShiftPage() {
   const [openingCash, setOpeningCash] = useState('0');
   const [openingNotes, setOpeningNotes] = useState('');
   const [openShiftDialogOpen, setOpenShiftDialogOpen] = useState(false);
+  const [shiftCloseReport, setShiftCloseReport] = useState<CashierShiftCloseResponse | null>(null);
   const [closingNotesByShift, setClosingNotesByShift] = useState<Record<string, string>>({});
   const [closeFiscalByShift, setCloseFiscalByShift] = useState<Record<string, boolean>>({});
 
@@ -82,8 +86,14 @@ export function CashierShiftPage() {
     },
   });
   const closeShiftMutation = useCloseCashierShiftMutation({
-    onSuccess: () => {
+    onSuccess: (response) => {
       void contextQuery.refetch();
+      if (response.report || response.fiscalShift || response.fiscal_shift) {
+        setShiftCloseReport(response);
+      }
+    },
+    onError: (error) => {
+      toast.error(getApiErrorMessage(error, 'Smenani yopishda xatolik bor.'));
     },
   });
 
@@ -107,6 +117,154 @@ export function CashierShiftPage() {
 
   const updateCloseFiscal = (shiftId: string, value: boolean) => {
     setCloseFiscalByShift((prev) => ({ ...prev, [shiftId]: value }));
+  };
+
+  const asRecord = (value: unknown): Record<string, unknown> | null =>
+    value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
+
+  const valueOf = (record: Record<string, unknown> | null | undefined, ...keys: string[]) => {
+    if (!record) {
+      return undefined;
+    }
+    for (const key of keys) {
+      if (record[key] !== undefined && record[key] !== null) {
+        return record[key];
+      }
+    }
+    return undefined;
+  };
+
+  const numberOf = (record: Record<string, unknown> | null | undefined, ...keys: string[]) =>
+    Number(valueOf(record, ...keys) ?? 0);
+
+  const stringOf = (record: Record<string, unknown> | null | undefined, ...keys: string[]) =>
+    String(valueOf(record, ...keys) ?? '');
+
+  const reportMoney = (
+    report: Record<string, unknown> | null,
+    groupKey: string,
+    camelGroupKey: string,
+    side = 'Sale',
+    divisor = 1,
+  ) => {
+    const group = asRecord(valueOf(report, groupKey, camelGroupKey));
+    return numberOf(group, side, side.charAt(0).toLowerCase() + side.slice(1)) / divisor;
+  };
+
+  const renderReportMetric = (label: string, value: string | number) => (
+    <Stack direction="row" justifyContent="space-between" spacing={2}>
+      <Typography variant="body2" color="text.secondary">
+        {label}
+      </Typography>
+      <Typography variant="body2" textAlign="right">
+        {value}
+      </Typography>
+    </Stack>
+  );
+
+  const renderUnikassaLikeReport = (title: string, report: Record<string, unknown> | null) => {
+    if (!report) {
+      return null;
+    }
+    return (
+      <Box
+        sx={(theme) => ({
+          borderRadius: 2,
+          border: `1px solid ${alpha(theme.palette.text.primary, 0.12)}`,
+          p: 1.5,
+        })}>
+        <Stack spacing={0.9}>
+          <Typography variant="subtitle1">{title}</Typography>
+          {renderReportMetric('Terminal ID', stringOf(report, 'TerminalID', 'terminalID', 'terminalId') || '-')}
+          {renderReportMetric('Smena ochilgan', stringOf(report, 'OpenTime', 'openTime') || '-')}
+          {renderReportMetric('Smena yopilgan', stringOf(report, 'CloseTime', 'closeTime') || '-')}
+          <Divider />
+          {renderReportMetric('Buyurtma / to‘lovlar', `${numberOf(report, 'OrdersCount', 'ordersCount')} / ${numberOf(report, 'PaymentsCount', 'paymentsCount', 'TotalSaleCount', 'totalSaleCount')}`)}
+          {renderReportMetric('Naqd oborot', formatCompactMoney(reportMoney(report, 'TotalCash', 'totalCash'), locale))}
+          {renderReportMetric('Karta oborot', formatCompactMoney(reportMoney(report, 'TotalCard', 'totalCard'), locale))}
+          {renderReportMetric('QR oborot', formatCompactMoney(reportMoney(report, 'TotalQR', 'totalQR'), locale))}
+          {renderReportMetric('Qaytarilgan', formatCompactMoney(numberOf(report, 'TotalRefundAmount', 'totalRefundAmount'), locale))}
+          {renderReportMetric('Sof jami', formatCompactMoney(numberOf(report, 'NetTotal', 'netTotal', 'TotalSaleAmount', 'totalSaleAmount'), locale))}
+          {renderReportMetric('Fiscal cheklar', numberOf(report, 'FiscalReceiptCount', 'fiscalReceiptCount'))}
+        </Stack>
+      </Box>
+    );
+  };
+
+  const renderProviderReport = (report: Record<string, unknown> | null) => {
+    if (!report) {
+      return null;
+    }
+    return (
+      <Box
+        sx={(theme) => ({
+          borderRadius: 2,
+          border: `1px solid ${alpha(theme.palette.text.primary, 0.12)}`,
+          p: 1.5,
+        })}>
+        <Stack spacing={0.9}>
+          <Typography variant="subtitle1">Unikassa Z-report</Typography>
+          {renderReportMetric('Terminal ID', stringOf(report, 'TerminalID', 'terminalID', 'terminalId') || '-')}
+          {renderReportMetric('Ochilgan vaqt', stringOf(report, 'OpenTime', 'openTime') || '-')}
+          {renderReportMetric('Sotuvlar', numberOf(report, 'TotalSaleCount', 'totalSaleCount'))}
+          {renderReportMetric('Qaytimlar', numberOf(report, 'TotalRefundCount', 'totalRefundCount'))}
+          {renderReportMetric('Naqd', formatCompactMoney(reportMoney(report, 'TotalCash', 'totalCash', 'Sale', 100), locale))}
+          {renderReportMetric('Karta', formatCompactMoney(reportMoney(report, 'TotalCard', 'totalCard', 'Sale', 100), locale))}
+          {renderReportMetric('QQS', formatCompactMoney(reportMoney(report, 'TotalVAT', 'totalVAT', 'Sale', 100), locale))}
+          {renderReportMetric('Birinchi chek', stringOf(report, 'FirstReceiptSeq', 'firstReceiptSeq') || '-')}
+          {renderReportMetric('Oxirgi chek', stringOf(report, 'LastReceiptSeq', 'lastReceiptSeq') || '-')}
+        </Stack>
+      </Box>
+    );
+  };
+
+  const renderFiscalMemoryReport = (report: Record<string, unknown> | null) => {
+    if (!report) {
+      return null;
+    }
+    return (
+      <Box
+        sx={(theme) => ({
+          borderRadius: 2,
+          border: `1px solid ${alpha(theme.palette.text.primary, 0.12)}`,
+          p: 1.5,
+        })}>
+        <Stack spacing={0.9}>
+          <Typography variant="subtitle1">Unikassa fiscal memory</Typography>
+          {renderReportMetric('Terminal ID', stringOf(report, 'TerminalID', 'terminalID', 'terminalId') || '-')}
+          {renderReportMetric('Oxirgi operatsiya', stringOf(report, 'LastOperationTime', 'lastOperationTime') || '-')}
+          {renderReportMetric('Z-reportlar', numberOf(report, 'ZReportsCount', 'zReportsCount'))}
+          {renderReportMetric('Cheklar', numberOf(report, 'ReceiptsCount', 'receiptsCount'))}
+        </Stack>
+      </Box>
+    );
+  };
+
+  const renderCloseReportDialog = () => {
+    const fiscalShift = asRecord(shiftCloseReport?.fiscalShift ?? shiftCloseReport?.fiscal_shift);
+    const reports = asRecord(valueOf(fiscalShift, 'reports', 'report')) ?? asRecord(shiftCloseReport?.report);
+    const posReport = asRecord(valueOf(reports, 'posReport', 'pos_report'));
+    const result = asRecord(valueOf(fiscalShift, 'result'));
+    const providerReport = asRecord(valueOf(fiscalShift, 'providerReport', 'provider_report')) ?? asRecord(valueOf(result, 'providerReport', 'provider_report'));
+    const zInfo = asRecord(valueOf(providerReport, 'zInfo', 'z_info'));
+    const fiscalMemory = asRecord(valueOf(providerReport, 'fiscalMemory', 'fiscal_memory'));
+    return (
+      <Dialog open={Boolean(shiftCloseReport)} onClose={() => setShiftCloseReport(null)} fullWidth maxWidth="sm" fullScreen={isMobile}>
+        <DialogTitle>Smena hisoboti</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={1.5}>
+            {renderUnikassaLikeReport('Bizning POS report', posReport)}
+            {renderProviderReport(zInfo)}
+            {renderFiscalMemoryReport(fiscalMemory)}
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button variant="contained" onClick={() => setShiftCloseReport(null)}>
+            Yopish
+          </Button>
+        </DialogActions>
+      </Dialog>
+    );
   };
 
   const renderShiftTotals = (shift: CashShiftSummary) => {
@@ -408,6 +566,7 @@ export function CashierShiftPage() {
         }}
         themeMode={themeMode}
       />
+      {renderCloseReportDialog()}
     </PosPageFrame>
   );
 }

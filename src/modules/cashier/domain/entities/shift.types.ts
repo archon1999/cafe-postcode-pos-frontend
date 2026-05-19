@@ -53,3 +53,9 @@ export type CashierContext = {
   currentShift: CashShiftSummary | null;
   activeShifts: CashShiftSummary[];
 };
+
+export type CashierShiftCloseResponse = CashierContext & {
+  report?: Record<string, unknown>;
+  fiscalShift?: Record<string, unknown>;
+  fiscal_shift?: Record<string, unknown>;
+};

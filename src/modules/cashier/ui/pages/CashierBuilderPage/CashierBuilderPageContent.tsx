@@ -23,6 +23,7 @@ import { useOptimisticBuilderOrder } from 'shared/pos/useOptimisticBuilderOrder'
 import { useScannerInput } from 'shared/pos/useScannerInput';
 import { formatCompactMoney } from 'shared/pos/utils';
 import { resolveApiBaseUrl } from 'shared/api/apiUrl';
+import { getApiErrorMessage } from 'shared/api/errorMessage';
 import {
   PosBuilderPageSkeleton,
   PosIconAction,
@@ -106,8 +107,8 @@ export function CashierBuilderPageContent() {
         await cashierRepository.scanOrderMarking(orderId, rawCode, 'add');
         await ordersQuery.refetch();
         setScanToast('Mahsulot skaner orqali qo‘shildi.');
-      } catch {
-        setScanToast('Skaner qilingan markirovka bo‘yicha mahsulot topilmadi.');
+      } catch (error) {
+        setScanToast(getApiErrorMessage(error, 'Bunaqa mahsulot yo‘q yoki markirovka kodi yaroqsiz.'));
       }
     },
   });

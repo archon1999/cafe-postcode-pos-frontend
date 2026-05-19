@@ -52,6 +52,7 @@ import { getPosCopy } from 'shared/locale/copy';
 import { formatCompactMoney, formatTime } from 'shared/pos/utils';
 import { printReceiptWithFallback } from 'shared/printing/browserReceipt';
 import { useScannerInput } from 'shared/pos/useScannerInput';
+import { getApiErrorMessage } from 'shared/api/errorMessage';
 import { PosIconAction, PosOrderChannelSegment, PosSettingsMenu } from 'shared/ui/pos-primitives';
 
 export type PaymentPageContentProps = {
@@ -245,7 +246,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   });
   const scanMarkingMutation = useCashierOrderScanMutation({
     orderId: normalizedOrderId,
-    mode: 'attach',
+    mode: 'remove',
   });
   const selectedCashDesk = useMemo(() => {
     const cashDesks = cashierContextQuery.data?.availableCashDesks ?? [];
@@ -428,7 +429,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
       try {
         await scanMarkingMutation.mutateAsync(rawCode);
       } catch (error) {
-        setPaymentErrorMessage(getMutationErrorDetail(error) || 'Markirovka topilmadi yoki bu orderga tegishli emas.');
+        setPaymentErrorMessage(getApiErrorMessage(error, 'Bunaqa mahsulot orderda yo‘q yoki markirovka kodi yaroqsiz.'));
         setPaymentErrorToastOpen(true);
       }
     },

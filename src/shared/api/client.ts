@@ -44,7 +44,7 @@ apiClient.interceptors.response.use(
   async (error) => {
     if (axios.isAxiosError(error)) {
       const status = error.response?.status;
-      if (status === 401 || status === 403) {
+      if (status === 401) {
         persistSession(null);
         if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/restaurant-login')) {
           window.location.replace('/pin-login');
