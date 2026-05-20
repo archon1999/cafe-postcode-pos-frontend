@@ -9,8 +9,6 @@ import type {
   CashierPaymentResponse,
   CashierRepository,
   CashierShiftCloseResponse,
-  MartaPaymentInitiateResponse,
-  MartaTerminalResultPayload,
   PaymentMethod,
 } from 'modules/cashier/domain';
 import { apiDelete, apiGet, apiPatch, apiPost, unwrapCollection } from 'shared/api/client';
@@ -157,26 +155,6 @@ class CashierRepositoryImpl implements CashierRepository {
         manual_card_override: Boolean(options?.manualCardOverride),
         manual_card_reason: options?.manualCardReason ?? '',
       }),
-    );
-  }
-
-  async initiateMartaCardPayment(
-    orderId: string,
-    amount: number,
-    registerFiscal = true,
-  ): Promise<MartaPaymentInitiateResponse> {
-    return apiPost<MartaPaymentInitiateResponse>(`/pos/billing/orders/${orderId}/card-payments/initiate/`, {
-      amount,
-      register_fiscal: registerFiscal,
-    });
-  }
-
-  async completeMartaTerminalPayment(
-    paymentId: string,
-    terminalResult: MartaTerminalResultPayload,
-  ): Promise<CashierPaymentResponse> {
-    return mapCashierPaymentResponse(
-      await apiPost<CashierPaymentResponse>(`/pos/billing/payments/${paymentId}/terminal-result/`, terminalResult),
     );
   }
 

@@ -138,37 +138,6 @@ export function useCashierPaymentMutation(options: { orderId: string | null; onS
   });
 }
 
-export function useMartaCardPaymentInitiateMutation(options: { orderId: string | null }) {
-  const { orderId } = options;
-
-  return useMutation({
-    mutationFn: async (payload: { amount: number; registerFiscal?: boolean }) => {
-      if (!orderId) {
-        throw new Error('Order id is missing');
-      }
-
-      return cashierRepository.initiateMartaCardPayment(orderId, payload.amount, payload.registerFiscal);
-    },
-  });
-}
-
-export function useMartaTerminalResultMutation(options?: { onSuccess?: () => void }) {
-  return useMutation({
-    mutationFn: async (payload: { paymentId: string; terminalResult: Parameters<typeof cashierRepository.completeMartaTerminalPayment>[1] }) =>
-      cashierRepository.completeMartaTerminalPayment(payload.paymentId, payload.terminalResult),
-    onSuccess: async (response) => {
-      await queryClient.invalidateQueries({ queryKey: cashierKeys.context });
-      await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('open') });
-      await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('closed') });
-      await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('fiscal_unresolved') });
-      await queryClient.invalidateQueries({ queryKey: cashierKeys.builderOrders });
-      await queryClient.invalidateQueries({ queryKey: cashierKeys.paymentOrder(response.order.id) });
-      await queryClient.invalidateQueries({ queryKey: ['kitchen', 'queue'] });
-      options?.onSuccess?.();
-    },
-  });
-}
-
 export function useAddCashierPaymentOrderItemMutation(options: { orderId: string | null; onSuccess?: () => void }) {
   const { orderId, onSuccess } = options;
 

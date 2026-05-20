@@ -6,8 +6,6 @@ import type {
   CashierOrder,
   CashierPaymentResponse,
   CashierShiftCloseResponse,
-  MartaPaymentInitiateResponse,
-  MartaTerminalResultPayload,
   PaymentMethod,
 } from '../entities';
 
@@ -57,8 +55,6 @@ export interface CashierRepository {
     amount: number,
     options?: { manualCardOverride?: boolean; manualCardReason?: string; registerFiscal?: boolean },
   ): Promise<CashierPaymentResponse>;
-  initiateMartaCardPayment(orderId: string, amount: number, registerFiscal?: boolean): Promise<MartaPaymentInitiateResponse>;
-  completeMartaTerminalPayment(paymentId: string, terminalResult: MartaTerminalResultPayload): Promise<CashierPaymentResponse>;
   retryFiscalPayment(paymentId: string): Promise<{
     payment: unknown;
     receipt: CashierReceipt | null;

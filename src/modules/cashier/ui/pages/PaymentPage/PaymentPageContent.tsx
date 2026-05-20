@@ -34,8 +34,6 @@ import {
   useCashierPaymentMutation,
   useCashierPaymentOrderQuery,
   useCashierUpdateOrderDisplayNameMutation,
-  useMartaCardPaymentInitiateMutation,
-  useMartaTerminalResultMutation,
   useRemoveCashierPaymentOrderItemMutation,
 } from 'modules/cashier/application';
 import {
@@ -43,8 +41,6 @@ import {
   getCashierOrderDisplayName,
   getCashierOrderNumberLabel,
   type CashierPaymentResponse,
-  type MartaPaymentInitiateResponse,
-  type MartaTerminalResultPayload,
   type PaymentMethod,
 } from 'modules/cashier/domain';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
@@ -122,71 +118,6 @@ function formatPercent(value: number) {
   return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/\.?0+$/, '');
 }
 
-function martaEndpointUrl(config: MartaPaymentInitiateResponse['marta']) {
-  return String(config.endpointUrl ?? config.endpoint_url ?? '').replace(/\/+$/, '');
-}
-
-function buildMartaRequest(endpointUrl: string, path: string, params?: Record<string, string | number>) {
-  const query = new URLSearchParams();
-  Object.entries(params ?? {}).forEach(([key, value]) => {
-    if (value !== '' && value !== undefined && value !== null) {
-      query.set(key, String(value));
-    }
-  });
-  const queryString = query.toString();
-  return {
-    method: 'GET',
-    url: `${endpointUrl}${path}${queryString ? `?${queryString}` : ''}`,
-    path,
-    params: params ?? {},
-  };
-}
-
-async function fetchMartaJson(request: ReturnType<typeof buildMartaRequest>, timeoutSeconds: number) {
-  const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => controller.abort(), Math.max(1, timeoutSeconds) * 1000);
-  try {
-    const response = await fetch(request.url, {
-      method: 'GET',
-      signal: controller.signal,
-      headers: { Accept: 'application/json' },
-    });
-    const rawBody = await response.text();
-    let body: Record<string, unknown> = {};
-    try {
-      body = rawBody ? JSON.parse(rawBody) : {};
-    } catch {
-      body = { rawBody };
-    }
-    return {
-      httpStatus: response.status,
-      body: { ...body, httpStatus: response.status, http_status: response.status },
-    };
-  } finally {
-    window.clearTimeout(timeoutId);
-  }
-}
-
-function browserErrorPayload(error: unknown) {
-  return {
-    name: error instanceof Error ? error.name : 'Error',
-    message: error instanceof Error ? error.message : String(error),
-  };
-}
-
-function martaFailureMessage(status: string, message = '') {
-  if (message) {
-    return message;
-  }
-  if (status === 'NOT_READY') {
-    return 'SoftPOS is not ready. Open standby screen and keep the app in foreground';
-  }
-  if (status === 'NETWORK' || status === 'TIMEOUT') {
-    return 'Browser MARTA terminalga ulana olmadi. CORS, mixed-content yoki tarmoqni tekshiring.';
-  }
-  return `MARTA SoftPOS payment failed with status ${status || 'ERROR'}.`;
-}
-
 export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   const navigate = useNavigate();
   const { session, locale, setLocale, setSession, themeMode, setThemeMode } = usePosSession();
@@ -222,12 +153,6 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   const orderQuery = useCashierPaymentOrderQuery(normalizedOrderId);
   const paymentMutation = useCashierPaymentMutation({
     orderId: normalizedOrderId,
-    onSuccess: () => setQrDialogOpen(false),
-  });
-  const martaInitiateMutation = useMartaCardPaymentInitiateMutation({
-    orderId: normalizedOrderId,
-  });
-  const martaTerminalResultMutation = useMartaTerminalResultMutation({
     onSuccess: () => setQrDialogOpen(false),
   });
   const addPaymentOrderItemMutation = useAddCashierPaymentOrderItemMutation({
@@ -358,9 +283,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
       cashierContextQuery.data?.currentShift &&
       markingMissingCount === 0 &&
       Number(amount || 0) > 0 &&
-      !paymentMutation.isPending &&
-      !martaInitiateMutation.isPending &&
-      !martaTerminalResultMutation.isPending,
+      !paymentMutation.isPending,
   );
   const serviceFeePercent = Number(
     orderQuery.data?.serviceFeePercent ?? (orderQuery.data?.channel === 'hall' ? 10 : 0),
@@ -380,8 +303,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     [receiptData?.receipt, receiptData?.receipts],
   );
   const primaryReceipt = receiptDialogReceipts[0] ?? receiptData?.receipt ?? null;
-  const isPaymentProcessing =
-    paymentMutation.isPending || martaInitiateMutation.isPending || martaTerminalResultMutation.isPending;
+  const isPaymentProcessing = paymentMutation.isPending;
   const fallbackReceiptPayload = useMemo(() => {
     if (!receiptData) {
       return null;
@@ -435,172 +357,10 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     },
   });
 
-  const completeFailedMartaPayment = async (
-    paymentId: string,
-    terminalResult: MartaTerminalResultPayload,
-    fallbackMessage: string,
-  ) => {
-    try {
-      await martaTerminalResultMutation.mutateAsync({ paymentId, terminalResult });
-    } catch (error) {
-      const detail = getMutationErrorDetail(error) || fallbackMessage;
-      setPaymentErrorMessage(detail);
-      setPaymentErrorToastOpen(true);
-      setLastCardFailureMessage(detail);
-      setLastCardFailureDebugJson(
-        getMartaNon2xxDebugJson(error) ||
-          JSON.stringify(
-            {
-              detail,
-              provider: 'marta-softpos',
-              status: terminalResult.status,
-              requestId: terminalResult.requestId,
-              debug: terminalResult.debug,
-              browserError: terminalResult.browserError,
-            },
-            null,
-            2,
-          ),
-      );
-      setCardFailureDialogOpen(true);
-    }
-  };
-
-  const handleMartaCardPayment = async (registerFiscal: boolean) => {
-    let initiated: MartaPaymentInitiateResponse | null = null;
-    const debug: Record<string, unknown> = {};
-
-    try {
-      initiated = await martaInitiateMutation.mutateAsync({
-        amount: Number(amount || 0),
-        registerFiscal,
-      });
-
-      const endpointUrl = martaEndpointUrl(initiated.marta);
-      const timeoutSeconds = Number(initiated.marta.timeoutSeconds ?? initiated.marta.timeout_seconds ?? 180);
-      const healthRequest = buildMartaRequest(endpointUrl, '/health');
-      const healthResponse = await fetchMartaJson(healthRequest, timeoutSeconds);
-      debug.health = { request: healthRequest, response: healthResponse };
-      const healthBody = asRecord(healthResponse.body) ?? {};
-      const isReady =
-        healthBody.ok === true &&
-        String(healthBody.status ?? '').toUpperCase() === 'READY' &&
-        healthBody.busy === false &&
-        healthBody.standbyVisible === true;
-      if (!isReady) {
-        const status = String(healthBody.status ?? 'NOT_READY').toUpperCase();
-        const message = martaFailureMessage(status, String(healthBody.message ?? ''));
-        await completeFailedMartaPayment(
-          initiated.payment.id,
-          {
-            ok: false,
-            status,
-            requestId: String(healthBody.requestId ?? ''),
-            pid: initiated.marta.pid,
-            message,
-            params: {},
-            debug,
-            response: healthBody,
-          },
-          message,
-        );
-        return;
-      }
-
-      const transactionParams = {
-        type: 'PURCHASE',
-        amount: Number(initiated.marta.amount),
-        pid: Number(initiated.marta.pid),
-        tin: String(initiated.marta.taxNumber ?? initiated.marta.tax_number ?? ''),
-      };
-      const transactionRequest = buildMartaRequest(endpointUrl, '/transaction', transactionParams);
-      const transactionResponse = await fetchMartaJson(transactionRequest, timeoutSeconds);
-      debug.transaction = { request: transactionRequest, response: transactionResponse };
-      const transactionBody = asRecord(transactionResponse.body) ?? {};
-      const params = asRecord(transactionBody.params) ?? {};
-      const status = String(transactionBody.status ?? '').toUpperCase();
-      let response: CashierPaymentResponse;
-      const terminalResult: MartaTerminalResultPayload = {
-        ok: transactionBody.ok === true,
-        status,
-        requestId: String(transactionBody.requestId ?? ''),
-        pid: Number(transactionBody.pid ?? initiated.marta.pid),
-        message: String(transactionBody.message ?? ''),
-        params,
-        ac: transactionBody.ac ?? params.ac,
-        debug,
-        response: transactionBody,
-      };
-      try {
-        response = await martaTerminalResultMutation.mutateAsync({
-          paymentId: initiated.payment.id,
-          terminalResult,
-        });
-      } catch (error) {
-        const detail = getMutationErrorDetail(error) || martaFailureMessage(status, terminalResult.message);
-        setPaymentErrorMessage(detail);
-        setPaymentErrorToastOpen(true);
-        setLastCardFailureMessage(detail);
-        setLastCardFailureDebugJson(
-          getMartaNon2xxDebugJson(error) ||
-            JSON.stringify(
-              {
-                detail,
-                provider: 'marta-softpos',
-                status,
-                requestId: terminalResult.requestId,
-                debug,
-              },
-              null,
-              2,
-            ),
-        );
-        setCardFailureDialogOpen(true);
-        return;
-      }
-      setCardFailureDialogOpen(false);
-      setReceiptData(response);
-    } catch (error) {
-      const browserError = browserErrorPayload(error);
-      const status = browserError.name === 'AbortError' ? 'TIMEOUT' : 'NETWORK';
-      const message = martaFailureMessage(status, browserError.message);
-      if (initiated?.payment.id) {
-        await completeFailedMartaPayment(
-          initiated.payment.id,
-          {
-            ok: false,
-            status,
-            requestId: '',
-            pid: initiated.marta.pid,
-            message,
-            params: {},
-            debug,
-            browserError,
-          },
-          message,
-        );
-        return;
-      }
-
-      const detail = getMutationErrorDetail(error) || message;
-      setPaymentErrorMessage(detail);
-      setPaymentErrorToastOpen(true);
-      setLastCardFailureMessage(detail);
-      setLastCardFailureDebugJson(
-        JSON.stringify({ detail, provider: 'marta-softpos', status, debug, browserError }, null, 2),
-      );
-      setCardFailureDialogOpen(true);
-    }
-  };
-
   const handlePayment = async (registerFiscal: boolean) => {
     setPendingRegisterFiscal(registerFiscal);
     if (method === 'qr') {
       setQrDialogOpen(true);
-      return;
-    }
-    if (method === 'card') {
-      await handleMartaCardPayment(registerFiscal);
       return;
     }
 
