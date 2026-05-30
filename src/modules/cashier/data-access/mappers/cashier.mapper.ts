@@ -21,7 +21,8 @@ type CashierCreateOrderResponseDto = CashierCreateOrderResponse;
 export function mapCashierMenuCategory(dto: CashierMenuCategoryDto): CashierMenuCategory {
   return {
     ...dto,
-    items: dto.items.map((item) => ({ ...item })),
+    imageUrl: dto.imageUrl ?? dto.image_url ?? null,
+    items: dto.items.map((item) => ({ ...item, imageUrl: item.imageUrl ?? item.image_url ?? null })),
   };
 }
 

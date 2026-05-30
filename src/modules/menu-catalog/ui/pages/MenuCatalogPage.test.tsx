@@ -66,11 +66,13 @@ vi.mock('modules/waiter/application', () => ({
       {
         id: 'cat-1',
         name: 'Burgers',
+        image_url: 'https://cdn.example.com/burgers.png',
         items: [
           {
             id: 'item-1',
             name: 'Burger',
             description: 'Cheese and tomato',
+            image_url: 'https://cdn.example.com/burger.png',
             price: 99000,
             prepStationName: 'Kitchen',
           },
@@ -183,6 +185,8 @@ describe('MenuCatalogPage', () => {
 
     expect(screen.getAllByText('Burger').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Cheese and tomato').length).toBeGreaterThan(0);
+    expect(screen.getByAltText('Burgers')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /Tanlov oynasi 2/ }));
     expect(screen.getAllByText('x2').length).toBeGreaterThan(0);
     expect(screen.queryByText(/99\s?000/)).toBeNull();
     expect(screen.queryByText(/so'm/)).toBeNull();
@@ -201,7 +205,7 @@ describe('MenuCatalogPage', () => {
   it('returns to the source menu path', () => {
     render(<MenuCatalogPage />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Orqaga' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Menyuga qaytish' }));
 
     expect(navigateMock).toHaveBeenCalledWith('/waiter/table-session?sessionId=session-1');
   });

@@ -1,13 +1,13 @@
 import { Icon } from '@iconify/react';
 import {
   Box,
-  Button,
+  Dialog,
+  DialogContent,
+  DialogTitle,
   Divider,
+  IconButton,
   Stack,
-  ToggleButton,
-  ToggleButtonGroup,
   Typography,
-  alpha,
   useMediaQuery,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
@@ -21,9 +21,9 @@ import {
   usePosSession,
 } from 'modules/auth';
 import {
+  cashierKeys,
   useCashierBuilderOrdersQuery,
   useCashierMenuQuery,
-  cashierKeys,
 } from 'modules/cashier/application';
 import { cashierRepository } from 'modules/cashier/data-access';
 import {
@@ -41,10 +41,9 @@ import {
 import { waiterRepository } from 'modules/waiter/data-access';
 import type { WaiterMenuCategory, WaiterMenuItem, WaiterOrderItem } from 'modules/waiter/domain';
 import { resolveApiBaseUrl } from 'shared/api/apiUrl';
-import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { getPosCopy } from 'shared/locale/copy';
 import { useOptimisticBuilderOrder } from 'shared/pos/useOptimisticBuilderOrder';
-import { PosBuilderPageSkeleton, PosSectionTabs } from 'shared/ui/pos-primitives';
+import { PosBuilderPageSkeleton } from 'shared/ui/pos-primitives';
 
 type CatalogMenuItemLike = {
   id: string;
@@ -59,6 +58,8 @@ type CatalogMenuItemLike = {
 type CatalogCategoryLike<TMenuItem extends CatalogMenuItemLike> = {
   id: string;
   name: string;
+  imageUrl?: string | null;
+  image_url?: string | null;
   items: TMenuItem[];
 };
 
@@ -82,14 +83,6 @@ type CatalogSummaryItem = {
   itemIds: string[];
 };
 
-type CatalogViewVariant = 'premium' | 'mosaic' | 'menu';
-
-const catalogViewOptions: Array<{ value: CatalogViewVariant; label: string; icon: string }> = [
-  { value: 'premium', label: 'Premium', icon: 'solar:stars-bold-duotone' },
-  { value: 'mosaic', label: 'Mosaic', icon: 'solar:gallery-wide-bold-duotone' },
-  { value: 'menu', label: 'Menu', icon: 'solar:document-text-bold-duotone' },
-];
-
 function resolveBuilderChannel(value: string | null): CashierBuilderOrderChannel {
   return value === 'takeaway' ? 'takeaway' : 'delivery';
 }
@@ -100,9 +93,7 @@ function getDefaultCategory<TMenuItem extends CatalogMenuItemLike>(categories: C
     .sort((leftCategory, rightCategory) => rightCategory.items.length - leftCategory.items.length)[0];
 }
 
-function resolveMenuItemImageUrl(menuItem: CatalogMenuItemLike) {
-  const imageUrl = menuItem.imageUrl ?? menuItem.image_url;
-
+function resolveImageUrl(imageUrl?: string | null) {
   if (!imageUrl) {
     return null;
   }
@@ -112,6 +103,27 @@ function resolveMenuItemImageUrl(menuItem: CatalogMenuItemLike) {
   } catch {
     return imageUrl;
   }
+}
+
+function resolveMenuItemImageUrl(menuItem: CatalogMenuItemLike) {
+  return resolveImageUrl(menuItem.imageUrl ?? menuItem.image_url);
+}
+
+function resolveCategoryImageUrl<TMenuItem extends CatalogMenuItemLike>(category: CatalogCategoryLike<TMenuItem>) {
+  const categoryImageUrl = resolveImageUrl(category.imageUrl ?? category.image_url);
+
+  if (categoryImageUrl) {
+    return categoryImageUrl;
+  }
+
+  for (const menuItem of category.items) {
+    const menuItemImageUrl = resolveMenuItemImageUrl(menuItem);
+    if (menuItemImageUrl) {
+      return menuItemImageUrl;
+    }
+  }
+
+  return null;
 }
 
 function createActionKeyHandler(onActivate: () => void) {
@@ -197,10 +209,11 @@ function PriceHiddenCatalogContent<TMenuItem extends CatalogMenuItemLike>({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
-  const [viewVariant, setViewVariant] = useState<CatalogViewVariant>('premium');
+  const [isSelectionDialogOpen, setSelectionDialogOpen] = useState(false);
 
   const defaultCategory = useMemo(() => getDefaultCategory(categories), [categories]);
   const selectedCategory = categories.find((category) => category.id === selectedCategoryId) ?? defaultCategory;
+  const selectedCategoryItems = selectedCategory?.items ?? [];
   const { countMap, latestItemMap } = useMemo(() => buildOrderItemMeta(orderItems), [orderItems]);
   const menuItemById = useMemo(
     () => new Map(categories.flatMap((category) => category.items.map((menuItem) => [menuItem.id, menuItem] as const))),
@@ -208,116 +221,48 @@ function PriceHiddenCatalogContent<TMenuItem extends CatalogMenuItemLike>({
   );
   const selectedItems = useMemo(() => aggregateSummaryItems(orderItems, copy.menu), [copy.menu, orderItems]);
   const selectedCount = selectedItems.reduce((sum, item) => sum + item.quantity, 0);
-  const categoryTabs = useMemo(
-    () =>
-      categories.map((category) => ({
-        value: category.id,
-        label: category.name,
-        count: category.items.reduce((totalCount, menuItem) => totalCount + (countMap.get(menuItem.id) ?? 0), 0),
-      })),
-    [categories, countMap],
-  );
 
   if (isLoading) {
     return <PosBuilderPageSkeleton mobile={isMobile} />;
   }
 
-  const selectedCategoryItems = selectedCategory?.items ?? [];
-  const featuredItem = selectedCategoryItems[0];
-  const secondaryItems = selectedCategoryItems.slice(1);
-  const isShowcase = viewVariant === 'premium';
-  const isGallery = viewVariant === 'mosaic';
-  const isCompact = viewVariant === 'menu';
+  const handleReturnToMenu = () => {
+    if (!hasPendingOperations) {
+      navigate(returnPath);
+    }
+  };
 
-  const renderControls = (menuItem: TMenuItem, selectedCountForItem: number, compact = false) => (
-    <Stack direction="row" spacing={0.8} alignItems="center">
-      {selectedCountForItem > 0 ? (
-        <Button
-          aria-label={`Remove ${menuItem.name}`}
-          variant="contained"
-          disabled={hasPendingOperations}
-          onClick={(event) => {
-            event.stopPropagation();
-            const latestItemId = latestItemMap.get(menuItem.id);
-            if (latestItemId) {
-              removeItem(latestItemId);
-            }
-          }}
-          sx={(theme) => ({
-            minWidth: compact ? 38 : 42,
-            width: compact ? 38 : 42,
-            height: compact ? 38 : 42,
-            px: 0,
-            borderRadius: '999px',
-            color: theme.palette.mode === 'dark' ? '#ffffff' : '#17201d',
-            backgroundColor: theme.palette.mode === 'dark' ? alpha('#ffffff', 0.13) : alpha('#ffffff', 0.9),
-            backgroundImage: 'none',
-            boxShadow: 'none',
-            '&:hover': {
-              backgroundColor: theme.palette.mode === 'dark' ? alpha('#ffffff', 0.2) : '#ffffff',
-              boxShadow: 'none',
-            },
-          })}>
-          <Icon icon="solar:minus-circle-bold" width={20} />
-        </Button>
-      ) : null}
-      <Button
-        aria-label={`Add one ${menuItem.name}`}
-        variant="contained"
-        disabled={hasPendingOperations}
-        onClick={(event) => {
-          event.stopPropagation();
-          addItem(menuItem, '');
-        }}
-        sx={(theme) => ({
-          minWidth: compact ? 38 : selectedCountForItem > 0 ? 42 : 96,
-          width: selectedCountForItem > 0 ? (compact ? 38 : 42) : undefined,
-          height: compact ? 38 : 42,
-          px: selectedCountForItem > 0 ? 0 : 1.5,
-          borderRadius: '999px',
-          color: '#ffffff',
-          backgroundColor: theme.palette.mode === 'dark' ? '#5c7f6c' : '#1f6b4f',
-          backgroundImage: 'none',
-          boxShadow: '0 10px 20px rgba(31,107,79,0.24)',
-          '&:hover': {
-            backgroundColor: theme.palette.mode === 'dark' ? '#6d907d' : '#17573f',
-            boxShadow: '0 12px 24px rgba(31,107,79,0.3)',
-          },
-        })}>
-        <Icon icon="solar:add-circle-bold" width={20} />
-        {selectedCountForItem > 0 ? null : (
-          <Typography component="span" sx={{ ml: 0.6, fontWeight: 800 }}>
-            Tanlash
-          </Typography>
-        )}
-      </Button>
-    </Stack>
-  );
+  const renderCategoryArtwork = (category: CatalogCategoryLike<TMenuItem>) => {
+    const imageUrl = resolveCategoryImageUrl(category);
 
-  const renderCountBadge = (selectedCountForItem: number, tone: 'dark' | 'light' = 'dark') =>
-    selectedCountForItem > 0 ? (
+    if (imageUrl) {
+      return (
+        <Box
+          component="img"
+          src={imageUrl}
+          alt={category.name}
+          loading="lazy"
+          sx={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover' }}
+        />
+      );
+    }
+
+    return (
       <Box
         sx={{
-          minWidth: 34,
-          height: 34,
-          px: 1,
-          borderRadius: '999px',
+          width: '100%',
+          height: '100%',
           display: 'grid',
           placeItems: 'center',
-          fontSize: 15,
-          fontWeight: 900,
-          color: tone === 'dark' ? '#ffffff' : '#17201d',
-          backgroundColor: tone === 'dark' ? '#17201d' : alpha('#ffffff', 0.92),
-          boxShadow: '0 10px 20px rgba(0,0,0,0.2)',
+          color: '#d4df36',
+          background: 'radial-gradient(circle at 48% 34%, rgba(212,223,54,0.22), rgba(18,20,22,0.94) 62%)',
         }}>
-        {selectedCountForItem}
+        <Icon icon="solar:chef-hat-bold-duotone" width={34} />
       </Box>
-    ) : null;
+    );
+  };
 
-  const renderVisual = (
-    menuItem: TMenuItem,
-    options: { height?: number | string | Record<string, number | string>; overlay?: boolean } = {},
-  ) => {
+  const renderMenuItemArtwork = (menuItem: TMenuItem) => {
     const imageUrl = resolveMenuItemImageUrl(menuItem);
 
     if (imageUrl) {
@@ -329,11 +274,10 @@ function PriceHiddenCatalogContent<TMenuItem extends CatalogMenuItemLike>({
           loading="lazy"
           sx={{
             width: '100%',
-            height: options.height ?? '100%',
-            minHeight: 0,
+            height: '100%',
             display: 'block',
             objectFit: 'cover',
-            filter: options.overlay ? 'saturate(1.04) contrast(1.02)' : undefined,
+            filter: 'saturate(1.04) contrast(1.04)',
           }}
         />
       );
@@ -341,133 +285,173 @@ function PriceHiddenCatalogContent<TMenuItem extends CatalogMenuItemLike>({
 
     return (
       <Box
-        sx={(theme) => ({
+        sx={{
           width: '100%',
-          height: options.height ?? '100%',
-          minHeight: 0,
+          height: '100%',
           display: 'grid',
           placeItems: 'center',
-          color: theme.palette.mode === 'dark' ? alpha('#ffffff', 0.66) : alpha('#193327', 0.62),
-          background:
-            theme.palette.mode === 'dark'
-              ? 'linear-gradient(135deg, #26352e 0%, #151a1f 100%)'
-              : 'linear-gradient(135deg, #eef0dc 0%, #d8eadc 46%, #f7efe4 100%)',
-        })}>
-        <Icon icon="solar:chef-hat-bold-duotone" width={52} />
+          color: 'rgba(255,255,255,0.64)',
+          background: 'radial-gradient(circle at 50% 38%, #303942 0%, #171b20 52%, #070808 100%)',
+        }}>
+        <Icon icon="solar:dish-bold-duotone" width={58} />
       </Box>
     );
   };
 
-  const renderPremiumCard = (menuItem: TMenuItem, featured = false) => {
-    const selectedCountForItem = countMap.get(menuItem.id) ?? 0;
+  const renderCatalogControls = (menuItem: TMenuItem, selectedCountForItem: number) => {
+    const latestItemId = latestItemMap.get(menuItem.id);
+
+    return (
+      <Stack
+        direction="row"
+        spacing={0.8}
+        alignItems="center"
+        onClick={(event) => event.stopPropagation()}
+        sx={{ flexShrink: 0 }}>
+        <IconButton
+          aria-label={`Remove ${menuItem.name}`}
+          disabled={hasPendingOperations || selectedCountForItem <= 0 || !latestItemId}
+          onClick={() => {
+            if (latestItemId) {
+              removeItem(latestItemId);
+            }
+          }}
+          sx={{
+            width: 38,
+            height: 38,
+            color: '#f5f5f5',
+            borderRadius: '999px',
+            backgroundColor: 'rgba(255,255,255,0.08)',
+            '&:hover': { backgroundColor: 'rgba(255,255,255,0.14)' },
+            '&.Mui-disabled': { color: 'rgba(255,255,255,0.22)', backgroundColor: 'rgba(255,255,255,0.04)' },
+          }}>
+          <Icon icon="solar:minus-circle-bold" width={23} />
+        </IconButton>
+        <Box
+          sx={{
+            minWidth: 28,
+            height: 38,
+            display: 'grid',
+            placeItems: 'center',
+            color: '#f5f5f5',
+            fontSize: 18,
+            fontWeight: 900,
+          }}>
+          {selectedCountForItem}
+        </Box>
+        <IconButton
+          aria-label={`Add one ${menuItem.name}`}
+          disabled={hasPendingOperations}
+          onClick={() => addItem(menuItem, '')}
+          sx={{
+            width: 38,
+            height: 38,
+            color: '#f5f5f5',
+            borderRadius: '999px',
+            backgroundColor: 'rgba(212,223,54,0.18)',
+            '&:hover': { backgroundColor: 'rgba(212,223,54,0.28)' },
+            '&.Mui-disabled': { color: 'rgba(255,255,255,0.22)', backgroundColor: 'rgba(255,255,255,0.04)' },
+          }}>
+          <Icon icon="solar:add-circle-bold" width={24} />
+        </IconButton>
+      </Stack>
+    );
+  };
+
+  const renderCategoryButton = (category: CatalogCategoryLike<TMenuItem>) => {
+    const isActive = category.id === selectedCategory?.id;
+    const categorySelectedCount = category.items.reduce(
+      (totalCount, menuItem) => totalCount + (countMap.get(menuItem.id) ?? 0),
+      0,
+    );
 
     return (
       <Box
-        key={menuItem.id}
-        role="button"
-        tabIndex={0}
-        aria-label={`Add ${menuItem.name}`}
-        onClick={() => addItem(menuItem, '')}
-        onKeyDown={createActionKeyHandler(() => addItem(menuItem, ''))}
-        sx={(theme) => ({
-          position: 'relative',
-          overflow: 'hidden',
-          borderRadius: featured ? '18px' : '14px',
-          minHeight: featured ? { xs: 320, md: 400 } : { xs: 236, md: 276 },
+        key={category.id}
+        component="button"
+        type="button"
+        onClick={() => setSelectedCategoryId(category.id)}
+        sx={{
+          width: { xs: 132, sm: 148, md: 164, lg: '100%' },
+          minWidth: { xs: 132, sm: 148, md: 164, lg: 0 },
+          flex: { xs: '0 0 132px', sm: '0 0 148px', md: '0 0 164px', lg: '0 1 auto' },
+          minHeight: { xs: 94, sm: 102, lg: 86 },
+          px: { xs: 0.85, lg: 1.45 },
+          py: { xs: 0.8, lg: 1.1 },
           display: 'grid',
-          gridTemplateRows: featured ? '1fr' : 'minmax(132px, 1fr) auto',
+          gridTemplateColumns: { xs: '1fr', lg: '74px minmax(0, 1fr)' },
+          gap: { xs: 0.75, lg: 1.25 },
+          alignItems: 'center',
+          border: 0,
+          borderBottom: { xs: 0, lg: '1px solid rgba(255,255,255,0.08)' },
+          borderRadius: { xs: '14px', lg: 0 },
           cursor: 'pointer',
-          backgroundColor: theme.palette.mode === 'dark' ? '#20251f' : '#fffdf7',
-          boxShadow:
-            theme.palette.mode === 'dark'
-              ? '0 18px 36px rgba(0,0,0,0.28), inset 0 0 0 1px rgba(255,255,255,0.06)'
-              : '0 18px 38px rgba(47,62,42,0.12), inset 0 0 0 1px rgba(47,62,42,0.08)',
-          transition: 'transform 0.16s ease, box-shadow 0.16s ease',
+          textAlign: { xs: 'center', lg: 'left' },
+          color: isActive ? '#d4df36' : 'rgba(255,255,255,0.72)',
+          backgroundColor: isActive ? 'rgba(212,223,54,0.08)' : 'transparent',
+          transition: 'background-color 0.16s ease, color 0.16s ease',
           '&:hover': {
-            transform: 'translateY(-2px)',
-            boxShadow:
-              theme.palette.mode === 'dark'
-                ? '0 22px 42px rgba(0,0,0,0.34), inset 0 0 0 1px rgba(255,255,255,0.1)'
-                : '0 22px 42px rgba(47,62,42,0.16), inset 0 0 0 1px rgba(47,62,42,0.1)',
+            color: isActive ? '#d4df36' : '#ffffff',
+            backgroundColor: isActive ? 'rgba(212,223,54,0.1)' : 'rgba(255,255,255,0.045)',
           },
           '&:focus-visible': {
-            outline: `2px solid ${theme.palette.primary.main}`,
-            outlineOffset: 2,
+            outline: '2px solid #d4df36',
+            outlineOffset: -2,
           },
-        })}>
-        {featured ? (
-          <>
-            {renderVisual(menuItem, { overlay: true })}
+        }}>
+        <Box
+          sx={{
+            position: 'relative',
+            width: { xs: 64, sm: 70, lg: 74 },
+            height: { xs: 56, sm: 62, lg: 64 },
+            mx: { xs: 'auto', lg: 0 },
+            overflow: 'hidden',
+            borderRadius: '12px',
+            backgroundColor: '#15181b',
+            boxShadow: isActive ? '0 0 24px rgba(212,223,54,0.22)' : '0 12px 22px rgba(0,0,0,0.28)',
+          }}>
+          {renderCategoryArtwork(category)}
+          {categorySelectedCount > 0 ? (
             <Box
               sx={{
                 position: 'absolute',
-                inset: 0,
-                background: 'linear-gradient(180deg, rgba(0,0,0,0.12) 0%, rgba(0,0,0,0.68) 100%)',
-              }}
-            />
-            <Stack
-              spacing={1.2}
-              justifyContent="flex-end"
-              sx={{
-                position: 'absolute',
-                inset: 0,
-                p: { xs: 2, md: 2.6 },
-                color: '#ffffff',
+                right: 5,
+                top: 5,
+                minWidth: 22,
+                height: 22,
+                px: 0.6,
+                display: 'grid',
+                placeItems: 'center',
+                borderRadius: '999px',
+                color: '#080909',
+                backgroundColor: '#d4df36',
+                fontSize: 12,
+                fontWeight: 900,
               }}>
-              <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1.5}>
-                <Typography variant="body2" sx={{ opacity: 0.82, fontWeight: 700 }}>
-                  {menuItem.prepStationName ?? copy.menu}
-                </Typography>
-                {renderCountBadge(selectedCountForItem, 'light')}
-              </Stack>
-              <Typography variant="h3" sx={{ lineHeight: 1.02, maxWidth: 560 }}>
-                {menuItem.name}
-              </Typography>
-              {menuItem.description ? (
-                <Typography variant="body1" sx={{ maxWidth: 620, opacity: 0.84 }}>
-                  {menuItem.description}
-                </Typography>
-              ) : null}
-              {renderControls(menuItem, selectedCountForItem)}
-            </Stack>
-          </>
-        ) : (
-          <>
-            <Box sx={{ position: 'relative', minHeight: 0 }}>
-              {renderVisual(menuItem)}
-              <Box sx={{ position: 'absolute', top: 12, right: 12 }}>{renderCountBadge(selectedCountForItem)}</Box>
+              {categorySelectedCount}
             </Box>
-            <Stack spacing={0.8} sx={{ p: 1.6 }}>
-              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 700 }}>
-                {menuItem.prepStationName ?? copy.menu}
-              </Typography>
-              <Typography variant="h6" sx={{ lineHeight: 1.15 }}>
-                {menuItem.name}
-              </Typography>
-              {menuItem.description ? (
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{
-                    overflow: 'hidden',
-                    display: '-webkit-box',
-                    WebkitBoxOrient: 'vertical',
-                    WebkitLineClamp: 2,
-                  }}>
-                  {menuItem.description}
-                </Typography>
-              ) : null}
-              {renderControls(menuItem, selectedCountForItem)}
-            </Stack>
-          </>
-        )}
+          ) : null}
+        </Box>
+        <Typography
+          component="span"
+          sx={{
+            minWidth: 0,
+            fontSize: { xs: 12, sm: 13, lg: 15 },
+            fontWeight: isActive ? 900 : 800,
+            lineHeight: 1.18,
+            overflow: 'hidden',
+            display: '-webkit-box',
+            WebkitBoxOrient: 'vertical',
+            WebkitLineClamp: { xs: 2, lg: 2 },
+          }}>
+          {category.name}
+        </Typography>
       </Box>
     );
   };
 
-  const renderMosaicCard = (menuItem: TMenuItem, index: number) => {
+  const renderCatalogCard = (menuItem: TMenuItem) => {
     const selectedCountForItem = countMap.get(menuItem.id) ?? 0;
-    const isLarge = index % 5 === 0 || index % 5 === 3;
 
     return (
       <Box
@@ -477,592 +461,329 @@ function PriceHiddenCatalogContent<TMenuItem extends CatalogMenuItemLike>({
         aria-label={`Add ${menuItem.name}`}
         onClick={() => addItem(menuItem, '')}
         onKeyDown={createActionKeyHandler(() => addItem(menuItem, ''))}
-        sx={(theme) => ({
-          position: 'relative',
-          overflow: 'hidden',
-          borderRadius: '16px',
-          minHeight: isLarge ? { xs: 300, md: 360 } : { xs: 220, md: 250 },
-          gridColumn: { xs: 'auto', md: isLarge ? 'span 2' : 'auto' },
+        sx={{
+          height: { xs: 200, lg: 400 },
+          minHeight: { xs: 200, lg: 400 },
+          display: 'grid',
+          gridTemplateColumns: { xs: '172px minmax(0, 1fr)', sm: '200px minmax(0, 1fr)', lg: '1fr' },
+          gridTemplateRows: { xs: 'minmax(0, 1fr)', lg: 'minmax(190px, 1fr) auto 58px' },
+          borderRight: '1px solid rgba(255,255,255,0.12)',
+          borderBottom: '1px solid rgba(255,255,255,0.12)',
           cursor: 'pointer',
-          backgroundColor: theme.palette.mode === 'dark' ? '#202228' : '#f8f2e8',
-          boxShadow:
-            theme.palette.mode === 'dark'
-              ? '0 18px 34px rgba(0,0,0,0.26)'
-              : '0 18px 36px rgba(50,46,38,0.14)',
-          transition: 'transform 0.16s ease, box-shadow 0.16s ease',
-          '&:hover': {
-            transform: 'translateY(-2px)',
-            boxShadow:
-              theme.palette.mode === 'dark'
-                ? '0 22px 40px rgba(0,0,0,0.34)'
-                : '0 24px 44px rgba(50,46,38,0.18)',
-          },
+          backgroundColor: '#050505',
+          transition: 'background-color 0.16s ease, transform 0.16s ease',
+          '&:hover': { backgroundColor: '#0a0b0c' },
+          '&:active': { transform: 'scale(0.995)' },
           '&:focus-visible': {
-            outline: `2px solid ${theme.palette.primary.main}`,
-            outlineOffset: 2,
+            outline: '2px solid #d4df36',
+            outlineOffset: -2,
           },
-        })}>
-        {renderVisual(menuItem, { overlay: true })}
+        }}>
         <Box
           sx={{
-            position: 'absolute',
-            inset: 0,
-            background:
-              'linear-gradient(180deg, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.12) 42%, rgba(0,0,0,0.76) 100%)',
-          }}
-        />
-        <Stack
-          spacing={1}
-          justifyContent="space-between"
-          sx={{ position: 'absolute', inset: 0, p: { xs: 1.55, md: 1.9 }, color: '#ffffff' }}>
-          <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-            <Typography variant="body2" sx={{ fontWeight: 800, opacity: 0.84 }}>
-              {menuItem.prepStationName ?? copy.menu}
-            </Typography>
-            {renderCountBadge(selectedCountForItem, 'light')}
-          </Stack>
-          <Stack spacing={1}>
-            <Typography variant={isLarge ? 'h4' : 'h5'} sx={{ lineHeight: 1.04 }}>
-              {menuItem.name}
-            </Typography>
-            {menuItem.description ? (
-              <Typography
-                variant="body2"
+            p: { xs: 1.1, sm: 1.35, lg: 2.35 },
+            pb: { xs: 1.1, lg: 1.35 },
+            minHeight: 0,
+            gridRow: { xs: '1 / span 2', lg: 'auto' },
+          }}>
+          <Box
+            sx={{
+              position: 'relative',
+              height: '100%',
+              minHeight: 0,
+              overflow: 'hidden',
+              backgroundColor: '#12161a',
+              backgroundImage: 'radial-gradient(circle at 50% 42%, rgba(82,93,103,0.36), rgba(11,13,15,0.96) 68%)',
+            }}>
+            {renderMenuItemArtwork(menuItem)}
+            {selectedCountForItem > 0 ? (
+              <Box
                 sx={{
-                  opacity: 0.82,
-                  overflow: 'hidden',
-                  display: '-webkit-box',
-                  WebkitBoxOrient: 'vertical',
-                  WebkitLineClamp: 2,
+                  position: 'absolute',
+                  left: 12,
+                  top: 12,
+                  minWidth: 34,
+                  height: 34,
+                  px: 1,
+                  display: 'grid',
+                  placeItems: 'center',
+                  color: '#080909',
+                  backgroundColor: '#d4df36',
+                  borderRadius: '999px',
+                  fontWeight: 900,
+                  boxShadow: '0 10px 22px rgba(0,0,0,0.32)',
                 }}>
-                {menuItem.description}
-              </Typography>
+                {selectedCountForItem}
+              </Box>
             ) : null}
-            {renderControls(menuItem, selectedCountForItem)}
-          </Stack>
-        </Stack>
-      </Box>
-    );
-  };
-
-  const renderMenuRow = (menuItem: TMenuItem) => {
-    const selectedCountForItem = countMap.get(menuItem.id) ?? 0;
-
-    return (
-      <Box
-        key={menuItem.id}
-        role="button"
-        tabIndex={0}
-        aria-label={`Add ${menuItem.name}`}
-        onClick={() => addItem(menuItem, '')}
-        onKeyDown={createActionKeyHandler(() => addItem(menuItem, ''))}
-        sx={(theme) => ({
-          display: 'grid',
-          gridTemplateColumns: { xs: '74px minmax(0, 1fr)', md: '96px minmax(0, 1fr) auto' },
-          gap: { xs: 1.2, md: 1.6 },
-          alignItems: 'center',
-          p: { xs: 1.1, md: 1.35 },
-          borderRadius: '14px',
-          cursor: 'pointer',
-          backgroundColor: theme.palette.mode === 'dark' ? alpha('#ffffff', 0.055) : alpha('#ffffff', 0.66),
-          boxShadow:
-            theme.palette.mode === 'dark'
-              ? 'inset 0 0 0 1px rgba(255,255,255,0.07)'
-              : 'inset 0 0 0 1px rgba(42,51,36,0.08)',
-          transition: 'background-color 0.16s ease, transform 0.16s ease',
-          '&:hover': {
-            transform: 'translateX(2px)',
-            backgroundColor: theme.palette.mode === 'dark' ? alpha('#ffffff', 0.085) : '#ffffff',
-          },
-          '&:focus-visible': {
-            outline: `2px solid ${theme.palette.primary.main}`,
-            outlineOffset: 2,
-          },
-        })}>
-        <Box sx={{ height: { xs: 74, md: 86 }, borderRadius: '12px', overflow: 'hidden' }}>
-          {renderVisual(menuItem)}
+          </Box>
         </Box>
-        <Stack spacing={0.45} sx={{ minWidth: 0 }}>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Typography variant="h6" noWrap sx={{ lineHeight: 1.15 }}>
-              {menuItem.name}
-            </Typography>
-            {renderCountBadge(selectedCountForItem)}
-          </Stack>
-          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 700 }}>
-            {menuItem.prepStationName ?? copy.menu}
+        <Stack
+          spacing={{ xs: 0.65, lg: 1 }}
+          sx={{
+            minWidth: 0,
+            alignSelf: 'end',
+            px: { xs: 1.2, sm: 1.5, lg: 2.35 },
+            pt: { xs: 1.3, lg: 0 },
+          }}>
+          <Typography
+            variant="h6"
+            sx={{
+              color: '#f4f4f1',
+              fontSize: { xs: 18, sm: 20, lg: 23 },
+              fontWeight: 900,
+              lineHeight: 1.12,
+              letterSpacing: 0,
+            }}>
+            {menuItem.name}
           </Typography>
           {menuItem.description ? (
             <Typography
               variant="body2"
-              color="text.secondary"
               sx={{
+                color: 'rgba(255,255,255,0.48)',
+                fontSize: { xs: 13, lg: 15 },
+                lineHeight: 1.32,
                 overflow: 'hidden',
                 display: '-webkit-box',
                 WebkitBoxOrient: 'vertical',
-                WebkitLineClamp: 2,
+                WebkitLineClamp: { xs: 2, lg: 3 },
               }}>
               {menuItem.description}
             </Typography>
           ) : null}
         </Stack>
-        <Box sx={{ display: { xs: 'none', md: 'block' } }}>
-          {renderControls(menuItem, selectedCountForItem, true)}
-        </Box>
+        <Stack
+          direction="row"
+          alignItems="center"
+          justifyContent="flex-end"
+          spacing={1.2}
+          sx={{
+            alignSelf: 'end',
+            px: { xs: 1.2, sm: 1.5, lg: 2.35 },
+            pb: { xs: 1.2, lg: 1.8 },
+            minWidth: 0,
+          }}>
+          {renderCatalogControls(menuItem, selectedCountForItem)}
+        </Stack>
       </Box>
     );
   };
 
-  return (
-    <PosPageFrame
-      sx={{
-        mx: { xs: -0.2, md: -0.6 },
-        pb: 0,
-      }}
-      contentSx={{ overflow: 'hidden' }}
-      header={
-        <Stack spacing={{ xs: 1.2, md: 1.5 }}>
-          <Stack
-            direction={{ xs: 'column', md: 'row' }}
-            spacing={{ xs: 1.1, md: 1.5 }}
-            alignItems={{ xs: 'stretch', md: 'center' }}
-            justifyContent="space-between">
-            <Button
-              variant="text"
-              disabled={hasPendingOperations}
-              startIcon={<Icon icon="solar:arrow-left-bold-duotone" width={18} />}
-              onClick={() => navigate(returnPath)}
-              sx={(theme) => ({
-                alignSelf: { xs: 'flex-start', md: 'center' },
-                px: 1.25,
-                py: 0.85,
-                minWidth: 0,
-                borderRadius: '999px',
-                color: theme.palette.text.primary,
-                backgroundColor: theme.palette.mode === 'dark' ? alpha('#ffffff', 0.06) : alpha('#ffffff', 0.48),
-                boxShadow:
-                  theme.palette.mode === 'dark'
-                    ? 'inset 0 0 0 1px rgba(255,255,255,0.08)'
-                    : 'inset 0 0 0 1px rgba(60,48,34,0.08)',
-                '&:hover': {
-                  backgroundColor: theme.palette.mode === 'dark' ? alpha('#ffffff', 0.1) : alpha('#ffffff', 0.72),
-                },
-              })}>
-              {hasPendingOperations ? copy.processing : 'Orqaga'}
-            </Button>
-            <Stack spacing={0.25} sx={{ minWidth: 0, flex: 1, textAlign: { xs: 'left', md: 'center' } }}>
-              <Typography variant="h4" sx={{ lineHeight: 1.05 }}>
-                {selectedCategory?.name ?? copy.menu}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {selectedCount > 0 ? `${selectedCount} ta tanlangan` : 'Klient uchun narxsiz katalog'}
-              </Typography>
-            </Stack>
-            <ToggleButtonGroup
-              exclusive
-              size="small"
-              value={viewVariant}
-              onChange={(_, value: CatalogViewVariant | null) => {
-                if (value) {
-                  setViewVariant(value);
-                }
-              }}
-              sx={(theme) => ({
-                alignSelf: { xs: 'stretch', md: 'center' },
-                display: 'grid',
-                gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-                borderRadius: '999px',
-                p: 0.35,
-                backgroundColor: theme.palette.mode === 'dark' ? alpha('#ffffff', 0.06) : alpha('#ffffff', 0.5),
-                boxShadow:
-                  theme.palette.mode === 'dark'
-                    ? 'inset 0 0 0 1px rgba(255,255,255,0.08)'
-                    : 'inset 0 0 0 1px rgba(60,48,34,0.08)',
-                '& .MuiToggleButton-root': {
-                  border: 0,
-                  borderRadius: '999px !important',
-                  px: { xs: 0.7, md: 1.2 },
-                  py: 0.75,
-                  gap: 0.55,
-                  minWidth: 0,
-                  fontWeight: 700,
-                  color: theme.palette.text.secondary,
-                },
-                '& .Mui-selected': {
-                  color: theme.palette.mode === 'dark' ? '#ffffff' : '#1f252b',
-                  backgroundColor: theme.palette.mode === 'dark' ? '#3a4048 !important' : '#ffffff !important',
-                  boxShadow: '0 8px 18px rgba(42,31,19,0.1)',
-                },
-              })}>
-              {catalogViewOptions.map((option) => (
-                <ToggleButton key={option.value} value={option.value} aria-label={option.label}>
-                  <Icon icon={option.icon} width={17} />
-                  <Typography component="span" sx={{ display: { xs: 'none', sm: 'inline' }, fontWeight: 700 }}>
-                    {option.label}
-                  </Typography>
-                </ToggleButton>
-              ))}
-            </ToggleButtonGroup>
+  const selectionDialog = (
+    <Dialog
+      open={isSelectionDialogOpen}
+      onClose={() => setSelectionDialogOpen(false)}
+      fullWidth
+      maxWidth="sm"
+      PaperProps={{
+        sx: {
+          color: '#f6f6f4',
+          backgroundColor: '#101214',
+          backgroundImage: 'none',
+          borderRadius: '18px',
+          boxShadow: '0 28px 80px rgba(0,0,0,0.58)',
+        },
+      }}>
+      <DialogTitle sx={{ pr: 1.2 }}>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
+          <Stack spacing={0.25}>
+            <Typography variant="h6" sx={{ fontWeight: 900 }}>
+              Tanlov
+            </Typography>
+            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.54)' }}>
+              {selectedCount} ta
+            </Typography>
           </Stack>
-          <PosSectionTabs
-            value={selectedCategory?.id ?? ''}
-            items={categoryTabs}
-            onChange={setSelectedCategoryId}
-            scrollable
-          />
+          <IconButton
+            aria-label="Tanlov oynasini yopish"
+            onClick={() => setSelectionDialogOpen(false)}
+            sx={{ color: 'rgba(255,255,255,0.72)' }}>
+            <Icon icon="solar:close-circle-bold-duotone" width={28} />
+          </IconButton>
         </Stack>
-      }>
-      <Box
-        sx={{
-          flex: 1,
-          minHeight: 0,
-          display: 'grid',
-          gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 330px' },
-          gap: { xs: 2, md: 2.5 },
-        }}>
-        <Stack spacing={2} sx={{ minHeight: 0, overflowY: 'auto', overflowX: 'hidden', pb: 1 }}>
-          {viewVariant === 'premium' ? (
-            <Stack spacing={{ xs: 1.4, md: 1.8 }}>
-              {featuredItem ? renderPremiumCard(featuredItem, true) : null}
-              {secondaryItems.length > 0 ? (
-                <Box
-                  sx={{
-                    display: 'grid',
-                    gridTemplateColumns: {
-                      xs: '1fr',
-                      sm: 'repeat(2, minmax(0, 1fr))',
-                      xl: 'repeat(3, minmax(0, 1fr))',
-                    },
-                    gap: { xs: 1.3, md: 1.7 },
-                  }}>
-                  {secondaryItems.map((menuItem) => renderPremiumCard(menuItem))}
-                </Box>
-              ) : null}
-            </Stack>
-          ) : viewVariant === 'mosaic' ? (
-            <Box
-              sx={{
-                display: 'grid',
-                gridTemplateColumns: { xs: '1fr', md: 'repeat(3, minmax(0, 1fr))' },
-                gridAutoRows: 'minmax(220px, auto)',
-                gap: { xs: 1.35, md: 1.7 },
-              }}>
-              {selectedCategoryItems.map((menuItem, index) => renderMosaicCard(menuItem, index))}
-            </Box>
-          ) : (
-            <Stack
-              spacing={1.1}
-              sx={(theme) => ({
-                borderRadius: '18px',
-                p: { xs: 1, md: 1.25 },
-                backgroundColor: theme.palette.mode === 'dark' ? alpha('#111418', 0.28) : alpha('#ffffff', 0.36),
-                boxShadow:
-                  theme.palette.mode === 'dark'
-                    ? 'inset 0 0 0 1px rgba(255,255,255,0.05)'
-                    : 'inset 0 0 0 1px rgba(42,51,36,0.08)',
-              })}>
-              {selectedCategoryItems.map((menuItem) => renderMenuRow(menuItem))}
-            </Stack>
-          )}
-          <Box
-            sx={{
-              display: 'none',
-              gridTemplateColumns: isCompact
-                ? { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))', xl: 'repeat(3, minmax(0, 1fr))' }
-                : isGallery
-                  ? { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))', xl: 'repeat(3, minmax(0, 1fr))' }
-                  : { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(3, minmax(0, 1fr))', xl: 'repeat(4, minmax(0, 1fr))' },
-              gap: { xs: 1.2, md: 1.6 },
-            }}>
-            {(selectedCategory?.items ?? []).map((menuItem) => {
-              const selectedCount = countMap.get(menuItem.id) ?? 0;
-              const imageUrl = resolveMenuItemImageUrl(menuItem);
+      </DialogTitle>
+      <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
+      <DialogContent sx={{ p: 1.5 }}>
+        {selectedItems.length > 0 ? (
+          <Stack spacing={1}>
+            {selectedItems.map((item) => {
+              const menuItem = menuItemById.get(item.catalogItem);
 
               return (
-                <Box
-                  key={menuItem.id}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`Add ${menuItem.name}`}
-                  onClick={() => addItem(menuItem, '')}
-                  onKeyDown={createActionKeyHandler(() => addItem(menuItem, ''))}
-                  sx={(theme) => ({
-                    minHeight: isCompact ? { xs: 104, md: 118 } : isGallery ? { xs: 142, md: 154 } : { xs: 222, md: 286 },
-                    position: 'relative',
-                    overflow: 'hidden',
-                    display: isShowcase ? 'block' : 'grid',
-                    gridTemplateColumns: isCompact ? 'minmax(0, 1fr) auto' : { xs: '108px minmax(0, 1fr)', md: '130px minmax(0, 1fr)' },
-                    alignItems: 'stretch',
-                    borderRadius: isShowcase ? '14px' : '12px',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    backgroundColor: theme.palette.mode === 'dark' ? '#25282d' : '#fffaf2',
-                    boxShadow:
-                      theme.palette.mode === 'dark'
-                        ? 'inset 0 0 0 1px rgba(255,255,255,0.07)'
-                        : '0 10px 24px rgba(69,50,29,0.08), inset 0 0 0 1px rgba(55,44,30,0.07)',
-                    transition: 'transform 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease',
-                    '&:hover': {
-                      transform: 'translateY(-2px)',
-                      backgroundColor: theme.palette.mode === 'dark' ? '#2d3137' : '#ffffff',
-                      boxShadow:
-                        theme.palette.mode === 'dark'
-                          ? '0 16px 28px rgba(0,0,0,0.26), inset 0 0 0 1px rgba(255,255,255,0.08)'
-                          : '0 18px 36px rgba(69,50,29,0.14), inset 0 0 0 1px rgba(55,44,30,0.1)',
-                    },
-                    '&:active': {
-                      transform: 'translateY(0) scale(0.985)',
-                    },
-                    '&:focus-visible': {
-                      outline: `2px solid ${theme.palette.primary.main}`,
-                      outlineOffset: 2,
-                    },
-                  })}>
-                  {selectedCount > 0 ? (
-                    <Box
-                      sx={(theme) => ({
-                        position: 'absolute',
-                        top: isCompact ? 12 : 10,
-                        left: isCompact ? 'auto' : 10,
-                        right: isCompact ? 12 : 'auto',
-                        zIndex: 2,
-                        minWidth: 34,
-                        height: 34,
-                        px: 1,
-                        borderRadius: '50%',
-                        backgroundColor: theme.palette.mode === 'dark' ? '#111418' : '#202020',
-                        color: '#ffffff',
-                        display: 'grid',
-                        placeItems: 'center',
-                        fontSize: 15,
-                        fontWeight: 800,
-                        boxShadow: '0 10px 20px rgba(0,0,0,0.24)',
-                      })}>
-                      {selectedCount}
-                    </Box>
-                  ) : null}
-                  {!isCompact ? (
-                    imageUrl ? (
-                      <Box
-                        component="img"
-                        src={imageUrl}
-                        alt={menuItem.name}
-                        loading="lazy"
-                        sx={{
-                          width: '100%',
-                          height: isGallery ? '100%' : undefined,
-                          aspectRatio: isShowcase ? '4 / 3' : undefined,
-                          display: 'block',
-                          objectFit: 'cover',
-                          backgroundColor: alpha('#ffffff', 0.22),
-                        }}
-                      />
-                    ) : (
-                      <Box
-                        sx={(theme) => ({
-                          width: '100%',
-                          height: isGallery ? '100%' : undefined,
-                          aspectRatio: isShowcase ? '4 / 3' : undefined,
-                          display: 'grid',
-                          placeItems: 'center',
-                          background:
-                            theme.palette.mode === 'dark'
-                              ? 'linear-gradient(135deg, #343941, #252a31)'
-                              : 'linear-gradient(135deg, #eadcc9, #f7efe4)',
-                          color: theme.palette.text.secondary,
-                        })}>
-                        <Icon icon="solar:chef-hat-bold-duotone" width={isGallery ? 32 : 46} />
-                      </Box>
-                    )
-                  ) : null}
-                  <Stack
-                    spacing={isCompact ? 0.55 : 0.8}
-                    justifyContent={isCompact ? 'center' : 'flex-start'}
-                    sx={{
-                      minWidth: 0,
-                      p: isCompact ? { xs: 1.35, md: 1.55 } : { xs: 1.35, md: 1.7 },
-                      pr: isCompact && selectedCount > 0 ? 6 : undefined,
-                    }}>
-                    <Typography variant="body2" color="text.secondary">
-                      {menuItem.prepStationName ?? copy.menu}
+                <Stack
+                  key={item.key}
+                  direction="row"
+                  spacing={1.2}
+                  alignItems="center"
+                  sx={{
+                    minHeight: 64,
+                    px: 1.35,
+                    py: 1,
+                    borderRadius: '12px',
+                    backgroundColor: 'rgba(255,255,255,0.055)',
+                    boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.07)',
+                  }}>
+                  <Stack sx={{ minWidth: 0, flex: 1 }} spacing={0.2}>
+                    <Typography variant="subtitle1" noWrap sx={{ color: '#f6f6f4', fontWeight: 900 }}>
+                      {item.catalogItemName}
                     </Typography>
-                    <Typography variant={isCompact ? 'subtitle1' : 'h6'} sx={{ lineHeight: 1.18 }}>
-                      {menuItem.name}
-                    </Typography>
-                    {menuItem.description ? (
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        sx={{
-                          overflow: 'hidden',
-                          display: '-webkit-box',
-                          WebkitBoxOrient: 'vertical',
-                          WebkitLineClamp: isCompact ? 1 : 2,
-                        }}>
-                        {menuItem.description}
+                    {item.note ? (
+                      <Typography variant="body2" noWrap sx={{ color: 'rgba(255,255,255,0.48)' }}>
+                        {item.note}
                       </Typography>
                     ) : null}
                   </Stack>
-                  <Stack
-                    direction={isCompact ? 'column' : 'row'}
-                    spacing={isCompact ? 0.75 : 1}
-                    justifyContent="center"
-                    sx={{
-                      px: isCompact ? 1.15 : { xs: 1.25, md: 1.6 },
-                      py: isCompact ? 1.15 : undefined,
-                      pb: isCompact ? 1.15 : { xs: 1.25, md: 1.6 },
-                      mt: isShowcase ? 'auto' : undefined,
-                    }}>
-                    {selectedCount > 0 ? (
-                      <Button
-                        aria-label={`Remove ${menuItem.name}`}
-                        variant="contained"
-                        disabled={hasPendingOperations}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          const latestItemId = latestItemMap.get(menuItem.id);
-                          if (latestItemId) {
-                            removeItem(latestItemId);
-                          }
-                        }}
-                        sx={{ minWidth: isCompact ? 40 : 44, width: isCompact ? 40 : undefined, px: 0, borderRadius: '999px' }}>
-                        <Icon icon="solar:minus-circle-bold" width={20} />
-                      </Button>
-                    ) : null}
-                    <Button
-                      aria-label={`Add one ${menuItem.name}`}
-                      variant="contained"
-                      disabled={hasPendingOperations}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        addItem(menuItem, '');
-                      }}
-                      sx={{ flex: isCompact ? '0 0 auto' : 1, minWidth: isCompact ? 40 : 0, width: isCompact ? 40 : undefined, px: 0, borderRadius: '999px' }}>
-                      <Icon icon="solar:add-circle-bold" width={20} />
-                    </Button>
-                  </Stack>
-                </Box>
+                  <Typography variant="h6" sx={{ minWidth: 42, color: '#d4df36', textAlign: 'right', fontWeight: 900 }}>
+                    x{item.quantity}
+                  </Typography>
+                  {menuItem ? renderCatalogControls(menuItem, countMap.get(item.catalogItem) ?? 0) : null}
+                </Stack>
               );
             })}
-          </Box>
+          </Stack>
+        ) : (
+          <Stack alignItems="center" justifyContent="center" spacing={1.2} sx={{ py: 7, textAlign: 'center' }}>
+            <Icon icon="solar:bill-list-bold-duotone" width={52} color="rgba(255,255,255,0.32)" />
+            <Typography variant="h6" sx={{ color: '#f6f6f4', fontWeight: 900 }}>
+              Tanlangan mahsulot yo'q
+            </Typography>
+          </Stack>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+
+  return (
+    <Box
+      sx={{
+        height: '100%',
+        minHeight: 0,
+        overflow: 'hidden',
+        display: 'grid',
+        gridTemplateColumns: { xs: '1fr', lg: '286px minmax(0, 1fr)' },
+        gridTemplateRows: { xs: 'auto minmax(0, 1fr)', lg: 'minmax(0, 1fr)' },
+        color: '#f6f6f4',
+        backgroundColor: '#050505',
+      }}>
+      <Box
+        component="aside"
+        sx={{
+          minHeight: 0,
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          backgroundColor: '#181b1b',
+          borderRight: { xs: 0, lg: '1px solid rgba(255,255,255,0.12)' },
+          borderBottom: { xs: '1px solid rgba(255,255,255,0.12)', lg: 0 },
+        }}>
+        <Stack
+          direction="row"
+          alignItems="center"
+          justifyContent="flex-end"
+          spacing={1}
+          sx={{ px: { xs: 1.2, sm: 1.55, lg: 1.4 }, py: { xs: 0.9, lg: 1.2 } }}>
+          <Stack direction="row" spacing={0.8} alignItems="center">
+            <IconButton
+              aria-label={`Tanlov oynasi ${selectedCount}`}
+              onClick={() => setSelectionDialogOpen(true)}
+              sx={{
+                position: 'relative',
+                width: 40,
+                height: 40,
+                color: '#f4f4f1',
+                backgroundColor: 'rgba(255,255,255,0.07)',
+                '&:hover': { backgroundColor: 'rgba(255,255,255,0.12)' },
+              }}>
+              <Icon icon="solar:bill-list-bold-duotone" width={23} />
+              <Box
+                component="span"
+                sx={{
+                  position: 'absolute',
+                  top: -4,
+                  right: -4,
+                  minWidth: 22,
+                  height: 22,
+                  px: 0.6,
+                  display: 'grid',
+                  placeItems: 'center',
+                  borderRadius: '999px',
+                  color: '#080909',
+                  backgroundColor: '#d4df36',
+                  fontSize: 12,
+                  fontWeight: 900,
+                }}>
+                {selectedCount}
+              </Box>
+            </IconButton>
+            <IconButton
+              aria-label="Menyuga qaytish"
+              disabled={hasPendingOperations}
+              onClick={handleReturnToMenu}
+              sx={{
+                width: 40,
+                height: 40,
+                color: 'rgba(255,255,255,0.72)',
+                backgroundColor: 'rgba(255,255,255,0.055)',
+                '&:hover': { color: '#ffffff', backgroundColor: 'rgba(255,255,255,0.1)' },
+                '&.Mui-disabled': { color: 'rgba(255,255,255,0.24)' },
+              }}>
+              <Icon icon={hasPendingOperations ? 'solar:refresh-circle-bold-duotone' : 'solar:close-circle-bold-duotone'} width={30} />
+            </IconButton>
+          </Stack>
         </Stack>
 
         <Box
-          sx={(theme) => ({
-            borderRadius: '12px',
-            overflow: 'hidden',
+          sx={{
             minHeight: 0,
-            display: { xs: 'none', lg: 'flex' },
-            flexDirection: 'column',
-            backgroundColor: theme.palette.mode === 'dark' ? alpha('#26282c', 0.82) : alpha('#fffaf2', 0.8),
-            backdropFilter: 'blur(16px)',
-            boxShadow:
-              theme.palette.mode === 'dark'
-                ? 'inset 0 0 0 1px rgba(255,255,255,0.06)'
-                : 'inset 0 0 0 1px rgba(65,48,28,0.08)',
-          })}>
-          <Stack spacing={0.3} sx={{ p: 2 }}>
-            <Typography variant="h6">Tanlanganlar</Typography>
-            <Typography variant="body2" color="text.secondary">
-              {selectedCount} {copy.menu}
+            minWidth: 0,
+            width: '100%',
+            maxWidth: '100%',
+            flex: { xs: '0 0 auto', lg: '1 1 0' },
+            overflowX: { xs: 'auto', lg: 'hidden' },
+            overflowY: { xs: 'hidden', lg: 'auto' },
+            display: { xs: 'flex', lg: 'block' },
+            flexWrap: 'nowrap',
+            gap: { xs: 1, lg: 0 },
+            px: { xs: 1.2, sm: 1.55, lg: 0 },
+            pb: { xs: 1.1, lg: 0 },
+            scrollbarWidth: 'thin',
+            WebkitOverflowScrolling: 'touch',
+          }}>
+          {categories.map((category) => renderCategoryButton(category))}
+        </Box>
+      </Box>
+
+      <Box component="section" sx={{ minHeight: 0, overflowY: 'auto', overflowX: 'hidden', backgroundColor: '#050505' }}>
+        {selectedCategoryItems.length > 0 ? (
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: {
+                xs: '1fr',
+                sm: '1fr',
+                md: '1fr',
+                lg: 'repeat(4, minmax(0, 1fr))',
+                xl: 'repeat(4, minmax(0, 1fr))',
+              },
+              alignItems: 'stretch',
+              borderTop: '1px solid rgba(255,255,255,0.12)',
+              borderLeft: { xs: '1px solid rgba(255,255,255,0.12)', lg: 0 },
+            }}>
+            {selectedCategoryItems.map((menuItem) => renderCatalogCard(menuItem))}
+          </Box>
+        ) : (
+          <Stack alignItems="center" justifyContent="center" spacing={1.2} sx={{ minHeight: '100%', textAlign: 'center' }}>
+            <Icon icon="solar:dish-bold-duotone" width={58} color="rgba(255,255,255,0.32)" />
+            <Typography variant="h6" sx={{ color: '#f6f6f4', fontWeight: 900 }}>
+              Mahsulot yo'q
             </Typography>
           </Stack>
-          <Divider />
-          <Stack spacing={1} sx={{ p: 1.5, overflowY: 'auto' }}>
-            {selectedItems.length > 0 ? (
-              selectedItems.map((item) => {
-                const menuItem = menuItemById.get(item.catalogItem);
-
-                return (
-                  <Box
-                    key={item.key}
-                    sx={(theme) => ({
-                      borderRadius: '10px',
-                      backgroundColor: theme.palette.mode === 'dark' ? '#33373d' : '#fff8ee',
-                      overflow: 'hidden',
-                    })}>
-                    <Stack direction="row" spacing={1.2} alignItems="center" sx={{ p: 1.25 }}>
-                      <Stack sx={{ flex: 1, minWidth: 0 }} spacing={0.2}>
-                        <Typography variant="subtitle2" noWrap>
-                          {item.catalogItemName}
-                        </Typography>
-                        {item.note ? (
-                          <Typography variant="caption" color="text.secondary" noWrap>
-                            {item.note}
-                          </Typography>
-                        ) : null}
-                      </Stack>
-                      <Typography variant="h6" sx={{ minWidth: 36, textAlign: 'center' }}>
-                        x{item.quantity}
-                      </Typography>
-                    </Stack>
-                    {menuItem ? (
-                      <Stack direction="row" spacing={1} sx={{ px: 1.25, pb: 1.25 }}>
-                        <Button
-                          aria-label={`Remove selected ${item.catalogItemName}`}
-                          variant="contained"
-                          disabled={hasPendingOperations}
-                          onClick={() => {
-                            const latestItemId = item.itemIds[item.itemIds.length - 1];
-                            removeItem(latestItemId);
-                          }}
-                          sx={{ minWidth: 48, px: 0 }}>
-                          <Icon icon="solar:minus-circle-bold" width={18} />
-                        </Button>
-                        <Button
-                          aria-label={`Add selected ${item.catalogItemName}`}
-                          variant="contained"
-                          disabled={hasPendingOperations}
-                          onClick={() => addItem(menuItem, item.note ?? '')}
-                          sx={{ flex: 1, minWidth: 0 }}>
-                          <Icon icon="solar:add-circle-bold" width={18} />
-                        </Button>
-                      </Stack>
-                    ) : null}
-                  </Box>
-                );
-              })
-            ) : (
-              <Stack sx={{ py: 8, textAlign: 'center' }} spacing={1}>
-                <Typography variant="h6">{copy.emptyOrder}</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {copy.chooseFromMenu}
-                </Typography>
-              </Stack>
-            )}
-          </Stack>
-        </Box>
-
-        <Stack
-          spacing={1}
-          sx={{
-            display: { xs: 'flex', lg: 'none' },
-            maxHeight: '34dvh',
-            overflowY: 'auto',
-            pb: 0.5,
-          }}>
-          <Typography variant="subtitle1">Tanlanganlar: {selectedCount}</Typography>
-          {selectedItems.slice(0, 6).map((item) => (
-            <Stack
-              key={item.key}
-              direction="row"
-              spacing={1}
-              alignItems="center"
-              sx={(theme) => ({
-                borderRadius: '10px',
-                px: 1.2,
-                py: 0.95,
-                backgroundColor: theme.palette.mode === 'dark' ? alpha('#ffffff', 0.06) : alpha('#ffffff', 0.56),
-              })}>
-              <Typography variant="body2" noWrap sx={{ flex: 1 }}>
-                {item.catalogItemName}
-              </Typography>
-              <Typography variant="subtitle2">x{item.quantity}</Typography>
-            </Stack>
-          ))}
-        </Stack>
+        )}
       </Box>
-    </PosPageFrame>
+
+      {selectionDialog}
+    </Box>
   );
 }
 

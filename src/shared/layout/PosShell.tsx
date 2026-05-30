@@ -23,6 +23,7 @@ export function PosShell({ children }: { children: ReactNode }) {
   const kitchenEnabled = canAccessKitchen(session?.user);
   const waiterEnabled = canAccessWaiter(session?.user);
   const cashierBuilderEnabled = canAccessTakeawayBuilder(session?.user);
+  const isCatalogPage = location.pathname === '/menu/catalog';
 
   const openChecksCountQuery = useCashierOpenChecksCountQuery(cashierEnabled);
   const kitchenActiveCountQuery = useKitchenActiveTicketCountQuery(kitchenEnabled);
@@ -72,10 +73,11 @@ export function PosShell({ children }: { children: ReactNode }) {
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
-        px: { xs: 1.25, sm: 1.6, md: 2.4, lg: 3.5 },
-        pt: { xs: 1.25, sm: 1.6, md: 2.4, lg: 2.8 },
-        background:
-          theme.palette.mode === 'dark'
+        px: isCatalogPage ? 0 : { xs: 1.25, sm: 1.6, md: 2.4, lg: 3.5 },
+        pt: isCatalogPage ? 0 : { xs: 1.25, sm: 1.6, md: 2.4, lg: 2.8 },
+        background: isCatalogPage
+          ? '#050505'
+          : theme.palette.mode === 'dark'
             ? 'linear-gradient(180deg, #1b1d20 0%, #1a1c1f 100%)'
             : 'linear-gradient(180deg, #f5ecdf 0%, #ebdfd0 100%)',
       })}>
@@ -85,7 +87,7 @@ export function PosShell({ children }: { children: ReactNode }) {
         {children}
       </Box>
 
-      {dockItems.length > 1 && location.pathname !== '/menu/catalog' ? <PosBottomDock items={dockItems} /> : null}
+      {dockItems.length > 1 && !isCatalogPage ? <PosBottomDock items={dockItems} /> : null}
     </Box>
   );
 }
