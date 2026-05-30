@@ -1,5 +1,6 @@
 import type {
   CashierContext,
+  CashierBuilderOrderChannel,
   CashierCheckStatus,
   CashierCreateOrderResponse,
   CashierMenuCategory,
@@ -43,6 +44,10 @@ export interface CashierRepository {
     notesClose?: string;
     closeFiscalShift?: boolean;
   }): Promise<CashierShiftCloseResponse>;
+  createBuilderOrder(payload: {
+    channel: CashierBuilderOrderChannel;
+    note: string;
+  }): Promise<CashierCreateOrderResponse>;
   createTakeawayOrder(note: string): Promise<CashierCreateOrderResponse>;
   addOrderItem(orderId: string, catalogItemId: string, note: string): Promise<void>;
   scanOrderMarking(orderId: string, rawCode: string, mode: 'add' | 'attach' | 'remove'): Promise<CashierOrder>;

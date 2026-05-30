@@ -6,7 +6,12 @@ import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 
-import { canAccessCashierPayments, canAccessTableSessionMenu, canAccessTakeawayBuilder, usePosSession } from 'modules/auth';
+import {
+  canAccessCashierPayments,
+  canAccessTableSessionMenu,
+  canAccessTakeawayBuilder,
+  usePosSession,
+} from 'modules/auth';
 import {
   useCurrentWaiterOrder,
   useCurrentWaiterTakeawayOrder,
@@ -136,7 +141,10 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
         : await waiterRepository.createOrder(sessionId as string, note);
       return response.id;
     },
-    defaultServiceFeePercent: isTakeawayMode ? 0 : 10,
+    defaultServiceFeeEnabled: Boolean(session?.restaurantContext?.serviceFeeEnabled),
+    defaultServiceFeePercent: Number(session?.restaurantContext?.serviceFeePercent ?? 0),
+    defaultVatEnabled: Boolean(session?.restaurantContext?.vatEnabled),
+    defaultVatPercent: session?.restaurantContext?.vatPercent ?? 0,
     removeOrderItem: (itemId) => waiterRepository.removeOrderItem(itemId),
     selectCurrentOrder: (orders) =>
       isTakeawayMode
@@ -151,9 +159,12 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
     addOrderItem: (orderId, menuItem, note) => waiterRepository.addOrderItem(orderId, menuItem.id, note),
     syncErrorMessage: copy.itemSyncFailed,
   });
-  const serviceFeePercent = Number(currentOrder?.serviceFeePercent ?? (isTakeawayMode ? 0 : 10));
+  const serviceFeePercent = Number(
+    currentOrder?.serviceFeePercent ?? session?.restaurantContext?.serviceFeePercent ?? 0,
+  );
   const serviceFeeAmount = Number(currentOrder?.serviceFee ?? 0);
-  const shouldShowServiceFee = serviceFeePercent > 0 || serviceFeeAmount > 0;
+  const serviceFeeEnabled = Boolean(currentOrder?.serviceFeeEnabled ?? session?.restaurantContext?.serviceFeeEnabled);
+  const shouldShowServiceFee = serviceFeeEnabled && (serviceFeePercent > 0 || serviceFeeAmount > 0);
   const serviceFeeLabel = `${copy.serviceFee} (${serviceFeePercent}%)`;
   const vatEnabled = Boolean(currentOrder?.vatEnabled);
   const vatPercent = Number(currentOrder?.vatPercent ?? 0);
@@ -355,6 +366,12 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
             direction="row"
             spacing={{ xs: 1, md: 1.5 }}
             sx={{ justifyContent: { xs: 'flex-end', md: 'flex-start' } }}>
+            {!isTakeawayMode && sessionId ? (
+              <PosIconAction
+                icon="solar:chef-hat-bold-duotone"
+                onClick={() => navigate(`/menu/catalog?source=waiter&sessionId=${encodeURIComponent(sessionId)}`)}
+              />
+            ) : null}
             {!isMobile ? (
               <PosIconAction icon="solar:refresh-bold-duotone" onClick={() => window.location.reload()} />
             ) : null}
@@ -453,29 +470,29 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
                       {menuItemMeta.countMap.get(menuItem.id)}
                     </Box>
                   ) : null}
-                    <Stack justifyContent="space-between" sx={{ minHeight: { xs: 114, md: 126 } }}>
-                      <Stack spacing={0.85} sx={{ p: { xs: 1.35, md: 1.85 } }}>
-                        <Typography variant="body2" color="text.secondary">
-                          {menuItem.prepStationName ?? copy.menu}
+                  <Stack justifyContent="space-between" sx={{ minHeight: { xs: 114, md: 126 } }}>
+                    <Stack spacing={0.85} sx={{ p: { xs: 1.35, md: 1.85 } }}>
+                      <Typography variant="body2" color="text.secondary">
+                        {menuItem.prepStationName ?? copy.menu}
+                      </Typography>
+                      <Typography variant="h6" sx={{ pr: 1 }}>
+                        {menuItem.name}
+                      </Typography>
+                      {menuItem.description ? (
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{
+                            pr: 1,
+                            overflow: 'hidden',
+                            display: '-webkit-box',
+                            WebkitBoxOrient: 'vertical',
+                            WebkitLineClamp: 2,
+                          }}>
+                          {menuItem.description}
                         </Typography>
-                        <Typography variant="h6" sx={{ pr: 1 }}>
-                          {menuItem.name}
-                        </Typography>
-                        {menuItem.description ? (
-                          <Typography
-                            variant="body2"
-                            color="text.secondary"
-                            sx={{
-                              pr: 1,
-                              overflow: 'hidden',
-                              display: '-webkit-box',
-                              WebkitBoxOrient: 'vertical',
-                              WebkitLineClamp: 2,
-                            }}>
-                            {menuItem.description}
-                          </Typography>
-                        ) : null}
-                      </Stack>
+                      ) : null}
+                    </Stack>
                     <Box
                       sx={(theme) => ({
                         minHeight: 40,
@@ -775,14 +792,6 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
                               })}>
                               <Icon icon="solar:minus-circle-bold" width={22} />
                             </Box>
-                            <Stack spacing={0.1} alignItems="center" sx={{ flex: 1 }}>
-                              <Typography variant="body2" color="text.secondary">
-                                {item.catalogItemName}
-                              </Typography>
-                              <Typography variant="h6" sx={{ lineHeight: 1 }}>
-                                x{item.quantity}
-                              </Typography>
-                            </Stack>
                             <Box
                               component="button"
                               type="button"
@@ -1057,9 +1066,6 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
                             sx={{ minWidth: 54, px: 0 }}>
                             <Icon icon="solar:minus-circle-bold" width={18} />
                           </Button>
-                          <Typography variant="subtitle1" sx={{ flex: 1, textAlign: 'center' }}>
-                            x{item.quantity}
-                          </Typography>
                           <Button
                             variant="contained"
                             onClick={(event) => {

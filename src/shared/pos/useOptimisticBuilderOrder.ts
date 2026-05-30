@@ -25,10 +25,14 @@ type UseOptimisticBuilderOrderOptions<
   canonicalQueryFn: () => Promise<TCanonicalData>;
   channel: string;
   createOrder: (note: string) => Promise<string>;
+  defaultServiceFeeEnabled?: boolean;
   defaultServiceFeePercent: number;
+  defaultVatEnabled?: boolean;
+  defaultVatPercent?: number | string;
   removeOrderItem: (itemId: string) => Promise<void>;
   selectCurrentOrder: (data: TCanonicalData) => TOrder | undefined;
   addOrderItem: (orderId: string, menuItem: TMenuItem, note: string) => Promise<void>;
+  resetKey?: unknown;
   syncErrorMessage: string;
 };
 
@@ -48,8 +52,12 @@ export function useOptimisticBuilderOrder<
     canonicalQueryKey,
     channel,
     createOrder,
+    defaultServiceFeeEnabled,
     defaultServiceFeePercent,
+    defaultVatEnabled,
+    defaultVatPercent,
     removeOrderItem,
+    resetKey,
     selectCurrentOrder,
     addOrderItem,
     syncErrorMessage,
@@ -74,11 +82,9 @@ export function useOptimisticBuilderOrder<
 
   useEffect(() => {
     setResolvedBaseOrder(baseOrder);
-
-    if (baseOrder?.id) {
-      resolvedOrderIdRef.current = baseOrder.id;
-    }
-  }, [baseOrder]);
+    resolvedOrderIdRef.current = baseOrder?.id ?? null;
+    tempOrderIdRef.current = null;
+  }, [baseOrder, resetKey]);
 
   const settleAddOperation = useCallback((opId: string) => {
     setPendingAdds((current) => current.filter((operation) => operation.opId !== opId));
@@ -243,7 +249,10 @@ export function useOptimisticBuilderOrder<
     const derivedOrder = deriveOptimisticBuilderOrder<TMenuItem, TItem, TOrder>({
       baseOrder: resolvedBaseOrder,
       channel,
+      defaultServiceFeeEnabled,
       defaultServiceFeePercent,
+      defaultVatEnabled,
+      defaultVatPercent,
       pendingAdds,
       pendingRemoves,
       tempOrderId: tempOrderIdRef.current,
@@ -254,7 +263,16 @@ export function useOptimisticBuilderOrder<
     }
 
     return derivedOrder;
-  }, [channel, defaultServiceFeePercent, pendingAdds, pendingRemoves, resolvedBaseOrder]);
+  }, [
+    channel,
+    defaultServiceFeeEnabled,
+    defaultServiceFeePercent,
+    defaultVatEnabled,
+    defaultVatPercent,
+    pendingAdds,
+    pendingRemoves,
+    resolvedBaseOrder,
+  ]);
 
   return {
     addItem,

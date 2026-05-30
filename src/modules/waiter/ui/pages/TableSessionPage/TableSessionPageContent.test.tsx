@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { TableSessionPageContent } from './TableSessionPageContent';
 
@@ -99,7 +99,11 @@ vi.mock('shared/printing/browserReceipt', () => ({
 
 vi.mock('shared/ui/pos-primitives', () => ({
   PosBuilderPageSkeleton: () => <div>loading</div>,
-  PosIconAction: ({ onClick }: { onClick?: () => void }) => <button onClick={onClick}>icon</button>,
+  PosIconAction: ({ icon, onClick }: { icon: string; onClick?: () => void }) => (
+    <button aria-label={icon} onClick={onClick}>
+      {icon}
+    </button>
+  ),
   PosOrderChannelSegment: () => <div>segment</div>,
   PosSectionTabs: ({ items }: { items: Array<{ label: string }> }) => (
     <div>{items.map((item) => item.label).join(', ')}</div>
@@ -108,6 +112,10 @@ vi.mock('shared/ui/pos-primitives', () => ({
 }));
 
 describe('TableSessionPageContent', () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   beforeEach(() => {
     navigateMock.mockReset();
     printPrebillMutateAsyncMock.mockReset();
@@ -169,6 +177,14 @@ describe('TableSessionPageContent', () => {
 
     expect(canAccessTableSessionMenuMock).toHaveBeenCalledWith(expect.objectContaining({ id: 'user-1' }));
     expect(useWaiterMenuQueryMock).toHaveBeenCalledWith({ enabled: true });
+  });
+
+  it('opens the price-hidden catalog for the current table session', () => {
+    render(<TableSessionPageContent sessionId="session-1" mode="hall" />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'solar:chef-hat-bold-duotone' }));
+
+    expect(navigateMock).toHaveBeenCalledWith('/menu/catalog?source=waiter&sessionId=session-1');
   });
 
   it('shows included VAT in the order summary without changing the grand total', () => {

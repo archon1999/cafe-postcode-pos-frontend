@@ -1,5 +1,6 @@
 import { Box } from '@mui/material';
 import type { ReactNode } from 'react';
+import { useLocation } from 'react-router';
 
 import {
   canAccessCashierPayments,
@@ -15,6 +16,7 @@ import { getPosCopy } from '../locale/copy';
 import { PosBottomDock } from '../ui/pos-primitives';
 
 export function PosShell({ children }: { children: ReactNode }) {
+  const location = useLocation();
   const { session, locale } = usePosSession();
   const copy = getPosCopy(locale);
   const cashierEnabled = canAccessCashierPayments(session?.user);
@@ -83,7 +85,7 @@ export function PosShell({ children }: { children: ReactNode }) {
         {children}
       </Box>
 
-      {dockItems.length > 1 ? <PosBottomDock items={dockItems} /> : null}
+      {dockItems.length > 1 && location.pathname !== '/menu/catalog' ? <PosBottomDock items={dockItems} /> : null}
     </Box>
   );
 }

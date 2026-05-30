@@ -42,6 +42,10 @@ export type PosRestaurantContext = {
   restaurantId: string;
   restaurantName: string;
   posAuthBackgroundImageUrl?: string | null;
+  serviceFeeEnabled?: boolean;
+  serviceFeePercent?: number | string;
+  vatEnabled?: boolean;
+  vatPercent?: number | string;
 };
 
 export type PosSessionContextValue = {

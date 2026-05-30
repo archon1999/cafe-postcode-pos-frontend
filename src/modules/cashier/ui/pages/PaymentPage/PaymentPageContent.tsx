@@ -201,11 +201,11 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     [orderQuery.data?.displayName, orderQuery.data?.orderNumber],
   );
   const hasCustomOrderName = Boolean(orderQuery.data?.displayName?.trim());
-  const isTakeawayOrder = orderQuery.data?.channel === 'takeaway';
-  const canAddPaymentItems = isTakeawayOrder
+  const isBuilderOrder = orderQuery.data?.channel === 'takeaway' || orderQuery.data?.channel === 'delivery';
+  const canAddPaymentItems = isBuilderOrder
     ? canAddCashierPaymentOrderItems(session?.user)
     : canAccessWaiterTables(session?.user);
-  const canRemovePaymentItems = Boolean(isTakeawayOrder && canRemoveCashierPaymentOrderItems(session?.user));
+  const canRemovePaymentItems = Boolean(isBuilderOrder && canRemoveCashierPaymentOrderItems(session?.user));
   const markingMissingCount = useMemo(
     () =>
       (orderQuery.data?.items ?? []).reduce((sum, item) => {
@@ -274,7 +274,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   );
 
   const afterPaymentPath =
-    orderQuery.data?.channel === 'takeaway' && canAccessTakeawayBuilder(session?.user)
+    isBuilderOrder && canAccessTakeawayBuilder(session?.user)
       ? '/cashier/builder'
       : '/cashier/open-checks';
   const canSubmitPayment = Boolean(
@@ -285,11 +285,10 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
       Number(amount || 0) > 0 &&
       !paymentMutation.isPending,
   );
-  const serviceFeePercent = Number(
-    orderQuery.data?.serviceFeePercent ?? (orderQuery.data?.channel === 'hall' ? 10 : 0),
-  );
+  const serviceFeePercent = Number(orderQuery.data?.serviceFeePercent ?? 0);
   const serviceFeeAmount = Number(orderQuery.data?.serviceFee ?? 0);
-  const shouldShowServiceFee = serviceFeePercent > 0 || serviceFeeAmount > 0;
+  const serviceFeeEnabled = Boolean(orderQuery.data?.serviceFeeEnabled ?? serviceFeePercent > 0);
+  const shouldShowServiceFee = serviceFeeEnabled && (serviceFeePercent > 0 || serviceFeeAmount > 0);
   const serviceFeeLabel = `${copy.serviceFee} (${serviceFeePercent}%)`;
   const vatEnabled = Boolean(orderQuery.data?.vatEnabled);
   const vatPercent = Number(orderQuery.data?.vatPercent ?? 0);
@@ -521,7 +520,9 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
                   fontSize: 28,
                   fontWeight: 700,
                 })}>
-                {orderQuery.data?.channel === 'takeaway'
+                {orderQuery.data?.channel === 'delivery'
+                  ? 'YD'
+                  : orderQuery.data?.channel === 'takeaway'
                   ? 'TG'
                   : (orderQuery.data?.tableName?.match(/\d+/)?.[0] ?? '0')}
               </Box>
@@ -536,7 +537,9 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
                   {hasCustomOrderName ? `${copy.orders}: ${orderNumberLabel}` : copy.orders}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  {orderQuery.data?.channel === 'takeaway'
+                  {orderQuery.data?.channel === 'delivery'
+                    ? copy.deliveryLabel
+                    : orderQuery.data?.channel === 'takeaway'
                     ? copy.takeawayLabel
                     : (orderQuery.data?.hallName ?? copy.hallLabel)}
                 </Typography>
@@ -549,6 +552,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
             <PosOrderChannelSegment
               hallLabel={copy.hall}
               takeawayLabel={copy.takeaway}
+              deliveryLabel={copy.delivery}
               channel={orderQuery.data?.channel}
             />
 

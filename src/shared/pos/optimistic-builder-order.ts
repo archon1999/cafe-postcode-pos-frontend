@@ -22,7 +22,11 @@ export type BuilderOrderLike<TItem extends BuilderOrderItemLike = BuilderOrderIt
   status: string;
   subtotal: number | string;
   serviceFee: number | string;
+  serviceFeeEnabled?: boolean;
   serviceFeePercent?: number | string;
+  vatEnabled?: boolean;
+  vatPercent?: number | string;
+  vatAmount?: number | string;
   total: number | string;
   note: string;
   channel: string;
@@ -49,7 +53,10 @@ type DeriveOptimisticBuilderOrderOptions<
 > = {
   baseOrder?: TOrder;
   channel: string;
+  defaultServiceFeeEnabled?: boolean;
   defaultServiceFeePercent: number;
+  defaultVatEnabled?: boolean;
+  defaultVatPercent?: number | string;
   pendingAdds: PendingAddOperation<TMenuItem>[];
   pendingRemoves: PendingRemoveOperation[];
   tempOrderId?: string | null;
@@ -74,6 +81,14 @@ function roundMoney(value: number) {
   return Number(value.toFixed(2));
 }
 
+function includedVatAmount(total: number, vatPercent: number) {
+  if (total <= 0 || vatPercent <= 0) {
+    return 0;
+  }
+
+  return Math.round((total * vatPercent) / (100 + vatPercent));
+}
+
 function createOptimisticItem<TMenuItem extends BuilderMenuItemLike, TItem extends BuilderOrderItemLike>(
   operation: PendingAddOperation<TMenuItem>,
 ): TItem {
@@ -94,7 +109,17 @@ export function deriveOptimisticBuilderOrder<
   TItem extends BuilderOrderItemLike,
   TOrder extends BuilderOrderLike<TItem>,
 >(options: DeriveOptimisticBuilderOrderOptions<TMenuItem, TItem, TOrder>) {
-  const { baseOrder, channel, defaultServiceFeePercent, pendingAdds, pendingRemoves, tempOrderId } = options;
+  const {
+    baseOrder,
+    channel,
+    defaultServiceFeeEnabled,
+    defaultServiceFeePercent,
+    defaultVatEnabled = false,
+    defaultVatPercent = 0,
+    pendingAdds,
+    pendingRemoves,
+    tempOrderId,
+  } = options;
   const removedItemIds = new Set(pendingRemoves.map((operation) => operation.itemId));
   const visibleBaseItems = (baseOrder?.items ?? []).filter((item) => !removedItemIds.has(item.id));
   const visiblePendingItems = pendingAdds.filter((operation) => !operation.canceled).map(createOptimisticItem);
@@ -104,7 +129,12 @@ export function deriveOptimisticBuilderOrder<
     return undefined;
   }
 
-  const serviceFeePercent = toMoneyNumber(baseOrder?.serviceFeePercent ?? defaultServiceFeePercent);
+  const serviceFeeEnabled = Boolean(baseOrder?.serviceFeeEnabled ?? defaultServiceFeeEnabled ?? defaultServiceFeePercent > 0);
+  const serviceFeePercent = serviceFeeEnabled
+    ? toMoneyNumber(baseOrder?.serviceFeePercent ?? defaultServiceFeePercent)
+    : 0;
+  const vatEnabled = Boolean(baseOrder?.vatEnabled ?? defaultVatEnabled);
+  const vatPercent = toMoneyNumber(baseOrder?.vatPercent ?? defaultVatPercent);
   const subtotal = roundMoney(
     items.reduce((sum, item) => {
       if (item.status === 'cancelled') {
@@ -116,6 +146,7 @@ export function deriveOptimisticBuilderOrder<
   );
   const serviceFee = roundMoney((subtotal * serviceFeePercent) / 100);
   const total = roundMoney(subtotal + serviceFee);
+  const vatAmount = vatEnabled ? includedVatAmount(total, vatPercent) : 0;
 
   if (baseOrder) {
     return {
@@ -123,7 +154,11 @@ export function deriveOptimisticBuilderOrder<
       items,
       subtotal,
       serviceFee,
+      serviceFeeEnabled,
       serviceFeePercent,
+      vatEnabled,
+      vatPercent: vatEnabled ? vatPercent : 0,
+      vatAmount,
       total,
     } as TOrder;
   }
@@ -134,7 +169,11 @@ export function deriveOptimisticBuilderOrder<
     status: 'open',
     subtotal,
     serviceFee,
+    serviceFeeEnabled,
     serviceFeePercent,
+    vatEnabled,
+    vatPercent: vatEnabled ? vatPercent : 0,
+    vatAmount,
     total,
     note: '',
     channel,

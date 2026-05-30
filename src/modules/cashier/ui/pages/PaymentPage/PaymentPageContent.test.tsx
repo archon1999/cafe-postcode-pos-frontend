@@ -34,6 +34,7 @@ vi.mock('modules/auth', () => ({
   canAccessWaiterTables: (...args: unknown[]) => canAccessWaiterTablesMock(...args),
   canManageCashierPayments: () => true,
   canRemoveCashierPaymentOrderItems: (...args: unknown[]) => canRemoveCashierPaymentOrderItemsMock(...args),
+  canSkipFiscalReceipts: () => false,
   usePosSession: () => ({
     session: { user: { id: 'cashier-1', fullName: 'Cashier Test', permissionCodes: ['pos_open_checks.view'] } },
     locale: 'uz',
@@ -54,11 +55,18 @@ vi.mock('modules/cashier/application', () => ({
     mutateAsync: removePaymentOrderItemMutateAsyncMock,
   }),
   useCashierContextQuery: () => ({
-    data: { availableCashDesks: [{ id: 'desk-1', name: 'Main cash desk', enabledPaymentMethods: enabledPaymentMethodsMock }] },
+    data: {
+      availableCashDesks: [{ id: 'desk-1', name: 'Main cash desk', enabledPaymentMethods: enabledPaymentMethodsMock }],
+      currentShift: { cashDesk: 'desk-1' },
+    },
   }),
   useCashierPaymentMutation: () => ({
     ...paymentMutationStateMock,
     mutateAsync: paymentMutateAsyncMock,
+  }),
+  useCashierOrderScanMutation: () => ({
+    isPending: false,
+    mutateAsync: vi.fn(),
   }),
   useCashierUpdateOrderDisplayNameMutation: () => ({
     isPending: false,
@@ -219,6 +227,20 @@ describe('PaymentPageContent', () => {
     expect(screen.queryByRole('button', { name: 'Bittaga kamaytirish' })).toBeNull();
   });
 
+  it('treats delivery payment orders like builder orders for item edits', () => {
+    orderChannelMock = 'delivery';
+    canAddCashierPaymentOrderItemsMock.mockReturnValue(true);
+    canAccessWaiterTablesMock.mockReturnValue(false);
+    canRemoveCashierPaymentOrderItemsMock.mockReturnValue(true);
+
+    render(<PaymentPageContent orderId="order-1" />);
+
+    expect(screen.getByText('Yetkazib berish')).toBeTruthy();
+    expect(screen.getByRole('button', { name: "Yana qo'shish" })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Bittaga kamaytirish' })).toBeTruthy();
+    expect(canAccessWaiterTablesMock).not.toHaveBeenCalled();
+  });
+
   it('renders the custom order name as the primary title', () => {
     render(<PaymentPageContent orderId="order-1" />);
 
@@ -285,7 +307,7 @@ describe('PaymentPageContent', () => {
 
     render(<PaymentPageContent orderId="order-1" />);
     fireEvent.click(screen.getByRole('button', { name: 'Karta' }));
-    fireEvent.click(screen.getByRole('button', { name: "To'lovni yakunlash" }));
+    fireEvent.click(screen.getByRole('button', { name: 'Fiscal bilan to‘lov' }));
 
     expect(await screen.findByText('MARTA request/response')).toBeTruthy();
     expect(screen.getByText(/"httpStatus": 500/)).toBeTruthy();

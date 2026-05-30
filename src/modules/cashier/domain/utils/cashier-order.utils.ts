@@ -1,4 +1,4 @@
-import type { CashierMenuCategory, CashierOrder, CashierOrderItem } from '../entities';
+import type { CashierBuilderOrderChannel, CashierMenuCategory, CashierOrder, CashierOrderItem } from '../entities';
 
 export function getDefaultCashierMenuCategory(categories: CashierMenuCategory[]) {
   return categories
@@ -58,9 +58,13 @@ export function getCashierOrderDisplayName(order: Pick<CashierOrder, 'orderNumbe
   return normalizedDisplayName || getCashierOrderNumberLabel(order);
 }
 
-export function getCurrentCashierBuilderOrder(orders: CashierOrder[] | undefined, userId: string | undefined) {
+export function getCurrentCashierBuilderOrder(
+  orders: CashierOrder[] | undefined,
+  userId: string | undefined,
+  channel: CashierBuilderOrderChannel = 'takeaway',
+) {
   return (orders ?? []).find(
     (order) =>
-      !order.tableSession && order.channel === 'takeaway' && order.status === 'open' && order.openedBy === userId,
+      !order.tableSession && order.channel === channel && order.status === 'open' && order.openedBy === userId,
   );
 }

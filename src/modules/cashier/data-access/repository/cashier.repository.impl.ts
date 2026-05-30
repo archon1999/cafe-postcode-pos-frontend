@@ -1,5 +1,6 @@
 import type {
   CashierContext,
+  CashierBuilderOrderChannel,
   CashierCheckStatus,
   CashierChecksParams,
   CashierChecksResult,
@@ -99,14 +100,21 @@ class CashierRepositoryImpl implements CashierRepository {
     return apiPost<CashierShiftCloseResponse>('/pos/billing/shifts/current/close/', payload);
   }
 
-  async createTakeawayOrder(note: string): Promise<CashierCreateOrderResponse> {
+  async createBuilderOrder(payload: {
+    channel: CashierBuilderOrderChannel;
+    note: string;
+  }): Promise<CashierCreateOrderResponse> {
     return mapCashierCreateOrderResponse(
       await apiPost<CashierCreateOrderResponse>('/pos/sales/orders/', {
-        channel: 'takeaway',
+        channel: payload.channel,
         guestCount: 1,
-        note,
+        note: payload.note,
       }),
     );
+  }
+
+  async createTakeawayOrder(note: string): Promise<CashierCreateOrderResponse> {
+    return this.createBuilderOrder({ channel: 'takeaway', note });
   }
 
   async addOrderItem(orderId: string, catalogItemId: string, note: string) {

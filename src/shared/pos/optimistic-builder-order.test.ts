@@ -86,6 +86,24 @@ describe('optimistic builder order', () => {
     expect(order?.total).toBe(33000);
   });
 
+  it('calculates included VAT from optimistic total including service fee', () => {
+    const order = deriveOptimisticBuilderOrder<TestMenuItem, TestOrderItem, TestOrder>({
+      baseOrder: createOrder({ vatEnabled: true, vatPercent: 12, vatAmount: 1414 }),
+      channel: 'hall',
+      defaultServiceFeePercent: 10,
+      defaultVatEnabled: true,
+      defaultVatPercent: 12,
+      pendingAdds: [createPendingAdd({ menuItem: createMenuItem({ id: 'menu-2', name: 'Cake', price: 18000 }) })],
+      pendingRemoves: [],
+      tempOrderId: null,
+    });
+
+    expect(order?.total).toBe(33000);
+    expect(order?.vatEnabled).toBe(true);
+    expect(order?.vatPercent).toBe(12);
+    expect(order?.vatAmount).toBe(3536);
+  });
+
   it('creates a temporary draft order when the first optimistic add starts', () => {
     const order = deriveOptimisticBuilderOrder<TestMenuItem, TestOrderItem, TestOrder>({
       baseOrder: undefined,
@@ -146,6 +164,8 @@ describe('optimistic builder order', () => {
       baseOrder: undefined,
       channel: 'hall',
       defaultServiceFeePercent: 10,
+      defaultVatEnabled: true,
+      defaultVatPercent: 12,
       pendingAdds: [createPendingAdd({ menuItem: createMenuItem({ price: 10000 }) })],
       pendingRemoves: [],
       tempOrderId: 'temp-order-2',
@@ -161,6 +181,7 @@ describe('optimistic builder order', () => {
 
     expect(hallOrder?.serviceFeePercent).toBe(10);
     expect(hallOrder?.total).toBe(11000);
+    expect(hallOrder?.vatAmount).toBe(1179);
     expect(takeawayOrder?.serviceFeePercent).toBe(0);
     expect(takeawayOrder?.total).toBe(10000);
   });

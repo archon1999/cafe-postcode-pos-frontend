@@ -1,8 +1,19 @@
 ﻿import { Icon } from '@iconify/react';
-import { Box, Button, Divider, Drawer, Snackbar, Stack, TextField, Typography, alpha, useMediaQuery } from '@mui/material';
+import {
+  Box,
+  Button,
+  Divider,
+  Drawer,
+  Snackbar,
+  Stack,
+  TextField,
+  Typography,
+  alpha,
+  useMediaQuery,
+} from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 
 import { usePosSession } from 'modules/auth';
 import {
@@ -16,14 +27,16 @@ import {
   getCurrentCashierBuilderOrder,
   getDefaultCashierMenuCategory,
   groupCashierOrderItemsByStation,
+  type CashierBuilderOrderChannel,
+  type CashierOrderItem,
 } from 'modules/cashier/domain';
+import { resolveApiBaseUrl } from 'shared/api/apiUrl';
+import { getApiErrorMessage } from 'shared/api/errorMessage';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { getPosCopy } from 'shared/locale/copy';
 import { useOptimisticBuilderOrder } from 'shared/pos/useOptimisticBuilderOrder';
 import { useScannerInput } from 'shared/pos/useScannerInput';
 import { formatCompactMoney } from 'shared/pos/utils';
-import { resolveApiBaseUrl } from 'shared/api/apiUrl';
-import { getApiErrorMessage } from 'shared/api/errorMessage';
 import {
   PosBuilderPageSkeleton,
   PosIconAction,
@@ -42,6 +55,9 @@ type AggregatedCashierCartItem = {
   lineTotal: number;
   status: string;
   itemIds: string[];
+  markingRequiredCount: number;
+  markingScannedCount: number;
+  markingMissingCount: number;
 };
 
 function resolveMenuItemImageUrl(imageUrl?: string | null) {
@@ -56,13 +72,37 @@ function resolveMenuItemImageUrl(imageUrl?: string | null) {
   }
 }
 
+function formatPercent(value: number) {
+  return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/\.?0+$/, '');
+}
+
+function getOrderItemMarkingRequiredCount(item: CashierOrderItem) {
+  return Number(item.markingRequiredCount ?? item.marking_required_count ?? 0);
+}
+
+function getOrderItemMarkingScannedCount(item: CashierOrderItem) {
+  return Number(item.markingScannedCount ?? item.marking_scanned_count ?? item.markings?.length ?? 0);
+}
+
+function getOrderItemsTotalQuantity(items: CashierOrderItem[] | undefined) {
+  return (items ?? []).reduce((sum, item) => sum + Number(item.quantity ?? 0), 0);
+}
+
+function resolveBuilderChannel(value: string | null): CashierBuilderOrderChannel {
+  return value === 'takeaway' ? 'takeaway' : 'delivery';
+}
+
 export function CashierBuilderPageContent() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { session, locale, setLocale, setSession, themeMode, setThemeMode } = usePosSession();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const copy = getPosCopy(locale);
+  const [builderChannel, setBuilderChannel] = useState<CashierBuilderOrderChannel>(() =>
+    resolveBuilderChannel(searchParams.get('channel')),
+  );
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [kitchenNote, setKitchenNote] = useState('');
   const [settingsAnchor, setSettingsAnchor] = useState<HTMLElement | null>(null);
@@ -73,21 +113,25 @@ export function CashierBuilderPageContent() {
   const menuQuery = useCashierMenuQuery();
   const ordersQuery = useCashierBuilderOrdersQuery();
   const serverOrder = useMemo(
-    () => getCurrentCashierBuilderOrder(ordersQuery.data, session?.user.id),
-    [ordersQuery.data, session?.user.id],
+    () => getCurrentCashierBuilderOrder(ordersQuery.data, session?.user.id, builderChannel),
+    [builderChannel, ordersQuery.data, session?.user.id],
   );
   const { currentOrder, addItem, removeItem, hasPendingOperations } = useOptimisticBuilderOrder({
     baseOrder: serverOrder,
     canonicalQueryKey: cashierKeys.builderOrders,
     canonicalQueryFn: () => cashierRepository.getOpenOrders(),
-    channel: 'takeaway',
+    channel: builderChannel,
     createOrder: async (note) => {
-      const response = await cashierRepository.createTakeawayOrder(note);
+      const response = await cashierRepository.createBuilderOrder({ channel: builderChannel, note });
       return response.id;
     },
-    defaultServiceFeePercent: 0,
+    defaultServiceFeeEnabled: Boolean(session?.restaurantContext?.serviceFeeEnabled),
+    defaultServiceFeePercent: Number(session?.restaurantContext?.serviceFeePercent ?? 0),
+    defaultVatEnabled: Boolean(session?.restaurantContext?.vatEnabled),
+    defaultVatPercent: session?.restaurantContext?.vatPercent ?? 0,
     removeOrderItem: (itemId) => cashierRepository.removeOrderItem(itemId),
-    selectCurrentOrder: (orders) => getCurrentCashierBuilderOrder(orders, session?.user.id),
+    resetKey: builderChannel,
+    selectCurrentOrder: (orders) => getCurrentCashierBuilderOrder(orders, session?.user.id, builderChannel),
     addOrderItem: (orderId, menuItem, note) => cashierRepository.addOrderItem(orderId, menuItem.id, note),
     syncErrorMessage: copy.itemSyncFailed,
   });
@@ -103,10 +147,16 @@ export function CashierBuilderPageContent() {
     enabled: true,
     onScan: async (rawCode) => {
       try {
-        const orderId = currentOrder?.id ?? (await cashierRepository.createTakeawayOrder(kitchenNote)).id;
-        await cashierRepository.scanOrderMarking(orderId, rawCode, 'add');
+        const quantityBeforeScan = getOrderItemsTotalQuantity(currentOrder?.items);
+        const orderId =
+          currentOrder?.id ??
+          (await cashierRepository.createBuilderOrder({ channel: builderChannel, note: kitchenNote })).id;
+        const updatedOrder = await cashierRepository.scanOrderMarking(orderId, rawCode, 'add');
         await ordersQuery.refetch();
-        setScanToast('Mahsulot skaner orqali qo‘shildi.');
+        const quantityAfterScan = getOrderItemsTotalQuantity(updatedOrder.items);
+        setScanToast(
+          quantityAfterScan > quantityBeforeScan ? 'Mahsulot skaner orqali qo‘shildi.' : 'Markirovka biriktirildi.',
+        );
       } catch (error) {
         setScanToast(getApiErrorMessage(error, 'Bunaqa mahsulot yo‘q yoki markirovka kodi yaroqsiz.'));
       }
@@ -123,6 +173,9 @@ export function CashierBuilderPageContent() {
       const aggregatedMap = new Map<string, AggregatedCashierCartItem>();
 
       for (const item of items) {
+        const markingRequiredCount = getOrderItemMarkingRequiredCount(item);
+        const markingScannedCount = getOrderItemMarkingScannedCount(item);
+        const markingMissingCount = Math.max(markingRequiredCount - markingScannedCount, 0);
         const aggregationKey = [
           item.catalogItem,
           item.note ?? '',
@@ -136,6 +189,9 @@ export function CashierBuilderPageContent() {
           existing.lineTotal += Number(item.lineTotal ?? 0);
           existing.itemIds.push(item.id);
           existing.id = item.id;
+          existing.markingRequiredCount += markingRequiredCount;
+          existing.markingScannedCount += markingScannedCount;
+          existing.markingMissingCount += markingMissingCount;
           continue;
         }
 
@@ -149,6 +205,9 @@ export function CashierBuilderPageContent() {
           lineTotal: Number(item.lineTotal ?? 0),
           status: item.status,
           itemIds: [item.id],
+          markingRequiredCount,
+          markingScannedCount,
+          markingMissingCount,
         });
       }
 
@@ -185,8 +244,29 @@ export function CashierBuilderPageContent() {
     [categories, menuItemMeta.countMap],
   );
   const serviceFeePercent = Number(currentOrder?.serviceFeePercent ?? 0);
+  const serviceFeeAmount = Number(currentOrder?.serviceFee ?? 0);
+  const serviceFeeEnabled = Boolean(currentOrder?.serviceFeeEnabled);
+  const shouldShowServiceFee = serviceFeeEnabled && (serviceFeePercent > 0 || serviceFeeAmount > 0);
   const serviceFeeLabel = `${copy.serviceFee} (${serviceFeePercent}%)`;
-  const isSubmitDisabled = !currentOrder || submitOrderMutation.isPending || hasPendingOperations;
+  const vatEnabled = Boolean(currentOrder?.vatEnabled);
+  const vatPercent = Number(currentOrder?.vatPercent ?? 0);
+  const vatAmount = Number(currentOrder?.vatAmount ?? 0);
+  const shouldShowVat = vatEnabled && vatPercent > 0;
+  const vatLabel = `${copy.vat} (${formatPercent(vatPercent)}%)`;
+  const missingMarkingCount = useMemo(
+    () =>
+      (currentOrder?.items ?? []).reduce((sum, item) => {
+        const required = getOrderItemMarkingRequiredCount(item);
+        const scanned = getOrderItemMarkingScannedCount(item);
+        return sum + Math.max(required - scanned, 0);
+      }, 0),
+    [currentOrder?.items],
+  );
+  const hasMissingMarkings = missingMarkingCount > 0;
+  const missingMarkingMessage = `${missingMarkingCount} ta markirovka skanerlanmagan`;
+  const isSubmitDisabled = !currentOrder || submitOrderMutation.isPending || hasPendingOperations || hasMissingMarkings;
+  const isDeliveryChannel = builderChannel === 'delivery';
+  const channelSwitchDisabled = hasPendingOperations || submitOrderMutation.isPending;
 
   const createActionKeyHandler = (onActivate: () => void) => (event: KeyboardEvent<HTMLElement>) => {
     if (event.key !== 'Enter' && event.key !== ' ') {
@@ -201,11 +281,31 @@ export function CashierBuilderPageContent() {
     if (!currentOrder || submitOrderMutation.isPending || hasPendingOperations) {
       return;
     }
+    if (hasMissingMarkings) {
+      setScanToast(missingMarkingMessage);
+      return;
+    }
 
-    await submitOrderMutation.mutateAsync();
+    if (!isDeliveryChannel) {
+      await submitOrderMutation.mutateAsync();
+    }
     setCartOpen(false);
-    navigate(`/cashier/payment?orderId=${currentOrder.id}`);
+    void navigate(`/cashier/payment?orderId=${currentOrder.id}`);
   };
+
+  const handleBuilderChannelChange = (channel: 'hall' | 'delivery' | 'takeaway') => {
+    if (channel !== 'delivery' && channel !== 'takeaway') {
+      return;
+    }
+
+    setBuilderChannel(channel);
+    setSelectedCartItemKey(null);
+  };
+
+  useEffect(() => {
+    const channelFromQuery = resolveBuilderChannel(searchParams.get('channel'));
+    setBuilderChannel((current) => (current === channelFromQuery ? current : channelFromQuery));
+  }, [searchParams]);
 
   useEffect(() => {
     if (!selectedCartItemKey) {
@@ -248,6 +348,10 @@ export function CashierBuilderPageContent() {
             spacing={{ xs: 1, md: 1.5 }}
             sx={{ justifyContent: { xs: 'flex-end', md: 'flex-start' } }}>
             <PosIconAction icon="solar:bill-list-bold-duotone" onClick={() => navigate('/cashier/open-checks')} />
+            <PosIconAction
+              icon="solar:chef-hat-bold-duotone"
+              onClick={() => navigate(`/menu/catalog?source=cashier&channel=${builderChannel}`)}
+            />
             {!isMobile ? (
               <PosIconAction icon="solar:refresh-bold-duotone" onClick={() => window.location.reload()} />
             ) : null}
@@ -375,26 +479,26 @@ export function CashierBuilderPageContent() {
                         pr: menuItemImageUrl ? { xs: 7.25, md: 9.5 } : undefined,
                         pl: hasSelectedCount ? { xs: 5.25, md: 5.75 } : undefined,
                       }}>
-                        <Typography variant="body2" color="text.secondary">
-                          {menuItem.prepStationName ?? copy.menu}
+                      <Typography variant="body2" color="text.secondary">
+                        {menuItem.prepStationName ?? copy.menu}
+                      </Typography>
+                      <Typography variant="h6" sx={{ pr: 1 }}>
+                        {menuItem.name}
+                      </Typography>
+                      {menuItem.description ? (
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{
+                            pr: 1,
+                            overflow: 'hidden',
+                            display: '-webkit-box',
+                            WebkitBoxOrient: 'vertical',
+                            WebkitLineClamp: 2,
+                          }}>
+                          {menuItem.description}
                         </Typography>
-                        <Typography variant="h6" sx={{ pr: 1 }}>
-                          {menuItem.name}
-                        </Typography>
-                        {menuItem.description ? (
-                          <Typography
-                            variant="body2"
-                            color="text.secondary"
-                            sx={{
-                              pr: 1,
-                              overflow: 'hidden',
-                              display: '-webkit-box',
-                              WebkitBoxOrient: 'vertical',
-                              WebkitLineClamp: 2,
-                            }}>
-                            {menuItem.description}
-                          </Typography>
-                        ) : null}
+                      ) : null}
                     </Stack>
                     <Box
                       sx={(theme) => ({
@@ -567,7 +671,16 @@ export function CashierBuilderPageContent() {
                 </Stack>
               </Stack>
 
-              <PosOrderChannelSegment hallLabel={copy.hall} takeawayLabel={copy.takeaway} channel="takeaway" />
+              <PosOrderChannelSegment
+                takeawayLabel={copy.takeaway}
+                channel={builderChannel}
+                disabled={channelSwitchDisabled}
+                items={[
+                  { value: 'delivery', label: copy.delivery },
+                  { value: 'takeaway', label: copy.takeaway },
+                ]}
+                onChange={handleBuilderChannelChange}
+              />
             </Stack>
           </Box>
 
@@ -626,6 +739,13 @@ export function CashierBuilderPageContent() {
                                 {item.note}
                               </Typography>
                             ) : null}
+                            {item.markingRequiredCount > 0 ? (
+                              item.markingMissingCount > 0 ? (
+                                <Typography variant="body2" color="error.main">
+                                  Markirovka: {item.markingScannedCount}/{item.markingRequiredCount}
+                                </Typography>
+                              ) : null
+                            ) : null}
                           </Stack>
                           <Typography variant="subtitle1" sx={{ whiteSpace: 'nowrap' }}>
                             {formatCompactMoney(item.lineTotal, locale)}
@@ -677,14 +797,6 @@ export function CashierBuilderPageContent() {
                               })}>
                               <Icon icon="solar:minus-circle-bold" width={22} />
                             </Box>
-                            <Stack spacing={0.1} alignItems="center" sx={{ flex: 1 }}>
-                              <Typography variant="body2" color="text.secondary">
-                                {item.catalogItemName}
-                              </Typography>
-                              <Typography variant="h6" sx={{ lineHeight: 1 }}>
-                                x{item.quantity}
-                              </Typography>
-                            </Stack>
                             <Box
                               component="button"
                               type="button"
@@ -756,37 +868,56 @@ export function CashierBuilderPageContent() {
                 {formatCompactMoney(currentOrder?.subtotal, locale)}
               </Typography>
             </Stack>
-            <Stack direction="row" justifyContent="space-between">
-              <Typography variant="body1" color="text.secondary">
-                {serviceFeeLabel}:
-              </Typography>
-              <Typography variant="body1" color="text.secondary">
-                {formatCompactMoney(currentOrder?.serviceFee, locale)}
-              </Typography>
-            </Stack>
+            {shouldShowServiceFee ? (
+              <Stack direction="row" justifyContent="space-between">
+                <Typography variant="body1" color="text.secondary">
+                  {serviceFeeLabel}:
+                </Typography>
+                <Typography variant="body1" color="text.secondary">
+                  {formatCompactMoney(currentOrder?.serviceFee, locale)}
+                </Typography>
+              </Stack>
+            ) : null}
+            {shouldShowVat ? (
+              <Stack direction="row" justifyContent="space-between">
+                <Typography variant="body1" color="text.secondary">
+                  {vatLabel}:
+                </Typography>
+                <Typography variant="body1" color="text.secondary">
+                  {formatCompactMoney(vatAmount, locale)}
+                </Typography>
+              </Stack>
+            ) : null}
             <Stack direction="row" justifyContent="space-between" alignItems="flex-end">
               <Typography variant="h5">{copy.grandTotal}:</Typography>
               <Typography variant="h4" sx={{ lineHeight: 1.05, textAlign: 'right' }}>
                 {formatCompactMoney(currentOrder?.total, locale)}
               </Typography>
             </Stack>
+            {hasMissingMarkings ? (
+              <Typography variant="body2" color="error.main">
+                {missingMarkingMessage}
+              </Typography>
+            ) : null}
 
             <Stack direction="row" spacing={1.1}>
+              {!isDeliveryChannel ? (
+                <Button
+                  variant="contained"
+                  sx={(theme) => ({
+                    flex: 1,
+                    backgroundImage: 'none',
+                    backgroundColor: theme.palette.mode === 'dark' ? '#4d535a' : '#d8cfbf',
+                    color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
+                  })}
+                  disabled={isSubmitDisabled}
+                  onClick={() => submitOrderMutation.mutate()}>
+                  {submitOrderMutation.isPending ? copy.processing : copy.sendOrder}
+                </Button>
+              ) : null}
               <Button
                 variant="contained"
-                sx={(theme) => ({
-                  flex: 1,
-                  backgroundImage: 'none',
-                  backgroundColor: theme.palette.mode === 'dark' ? '#4d535a' : '#d8cfbf',
-                  color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
-                })}
-                disabled={isSubmitDisabled}
-                onClick={() => submitOrderMutation.mutate()}>
-                {submitOrderMutation.isPending ? copy.processing : copy.sendOrder}
-              </Button>
-              <Button
-                variant="contained"
-                sx={{ flex: 1.1 }}
+                sx={{ flex: isDeliveryChannel ? 1 : 1.1 }}
                 disabled={isSubmitDisabled}
                 onClick={() => void handleCheckout()}>
                 {copy.goToPayment}
@@ -825,7 +956,17 @@ export function CashierBuilderPageContent() {
             <PosIconAction icon="solar:close-circle-bold-duotone" onClick={() => setCartOpen(false)} />
           </Stack>
           <Box sx={{ px: 2, pb: 1.35 }}>
-            <PosOrderChannelSegment hallLabel={copy.hall} takeawayLabel={copy.takeaway} channel="takeaway" compact />
+            <PosOrderChannelSegment
+              takeawayLabel={copy.takeaway}
+              channel={builderChannel}
+              compact
+              disabled={channelSwitchDisabled}
+              items={[
+                { value: 'delivery', label: copy.delivery },
+                { value: 'takeaway', label: copy.takeaway },
+              ]}
+              onChange={handleBuilderChannelChange}
+            />
           </Box>
           <Divider />
           <Box sx={{ px: 2, py: 1.5, flex: 1, overflowY: 'auto' }}>
@@ -873,6 +1014,13 @@ export function CashierBuilderPageContent() {
                               {item.note}
                             </Typography>
                           ) : null}
+                          {item.markingRequiredCount > 0 ? (
+                            item.markingMissingCount > 0 ? (
+                              <Typography variant="caption" color="error.main">
+                                Markirovka: {item.markingScannedCount}/{item.markingRequiredCount}
+                              </Typography>
+                            ) : null
+                          ) : null}
                         </Stack>
                         <Typography variant="subtitle2">{formatCompactMoney(item.lineTotal, locale)}</Typography>
                       </Stack>
@@ -900,9 +1048,6 @@ export function CashierBuilderPageContent() {
                             sx={{ minWidth: 54, px: 0 }}>
                             <Icon icon="solar:minus-circle-bold" width={18} />
                           </Button>
-                          <Typography variant="subtitle1" sx={{ flex: 1, textAlign: 'center' }}>
-                            x{item.quantity}
-                          </Typography>
                           <Button
                             variant="contained"
                             onClick={(event) => {
@@ -938,34 +1083,51 @@ export function CashierBuilderPageContent() {
               </Typography>
               <Typography variant="body2">{formatCompactMoney(currentOrder?.subtotal, locale)}</Typography>
             </Stack>
-            <Stack direction="row" justifyContent="space-between">
-              <Typography variant="body2" color="text.secondary">
-                {serviceFeeLabel}
-              </Typography>
-              <Typography variant="body2">{formatCompactMoney(currentOrder?.serviceFee, locale)}</Typography>
-            </Stack>
+            {shouldShowServiceFee ? (
+              <Stack direction="row" justifyContent="space-between">
+                <Typography variant="body2" color="text.secondary">
+                  {serviceFeeLabel}
+                </Typography>
+                <Typography variant="body2">{formatCompactMoney(currentOrder?.serviceFee, locale)}</Typography>
+              </Stack>
+            ) : null}
+            {shouldShowVat ? (
+              <Stack direction="row" justifyContent="space-between">
+                <Typography variant="body2" color="text.secondary">
+                  {vatLabel}
+                </Typography>
+                <Typography variant="body2">{formatCompactMoney(vatAmount, locale)}</Typography>
+              </Stack>
+            ) : null}
             <Stack direction="row" justifyContent="space-between">
               <Typography variant="body2" color="text.secondary">
                 {copy.grandTotal}
               </Typography>
               <Typography variant="h6">{formatCompactMoney(currentOrder?.total, locale)}</Typography>
             </Stack>
+            {hasMissingMarkings ? (
+              <Typography variant="body2" color="error.main">
+                {missingMarkingMessage}
+              </Typography>
+            ) : null}
             <Stack direction="row" spacing={1}>
+              {!isDeliveryChannel ? (
+                <Button
+                  variant="contained"
+                  sx={(theme) => ({
+                    flex: 1,
+                    backgroundImage: 'none',
+                    backgroundColor: theme.palette.mode === 'dark' ? '#4d535a' : '#d8cfbf',
+                    color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
+                  })}
+                  disabled={isSubmitDisabled}
+                  onClick={() => submitOrderMutation.mutate()}>
+                  {submitOrderMutation.isPending ? copy.processing : copy.sendOrder}
+                </Button>
+              ) : null}
               <Button
                 variant="contained"
-                sx={(theme) => ({
-                  flex: 1,
-                  backgroundImage: 'none',
-                  backgroundColor: theme.palette.mode === 'dark' ? '#4d535a' : '#d8cfbf',
-                  color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
-                })}
-                disabled={isSubmitDisabled}
-                onClick={() => submitOrderMutation.mutate()}>
-                {submitOrderMutation.isPending ? copy.processing : copy.sendOrder}
-              </Button>
-              <Button
-                variant="contained"
-                sx={{ flex: 1.1 }}
+                sx={{ flex: isDeliveryChannel ? 1 : 1.1 }}
                 disabled={isSubmitDisabled}
                 onClick={() => void handleCheckout()}>
                 {copy.goToPayment}
@@ -986,7 +1148,7 @@ export function CashierBuilderPageContent() {
         onThemeToggle={() => setThemeMode(themeMode === 'dark' ? 'light' : 'dark')}
         onSignOut={() => {
           setSession(null);
-          navigate('/pin-login', { replace: true });
+          void navigate('/pin-login', { replace: true });
         }}
         themeMode={themeMode}
       />

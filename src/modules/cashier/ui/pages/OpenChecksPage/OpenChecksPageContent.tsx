@@ -140,7 +140,11 @@ function OpenChecksList({
                     fontWeight: 700,
                     lineHeight: 1,
                   })}>
-                  {order.channel === 'takeaway' ? 'TG' : (order.tableName?.match(/\d+/)?.[0] ?? '0')}
+                  {order.channel === 'delivery'
+                    ? 'YD'
+                    : order.channel === 'takeaway'
+                      ? 'TG'
+                      : (order.tableName?.match(/\d+/)?.[0] ?? '0')}
                 </Box>
                 <Stack spacing={0.4}>
                   <Stack direction="row" spacing={0.75} alignItems="center">
@@ -163,7 +167,11 @@ function OpenChecksList({
                     </Typography>
                   ) : null}
                   <Typography variant="body2" color="text.secondary">
-                    {order.channel === 'takeaway' ? copy.takeawayLabel : `${order.guestCount} ${copy.guests}`}
+                    {order.channel === 'delivery'
+                      ? copy.deliveryLabel
+                      : order.channel === 'takeaway'
+                        ? copy.takeawayLabel
+                        : `${order.guestCount} ${copy.guests}`}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     {selectedTab === 'closed' ? (order.cashierName ?? order.openedByName) : order.openedByName}
@@ -230,9 +238,10 @@ function OpenChecksDetail({
   retryFiscalAvailable: boolean;
   selectedTab: CashierCheckStatus;
 }) {
-  const serviceFeePercent = Number(order.serviceFeePercent ?? (order.channel === 'hall' ? 10 : 0));
+  const serviceFeePercent = Number(order.serviceFeePercent ?? 0);
   const serviceFeeAmount = Number(order.serviceFee ?? 0);
-  const shouldShowServiceFee = serviceFeePercent > 0 || serviceFeeAmount > 0;
+  const serviceFeeEnabled = Boolean(order.serviceFeeEnabled ?? serviceFeePercent > 0);
+  const shouldShowServiceFee = serviceFeeEnabled && (serviceFeePercent > 0 || serviceFeeAmount > 0);
   const serviceFeeLabel = `${copy.serviceFee} (${serviceFeePercent}%)`;
   const vatEnabled = Boolean(order.vatEnabled);
   const vatPercent = Number(order.vatPercent ?? 0);
@@ -265,7 +274,11 @@ function OpenChecksDetail({
               fontSize: 30,
               fontWeight: 700,
             })}>
-            {order.channel === 'takeaway' ? 'TG' : (order.tableName?.match(/\d+/)?.[0] ?? '0')}
+            {order.channel === 'delivery'
+              ? 'YD'
+              : order.channel === 'takeaway'
+                ? 'TG'
+                : (order.tableName?.match(/\d+/)?.[0] ?? '0')}
           </Box>
 
           <Stack spacing={0.25}>
@@ -274,7 +287,11 @@ function OpenChecksDetail({
               {copy.orders}: {getCashierOrderNumberLabel(order)}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              {order.channel === 'takeaway' ? copy.takeawayLabel : `${order.guestCount} ${copy.guests}`}
+              {order.channel === 'delivery'
+                ? copy.deliveryLabel
+                : order.channel === 'takeaway'
+                  ? copy.takeawayLabel
+                  : `${order.guestCount} ${copy.guests}`}
             </Typography>
             <Typography variant="body2" color="text.secondary">
               {selectedTab === 'closed' ? (order.cashierName ?? order.openedByName) : order.openedByName}
@@ -284,7 +301,12 @@ function OpenChecksDetail({
       </Box>
 
       <Box sx={{ px: 2.5, pb: 2 }}>
-        <PosOrderChannelSegment hallLabel={copy.hall} takeawayLabel={copy.takeaway} channel={order.channel} />
+        <PosOrderChannelSegment
+          hallLabel={copy.hall}
+          takeawayLabel={copy.takeaway}
+          deliveryLabel={copy.delivery}
+          channel={order.channel}
+        />
       </Box>
 
       <Box sx={{ px: 2.5, pb: 2, flex: 1, overflowY: 'auto' }}>

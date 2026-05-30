@@ -27,6 +27,48 @@ const readyRowEntrance = keyframes`
   }
 `;
 
+const readySpotlightEntrance = keyframes`
+  0% {
+    opacity: 0;
+    transform: translate3d(-14vw, 0, 0) scale(0.72);
+    filter: blur(3px);
+  }
+  18% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: blur(0);
+  }
+  42% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1.08);
+    filter: blur(0);
+  }
+  68% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(30vw, 0, 0) scale(0.72);
+    filter: blur(2px);
+  }
+`;
+
+const readySpotlightGlow = keyframes`
+  0%, 100% {
+    opacity: 0.38;
+    transform: scale(0.82);
+  }
+  42% {
+    opacity: 0.86;
+    transform: scale(1.14);
+  }
+`;
+
+const READY_SPOTLIGHT_DURATION_MS = 2200;
+const READY_SPOTLIGHT_LABEL = 'Tayyor';
+
 type BrowserWindow = typeof window & {
   webkitAudioContext?: typeof AudioContext;
 };
@@ -108,6 +150,7 @@ export function KitchenMonitorPage() {
   const theme = useTheme();
   const monitorQuery = useKitchenMonitorQuery(restaurantContext?.restaurantId ?? null);
   const [highlightedDoneIds, setHighlightedDoneIds] = useState<string[]>([]);
+  const [spotlightTicket, setSpotlightTicket] = useState<KitchenMonitorTicket | null>(null);
   const previousDoneIdsRef = useRef<string[] | null>(null);
   const clearAnimationTimeoutRef = useRef<number | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -152,7 +195,8 @@ export function KitchenMonitorPage() {
   };
 
   useEffect(() => {
-    const doneIds = monitorQuery.data?.recentlyDone.map((ticket) => ticket.id) ?? [];
+    const recentlyDone = monitorQuery.data?.recentlyDone ?? [];
+    const doneIds = recentlyDone.map((ticket) => ticket.id);
 
     if (previousDoneIdsRef.current === null) {
       previousDoneIdsRef.current = doneIds;
@@ -160,7 +204,8 @@ export function KitchenMonitorPage() {
     }
 
     const previousIds = new Set(previousDoneIdsRef.current);
-    const newlyDoneIds = doneIds.filter((id) => !previousIds.has(id));
+    const newlyDoneTickets = recentlyDone.filter((ticket) => !previousIds.has(ticket.id));
+    const newlyDoneIds = newlyDoneTickets.map((ticket) => ticket.id);
     previousDoneIdsRef.current = doneIds;
 
     if (!newlyDoneIds.length) {
@@ -168,6 +213,7 @@ export function KitchenMonitorPage() {
     }
 
     setHighlightedDoneIds(newlyDoneIds);
+    setSpotlightTicket(newlyDoneTickets[0]);
     void playReadySoundRef.current();
 
     if (clearAnimationTimeoutRef.current) {
@@ -176,8 +222,9 @@ export function KitchenMonitorPage() {
 
     clearAnimationTimeoutRef.current = window.setTimeout(() => {
       setHighlightedDoneIds([]);
+      setSpotlightTicket(null);
       clearAnimationTimeoutRef.current = null;
-    }, 1400);
+    }, READY_SPOTLIGHT_DURATION_MS);
   }, [monitorQuery.data?.recentlyDone]);
 
   useEffect(() => {
@@ -212,7 +259,75 @@ export function KitchenMonitorPage() {
         px: { xs: 2, md: 3.5, lg: 5 },
         py: { xs: 2.5, md: 3.5, lg: 4.5 },
         background: monitorBackground,
+        overflow: 'hidden',
+        position: 'relative',
       }}>
+      {spotlightTicket ? (
+        <Box
+          aria-live="polite"
+          data-testid="ready-order-spotlight"
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 3,
+            pointerEvents: 'none',
+            display: 'grid',
+            placeItems: 'center',
+          }}>
+          <Box
+            sx={{
+              position: 'absolute',
+              width: { xs: 260, md: 430, lg: 560 },
+              aspectRatio: '1 / 1',
+              borderRadius: '50%',
+              background: isDark
+                ? 'radial-gradient(circle, rgba(77, 235, 194, 0.34), rgba(77, 235, 194, 0.08) 48%, transparent 72%)'
+                : 'radial-gradient(circle, rgba(22, 138, 115, 0.28), rgba(22, 138, 115, 0.08) 50%, transparent 74%)',
+              animation: `${readySpotlightGlow} ${READY_SPOTLIGHT_DURATION_MS}ms ease-out forwards`,
+            }}
+          />
+
+          <Box
+            sx={{
+              position: 'relative',
+              minWidth: { xs: 260, md: 420, lg: 540 },
+              px: { xs: 3, md: 5, lg: 6 },
+              py: { xs: 2.6, md: 4.2, lg: 5 },
+              borderRadius: { xs: '28px', md: '36px' },
+              textAlign: 'center',
+              backgroundColor: isDark ? alpha('#111820', 0.92) : alpha('#fffaf1', 0.94),
+              border: `1px solid ${isDark ? alpha('#7df5d7', 0.36) : alpha('#168a73', 0.28)}`,
+              boxShadow: isDark
+                ? '0 0 86px rgba(77, 235, 194, 0.34), 0 26px 90px rgba(0, 0, 0, 0.42)'
+                : '0 0 72px rgba(47, 177, 141, 0.24), 0 26px 90px rgba(69, 47, 20, 0.2)',
+              animation: `${readySpotlightEntrance} ${READY_SPOTLIGHT_DURATION_MS}ms cubic-bezier(0.16, 1, 0.3, 1) forwards`,
+            }}>
+            <Typography
+              sx={{
+                color: readyTitleColor,
+                fontSize: { xs: 18, md: 24, lg: 28 },
+                fontWeight: 800,
+                lineHeight: 1,
+                mb: { xs: 1.1, md: 1.6 },
+                textTransform: 'uppercase',
+              }}>
+              {READY_SPOTLIGHT_LABEL}
+            </Typography>
+            <Typography
+              sx={{
+                color: rowTextColor,
+                fontSize: { xs: 64, md: 112, lg: 148 },
+                fontWeight: 800,
+                letterSpacing: '-0.04em',
+                lineHeight: 0.9,
+                textShadow: isDark ? '0 0 34px rgba(125, 245, 215, 0.28)' : '0 0 26px rgba(47, 177, 141, 0.24)',
+              }}>
+              {formatOrderNumber(spotlightTicket.orderNumber)}
+            </Typography>
+          </Box>
+        </Box>
+      ) : null}
+
       <Box
         sx={{
           display: 'grid',

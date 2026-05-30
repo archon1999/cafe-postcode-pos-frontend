@@ -187,6 +187,11 @@ function fiscalSnapshotFromPayload(payload: Record<string, unknown>): PrintableP
     return sum + fiscalMoney(item.VAT);
   }, 0);
   const firstVatItem = items.map((entry) => asRecord(entry)).find((entry) => Number(entry?.VATPercent || 0) > 0);
+  const serviceFee = items.reduce((sum, entry) => {
+    const item = asRecord(entry) ?? {};
+    const itemName = String(item.Name ?? '').trim().toLowerCase();
+    return itemName === 'xizmat haqi' ? sum + fiscalMoney(item.Price) : sum;
+  }, 0);
 
   return {
     restaurant_name: String(
@@ -209,9 +214,10 @@ function fiscalSnapshotFromPayload(payload: Record<string, unknown>): PrintableP
     order_number: receiptNumber,
     channel_label: String(receipt.Operation ?? '') === '1' ? 'Qaytarish' : 'Sotuv',
     printed_at_label: String(receipt.Time ?? payload.issued_at ?? payload.issuedAt ?? ''),
-    items: items.map((entry) => {
-      const item = asRecord(entry) ?? {};
-      return {
+    items: items
+      .map((entry) => asRecord(entry) ?? {})
+      .filter((item) => String(item.Name ?? '').trim().toLowerCase() !== 'xizmat haqi')
+      .map((item) => ({
         name: String(item.Name ?? 'Mahsulot'),
         quantity: fiscalQuantity(item.Amount),
         line_total: fiscalMoney(item.Price),
@@ -222,10 +228,9 @@ function fiscalSnapshotFromPayload(payload: Record<string, unknown>): PrintableP
         barcode: item.Barcode ? String(item.Barcode) : '',
         unit_code: item.Units ? String(item.Units) : '',
         labels: Array.isArray(item.Labels) ? item.Labels.map(String) : [],
-      };
-    }),
-    subtotal: total,
-    service_fee: 0,
+      })),
+    subtotal: Math.max(total - serviceFee, 0),
+    service_fee: serviceFee,
     vat_enabled: vatAmount > 0,
     vat_percent: firstVatItem?.VATPercent ? String(firstVatItem.VATPercent) : '',
     vat_amount: vatAmount,

@@ -66,6 +66,7 @@ export function CashierShiftPage() {
   const activeShifts = contextQuery.data?.activeShifts ?? [];
   const availableCashDesks = contextQuery.data?.availableCashDesks ?? [];
   const availableCashiers = contextQuery.data?.availableCashiers ?? [];
+  const fiscalShiftOpen = Boolean(contextQuery.data?.fiscalShiftOpen);
   const hasFiscalIntegration = availableCashDesks.some((cashDesk) => Boolean(cashDesk.fiscalProvider));
   const activeCashDeskIds = useMemo(() => new Set(activeShifts.map((shift) => shift.cashDesk)), [activeShifts]);
   const cashDesksAvailableToOpen = useMemo(
@@ -301,7 +302,7 @@ export function CashierShiftPage() {
 
   const renderManagerShift = (shift: CashShiftSummary) => {
     const isLastActiveShift = activeShifts.length === 1;
-    const canCloseFiscalShift = isLastActiveShift && hasFiscalIntegration;
+    const canCloseFiscalShift = isLastActiveShift && hasFiscalIntegration && fiscalShiftOpen;
     const shouldCloseFiscalShift = closeFiscalByShift[shift.id] ?? true;
     return (
       <Box

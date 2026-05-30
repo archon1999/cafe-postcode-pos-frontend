@@ -23,9 +23,19 @@ type SessionCompatTariff = Partial<NonNullable<PosTariff>> & {
   role_codes?: string[];
 };
 
+type RestaurantContextCompat = PosRestaurantContext & {
+  restaurant_id?: string;
+  restaurant_name?: string;
+  pos_auth_background_image_url?: string | null;
+  service_fee_enabled?: boolean;
+  service_fee_percent?: number | string;
+  vat_enabled?: boolean;
+  vat_percent?: number | string;
+};
+
 type LegacySessionPayload = Omit<PosSessionPayload, 'user' | 'tariff' | 'roleCodes'> & {
   user: SessionCompatUser;
-  restaurant_context?: PosRestaurantContext | null;
+  restaurant_context?: RestaurantContextCompat | null;
   restaurantContext?: PosRestaurantContext | null;
   restaurant_access_active?: boolean;
   restaurantAccessActive?: boolean;
@@ -33,6 +43,33 @@ type LegacySessionPayload = Omit<PosSessionPayload, 'user' | 'tariff' | 'roleCod
   roleCodes?: string[];
   tariff?: SessionCompatTariff | null;
 };
+
+function normalizeRestaurantContext(rawContext: RestaurantContextCompat | PosRestaurantContext | null) {
+  if (!rawContext) {
+    return null;
+  }
+
+  const context: PosRestaurantContext = {
+    restaurantId: rawContext.restaurantId ?? (rawContext as RestaurantContextCompat).restaurant_id ?? '',
+    restaurantName: rawContext.restaurantName ?? (rawContext as RestaurantContextCompat).restaurant_name ?? '',
+  };
+  const backgroundImageUrl =
+    rawContext.posAuthBackgroundImageUrl ?? (rawContext as RestaurantContextCompat).pos_auth_background_image_url;
+  const serviceFeeEnabled =
+    rawContext.serviceFeeEnabled ?? (rawContext as RestaurantContextCompat).service_fee_enabled;
+  const serviceFeePercent =
+    rawContext.serviceFeePercent ?? (rawContext as RestaurantContextCompat).service_fee_percent;
+  const vatEnabled = rawContext.vatEnabled ?? (rawContext as RestaurantContextCompat).vat_enabled;
+  const vatPercent = rawContext.vatPercent ?? (rawContext as RestaurantContextCompat).vat_percent;
+
+  if (backgroundImageUrl !== undefined) context.posAuthBackgroundImageUrl = backgroundImageUrl;
+  if (serviceFeeEnabled !== undefined) context.serviceFeeEnabled = serviceFeeEnabled;
+  if (serviceFeePercent !== undefined) context.serviceFeePercent = serviceFeePercent;
+  if (vatEnabled !== undefined) context.vatEnabled = vatEnabled;
+  if (vatPercent !== undefined) context.vatPercent = vatPercent;
+
+  return context;
+}
 
 export function normalizeSessionPayload(
   payload: PosSessionPayload | LegacySessionPayload | null,
@@ -44,6 +81,7 @@ export function normalizeSessionPayload(
   const rawUser = payload.user as SessionCompatUser;
   const rawRestaurantContext =
     (payload as LegacySessionPayload).restaurantContext ?? (payload as LegacySessionPayload).restaurant_context ?? null;
+  const restaurantContext = normalizeRestaurantContext(rawRestaurantContext);
   const rawTariff = (payload as LegacySessionPayload).tariff;
   const restaurantAccessActive =
     rawUser.restaurantAccessActive ??
@@ -73,7 +111,7 @@ export function normalizeSessionPayload(
     ...(restaurantAccessActive !== undefined ? { restaurantAccessActive } : {}),
     ...(roleCodes.length ? { roleCodes } : {}),
     ...(normalizedTariff ? { tariff: normalizedTariff } : {}),
-    ...(rawRestaurantContext ? { restaurantContext: rawRestaurantContext } : {}),
+    ...(restaurantContext ? { restaurantContext } : {}),
   };
 }
 

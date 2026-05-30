@@ -17,6 +17,7 @@ export type WaiterOrder = {
   status: string;
   subtotal: number | string;
   serviceFee: number | string;
+  serviceFeeEnabled?: boolean;
   serviceFeePercent?: number | string;
   vatEnabled?: boolean;
   vatPercent?: number | string;

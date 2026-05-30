@@ -17,6 +17,7 @@ import {
 } from 'modules/auth';
 import { CashierBuilderPage, CashierShiftPage, OpenChecksPage, PaymentPage } from 'modules/cashier';
 import { KitchenMonitorPage, KitchenQueuePage } from 'modules/kitchen';
+import { MenuCatalogPage } from 'modules/menu-catalog';
 import { HallsPage, TableSessionPage } from 'modules/waiter';
 
 import { LockScreenPage } from '../shared/layout/LockScreenPage';
@@ -131,6 +132,10 @@ export const posRouter = createBrowserRouter([
             <PaymentPage />
           </PosAccessGuard>
         ),
+      },
+      {
+        path: 'menu/catalog',
+        element: <MenuCatalogPage />,
       },
       {
         path: 'kitchen/queue',

@@ -52,6 +52,7 @@ export type CashierContext = {
   availableCashiers: CashierContextCashier[];
   currentShift: CashShiftSummary | null;
   activeShifts: CashShiftSummary[];
+  fiscalShiftOpen: boolean;
 };
 
 export type CashierShiftCloseResponse = CashierContext & {

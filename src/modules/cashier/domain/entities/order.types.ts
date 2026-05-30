@@ -23,6 +23,7 @@ export type CashierOrderItem = {
 };
 
 export type CashierCheckStatus = 'open' | 'closed' | 'fiscal_unresolved';
+export type CashierBuilderOrderChannel = 'delivery' | 'takeaway';
 
 export type CashierOrder = {
   id: string;
@@ -33,6 +34,7 @@ export type CashierOrder = {
   status: string;
   subtotal: number | string;
   serviceFee: number | string;
+  serviceFeeEnabled?: boolean;
   serviceFeePercent?: number | string;
   vatEnabled?: boolean;
   vatPercent?: number | string;
