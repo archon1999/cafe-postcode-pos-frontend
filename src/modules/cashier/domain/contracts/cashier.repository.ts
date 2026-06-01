@@ -47,12 +47,18 @@ export interface CashierRepository {
   createBuilderOrder(payload: {
     channel: CashierBuilderOrderChannel;
     note: string;
+    deliveryPhone?: string;
+    deliveryAddress?: string;
   }): Promise<CashierCreateOrderResponse>;
   createTakeawayOrder(note: string): Promise<CashierCreateOrderResponse>;
   addOrderItem(orderId: string, catalogItemId: string, note: string): Promise<void>;
   scanOrderMarking(orderId: string, rawCode: string, mode: 'add' | 'attach' | 'remove'): Promise<CashierOrder>;
   removeOrderItem(itemId: string): Promise<void>;
   updateOrderDisplayName(orderId: string, displayName: string): Promise<CashierOrder>;
+  updateOrderDeliveryDetails(
+    orderId: string,
+    payload: { deliveryPhone: string; deliveryAddress: string },
+  ): Promise<CashierOrder>;
   submitOrder(orderId: string): Promise<void>;
   payOrder(
     orderId: string,

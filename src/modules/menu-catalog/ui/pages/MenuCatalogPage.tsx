@@ -14,17 +14,8 @@ import { useTheme } from '@mui/material/styles';
 import { useMemo, useState, type KeyboardEvent } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router';
 
-import {
-  canAccessTableSessionMenu,
-  canAccessTakeawayBuilder,
-  getPosHomePath,
-  usePosSession,
-} from 'modules/auth';
-import {
-  cashierKeys,
-  useCashierBuilderOrdersQuery,
-  useCashierMenuQuery,
-} from 'modules/cashier/application';
+import { canAccessTableSessionMenu, canAccessTakeawayBuilder, getPosHomePath, usePosSession } from 'modules/auth';
+import { cashierKeys, useCashierBuilderOrdersQuery, useCashierMenuQuery } from 'modules/cashier/application';
 import { cashierRepository } from 'modules/cashier/data-access';
 import {
   getCurrentCashierBuilderOrder,
@@ -33,11 +24,7 @@ import {
   type CashierMenuItem,
   type CashierOrderItem,
 } from 'modules/cashier/domain';
-import {
-  useCurrentWaiterOrder,
-  useWaiterMenuQuery,
-  waiterKeys,
-} from 'modules/waiter/application';
+import { useCurrentWaiterOrder, useWaiterMenuQuery, waiterKeys } from 'modules/waiter/application';
 import { waiterRepository } from 'modules/waiter/data-access';
 import type { WaiterMenuCategory, WaiterMenuItem, WaiterOrderItem } from 'modules/waiter/domain';
 import { resolveApiBaseUrl } from 'shared/api/apiUrl';
@@ -84,7 +71,7 @@ type CatalogSummaryItem = {
 };
 
 function resolveBuilderChannel(value: string | null): CashierBuilderOrderChannel {
-  return value === 'takeaway' ? 'takeaway' : 'delivery';
+  return value === 'delivery' ? 'delivery' : 'takeaway';
 }
 
 function getDefaultCategory<TMenuItem extends CatalogMenuItemLike>(categories: CatalogCategoryLike<TMenuItem>[]) {
@@ -646,7 +633,7 @@ function PriceHiddenCatalogContent<TMenuItem extends CatalogMenuItemLike>({
           <Stack alignItems="center" justifyContent="center" spacing={1.2} sx={{ py: 7, textAlign: 'center' }}>
             <Icon icon="solar:bill-list-bold-duotone" width={52} color="rgba(255,255,255,0.32)" />
             <Typography variant="h6" sx={{ color: '#f6f6f4', fontWeight: 900 }}>
-              Tanlangan mahsulot yo'q
+              Tanlangan mahsulot yo&apos;q
             </Typography>
           </Stack>
         )}
@@ -728,7 +715,10 @@ function PriceHiddenCatalogContent<TMenuItem extends CatalogMenuItemLike>({
                 '&:hover': { color: '#ffffff', backgroundColor: 'rgba(255,255,255,0.1)' },
                 '&.Mui-disabled': { color: 'rgba(255,255,255,0.24)' },
               }}>
-              <Icon icon={hasPendingOperations ? 'solar:refresh-circle-bold-duotone' : 'solar:close-circle-bold-duotone'} width={30} />
+              <Icon
+                icon={hasPendingOperations ? 'solar:refresh-circle-bold-duotone' : 'solar:close-circle-bold-duotone'}
+                width={30}
+              />
             </IconButton>
           </Stack>
         </Stack>
@@ -754,7 +744,9 @@ function PriceHiddenCatalogContent<TMenuItem extends CatalogMenuItemLike>({
         </Box>
       </Box>
 
-      <Box component="section" sx={{ minHeight: 0, overflowY: 'auto', overflowX: 'hidden', backgroundColor: '#050505' }}>
+      <Box
+        component="section"
+        sx={{ minHeight: 0, overflowY: 'auto', overflowX: 'hidden', backgroundColor: '#050505' }}>
         {selectedCategoryItems.length > 0 ? (
           <Box
             sx={{
@@ -773,10 +765,14 @@ function PriceHiddenCatalogContent<TMenuItem extends CatalogMenuItemLike>({
             {selectedCategoryItems.map((menuItem) => renderCatalogCard(menuItem))}
           </Box>
         ) : (
-          <Stack alignItems="center" justifyContent="center" spacing={1.2} sx={{ minHeight: '100%', textAlign: 'center' }}>
+          <Stack
+            alignItems="center"
+            justifyContent="center"
+            spacing={1.2}
+            sx={{ minHeight: '100%', textAlign: 'center' }}>
             <Icon icon="solar:dish-bold-duotone" width={58} color="rgba(255,255,255,0.32)" />
             <Typography variant="h6" sx={{ color: '#f6f6f4', fontWeight: 900 }}>
-              Mahsulot yo'q
+              Mahsulot yo&apos;q
             </Typography>
           </Stack>
         )}

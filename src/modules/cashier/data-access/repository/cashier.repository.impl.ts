@@ -103,12 +103,16 @@ class CashierRepositoryImpl implements CashierRepository {
   async createBuilderOrder(payload: {
     channel: CashierBuilderOrderChannel;
     note: string;
+    deliveryPhone?: string;
+    deliveryAddress?: string;
   }): Promise<CashierCreateOrderResponse> {
     return mapCashierCreateOrderResponse(
       await apiPost<CashierCreateOrderResponse>('/pos/sales/orders/', {
         channel: payload.channel,
         guestCount: 1,
         note: payload.note,
+        deliveryPhone: payload.deliveryPhone,
+        deliveryAddress: payload.deliveryAddress,
       }),
     );
   }
@@ -141,6 +145,18 @@ class CashierRepositoryImpl implements CashierRepository {
     return mapCashierOrder(
       await apiPatch<CashierOrder>(`/pos/sales/orders/${orderId}/`, {
         displayName,
+      }),
+    );
+  }
+
+  async updateOrderDeliveryDetails(
+    orderId: string,
+    payload: { deliveryPhone: string; deliveryAddress: string },
+  ): Promise<CashierOrder> {
+    return mapCashierOrder(
+      await apiPatch<CashierOrder>(`/pos/sales/orders/${orderId}/`, {
+        deliveryPhone: payload.deliveryPhone,
+        deliveryAddress: payload.deliveryAddress,
       }),
     );
   }

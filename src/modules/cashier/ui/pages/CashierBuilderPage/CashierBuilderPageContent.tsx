@@ -2,6 +2,10 @@
 import {
   Box,
   Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
   Drawer,
   Snackbar,
@@ -27,6 +31,9 @@ import {
   getCurrentCashierBuilderOrder,
   getDefaultCashierMenuCategory,
   groupCashierOrderItemsByStation,
+  formatDeliveryPhoneInput,
+  isValidDeliveryPhone,
+  normalizeDeliveryAddress,
   type CashierBuilderOrderChannel,
   type CashierOrderItem,
 } from 'modules/cashier/domain';
@@ -60,6 +67,8 @@ type AggregatedCashierCartItem = {
   markingMissingCount: number;
 };
 
+type PendingDeliveryAction = 'submit' | 'checkout';
+
 function resolveMenuItemImageUrl(imageUrl?: string | null) {
   if (!imageUrl) {
     return null;
@@ -89,7 +98,7 @@ function getOrderItemsTotalQuantity(items: CashierOrderItem[] | undefined) {
 }
 
 function resolveBuilderChannel(value: string | null): CashierBuilderOrderChannel {
-  return value === 'takeaway' ? 'takeaway' : 'delivery';
+  return value === 'delivery' ? 'delivery' : 'takeaway';
 }
 
 export function CashierBuilderPageContent() {
@@ -109,6 +118,12 @@ export function CashierBuilderPageContent() {
   const [selectedCartItemKey, setSelectedCartItemKey] = useState<string | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
   const [scanToast, setScanToast] = useState('');
+  const [deliveryDialogOpen, setDeliveryDialogOpen] = useState(false);
+  const [pendingDeliveryAction, setPendingDeliveryAction] = useState<PendingDeliveryAction | null>(null);
+  const [deliveryPhone, setDeliveryPhone] = useState('');
+  const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [deliveryDetailsAttempted, setDeliveryDetailsAttempted] = useState(false);
+  const [deliveryDetailsSaving, setDeliveryDetailsSaving] = useState(false);
 
   const menuQuery = useCashierMenuQuery();
   const ordersQuery = useCashierBuilderOrdersQuery();
@@ -264,9 +279,22 @@ export function CashierBuilderPageContent() {
   );
   const hasMissingMarkings = missingMarkingCount > 0;
   const missingMarkingMessage = `${missingMarkingCount} ta markirovka skanerlanmagan`;
-  const isSubmitDisabled = !currentOrder || submitOrderMutation.isPending || hasPendingOperations || hasMissingMarkings;
+  const isSubmitDisabled =
+    !currentOrder ||
+    submitOrderMutation.isPending ||
+    hasPendingOperations ||
+    hasMissingMarkings ||
+    deliveryDetailsSaving;
   const isDeliveryChannel = builderChannel === 'delivery';
-  const channelSwitchDisabled = hasPendingOperations || submitOrderMutation.isPending;
+  const isTakeawayChannel = builderChannel === 'takeaway';
+  const normalizedDeliveryAddress = normalizeDeliveryAddress(deliveryAddress);
+  const isDeliveryPhoneValid = isValidDeliveryPhone(deliveryPhone);
+  const isDeliveryAddressValid = normalizedDeliveryAddress.length > 0;
+  const channelSwitchDisabled = hasPendingOperations || submitOrderMutation.isPending || deliveryDetailsSaving;
+  const currentDeliveryOrderId = currentOrder?.id;
+  const currentDeliveryOrderChannel = currentOrder?.channel;
+  const currentDeliveryPhone = currentOrder?.deliveryPhone;
+  const currentDeliveryAddress = currentOrder?.deliveryAddress;
 
   const createActionKeyHandler = (onActivate: () => void) => (event: KeyboardEvent<HTMLElement>) => {
     if (event.key !== 'Enter' && event.key !== ' ') {
@@ -275,6 +303,43 @@ export function CashierBuilderPageContent() {
 
     event.preventDefault();
     onActivate();
+  };
+
+  const runDeliveryAction = async (action: PendingDeliveryAction) => {
+    if (!currentOrder) {
+      return;
+    }
+
+    await submitOrderMutation.mutateAsync();
+    if (action === 'checkout') {
+      setCartOpen(false);
+      void navigate(`/cashier/payment?orderId=${currentOrder.id}`);
+    }
+  };
+
+  const openDeliveryDetailsDialog = (action: PendingDeliveryAction) => {
+    setPendingDeliveryAction(action);
+    setDeliveryPhone(currentOrder?.deliveryPhone ?? deliveryPhone);
+    setDeliveryAddress(currentOrder?.deliveryAddress ?? deliveryAddress);
+    setDeliveryDetailsAttempted(false);
+    setDeliveryDialogOpen(true);
+  };
+
+  const handleSendOrder = async () => {
+    if (!currentOrder || submitOrderMutation.isPending || hasPendingOperations) {
+      return;
+    }
+    if (hasMissingMarkings) {
+      setScanToast(missingMarkingMessage);
+      return;
+    }
+
+    if (isDeliveryChannel) {
+      openDeliveryDetailsDialog('submit');
+      return;
+    }
+
+    await submitOrderMutation.mutateAsync();
   };
 
   const handleCheckout = async () => {
@@ -286,11 +351,41 @@ export function CashierBuilderPageContent() {
       return;
     }
 
-    if (!isDeliveryChannel) {
-      await submitOrderMutation.mutateAsync();
+    if (isDeliveryChannel) {
+      openDeliveryDetailsDialog('checkout');
+      return;
     }
+
     setCartOpen(false);
     void navigate(`/cashier/payment?orderId=${currentOrder.id}`);
+  };
+
+  const handleConfirmDeliveryDetails = async () => {
+    if (!currentOrder || !pendingDeliveryAction) {
+      return;
+    }
+
+    if (!isDeliveryPhoneValid || !isDeliveryAddressValid) {
+      setDeliveryDetailsAttempted(true);
+      return;
+    }
+
+    setDeliveryDetailsSaving(true);
+    try {
+      await cashierRepository.updateOrderDeliveryDetails(currentOrder.id, {
+        deliveryPhone,
+        deliveryAddress: normalizedDeliveryAddress,
+      });
+      await ordersQuery.refetch();
+      const action = pendingDeliveryAction;
+      setDeliveryDialogOpen(false);
+      setPendingDeliveryAction(null);
+      await runDeliveryAction(action);
+    } catch (error) {
+      setScanToast(getApiErrorMessage(error, copy.itemSyncFailed));
+    } finally {
+      setDeliveryDetailsSaving(false);
+    }
   };
 
   const handleBuilderChannelChange = (channel: 'hall' | 'delivery' | 'takeaway') => {
@@ -306,6 +401,15 @@ export function CashierBuilderPageContent() {
     const channelFromQuery = resolveBuilderChannel(searchParams.get('channel'));
     setBuilderChannel((current) => (current === channelFromQuery ? current : channelFromQuery));
   }, [searchParams]);
+
+  useEffect(() => {
+    if (!currentDeliveryOrderId || currentDeliveryOrderChannel !== 'delivery') {
+      return;
+    }
+
+    setDeliveryPhone(currentDeliveryPhone ?? '');
+    setDeliveryAddress(currentDeliveryAddress ?? '');
+  }, [currentDeliveryOrderId, currentDeliveryOrderChannel, currentDeliveryPhone, currentDeliveryAddress]);
 
   useEffect(() => {
     if (!selectedCartItemKey) {
@@ -676,8 +780,8 @@ export function CashierBuilderPageContent() {
                 channel={builderChannel}
                 disabled={channelSwitchDisabled}
                 items={[
-                  { value: 'delivery', label: copy.delivery },
                   { value: 'takeaway', label: copy.takeaway },
+                  { value: 'delivery', label: copy.delivery },
                 ]}
                 onChange={handleBuilderChannelChange}
               />
@@ -901,7 +1005,7 @@ export function CashierBuilderPageContent() {
             ) : null}
 
             <Stack direction="row" spacing={1.1}>
-              {!isDeliveryChannel ? (
+              {!isTakeawayChannel ? (
                 <Button
                   variant="contained"
                   sx={(theme) => ({
@@ -911,13 +1015,13 @@ export function CashierBuilderPageContent() {
                     color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
                   })}
                   disabled={isSubmitDisabled}
-                  onClick={() => submitOrderMutation.mutate()}>
+                  onClick={() => void handleSendOrder()}>
                   {submitOrderMutation.isPending ? copy.processing : copy.sendOrder}
                 </Button>
               ) : null}
               <Button
                 variant="contained"
-                sx={{ flex: isDeliveryChannel ? 1 : 1.1 }}
+                sx={{ flex: isTakeawayChannel ? 1 : 1.1 }}
                 disabled={isSubmitDisabled}
                 onClick={() => void handleCheckout()}>
                 {copy.goToPayment}
@@ -962,8 +1066,8 @@ export function CashierBuilderPageContent() {
               compact
               disabled={channelSwitchDisabled}
               items={[
-                { value: 'delivery', label: copy.delivery },
                 { value: 'takeaway', label: copy.takeaway },
+                { value: 'delivery', label: copy.delivery },
               ]}
               onChange={handleBuilderChannelChange}
             />
@@ -1111,7 +1215,7 @@ export function CashierBuilderPageContent() {
               </Typography>
             ) : null}
             <Stack direction="row" spacing={1}>
-              {!isDeliveryChannel ? (
+              {!isTakeawayChannel ? (
                 <Button
                   variant="contained"
                   sx={(theme) => ({
@@ -1121,13 +1225,13 @@ export function CashierBuilderPageContent() {
                     color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
                   })}
                   disabled={isSubmitDisabled}
-                  onClick={() => submitOrderMutation.mutate()}>
+                  onClick={() => void handleSendOrder()}>
                   {submitOrderMutation.isPending ? copy.processing : copy.sendOrder}
                 </Button>
               ) : null}
               <Button
                 variant="contained"
-                sx={{ flex: isDeliveryChannel ? 1 : 1.1 }}
+                sx={{ flex: isTakeawayChannel ? 1 : 1.1 }}
                 disabled={isSubmitDisabled}
                 onClick={() => void handleCheckout()}>
                 {copy.goToPayment}
@@ -1136,6 +1240,61 @@ export function CashierBuilderPageContent() {
           </Stack>
         </Stack>
       </Drawer>
+
+      <Dialog
+        open={deliveryDialogOpen}
+        onClose={() => {
+          if (!deliveryDetailsSaving) {
+            setDeliveryDialogOpen(false);
+            setPendingDeliveryAction(null);
+          }
+        }}
+        fullWidth
+        maxWidth="xs">
+        <DialogTitle>{copy.deliveryDetails}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ pt: 0.5 }}>
+            <TextField
+              label={copy.deliveryPhone}
+              value={deliveryPhone}
+              onChange={(event) => setDeliveryPhone(formatDeliveryPhoneInput(event.target.value))}
+              inputProps={{ inputMode: 'numeric' }}
+              error={deliveryDetailsAttempted && !isDeliveryPhoneValid}
+              helperText={copy.deliveryPhoneHelper}
+              autoFocus
+            />
+            <TextField
+              label={copy.deliveryAddress}
+              value={deliveryAddress}
+              onChange={(event) => setDeliveryAddress(event.target.value)}
+              multiline
+              minRows={3}
+              error={deliveryDetailsAttempted && !isDeliveryAddressValid}
+              helperText={deliveryDetailsAttempted && !isDeliveryAddressValid ? copy.deliveryAddressRequired : ' '}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => {
+              setDeliveryDialogOpen(false);
+              setPendingDeliveryAction(null);
+            }}
+            disabled={deliveryDetailsSaving}>
+            {copy.close}
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => void handleConfirmDeliveryDetails()}
+            disabled={deliveryDetailsSaving}>
+            {deliveryDetailsSaving
+              ? copy.processing
+              : pendingDeliveryAction === 'checkout'
+                ? copy.goToPayment
+                : copy.sendOrder}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <PosSettingsMenu
         anchorEl={settingsAnchor}

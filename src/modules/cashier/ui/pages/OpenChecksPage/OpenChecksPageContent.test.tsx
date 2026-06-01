@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -9,11 +9,19 @@ import { OpenChecksPageContent } from './OpenChecksPageContent';
 const navigateMock = vi.fn();
 const openOrdersMock = vi.fn();
 const closedOrdersMock = vi.fn();
+const fiscalUnresolvedOrdersMock = vi.fn();
 const updateDisplayNameMutateAsyncMock = vi.fn();
+const retryFiscalMutateMock = vi.fn();
+const fiscalUnresolvedRefetchMock = vi.fn();
+const printReceiptWithFallbackMock = vi.fn(() => Promise.resolve(true));
 let openOrdersState: Array<Record<string, unknown>> = [];
 
 vi.mock('react-router', () => ({
   useNavigate: () => navigateMock,
+}));
+
+vi.mock('@iconify/react', () => ({
+  Icon: () => <span />,
 }));
 
 vi.mock('modules/auth', () => ({
@@ -30,9 +38,25 @@ vi.mock('modules/auth', () => ({
 }));
 
 vi.mock('modules/cashier/application', () => ({
-  useCashierOpenChecksQuery: (status: 'open' | 'closed') => ({
+  useCashierOpenChecksQuery: (status: 'open' | 'closed' | 'fiscal_unresolved') => ({
     isLoading: false,
-    data: status === 'open' ? openOrdersMock() : closedOrdersMock(),
+    data:
+      status === 'open'
+        ? openOrdersMock()
+        : status === 'fiscal_unresolved'
+          ? fiscalUnresolvedOrdersMock()
+          : closedOrdersMock(),
+    refetch: status === 'fiscal_unresolved' ? fiscalUnresolvedRefetchMock : vi.fn(),
+  }),
+  useCashierFiscalRetryMutation: (options?: { onSuccess?: (response: Record<string, unknown>) => void }) => ({
+    isPending: false,
+    mutate: (paymentId: string) => {
+      retryFiscalMutateMock(paymentId);
+      options?.onSuccess?.({
+        results: [],
+        receipts: [{ payload: { receiptNumber: 'R-2' } }],
+      });
+    },
   }),
   useCashierRefundMutation: () => ({
     isPending: false,
@@ -95,13 +119,21 @@ vi.mock('shared/ui/pos-primitives', () => ({
   PosSettingsMenu: () => null,
 }));
 
+vi.mock('shared/printing/browserReceipt', () => ({
+  printReceiptWithFallback: (...args: unknown[]) => printReceiptWithFallbackMock(...args),
+}));
+
 describe('OpenChecksPageContent', () => {
   beforeEach(() => {
     cleanup();
     navigateMock.mockReset();
     openOrdersMock.mockReset();
     closedOrdersMock.mockReset();
+    fiscalUnresolvedOrdersMock.mockReset();
     updateDisplayNameMutateAsyncMock.mockReset();
+    retryFiscalMutateMock.mockReset();
+    fiscalUnresolvedRefetchMock.mockReset();
+    printReceiptWithFallbackMock.mockClear();
     openOrdersState = [
       {
         id: 'order-1',
@@ -125,6 +157,7 @@ describe('OpenChecksPageContent', () => {
     ];
     openOrdersMock.mockImplementation(() => openOrdersState);
     closedOrdersMock.mockReturnValue([]);
+    fiscalUnresolvedOrdersMock.mockReturnValue([]);
   });
 
   it('does not show the go-to-menu action for open hall checks', () => {
@@ -178,5 +211,79 @@ describe('OpenChecksPageContent', () => {
       displayName: 'VIP mijoz',
     });
     expect((await screen.findAllByText('VIP mijoz')).length).toBeGreaterThan(0);
+  });
+
+  it('asks whether to print after finishing the retry receipt dialog', async () => {
+    openOrdersMock.mockReturnValue([]);
+    fiscalUnresolvedOrdersMock.mockReturnValue([
+      {
+        id: 'order-4',
+        orderNumber: 104,
+        status: 'fiscal_unresolved',
+        subtotal: 20000,
+        serviceFee: 0,
+        total: 20000,
+        note: '',
+        channel: 'hall',
+        items: [],
+        tableSession: 'session-4',
+        tableName: 'Stol 4',
+        guestCount: 2,
+        openedByName: 'Ali',
+        createdAt: '2026-04-18T09:00:00Z',
+        payments: [{ id: 'payment-4', amount: 20000, status: 'succeeded', method: 'cash' }],
+        receipts: [],
+      },
+    ]);
+
+    render(<OpenChecksPageContent />);
+    fireEvent.click(screen.getByRole('button', { name: /Yopilmagan hisoblar/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Fiscalga qayta yuborish' }));
+
+    expect(await screen.findByText('Chek tayyor')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Chekni chiqarish' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Yakunlash' }));
+    expect(await screen.findByText('Chek kerakmi?')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ha, chiqarish' }));
+
+    await waitFor(() => {
+      expect(printReceiptWithFallbackMock).toHaveBeenCalledWith({ receiptNumber: 'R-2' });
+      expect(fiscalUnresolvedRefetchMock).toHaveBeenCalled();
+    });
+  });
+
+  it('can finish the retry receipt dialog without printing', async () => {
+    openOrdersMock.mockReturnValue([]);
+    fiscalUnresolvedOrdersMock.mockReturnValue([
+      {
+        id: 'order-5',
+        orderNumber: 105,
+        status: 'fiscal_unresolved',
+        subtotal: 25000,
+        serviceFee: 0,
+        total: 25000,
+        note: '',
+        channel: 'hall',
+        items: [],
+        tableSession: 'session-5',
+        tableName: 'Stol 5',
+        guestCount: 2,
+        openedByName: 'Ali',
+        createdAt: '2026-04-18T09:00:00Z',
+        payments: [{ id: 'payment-5', amount: 25000, status: 'succeeded', method: 'cash' }],
+        receipts: [],
+      },
+    ]);
+
+    render(<OpenChecksPageContent />);
+    fireEvent.click(screen.getByRole('button', { name: /Yopilmagan hisoblar/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Fiscalga qayta yuborish' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Yakunlash' }));
+    fireEvent.click(await screen.findByRole('button', { name: "Yo'q" }));
+
+    expect(printReceiptWithFallbackMock).not.toHaveBeenCalled();
+    expect(fiscalUnresolvedRefetchMock).toHaveBeenCalled();
   });
 });

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -14,6 +14,7 @@ const addPaymentOrderItemMutateAsyncMock = vi.fn();
 const removePaymentOrderItemMutateAsyncMock = vi.fn();
 const updateDisplayNameMutateAsyncMock = vi.fn();
 const paymentMutateAsyncMock = vi.fn();
+const printReceiptWithFallbackMock = vi.fn(() => Promise.resolve(true));
 const clipboardWriteTextMock = vi.fn();
 let orderChannelMock = 'takeaway';
 let enabledPaymentMethodsMock: Array<'cash' | 'card' | 'qr'> = ['cash'];
@@ -26,6 +27,10 @@ let paymentMutationStateMock = {
 
 vi.mock('react-router', () => ({
   useNavigate: () => navigateMock,
+}));
+
+vi.mock('@iconify/react', () => ({
+  Icon: () => <span />,
 }));
 
 vi.mock('modules/auth', () => ({
@@ -139,6 +144,10 @@ vi.mock('shared/ui/pos-primitives', () => ({
   PosSettingsMenu: () => null,
 }));
 
+vi.mock('shared/printing/browserReceipt', () => ({
+  printReceiptWithFallback: (...args: unknown[]) => printReceiptWithFallbackMock(...args),
+}));
+
 describe('PaymentPageContent', () => {
   beforeEach(() => {
     cleanup();
@@ -150,6 +159,7 @@ describe('PaymentPageContent', () => {
     removePaymentOrderItemMutateAsyncMock.mockReset();
     updateDisplayNameMutateAsyncMock.mockReset();
     paymentMutateAsyncMock.mockReset();
+    printReceiptWithFallbackMock.mockClear();
     clipboardWriteTextMock.mockReset();
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
@@ -256,6 +266,71 @@ describe('PaymentPageContent', () => {
     expect(screen.getAllByText(/30\s000 so'm/).length).toBeGreaterThan(0);
   });
 
+  it('asks whether to print after finishing the payment receipt dialog', async () => {
+    paymentMutateAsyncMock.mockResolvedValueOnce({
+      order: {
+        orderNumber: 101,
+        items: [],
+        subtotal: 30000,
+        serviceFee: 0,
+        total: 30000,
+        note: '',
+      },
+      payment: {
+        method: 'cash',
+        amount: 30000,
+        paidAt: '2026-04-18T10:00:00Z',
+        externalRef: 'R-1',
+      },
+      receipt: { id: 'receipt-1', payload: { receiptNumber: 'R-1' } },
+    });
+
+    render(<PaymentPageContent orderId="order-1" />);
+    fireEvent.click(screen.getByRole('button', { name: /Fiscal bilan/ }));
+
+    expect(await screen.findByText('Chek tayyor')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Chekni chiqarish' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Yakunlash' }));
+    expect(await screen.findByText('Chek kerakmi?')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ha, chiqarish' }));
+
+    await waitFor(() => {
+      expect(printReceiptWithFallbackMock).toHaveBeenCalledWith({ receiptNumber: 'R-1' });
+      expect(navigateMock).toHaveBeenCalledWith('/cashier/open-checks', { replace: true });
+    });
+  });
+
+  it('can finish the payment receipt dialog without printing', async () => {
+    paymentMutateAsyncMock.mockResolvedValueOnce({
+      order: {
+        orderNumber: 101,
+        items: [],
+        subtotal: 30000,
+        serviceFee: 0,
+        total: 30000,
+        note: '',
+      },
+      payment: {
+        method: 'cash',
+        amount: 30000,
+        paidAt: '2026-04-18T10:00:00Z',
+        externalRef: 'R-1',
+      },
+      receipt: { id: 'receipt-1', payload: { receiptNumber: 'R-1' } },
+    });
+
+    render(<PaymentPageContent orderId="order-1" />);
+    fireEvent.click(screen.getByRole('button', { name: /Fiscal bilan/ }));
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Yakunlash' }));
+    fireEvent.click(await screen.findByRole('button', { name: "Yo'q" }));
+
+    expect(printReceiptWithFallbackMock).not.toHaveBeenCalled();
+    expect(navigateMock).toHaveBeenCalledWith('/cashier/open-checks', { replace: true });
+  });
+
   it('shows backend payment detail when payment mutation fails', async () => {
     paymentMutationStateMock = {
       isPending: false,
@@ -272,7 +347,9 @@ describe('PaymentPageContent', () => {
 
     render(<PaymentPageContent orderId="order-1" />);
 
-    expect(await screen.findByText('SoftPOS is not ready. Open standby screen and keep the app in foreground')).toBeTruthy();
+    expect(
+      await screen.findByText('SoftPOS is not ready. Open standby screen and keep the app in foreground'),
+    ).toBeTruthy();
   });
 
   it('shows copyable MARTA request and response JSON for non-2xx terminal errors', async () => {

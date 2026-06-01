@@ -47,6 +47,8 @@ export type CashierOrder = {
   tableName?: string | null;
   hallName?: string | null;
   guestCount?: number;
+  deliveryPhone?: string | null;
+  deliveryAddress?: string | null;
   createdAt?: string;
   closedAt?: string | null;
   cashierName?: string | null;

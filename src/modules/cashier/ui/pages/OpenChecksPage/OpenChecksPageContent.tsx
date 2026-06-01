@@ -199,7 +199,11 @@ function OpenChecksList({
             backgroundColor: theme.palette.mode === 'dark' ? '#252525' : alpha('#ffffff', 0.75),
           })}>
           <Typography variant="h6" color="text.secondary">
-            {selectedTab === 'open' ? copy.noChecks : selectedTab === 'closed' ? copy.noClosedChecks : 'Yopilmagan hisoblar yo‘q'}
+            {selectedTab === 'open'
+              ? copy.noChecks
+              : selectedTab === 'closed'
+                ? copy.noClosedChecks
+                : 'Yopilmagan hisoblar yo‘q'}
           </Typography>
         </Box>
       )}
@@ -478,6 +482,8 @@ export function OpenChecksPageContent() {
   const [fiscalSearch, setFiscalSearch] = useState('');
   const [fiscalPage, setFiscalPage] = useState(1);
   const [retryReceiptDialog, setRetryReceiptDialog] = useState<RetryFiscalReceiptDialogState | null>(null);
+  const [retryReceiptPrintPromptOpen, setRetryReceiptPrintPromptOpen] = useState(false);
+  const [isRetryReceiptPrintConfirming, setIsRetryReceiptPrintConfirming] = useState(false);
   const refundMutation = useCashierRefundMutation();
   const reprintMutation = useCashierReprintMutation();
   const retryFiscalMutation = useCashierFiscalRetryMutation({
@@ -487,15 +493,22 @@ export function OpenChecksPageContent() {
         toast.error(String(failedResult.detail ?? failedResult.message ?? 'Fiscalga qayta yuborishda xatolik bor.'));
         return;
       }
-      const receipts = ((response.receipts?.length ? response.receipts : response.receipt ? [response.receipt] : []) as RetryFiscalReceipt[])
-        .filter(Boolean);
+      const receipts = (
+        (response.receipts?.length
+          ? response.receipts
+          : response.receipt
+            ? [response.receipt]
+            : []) as RetryFiscalReceipt[]
+      ).filter(Boolean);
       setRetryReceiptDialog({
         receipts,
         receiptNumber:
           receipts
             .map((receipt) => receipt.payload?.receiptNumber ?? receipt.payload?.receipt_number)
             .filter(Boolean)
-            .join(', ') || latestSucceededPayment?.id || '-',
+            .join(', ') ||
+          latestSucceededPayment?.id ||
+          '-',
         methodLabel:
           latestSucceededPayment?.method === 'card'
             ? copy.card
@@ -567,6 +580,31 @@ export function OpenChecksPageContent() {
   const renameOrderPreview = renameOrder
     ? getCashierOrderDisplayName({ orderNumber: renameOrder.orderNumber, displayName: renameValue })
     : copy.orders;
+
+  const finishRetryReceiptFlow = () => {
+    setRetryReceiptPrintPromptOpen(false);
+    setRetryReceiptDialog(null);
+    setSelectedOrderId('');
+    void fiscalUnresolvedQuery.refetch();
+  };
+
+  const handleRetryReceiptPromptPrint = async () => {
+    if (isRetryReceiptPrintConfirming) {
+      return;
+    }
+
+    setIsRetryReceiptPrintConfirming(true);
+    try {
+      await Promise.all(
+        (retryReceiptDialog?.receipts ?? []).map((receipt) => printReceiptWithFallback(receipt.payload ?? null)),
+      );
+    } catch {
+      // Keep the cashier flow moving even if the browser blocks a print window.
+    } finally {
+      setIsRetryReceiptPrintConfirming(false);
+      finishRetryReceiptFlow();
+    }
+  };
 
   const handleOpenRenameDialog = (order: CashierOrder) => {
     setRenameOrder(order);
@@ -688,7 +726,11 @@ export function OpenChecksPageContent() {
         </Stack>
       }>
       {selectedTab === 'fiscal_unresolved' ? (
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.2} alignItems={{ xs: 'stretch', md: 'center' }} sx={{ mb: 1.5 }}>
+        <Stack
+          direction={{ xs: 'column', md: 'row' }}
+          spacing={1.2}
+          alignItems={{ xs: 'stretch', md: 'center' }}
+          sx={{ mb: 1.5 }}>
           <TextField
             size="small"
             placeholder="Qidirish"
@@ -701,7 +743,10 @@ export function OpenChecksPageContent() {
           />
           <Box sx={{ flex: 1 }} />
           <Pagination
-            count={Math.max(1, Array.isArray(fiscalUnresolvedQuery.data) ? 1 : (fiscalUnresolvedQuery.data?.numPages ?? 1))}
+            count={Math.max(
+              1,
+              Array.isArray(fiscalUnresolvedQuery.data) ? 1 : (fiscalUnresolvedQuery.data?.numPages ?? 1),
+            )}
             page={fiscalPage}
             onChange={(_, page) => setFiscalPage(page)}
             shape="rounded"
@@ -782,7 +827,7 @@ export function OpenChecksPageContent() {
       </Drawer>
 
       <Dialog
-        open={Boolean(retryReceiptDialog)}
+        open={Boolean(retryReceiptDialog) && !retryReceiptPrintPromptOpen}
         onClose={() => setRetryReceiptDialog(null)}
         maxWidth="xs"
         fullWidth
@@ -804,34 +849,49 @@ export function OpenChecksPageContent() {
             </Stack>
 
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.2} sx={{ pt: 1 }}>
-              <Button
-                variant="contained"
-                sx={(theme) => ({
-                  flex: 1,
-                  backgroundImage: 'none',
-                  backgroundColor: theme.palette.mode === 'dark' ? '#4d535a' : '#d8cfbf',
-                  color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
-                })}
-                onClick={() => {
-                  (retryReceiptDialog?.receipts ?? []).forEach((receipt) => {
-                    void printReceiptWithFallback(receipt.payload ?? null);
-                  });
-                }}>
-                {copy.printReceipt}
-              </Button>
-              <Button
-                variant="contained"
-                sx={{ flex: 1 }}
-                onClick={() => {
-                  setRetryReceiptDialog(null);
-                  setSelectedOrderId('');
-                  void fiscalUnresolvedQuery.refetch();
-                }}>
+              <Button variant="contained" sx={{ flex: 1 }} onClick={() => setRetryReceiptPrintPromptOpen(true)}>
                 {copy.finishReceipt}
               </Button>
             </Stack>
           </Stack>
         </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={retryReceiptPrintPromptOpen && Boolean(retryReceiptDialog)}
+        onClose={() => {
+          if (!isRetryReceiptPrintConfirming) {
+            setRetryReceiptPrintPromptOpen(false);
+          }
+        }}
+        maxWidth="xs"
+        fullWidth
+        fullScreen={isMobile}>
+        <DialogTitle>{copy.receiptPrintPromptTitle}</DialogTitle>
+        <DialogContent>
+          <Typography color="text.secondary">{copy.receiptPrintPromptBody}</Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button
+            variant="contained"
+            disabled={isRetryReceiptPrintConfirming}
+            sx={(theme) => ({
+              flex: 1,
+              backgroundImage: 'none',
+              backgroundColor: theme.palette.mode === 'dark' ? '#4d535a' : '#d8cfbf',
+              color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
+            })}
+            onClick={finishRetryReceiptFlow}>
+            {copy.receiptPrintNo}
+          </Button>
+          <Button
+            variant="contained"
+            sx={{ flex: 1 }}
+            disabled={isRetryReceiptPrintConfirming}
+            onClick={() => void handleRetryReceiptPromptPrint()}>
+            {copy.receiptPrintYes}
+          </Button>
+        </DialogActions>
       </Dialog>
 
       <PosSettingsMenu
@@ -845,12 +905,17 @@ export function OpenChecksPageContent() {
         onThemeToggle={() => setThemeMode(themeMode === 'dark' ? 'light' : 'dark')}
         onSignOut={() => {
           setSession(null);
-          navigate('/pin-login', { replace: true });
+          void navigate('/pin-login', { replace: true });
         }}
         themeMode={themeMode}
       />
 
-      <Dialog open={Boolean(renameOrder)} onClose={() => setRenameOrder(null)} maxWidth="xs" fullWidth fullScreen={isMobile}>
+      <Dialog
+        open={Boolean(renameOrder)}
+        onClose={() => setRenameOrder(null)}
+        maxWidth="xs"
+        fullWidth
+        fullScreen={isMobile}>
         <DialogTitle>{copy.renameOrder}</DialogTitle>
         <DialogContent>
           <Stack spacing={1.4} sx={{ pt: 1 }}>
@@ -885,7 +950,10 @@ export function OpenChecksPageContent() {
             })}>
             {copy.cancel}
           </Button>
-          <Button variant="contained" onClick={() => void handleRenameSave()} disabled={updateOrderDisplayNameMutation.isPending}>
+          <Button
+            variant="contained"
+            onClick={() => void handleRenameSave()}
+            disabled={updateOrderDisplayNameMutation.isPending}>
             {copy.save}
           </Button>
         </DialogActions>

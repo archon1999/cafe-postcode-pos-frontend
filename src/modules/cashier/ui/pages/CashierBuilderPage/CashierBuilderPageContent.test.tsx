@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -10,6 +10,8 @@ const navigateMock = vi.fn();
 const useCashierBuilderOrdersQueryMock = vi.fn();
 const useCashierMenuQueryMock = vi.fn();
 const useOptimisticBuilderOrderMock = vi.fn();
+const submitOrderMutateAsyncMock = vi.fn();
+const updateOrderDeliveryDetailsMock = vi.fn();
 let searchParamsValue = '';
 
 vi.mock('react-router', () => ({
@@ -41,7 +43,7 @@ vi.mock('modules/cashier/application', () => ({
   useSubmitCashierOrderMutation: () => ({
     isPending: false,
     mutate: vi.fn(),
-    mutateAsync: vi.fn(),
+    mutateAsync: submitOrderMutateAsyncMock,
   }),
 }));
 
@@ -52,6 +54,7 @@ vi.mock('modules/cashier/data-access', () => ({
     addOrderItem: vi.fn(),
     removeOrderItem: vi.fn(),
     scanOrderMarking: vi.fn(),
+    updateOrderDeliveryDetails: (...args: unknown[]) => updateOrderDeliveryDetailsMock(...args),
   },
 }));
 
@@ -79,7 +82,24 @@ vi.mock('shared/ui/pos-primitives', () => ({
       {icon}
     </button>
   ),
-  PosOrderChannelSegment: ({ channel }: { channel: string }) => <div>{channel}</div>,
+  PosOrderChannelSegment: ({
+    channel,
+    items,
+    onChange,
+  }: {
+    channel: string;
+    items?: Array<{ value: 'delivery' | 'takeaway'; label: string }>;
+    onChange?: (channel: 'delivery' | 'takeaway') => void;
+  }) => (
+    <div>
+      <span>{channel}</span>
+      {items?.map((item) => (
+        <button key={item.value} onClick={() => onChange?.(item.value)}>
+          {item.label}
+        </button>
+      ))}
+    </div>
+  ),
   PosSectionTabs: ({ items }: { items: Array<{ label: string }> }) => (
     <div>{items.map((item) => item.label).join(', ')}</div>
   ),
@@ -93,6 +113,9 @@ describe('CashierBuilderPageContent', () => {
 
   beforeEach(() => {
     navigateMock.mockReset();
+    submitOrderMutateAsyncMock.mockReset();
+    updateOrderDeliveryDetailsMock.mockReset();
+    updateOrderDeliveryDetailsMock.mockResolvedValue({});
     searchParamsValue = '';
     useCashierMenuQueryMock.mockReset();
     useCashierMenuQueryMock.mockReturnValue({
@@ -112,7 +135,7 @@ describe('CashierBuilderPageContent', () => {
       refetch: vi.fn(),
     });
     useOptimisticBuilderOrderMock.mockReset();
-    useOptimisticBuilderOrderMock.mockReturnValue({
+    useOptimisticBuilderOrderMock.mockImplementation((options: { channel: 'delivery' | 'takeaway' }) => ({
       currentOrder: {
         id: 'order-1',
         orderNumber: 7,
@@ -120,14 +143,14 @@ describe('CashierBuilderPageContent', () => {
         subtotal: 12000,
         serviceFee: 0,
         note: '',
-        channel: 'delivery',
+        channel: options.channel,
         status: 'open',
         items: [],
       },
       addItem: vi.fn(),
       removeItem: vi.fn(),
       hasPendingOperations: false,
-    });
+    }));
   });
 
   it('uses the channel query param and opens the price-hidden catalog with that channel', () => {
@@ -140,5 +163,59 @@ describe('CashierBuilderPageContent', () => {
     fireEvent.click(screen.getByRole('button', { name: 'solar:chef-hat-bold-duotone' }));
 
     expect(navigateMock).toHaveBeenCalledWith('/menu/catalog?source=cashier&channel=takeaway');
+  });
+
+  it('defaults to takeaway and renders takeaway/delivery channel labels', () => {
+    render(<CashierBuilderPageContent />);
+
+    expect(useOptimisticBuilderOrderMock).toHaveBeenCalledWith(expect.objectContaining({ channel: 'takeaway' }));
+    expect(screen.getAllByRole('button', { name: 'Olib ketish' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: 'Yetkazib berish' }).length).toBeGreaterThan(0);
+  });
+
+  it('uses payment-first checkout for takeaway', () => {
+    searchParamsValue = 'channel=takeaway';
+
+    render(<CashierBuilderPageContent />);
+
+    fireEvent.click(screen.getByRole('button', { name: "To'lov oynasiga o'tish" }));
+
+    expect(submitOrderMutateAsyncMock).not.toHaveBeenCalled();
+    expect(updateOrderDeliveryDetailsMock).not.toHaveBeenCalled();
+    expect(navigateMock).toHaveBeenCalledWith('/cashier/payment?orderId=order-1');
+  });
+
+  it('requires valid delivery details before delivery checkout submit', async () => {
+    searchParamsValue = 'channel=delivery';
+
+    render(<CashierBuilderPageContent />);
+
+    fireEvent.click(screen.getByRole('button', { name: "To'lov oynasiga o'tish" }));
+    fireEvent.change(screen.getByLabelText('Telefon raqam'), { target: { value: '901234567' } });
+    fireEvent.change(screen.getByLabelText('Manzil'), { target: { value: '  Chilonzor 12  ' } });
+    fireEvent.click(screen.getByRole('button', { name: "To'lov oynasiga o'tish" }));
+
+    await waitFor(() => {
+      expect(updateOrderDeliveryDetailsMock).toHaveBeenCalledWith('order-1', {
+        deliveryPhone: '90-123-45-67',
+        deliveryAddress: 'Chilonzor 12',
+      });
+    });
+    expect(submitOrderMutateAsyncMock).toHaveBeenCalledTimes(1);
+    expect(navigateMock).toHaveBeenCalledWith('/cashier/payment?orderId=order-1');
+  });
+
+  it('blocks delivery detail confirmation until phone and address are valid', () => {
+    searchParamsValue = 'channel=delivery';
+
+    render(<CashierBuilderPageContent />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Saqlash' }));
+    fireEvent.change(screen.getByLabelText('Telefon raqam'), { target: { value: '90123' } });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Saqlash' }).at(-1)!);
+
+    expect(screen.getByText('Manzilni kiriting')).toBeTruthy();
+    expect(updateOrderDeliveryDetailsMock).not.toHaveBeenCalled();
+    expect(submitOrderMutateAsyncMock).not.toHaveBeenCalled();
   });
 });

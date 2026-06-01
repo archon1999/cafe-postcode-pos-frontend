@@ -14,6 +14,10 @@ type CashierOrderDto = Omit<CashierOrder, 'items' | 'displayName'> & {
   items: CashierOrderItemDto[];
   displayName?: string | null;
   display_name?: string | null;
+  deliveryPhone?: string | null;
+  delivery_phone?: string | null;
+  deliveryAddress?: string | null;
+  delivery_address?: string | null;
 };
 type CashierPaymentResponseDto = CashierPaymentResponse;
 type CashierCreateOrderResponseDto = CashierCreateOrderResponse;
@@ -34,6 +38,8 @@ export function mapCashierOrder(dto: CashierOrderDto): CashierOrder {
   return {
     ...dto,
     displayName: dto.displayName ?? dto.display_name ?? null,
+    deliveryPhone: dto.deliveryPhone ?? dto.delivery_phone ?? null,
+    deliveryAddress: dto.deliveryAddress ?? dto.delivery_address ?? null,
     items: dto.items.map((item) => ({ ...item })),
   };
 }

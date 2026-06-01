@@ -1,3 +1,4 @@
+import { Icon } from '@iconify/react';
 import {
   Box,
   Button,
@@ -17,7 +18,6 @@ import { useTheme } from '@mui/material/styles';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 
-import { Icon } from '@iconify/react';
 import {
   canAddCashierPaymentOrderItems,
   canAccessTakeawayBuilder,
@@ -43,13 +43,13 @@ import {
   type CashierPaymentResponse,
   type PaymentMethod,
 } from 'modules/cashier/domain';
+import { getApiErrorMessage } from 'shared/api/errorMessage';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { getPosCopy } from 'shared/locale/copy';
+import { useScannerInput } from 'shared/pos/useScannerInput';
 import { formatCompactMoney, formatTime } from 'shared/pos/utils';
 import { printReceiptWithFallback } from 'shared/printing/browserReceipt';
-import { useScannerInput } from 'shared/pos/useScannerInput';
-import { getApiErrorMessage } from 'shared/api/errorMessage';
-import { PosIconAction, PosOrderChannelSegment, PosSettingsMenu } from 'shared/ui/pos-primitives';
+import { PosIconAction, PosSettingsMenu } from 'shared/ui/pos-primitives';
 
 export type PaymentPageContentProps = {
   orderId?: string | null;
@@ -137,6 +137,8 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   const [lastCardFailureMessage, setLastCardFailureMessage] = useState('');
   const [lastCardFailureDebugJson, setLastCardFailureDebugJson] = useState('');
   const [printToastOpen, setPrintToastOpen] = useState(false);
+  const [receiptPrintPromptOpen, setReceiptPrintPromptOpen] = useState(false);
+  const [isReceiptPrintConfirming, setIsReceiptPrintConfirming] = useState(false);
   const [addingItemId, setAddingItemId] = useState<string | null>(null);
   const [removingItemId, setRemovingItemId] = useState<string | null>(null);
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
@@ -187,7 +189,10 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
 
     return Math.max(total - paidTotal, 0);
   }, [orderQuery.data?.payments, orderQuery.data?.total]);
-  const aggregatedOrderItems = useMemo(() => aggregateCashierOrderItems(orderQuery.data?.items), [orderQuery.data?.items]);
+  const aggregatedOrderItems = useMemo(
+    () => aggregateCashierOrderItems(orderQuery.data?.items),
+    [orderQuery.data?.items],
+  );
   const orderNumberLabel = useMemo(
     () => getCashierOrderNumberLabel({ orderNumber: orderQuery.data?.orderNumber ?? 0 }),
     [orderQuery.data?.orderNumber],
@@ -274,9 +279,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   );
 
   const afterPaymentPath =
-    isBuilderOrder && canAccessTakeawayBuilder(session?.user)
-      ? '/cashier/builder'
-      : '/cashier/open-checks';
+    isBuilderOrder && canAccessTakeawayBuilder(session?.user) ? '/cashier/builder' : '/cashier/open-checks';
   const canSubmitPayment = Boolean(
     normalizedOrderId &&
       canProcessPayments &&
@@ -296,9 +299,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   const shouldShowVat = vatEnabled && vatPercent > 0;
   const vatLabel = `${copy.vat} (${formatPercent(vatPercent)}%)`;
   const receiptDialogReceipts = useMemo(
-    () =>
-      (receiptData?.receipts?.filter(Boolean) ??
-        (receiptData?.receipt ? [receiptData.receipt] : [])),
+    () => receiptData?.receipts?.filter(Boolean) ?? (receiptData?.receipt ? [receiptData.receipt] : []),
     [receiptData?.receipt, receiptData?.receipts],
   );
   const primaryReceipt = receiptDialogReceipts[0] ?? receiptData?.receipt ?? null;
@@ -321,7 +322,8 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
         order_number: getCashierOrderNumberLabel({ orderNumber: order.orderNumber }),
         receipt_number: receiptNumber,
         channel_label: 'sotuv',
-        table_label: order.tableName || order.hallName ? [order.hallName, order.tableName].filter(Boolean).join(' / ') : '',
+        table_label:
+          order.tableName || order.hallName ? [order.hallName, order.tableName].filter(Boolean).join(' / ') : '',
         cashier_name: session?.user.fullName || session?.user.username || '',
         cashier_id: session?.user.id || '',
         printed_at_label: payment.paidAt || new Date().toISOString(),
@@ -342,7 +344,39 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
         order_note: order.note,
       },
     };
-  }, [receiptData, session?.restaurantContext?.restaurantName, session?.user.fullName, session?.user.id, session?.user.username]);
+  }, [
+    receiptData,
+    session?.restaurantContext?.restaurantName,
+    session?.user.fullName,
+    session?.user.id,
+    session?.user.username,
+  ]);
+
+  const finishReceiptFlow = () => {
+    setReceiptPrintPromptOpen(false);
+    setReceiptData(null);
+    void navigate(afterPaymentPath, { replace: true });
+  };
+
+  const handleReceiptPromptPrint = async () => {
+    if (isReceiptPrintConfirming) {
+      return;
+    }
+
+    setIsReceiptPrintConfirming(true);
+    try {
+      const receiptsToPrint = receiptDialogReceipts.length > 0 ? receiptDialogReceipts : [null];
+      await Promise.all(
+        receiptsToPrint.map((receipt) => printReceiptWithFallback(receipt?.payload ?? fallbackReceiptPayload)),
+      );
+      setPrintToastOpen(true);
+    } catch {
+      // Keep the cashier flow moving even if the browser blocks a print window.
+    } finally {
+      setIsReceiptPrintConfirming(false);
+      finishReceiptFlow();
+    }
+  };
 
   useScannerInput({
     enabled: Boolean(normalizedOrderId && canProcessPayments && !receiptData),
@@ -350,7 +384,9 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
       try {
         await scanMarkingMutation.mutateAsync(rawCode);
       } catch (error) {
-        setPaymentErrorMessage(getApiErrorMessage(error, 'Bunaqa mahsulot orderda yo‘q yoki markirovka kodi yaroqsiz.'));
+        setPaymentErrorMessage(
+          getApiErrorMessage(error, 'Bunaqa mahsulot orderda yo‘q yoki markirovka kodi yaroqsiz.'),
+        );
         setPaymentErrorToastOpen(true);
       }
     },
@@ -523,8 +559,8 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
                 {orderQuery.data?.channel === 'delivery'
                   ? 'YD'
                   : orderQuery.data?.channel === 'takeaway'
-                  ? 'TG'
-                  : (orderQuery.data?.tableName?.match(/\d+/)?.[0] ?? '0')}
+                    ? 'TG'
+                    : (orderQuery.data?.tableName?.match(/\d+/)?.[0] ?? '0')}
               </Box>
               <Stack spacing={0.25}>
                 <Stack direction="row" spacing={0.75} alignItems="center">
@@ -540,21 +576,14 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
                   {orderQuery.data?.channel === 'delivery'
                     ? copy.deliveryLabel
                     : orderQuery.data?.channel === 'takeaway'
-                    ? copy.takeawayLabel
-                    : (orderQuery.data?.hallName ?? copy.hallLabel)}
+                      ? copy.takeawayLabel
+                      : (orderQuery.data?.hallName ?? copy.hallLabel)}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   {orderQuery.data?.openedByName}
                 </Typography>
               </Stack>
             </Stack>
-
-            <PosOrderChannelSegment
-              hallLabel={copy.hall}
-              takeawayLabel={copy.takeaway}
-              deliveryLabel={copy.delivery}
-              channel={orderQuery.data?.channel}
-            />
 
             <Stack spacing={1.15}>
               {aggregatedOrderItems.map((item) => (
@@ -565,7 +594,12 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
                     overflow: 'hidden',
                     backgroundColor: muiTheme.palette.mode === 'dark' ? '#2c2f34' : '#ede4d7',
                   })}>
-                  <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.2} sx={{ p: 1.65 }}>
+                  <Stack
+                    direction="row"
+                    justifyContent="space-between"
+                    alignItems="center"
+                    spacing={1.2}
+                    sx={{ p: 1.65 }}>
                     <Stack spacing={0.35} sx={{ minWidth: 0, flex: 1 }}>
                       <Typography
                         variant="subtitle1"
@@ -734,7 +768,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
 
             {!cashierContextQuery.data?.currentShift ? (
               <Typography variant="body2" color="error">
-                To'lov qilish uchun avval kassa smenasini oching.
+                {"To'lov qilish uchun avval kassa smenasini oching."}
               </Typography>
             ) : null}
 
@@ -747,7 +781,12 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
                 onClick={() => void handlePayment(false)}>
                 {isPaymentProcessing ? copy.processing : 'Oddiy to‘lov'}
               </Button>
-              <Button variant="contained" size="large" fullWidth disabled={!canSubmitPayment} onClick={() => void handlePayment(true)}>
+              <Button
+                variant="contained"
+                size="large"
+                fullWidth
+                disabled={!canSubmitPayment}
+                onClick={() => void handlePayment(true)}>
                 {isPaymentProcessing ? copy.processing : 'Fiscal bilan to‘lov'}
               </Button>
             </Stack>
@@ -832,15 +871,16 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
         maxWidth="xs"
         fullWidth
         fullScreen={isMobile}>
-        <DialogTitle>Karta to'lovi yakunlanmadi</DialogTitle>
+        <DialogTitle>{"Karta to'lovi yakunlanmadi"}</DialogTitle>
         <DialogContent>
           <Stack spacing={1.4} sx={{ pt: 1 }}>
             <Typography variant="body2" color="text.secondary">
               {lastCardFailureMessage || copy.paymentFailed}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Qayta urinib ko'ring yoki terminaldan tashqarida karta orqali to'lov qabul qilingan bo'lsa, manual card
-              sifatida yakunlang.
+              {
+                "Qayta urinib ko'ring yoki terminaldan tashqarida karta orqali to'lov qabul qilingan bo'lsa, manual card sifatida yakunlang."
+              }
             </Typography>
             {lastCardFailureDebugJson ? (
               <Stack spacing={1}>
@@ -887,7 +927,12 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={renameDialogOpen} onClose={() => setRenameDialogOpen(false)} maxWidth="xs" fullWidth fullScreen={isMobile}>
+      <Dialog
+        open={renameDialogOpen}
+        onClose={() => setRenameDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        fullScreen={isMobile}>
         <DialogTitle>{copy.renameOrder}</DialogTitle>
         <DialogContent>
           <Stack spacing={1.4} sx={{ pt: 1 }}>
@@ -925,14 +970,17 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
             })}>
             {copy.cancel}
           </Button>
-          <Button variant="contained" onClick={() => void handleRenameOrder()} disabled={updateOrderDisplayNameMutation.isPending}>
+          <Button
+            variant="contained"
+            onClick={() => void handleRenameOrder()}
+            disabled={updateOrderDisplayNameMutation.isPending}>
             {copy.save}
           </Button>
         </DialogActions>
       </Dialog>
 
       <Dialog
-        open={Boolean(receiptData)}
+        open={Boolean(receiptData) && !receiptPrintPromptOpen}
         onClose={() => setReceiptData(null)}
         maxWidth="xs"
         fullWidth
@@ -947,11 +995,13 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
                   ? receiptDialogReceipts
                       .map((receipt) => receipt?.payload?.receiptNumber ?? receipt?.payload?.receipt_number)
                       .filter(Boolean)
-                      .join(', ') || receiptData?.payment.externalRef || '-'
-                  : primaryReceipt?.payload?.receiptNumber ??
+                      .join(', ') ||
+                    receiptData?.payment.externalRef ||
+                    '-'
+                  : (primaryReceipt?.payload?.receiptNumber ??
                     primaryReceipt?.payload?.receipt_number ??
                     receiptData?.payment.externalRef ??
-                    '-'}
+                    '-')}
               </Typography>
             </Stack>
             <Stack direction="row" justifyContent="space-between">
@@ -981,35 +1031,49 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
             </Stack>
 
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.2} sx={{ pt: 1 }}>
-              <Button
-                variant="contained"
-                sx={(muiTheme) => ({
-                  flex: 1,
-                  backgroundImage: 'none',
-                  backgroundColor: muiTheme.palette.mode === 'dark' ? '#4d535a' : '#d8cfbf',
-                  color: muiTheme.palette.mode === 'dark' ? '#f5f5f5' : muiTheme.palette.text.primary,
-                })}
-                onClick={() => {
-                  const receiptsToPrint = receiptDialogReceipts.length > 0 ? receiptDialogReceipts : [null];
-                  receiptsToPrint.forEach((receipt) => {
-                    void printReceiptWithFallback(receipt?.payload ?? fallbackReceiptPayload);
-                  });
-                  setPrintToastOpen(true);
-                }}>
-                {copy.printReceipt}
-              </Button>
-              <Button
-                variant="contained"
-                sx={{ flex: 1 }}
-                onClick={() => {
-                  setReceiptData(null);
-                  navigate(afterPaymentPath, { replace: true });
-                }}>
+              <Button variant="contained" sx={{ flex: 1 }} onClick={() => setReceiptPrintPromptOpen(true)}>
                 {copy.finishReceipt}
               </Button>
             </Stack>
           </Stack>
         </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={receiptPrintPromptOpen && Boolean(receiptData)}
+        onClose={() => {
+          if (!isReceiptPrintConfirming) {
+            setReceiptPrintPromptOpen(false);
+          }
+        }}
+        maxWidth="xs"
+        fullWidth
+        fullScreen={isMobile}>
+        <DialogTitle>{copy.receiptPrintPromptTitle}</DialogTitle>
+        <DialogContent>
+          <Typography color="text.secondary">{copy.receiptPrintPromptBody}</Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button
+            variant="contained"
+            disabled={isReceiptPrintConfirming}
+            sx={(muiTheme) => ({
+              flex: 1,
+              backgroundImage: 'none',
+              backgroundColor: muiTheme.palette.mode === 'dark' ? '#4d535a' : '#d8cfbf',
+              color: muiTheme.palette.mode === 'dark' ? '#f5f5f5' : muiTheme.palette.text.primary,
+            })}
+            onClick={finishReceiptFlow}>
+            {copy.receiptPrintNo}
+          </Button>
+          <Button
+            variant="contained"
+            sx={{ flex: 1 }}
+            disabled={isReceiptPrintConfirming}
+            onClick={() => void handleReceiptPromptPrint()}>
+            {copy.receiptPrintYes}
+          </Button>
+        </DialogActions>
       </Dialog>
 
       <Snackbar
@@ -1061,7 +1125,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
         onThemeToggle={() => setThemeMode(themeMode === 'dark' ? 'light' : 'dark')}
         onSignOut={() => {
           setSession(null);
-          navigate('/pin-login', { replace: true });
+          void navigate('/pin-login', { replace: true });
         }}
         themeMode={themeMode}
       />

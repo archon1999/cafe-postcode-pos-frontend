@@ -30,8 +30,8 @@ export function PosOrderChannelSegment({
     items ??
     [
       hallLabel ? { value: 'hall' as const, label: hallLabel } : null,
-      deliveryLabel ? { value: 'delivery' as const, label: deliveryLabel } : null,
       { value: 'takeaway' as const, label: takeawayLabel },
+      deliveryLabel ? { value: 'delivery' as const, label: deliveryLabel } : null,
     ].filter((item): item is { value: OrderChannelSegmentValue; label: string } => Boolean(item));
   const activeChannel = channel === 'delivery' || channel === 'takeaway' ? channel : 'hall';
 
@@ -68,11 +68,12 @@ export function PosOrderChannelSegment({
             cursor: onChange && !disabled ? 'pointer' : 'default',
             backgroundColor:
               item.value === activeChannel ? (theme.palette.mode === 'dark' ? '#4a4a4a' : '#5c5c5c') : 'transparent',
-            color: item.value === activeChannel
-              ? '#ffffff'
-              : theme.palette.mode === 'dark'
-                ? alpha('#ffffff', 0.72)
-                : alpha('#27313d', 0.68),
+            color:
+              item.value === activeChannel
+                ? '#ffffff'
+                : theme.palette.mode === 'dark'
+                  ? alpha('#ffffff', 0.72)
+                  : alpha('#27313d', 0.68),
             opacity: disabled && item.value !== activeChannel ? 0.58 : 1,
             transition: 'background-color 0.18s ease, color 0.18s ease',
             '&:focus-visible': {

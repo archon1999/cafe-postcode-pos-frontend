@@ -14,8 +14,8 @@ describe('PosOrderChannelSegment', () => {
         takeawayLabel="Olib ketish"
         channel="delivery"
         items={[
-          { value: 'delivery', label: 'Yetkazib berish' },
           { value: 'takeaway', label: 'Olib ketish' },
+          { value: 'delivery', label: 'Yetkazib berish' },
         ]}
         onChange={onChange}
       />,
