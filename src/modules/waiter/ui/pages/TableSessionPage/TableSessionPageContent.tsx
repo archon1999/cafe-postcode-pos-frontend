@@ -24,7 +24,7 @@ import {
 import { waiterRepository } from 'modules/waiter/data-access';
 import { getDefaultWaiterMenuCategory, groupWaiterOrderItemsByStation } from 'modules/waiter/domain';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
-import { getPosCopy } from 'shared/locale/copy';
+import { formatPosCopy, getPosCopy } from 'shared/locale/copy';
 import { useOptimisticBuilderOrder } from 'shared/pos/useOptimisticBuilderOrder';
 import { formatCompactMoney } from 'shared/pos/utils';
 import { printReceiptWithFallback } from 'shared/printing/browserReceipt';
@@ -734,7 +734,7 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
                                   ? { textDecoration: 'line-through', opacity: 0.68 }
                                   : undefined
                               }>
-                              {item.catalogItemName} (x{item.quantity})
+                              {formatPosCopy(copy.itemQuantityLabel, { name: item.catalogItemName, quantity: item.quantity })}
                             </Typography>
                             {item.note ? (
                               <Typography variant="body2" color="text.secondary">
@@ -1032,7 +1032,7 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
                                 ? { textDecoration: 'line-through', opacity: 0.68 }
                                 : undefined
                             }>
-                            {item.catalogItemName} (x{item.quantity})
+                            {formatPosCopy(copy.itemQuantityLabel, { name: item.catalogItemName, quantity: item.quantity })}
                           </Typography>
                           {item.note ? (
                             <Typography variant="caption" color="text.secondary">

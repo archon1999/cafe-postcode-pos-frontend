@@ -4,6 +4,7 @@ import { useTheme } from '@mui/material/styles';
 import { useId } from 'react';
 
 const FONT_FAMILY = '"Inter", "DM Sans Variable", sans-serif';
+const BRAND_NAME = 'Cafe Postcode';
 
 export type PosLogoProps = BoxProps & {
   isSingle?: boolean;
@@ -108,7 +109,7 @@ export function PosLogo({ sx, isSingle = true, ...other }: PosLogoProps) {
         fontSize="22"
         fontWeight="700"
         letterSpacing="-0.5">
-        Cafe Postcode
+        {BRAND_NAME}
       </text>
     </svg>
   );

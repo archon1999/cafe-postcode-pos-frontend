@@ -176,17 +176,17 @@ export function CashierShiftPage() {
         })}>
         <Stack spacing={0.9}>
           <Typography variant="subtitle1">{title}</Typography>
-          {renderReportMetric('Terminal ID', stringOf(report, 'TerminalID', 'terminalID', 'terminalId') || '-')}
-          {renderReportMetric('Smena ochilgan', stringOf(report, 'OpenTime', 'openTime') || '-')}
-          {renderReportMetric('Smena yopilgan', stringOf(report, 'CloseTime', 'closeTime') || '-')}
+          {renderReportMetric(copy.reportTerminalId, stringOf(report, 'TerminalID', 'terminalID', 'terminalId') || '-')}
+          {renderReportMetric(copy.reportShiftOpened, stringOf(report, 'OpenTime', 'openTime') || '-')}
+          {renderReportMetric(copy.reportShiftClosed, stringOf(report, 'CloseTime', 'closeTime') || '-')}
           <Divider />
-          {renderReportMetric('Buyurtma / to‘lovlar', `${numberOf(report, 'OrdersCount', 'ordersCount')} / ${numberOf(report, 'PaymentsCount', 'paymentsCount', 'TotalSaleCount', 'totalSaleCount')}`)}
-          {renderReportMetric('Naqd oborot', formatCompactMoney(reportMoney(report, 'TotalCash', 'totalCash'), locale))}
-          {renderReportMetric('Karta oborot', formatCompactMoney(reportMoney(report, 'TotalCard', 'totalCard'), locale))}
-          {renderReportMetric('QR oborot', formatCompactMoney(reportMoney(report, 'TotalQR', 'totalQR'), locale))}
-          {renderReportMetric('Qaytarilgan', formatCompactMoney(numberOf(report, 'TotalRefundAmount', 'totalRefundAmount'), locale))}
-          {renderReportMetric('Sof jami', formatCompactMoney(numberOf(report, 'NetTotal', 'netTotal', 'TotalSaleAmount', 'totalSaleAmount'), locale))}
-          {renderReportMetric('Fiscal cheklar', numberOf(report, 'FiscalReceiptCount', 'fiscalReceiptCount'))}
+          {renderReportMetric(copy.reportOrderPayments, `${numberOf(report, 'OrdersCount', 'ordersCount')} / ${numberOf(report, 'PaymentsCount', 'paymentsCount', 'TotalSaleCount', 'totalSaleCount')}`)}
+          {renderReportMetric(copy.reportCashTurnover, formatCompactMoney(reportMoney(report, 'TotalCash', 'totalCash'), locale))}
+          {renderReportMetric(copy.reportCardTurnover, formatCompactMoney(reportMoney(report, 'TotalCard', 'totalCard'), locale))}
+          {renderReportMetric(copy.reportQrTurnover, formatCompactMoney(reportMoney(report, 'TotalQR', 'totalQR'), locale))}
+          {renderReportMetric(copy.reportRefunded, formatCompactMoney(numberOf(report, 'TotalRefundAmount', 'totalRefundAmount'), locale))}
+          {renderReportMetric(copy.reportNetTotal, formatCompactMoney(numberOf(report, 'NetTotal', 'netTotal', 'TotalSaleAmount', 'totalSaleAmount'), locale))}
+          {renderReportMetric(copy.reportFiscalReceipts, numberOf(report, 'FiscalReceiptCount', 'fiscalReceiptCount'))}
         </Stack>
       </Box>
     );
@@ -204,16 +204,16 @@ export function CashierShiftPage() {
           p: 1.5,
         })}>
         <Stack spacing={0.9}>
-          <Typography variant="subtitle1">Unikassa Z-report</Typography>
-          {renderReportMetric('Terminal ID', stringOf(report, 'TerminalID', 'terminalID', 'terminalId') || '-')}
-          {renderReportMetric('Ochilgan vaqt', stringOf(report, 'OpenTime', 'openTime') || '-')}
-          {renderReportMetric('Sotuvlar', numberOf(report, 'TotalSaleCount', 'totalSaleCount'))}
-          {renderReportMetric('Qaytimlar', numberOf(report, 'TotalRefundCount', 'totalRefundCount'))}
-          {renderReportMetric('Naqd', formatCompactMoney(reportMoney(report, 'TotalCash', 'totalCash', 'Sale', 100), locale))}
-          {renderReportMetric('Karta', formatCompactMoney(reportMoney(report, 'TotalCard', 'totalCard', 'Sale', 100), locale))}
-          {renderReportMetric('QQS', formatCompactMoney(reportMoney(report, 'TotalVAT', 'totalVAT', 'Sale', 100), locale))}
-          {renderReportMetric('Birinchi chek', stringOf(report, 'FirstReceiptSeq', 'firstReceiptSeq') || '-')}
-          {renderReportMetric('Oxirgi chek', stringOf(report, 'LastReceiptSeq', 'lastReceiptSeq') || '-')}
+          <Typography variant="subtitle1">{copy.unikassaZReport}</Typography>
+          {renderReportMetric(copy.reportTerminalId, stringOf(report, 'TerminalID', 'terminalID', 'terminalId') || '-')}
+          {renderReportMetric(copy.reportOpenedAt, stringOf(report, 'OpenTime', 'openTime') || '-')}
+          {renderReportMetric(copy.reportSales, numberOf(report, 'TotalSaleCount', 'totalSaleCount'))}
+          {renderReportMetric(copy.reportRefunds, numberOf(report, 'TotalRefundCount', 'totalRefundCount'))}
+          {renderReportMetric(copy.reportCash, formatCompactMoney(reportMoney(report, 'TotalCash', 'totalCash', 'Sale', 100), locale))}
+          {renderReportMetric(copy.reportCard, formatCompactMoney(reportMoney(report, 'TotalCard', 'totalCard', 'Sale', 100), locale))}
+          {renderReportMetric(copy.reportVat, formatCompactMoney(reportMoney(report, 'TotalVAT', 'totalVAT', 'Sale', 100), locale))}
+          {renderReportMetric(copy.reportFirstReceipt, stringOf(report, 'FirstReceiptSeq', 'firstReceiptSeq') || '-')}
+          {renderReportMetric(copy.reportLastReceipt, stringOf(report, 'LastReceiptSeq', 'lastReceiptSeq') || '-')}
         </Stack>
       </Box>
     );
@@ -231,11 +231,11 @@ export function CashierShiftPage() {
           p: 1.5,
         })}>
         <Stack spacing={0.9}>
-          <Typography variant="subtitle1">Unikassa fiscal memory</Typography>
-          {renderReportMetric('Terminal ID', stringOf(report, 'TerminalID', 'terminalID', 'terminalId') || '-')}
-          {renderReportMetric('Oxirgi operatsiya', stringOf(report, 'LastOperationTime', 'lastOperationTime') || '-')}
-          {renderReportMetric('Z-reportlar', numberOf(report, 'ZReportsCount', 'zReportsCount'))}
-          {renderReportMetric('Cheklar', numberOf(report, 'ReceiptsCount', 'receiptsCount'))}
+          <Typography variant="subtitle1">{copy.unikassaFiscalMemory}</Typography>
+          {renderReportMetric(copy.reportTerminalId, stringOf(report, 'TerminalID', 'terminalID', 'terminalId') || '-')}
+          {renderReportMetric(copy.reportLastOperation, stringOf(report, 'LastOperationTime', 'lastOperationTime') || '-')}
+          {renderReportMetric(copy.reportZReports, numberOf(report, 'ZReportsCount', 'zReportsCount'))}
+          {renderReportMetric(copy.reportReceipts, numberOf(report, 'ReceiptsCount', 'receiptsCount'))}
         </Stack>
       </Box>
     );
@@ -251,17 +251,17 @@ export function CashierShiftPage() {
     const fiscalMemory = asRecord(valueOf(providerReport, 'fiscalMemory', 'fiscal_memory'));
     return (
       <Dialog open={Boolean(shiftCloseReport)} onClose={() => setShiftCloseReport(null)} fullWidth maxWidth="sm" fullScreen={isMobile}>
-        <DialogTitle>Smena hisoboti</DialogTitle>
+        <DialogTitle>{copy.shiftReportTitle}</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={1.5}>
-            {renderUnikassaLikeReport('Bizning POS report', posReport)}
+            {renderUnikassaLikeReport(copy.ownPosReport, posReport)}
             {renderProviderReport(zInfo)}
             {renderFiscalMemoryReport(fiscalMemory)}
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2 }}>
           <Button variant="contained" onClick={() => setShiftCloseReport(null)}>
-            Yopish
+            {copy.close}
           </Button>
         </DialogActions>
       </Dialog>
@@ -456,7 +456,7 @@ export function CashierShiftPage() {
                     <Typography variant="h5">{copy.activeShifts}</Typography>
                     {cashDesksAvailableToOpen.length ? (
                       <Button variant="outlined" onClick={() => setOpenShiftDialogOpen(true)}>
-                        Boshqa smenani ochish
+                        {copy.openAnotherShift}
                       </Button>
                     ) : null}
                   </Stack>
@@ -479,7 +479,7 @@ export function CashierShiftPage() {
 
               {activeShifts.length && !cashDesksAvailableToOpen.length ? (
                 <Typography variant="body2" color="text.secondary">
-                  Barcha kassalarda smena ochilgan.
+                  {copy.allCashDesksOpen}
                 </Typography>
               ) : null}
               {activeShifts.length ? (

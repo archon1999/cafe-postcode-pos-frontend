@@ -12,7 +12,7 @@ import {
 } from 'modules/kitchen/application';
 import { type KitchenItemStatus, type KitchenTicketStatus } from 'modules/kitchen/domain';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
-import { getPosCopy } from 'shared/locale/copy';
+import { formatPosCopy, getPosCopy } from 'shared/locale/copy';
 import { formatTime } from 'shared/pos/utils';
 import { PosIconAction, PosKitchenQueueSkeleton, PosSettingsMenu } from 'shared/ui/pos-primitives';
 
@@ -290,7 +290,10 @@ export function KitchenQueuePageContent() {
                                 }}>
                                 <Stack spacing={0.35} sx={{ pr: 1 }}>
                                   <Typography sx={{ fontSize: 14.5, fontWeight: 700, lineHeight: 1.2 }}>
-                                    {item.catalogItemName} (x{item.quantity})
+                                    {formatPosCopy(copy.itemQuantityLabel, {
+                                      name: item.catalogItemName,
+                                      quantity: item.quantity,
+                                    })}
                                   </Typography>
                                   {item.note ? (
                                     <Typography variant="body2" color="text.secondary" sx={{ fontSize: 12.5 }}>

@@ -28,7 +28,7 @@ import { useCurrentWaiterOrder, useWaiterMenuQuery, waiterKeys } from 'modules/w
 import { waiterRepository } from 'modules/waiter/data-access';
 import type { WaiterMenuCategory, WaiterMenuItem, WaiterOrderItem } from 'modules/waiter/domain';
 import { resolveApiBaseUrl } from 'shared/api/apiUrl';
-import { getPosCopy } from 'shared/locale/copy';
+import { formatPosCopy, getPosCopy } from 'shared/locale/copy';
 import { useOptimisticBuilderOrder } from 'shared/pos/useOptimisticBuilderOrder';
 import { PosBuilderPageSkeleton } from 'shared/ui/pos-primitives';
 
@@ -576,14 +576,14 @@ function PriceHiddenCatalogContent<TMenuItem extends CatalogMenuItemLike>({
         <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
           <Stack spacing={0.25}>
             <Typography variant="h6" sx={{ fontWeight: 900 }}>
-              Tanlov
+              {copy.selection}
             </Typography>
             <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.54)' }}>
-              {selectedCount} ta
+              {formatPosCopy(copy.selectedCount, { count: selectedCount })}
             </Typography>
           </Stack>
           <IconButton
-            aria-label="Tanlov oynasini yopish"
+            aria-label={copy.closeSelection}
             onClick={() => setSelectionDialogOpen(false)}
             sx={{ color: 'rgba(255,255,255,0.72)' }}>
             <Icon icon="solar:close-circle-bold-duotone" width={28} />
@@ -622,7 +622,7 @@ function PriceHiddenCatalogContent<TMenuItem extends CatalogMenuItemLike>({
                     ) : null}
                   </Stack>
                   <Typography variant="h6" sx={{ minWidth: 42, color: '#d4df36', textAlign: 'right', fontWeight: 900 }}>
-                    x{item.quantity}
+                    {formatPosCopy(copy.quantityOnlyLabel, { quantity: item.quantity })}
                   </Typography>
                   {menuItem ? renderCatalogControls(menuItem, countMap.get(item.catalogItem) ?? 0) : null}
                 </Stack>
@@ -633,7 +633,7 @@ function PriceHiddenCatalogContent<TMenuItem extends CatalogMenuItemLike>({
           <Stack alignItems="center" justifyContent="center" spacing={1.2} sx={{ py: 7, textAlign: 'center' }}>
             <Icon icon="solar:bill-list-bold-duotone" width={52} color="rgba(255,255,255,0.32)" />
             <Typography variant="h6" sx={{ color: '#f6f6f4', fontWeight: 900 }}>
-              Tanlangan mahsulot yo&apos;q
+              {copy.noSelectedItems}
             </Typography>
           </Stack>
         )}
@@ -772,7 +772,7 @@ function PriceHiddenCatalogContent<TMenuItem extends CatalogMenuItemLike>({
             sx={{ minHeight: '100%', textAlign: 'center' }}>
             <Icon icon="solar:dish-bold-duotone" width={58} color="rgba(255,255,255,0.32)" />
             <Typography variant="h6" sx={{ color: '#f6f6f4', fontWeight: 900 }}>
-              Mahsulot yo&apos;q
+              {copy.noProducts}
             </Typography>
           </Stack>
         )}

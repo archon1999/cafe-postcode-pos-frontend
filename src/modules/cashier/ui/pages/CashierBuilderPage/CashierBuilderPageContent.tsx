@@ -40,7 +40,7 @@ import {
 import { resolveApiBaseUrl } from 'shared/api/apiUrl';
 import { getApiErrorMessage } from 'shared/api/errorMessage';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
-import { getPosCopy } from 'shared/locale/copy';
+import { formatPosCopy, getPosCopy } from 'shared/locale/copy';
 import { useOptimisticBuilderOrder } from 'shared/pos/useOptimisticBuilderOrder';
 import { useScannerInput } from 'shared/pos/useScannerInput';
 import { formatCompactMoney } from 'shared/pos/utils';
@@ -836,7 +836,7 @@ export function CashierBuilderPageContent() {
                                   ? { textDecoration: 'line-through', opacity: 0.68 }
                                   : undefined
                               }>
-                              {item.catalogItemName} (x{item.quantity})
+                              {formatPosCopy(copy.itemQuantityLabel, { name: item.catalogItemName, quantity: item.quantity })}
                             </Typography>
                             {item.note ? (
                               <Typography variant="body2" color="text.secondary">
@@ -846,7 +846,10 @@ export function CashierBuilderPageContent() {
                             {item.markingRequiredCount > 0 ? (
                               item.markingMissingCount > 0 ? (
                                 <Typography variant="body2" color="error.main">
-                                  Markirovka: {item.markingScannedCount}/{item.markingRequiredCount}
+                                  {formatPosCopy(copy.markingProgress, {
+                                    scanned: item.markingScannedCount,
+                                    required: item.markingRequiredCount,
+                                  })}
                                 </Typography>
                               ) : null
                             ) : null}
@@ -1111,7 +1114,7 @@ export function CashierBuilderPageContent() {
                                 ? { textDecoration: 'line-through', opacity: 0.68 }
                                 : undefined
                             }>
-                            {item.catalogItemName} (x{item.quantity})
+                            {formatPosCopy(copy.itemQuantityLabel, { name: item.catalogItemName, quantity: item.quantity })}
                           </Typography>
                           {item.note ? (
                             <Typography variant="caption" color="text.secondary">
@@ -1121,7 +1124,10 @@ export function CashierBuilderPageContent() {
                           {item.markingRequiredCount > 0 ? (
                             item.markingMissingCount > 0 ? (
                               <Typography variant="caption" color="error.main">
-                                Markirovka: {item.markingScannedCount}/{item.markingRequiredCount}
+                                {formatPosCopy(copy.markingProgress, {
+                                  scanned: item.markingScannedCount,
+                                  required: item.markingRequiredCount,
+                                })}
                               </Typography>
                             ) : null
                           ) : null}

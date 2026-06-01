@@ -37,16 +37,10 @@ import {
 import type { CashierCheckStatus, CashierOrder } from 'modules/cashier/domain/entities/order.types';
 import { getApiErrorMessage } from 'shared/api/errorMessage';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
-import { type PosLocale, getPosCopy } from 'shared/locale/copy';
+import { type PosLocale, formatPosCopy, getPosCopy } from 'shared/locale/copy';
 import { formatCompactMoney, formatTime } from 'shared/pos/utils';
 import { printReceiptWithFallback } from 'shared/printing/browserReceipt';
-import {
-  PosIconAction,
-  PosOpenChecksSkeleton,
-  PosOrderChannelSegment,
-  PosSectionTabs,
-  PosSettingsMenu,
-} from 'shared/ui/pos-primitives';
+import { PosIconAction, PosOpenChecksSkeleton, PosSectionTabs, PosSettingsMenu } from 'shared/ui/pos-primitives';
 
 type CashierPayment = NonNullable<CashierOrder['payments']>[number];
 type RetryFiscalReceipt = { payload?: Record<string, unknown> | null };
@@ -304,15 +298,6 @@ function OpenChecksDetail({
         </Stack>
       </Box>
 
-      <Box sx={{ px: 2.5, pb: 2 }}>
-        <PosOrderChannelSegment
-          hallLabel={copy.hall}
-          takeawayLabel={copy.takeaway}
-          deliveryLabel={copy.delivery}
-          channel={order.channel}
-        />
-      </Box>
-
       <Box sx={{ px: 2.5, pb: 2, flex: 1, overflowY: 'auto' }}>
         <Stack spacing={1.55}>
           {selectedTab === 'closed' ? (
@@ -361,7 +346,7 @@ function OpenChecksDetail({
                           textDecoration: item.status === 'cancelled' ? 'line-through' : 'none',
                           opacity: item.status === 'cancelled' ? 0.72 : 1,
                         }}>
-                        {item.catalogItemName} (x{item.quantity})
+                        {formatPosCopy(copy.itemQuantityLabel, { name: item.catalogItemName, quantity: item.quantity })}
                       </Typography>
                       {item.status === 'cancelled' ? (
                         <Typography variant="caption" sx={{ color: 'error.main', fontWeight: 700 }}>
@@ -438,7 +423,7 @@ function OpenChecksDetail({
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.1}>
             {retryFiscalAvailable ? (
               <Button variant="contained" color="warning" sx={{ flex: 1 }} onClick={onRetryFiscal}>
-                Fiscalga qayta yuborish
+                {copy.retryFiscal}
               </Button>
             ) : null}
             {reprintAvailable ? (

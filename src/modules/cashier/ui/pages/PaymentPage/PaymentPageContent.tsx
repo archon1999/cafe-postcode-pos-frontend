@@ -45,7 +45,7 @@ import {
 } from 'modules/cashier/domain';
 import { getApiErrorMessage } from 'shared/api/errorMessage';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
-import { getPosCopy } from 'shared/locale/copy';
+import { formatPosCopy, getPosCopy } from 'shared/locale/copy';
 import { useScannerInput } from 'shared/pos/useScannerInput';
 import { formatCompactMoney, formatTime } from 'shared/pos/utils';
 import { printReceiptWithFallback } from 'shared/printing/browserReceipt';
@@ -324,6 +324,8 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
         channel_label: 'sotuv',
         table_label:
           order.tableName || order.hallName ? [order.hallName, order.tableName].filter(Boolean).join(' / ') : '',
+        delivery_phone: order.deliveryPhone ?? '',
+        delivery_address: order.deliveryAddress ?? '',
         cashier_name: session?.user.fullName || session?.user.username || '',
         cashier_id: session?.user.id || '',
         printed_at_label: payment.paidAt || new Date().toISOString(),
@@ -607,7 +609,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
                           textDecoration: item.status === 'cancelled' ? 'line-through' : 'none',
                           opacity: item.status === 'cancelled' ? 0.72 : 1,
                         }}>
-                        {item.catalogItemName} (x{item.quantity})
+                        {formatPosCopy(copy.itemQuantityLabel, { name: item.catalogItemName, quantity: item.quantity })}
                       </Typography>
                       {item.note ? (
                         <Typography variant="body2" color="text.secondary">
@@ -762,13 +764,13 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
 
             {markingMissingCount > 0 ? (
               <Typography variant="body2" color="warning.main">
-                Markirovkali mahsulotlar uchun {markingMissingCount} ta kod skaner qilinmagan.
+                {formatPosCopy(copy.markingMissing, { count: markingMissingCount })}
               </Typography>
             ) : null}
 
             {!cashierContextQuery.data?.currentShift ? (
               <Typography variant="body2" color="error">
-                {"To'lov qilish uchun avval kassa smenasini oching."}
+                {copy.openShiftBeforePayment}
               </Typography>
             ) : null}
 
@@ -779,7 +781,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
                 fullWidth
                 disabled={!canSubmitPayment || !canDisableFiscalRegistration}
                 onClick={() => void handlePayment(false)}>
-                {isPaymentProcessing ? copy.processing : 'Oddiy to‘lov'}
+                {isPaymentProcessing ? copy.processing : copy.plainPayment}
               </Button>
               <Button
                 variant="contained"
@@ -787,7 +789,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
                 fullWidth
                 disabled={!canSubmitPayment}
                 onClick={() => void handlePayment(true)}>
-                {isPaymentProcessing ? copy.processing : 'Fiscal bilan to‘lov'}
+                {isPaymentProcessing ? copy.processing : copy.fiscalPayment}
               </Button>
             </Stack>
           </Stack>
@@ -848,7 +850,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
               <Typography variant="body2" color="text.secondary">
                 {copy.qrCountdown}
               </Typography>
-              <Typography variant="h6">{qrCountdown}s</Typography>
+              <Typography variant="h6">{formatPosCopy(copy.secondsShort, { count: qrCountdown })}</Typography>
             </Stack>
 
             <Button
@@ -871,7 +873,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
         maxWidth="xs"
         fullWidth
         fullScreen={isMobile}>
-        <DialogTitle>{"Karta to'lovi yakunlanmadi"}</DialogTitle>
+        <DialogTitle>{copy.cardPaymentFailedTitle}</DialogTitle>
         <DialogContent>
           <Stack spacing={1.4} sx={{ pt: 1 }}>
             <Typography variant="body2" color="text.secondary">
@@ -879,15 +881,15 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
             </Typography>
             <Typography variant="body2" color="text.secondary">
               {
-                "Qayta urinib ko'ring yoki terminaldan tashqarida karta orqali to'lov qabul qilingan bo'lsa, manual card sifatida yakunlang."
+                copy.cardPaymentFailedDescription
               }
             </Typography>
             {lastCardFailureDebugJson ? (
               <Stack spacing={1}>
                 <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
-                  <Typography variant="subtitle2">MARTA request/response</Typography>
+                  <Typography variant="subtitle2">{copy.martaDebugTitle}</Typography>
                   <Button size="small" variant="contained" onClick={() => void handleCopyCardFailureDebug()}>
-                    Copy JSON
+                    {copy.copyJson}
                   </Button>
                 </Stack>
                 <Box
@@ -919,10 +921,10 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
               void handlePayment(pendingRegisterFiscal);
             }}
             disabled={isPaymentProcessing}>
-            Qayta urinish
+            {copy.retryFiscal}
           </Button>
           <Button variant="contained" onClick={() => void handleManualCardComplete()} disabled={isPaymentProcessing}>
-            Manual card
+            {copy.manualCard}
           </Button>
         </DialogActions>
       </Dialog>

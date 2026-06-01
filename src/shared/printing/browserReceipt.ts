@@ -36,6 +36,10 @@ type PrintablePayload = {
   channelLabel?: string;
   table_label?: string | null;
   tableLabel?: string | null;
+  delivery_phone?: string;
+  deliveryPhone?: string;
+  delivery_address?: string;
+  deliveryAddress?: string;
   waiter_name?: string;
   waiterName?: string;
   cashier_name?: string;
@@ -189,7 +193,9 @@ function fiscalSnapshotFromPayload(payload: Record<string, unknown>): PrintableP
   const firstVatItem = items.map((entry) => asRecord(entry)).find((entry) => Number(entry?.VATPercent || 0) > 0);
   const serviceFee = items.reduce((sum, entry) => {
     const item = asRecord(entry) ?? {};
-    const itemName = String(item.Name ?? '').trim().toLowerCase();
+    const itemName = String(item.Name ?? '')
+      .trim()
+      .toLowerCase();
     return itemName === 'xizmat haqi' ? sum + fiscalMoney(item.Price) : sum;
   }, 0);
 
@@ -213,10 +219,17 @@ function fiscalSnapshotFromPayload(payload: Record<string, unknown>): PrintableP
     receipt_number: receiptNumber,
     order_number: receiptNumber,
     channel_label: String(receipt.Operation ?? '') === '1' ? 'Qaytarish' : 'Sotuv',
+    delivery_phone: String(payload.delivery_phone ?? payload.deliveryPhone ?? ''),
+    delivery_address: String(payload.delivery_address ?? payload.deliveryAddress ?? ''),
     printed_at_label: String(receipt.Time ?? payload.issued_at ?? payload.issuedAt ?? ''),
     items: items
       .map((entry) => asRecord(entry) ?? {})
-      .filter((item) => String(item.Name ?? '').trim().toLowerCase() !== 'xizmat haqi')
+      .filter(
+        (item) =>
+          String(item.Name ?? '')
+            .trim()
+            .toLowerCase() !== 'xizmat haqi',
+      )
       .map((item) => ({
         name: String(item.Name ?? 'Mahsulot'),
         quantity: fiscalQuantity(item.Amount),
@@ -281,10 +294,18 @@ function receiptTotals(snapshot: PrintablePayload) {
   };
 }
 
-function receiptTextFromPayload(payload: Record<string, unknown> | null | undefined) {
+function deliveryDetails(snapshot: PrintablePayload) {
+  return {
+    phone: String(snapshot.delivery_phone ?? snapshot.deliveryPhone ?? '').trim(),
+    address: String(snapshot.delivery_address ?? snapshot.deliveryAddress ?? '').trim(),
+  };
+}
+
+export function receiptTextFromPayload(payload: Record<string, unknown> | null | undefined) {
   const snapshot = snapshotFromPayload(payload);
   const items = Array.isArray(snapshot.items) ? snapshot.items : [];
   const totals = receiptTotals(snapshot);
+  const delivery = deliveryDetails(snapshot);
   const orderNumber =
     snapshot.order_number ?? snapshot.orderNumber ?? snapshot.receipt_number ?? snapshot.receiptNumber ?? '';
   const receiptNumber = snapshot.receipt_number ?? snapshot.receiptNumber;
@@ -298,7 +319,6 @@ function receiptTextFromPayload(payload: Record<string, unknown> | null | undefi
   const printedAt = snapshot.printed_at_label ?? snapshot.printedAtLabel;
   const { date, time } = dateTimeParts(printedAt);
   const cashierName = snapshot.cashier_name ?? snapshot.cashierName ?? snapshot.waiter_name ?? snapshot.waiterName;
-  const cashierId = snapshot.cashier_id ?? snapshot.cashierId ?? '';
   const lines = [
     centered(title),
     snapshot.restaurant_address || snapshot.restaurantAddress
@@ -311,6 +331,8 @@ function receiptTextFromPayload(payload: Record<string, unknown> | null | undefi
       `STIR: ${String(snapshot.tax_number ?? snapshot.taxNumber ?? '-')}`,
       `NKM S/R: ${String(snapshot.terminal_id ?? snapshot.terminalId ?? '-')}`,
     ),
+    delivery.phone ? fitLine('TEL:', delivery.phone) : '',
+    delivery.address ? `MANZIL: ${delivery.address}` : '',
     '-'.repeat(42),
   ].filter(Boolean);
 
@@ -418,12 +440,12 @@ export async function printReceiptInBrowser(payload: Record<string, unknown> | n
   const printedAt = snapshot.printed_at_label ?? snapshot.printedAtLabel;
   const { date, time } = dateTimeParts(printedAt);
   const cashierName = snapshot.cashier_name ?? snapshot.cashierName ?? snapshot.waiter_name ?? snapshot.waiterName;
-  const cashierId = snapshot.cashier_id ?? snapshot.cashierId ?? '';
   const terminalId = snapshot.terminal_id ?? snapshot.terminalId;
   const factoryId = snapshot.factory_id ?? snapshot.factoryId;
   const fiscalSign = snapshot.fiscal_sign ?? snapshot.fiscalSign;
   const qrCodeUrl = qrValue(snapshot);
   const qrImage = await qrDataUrl(qrCodeUrl);
+  const delivery = deliveryDetails(snapshot);
 
   const html = `<!doctype html>
 <html>
@@ -463,6 +485,8 @@ export async function printReceiptInBrowser(payload: Record<string, unknown> | n
     <div class="meta"><span>CHEK: ${escapeHtml(receiptNumber || orderNumber || '-')}</span><span>${escapeHtml(`${date || '-'} ${time || '-'}`.trim())}</span></div>
     <div class="meta"><span>POS: 1</span><span>KASSIR: ${escapeHtml(cashierName || '-')}</span></div>
     <div class="meta"><span>STIR: ${escapeHtml(snapshot.tax_number ?? snapshot.taxNumber ?? '-')}</span><span>NKM S/R: ${escapeHtml(terminalId || '-')}</span></div>
+    ${delivery.phone ? `<div class="meta"><span>TEL:</span><span>${escapeHtml(delivery.phone)}</span></div>` : ''}
+    ${delivery.address ? `<div class="line"><span>MANZIL:</span><span class="value">${escapeHtml(delivery.address)}</span></div>` : ''}
     <hr />
     ${snapshot.table_label || snapshot.tableLabel ? `<div class="meta"><span>${escapeHtml(snapshot.table_label ?? snapshot.tableLabel)}</span><span>${escapeHtml(snapshot.channel_label ?? snapshot.channelLabel ?? 'sotuv')}</span></div>` : ''}
     ${items

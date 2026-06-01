@@ -79,7 +79,7 @@ export function RestaurantLoginPageContent() {
                 {copy.signInTitle}
               </Typography>
               <Typography color="text.secondary" sx={{ maxWidth: 360, fontSize: 16, lineHeight: 1.5 }}>
-                Restoran kodini kiriting. Kod tasdiqlangandan keyin PIN sahifasi ochiladi.
+                {copy.restaurantCodeHelp}
               </Typography>
             </Stack>
 
