@@ -8,7 +8,7 @@ export type CashierContextCashDesk = {
   id: string;
   name: string;
   location: string;
-  enabledPaymentMethods: Array<'cash' | 'card' | 'qr'>;
+  enabledPaymentMethods: Array<'cash' | 'card' | 'mixed'>;
   paymentIntegration?: string | null;
   fiscalProvider: string;
   receiptPrinterEnabled: boolean;

@@ -111,6 +111,8 @@ export function useCashierPaymentMutation(options: { orderId: string | null; onS
     mutationFn: async (payload: {
       method: PaymentMethod;
       amount: number;
+      cashAmount?: number;
+      cardAmount?: number;
       manualCardOverride?: boolean;
       manualCardReason?: string;
       registerFiscal?: boolean;
@@ -120,6 +122,8 @@ export function useCashierPaymentMutation(options: { orderId: string | null; onS
       }
 
       return cashierRepository.payOrder(orderId, payload.method, payload.amount, {
+        cashAmount: payload.cashAmount,
+        cardAmount: payload.cardAmount,
         manualCardOverride: payload.manualCardOverride,
         manualCardReason: payload.manualCardReason,
         registerFiscal: payload.registerFiscal,

@@ -57,6 +57,14 @@ export type CashierOrder = {
     amount: number | string;
     status: string;
     method: 'cash' | 'card' | 'qr' | 'mixed';
+    cashAmount?: number | string;
+    cash_amount?: number | string;
+    cardAmount?: number | string;
+    card_amount?: number | string;
+    fiscalCashAmount?: number | string;
+    fiscal_cash_amount?: number | string;
+    fiscalCardAmount?: number | string;
+    fiscal_card_amount?: number | string;
     registerFiscal?: boolean;
     refundsTotal?: number | string;
     isRefunded?: boolean;

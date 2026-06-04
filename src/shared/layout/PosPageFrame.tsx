@@ -15,8 +15,8 @@ export function PosPageFrame({
   headerSx?: SxProps<Theme>;
   sx?: SxProps<Theme>;
 }) {
-  const rootSx = [{ height: '100%', minHeight: 0, overflow: 'hidden' }, ...(sx ? [sx] : [])] as SxProps<Theme>;
-  const resolvedHeaderSx = [{ flexShrink: 0 }, ...(headerSx ? [headerSx] : [])] as SxProps<Theme>;
+  const rootSx = [{ height: '100%', minHeight: 0, overflow: 'visible' }, ...(sx ? [sx] : [])] as SxProps<Theme>;
+  const resolvedHeaderSx = [{ flexShrink: 0, overflow: 'visible' }, ...(headerSx ? [headerSx] : [])] as SxProps<Theme>;
   const resolvedContentSx = [
     {
       flex: '1 1 0',

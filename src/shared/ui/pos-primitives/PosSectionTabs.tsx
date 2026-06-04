@@ -145,6 +145,10 @@ export function PosSectionTabs({
           flex: 1,
           minWidth: 0,
           overflowX: 'hidden',
+          py: { xs: 0.55, md: 0.7 },
+          px: { xs: 0.35, md: 0.45 },
+          mx: { xs: -0.35, md: -0.45 },
+          my: { xs: -0.55, md: -0.7 },
           scrollbarWidth: 'none',
           '&::-webkit-scrollbar': { display: 'none' },
         }}>

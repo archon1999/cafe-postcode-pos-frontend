@@ -169,12 +169,20 @@ class CashierRepositoryImpl implements CashierRepository {
     orderId: string,
     method: PaymentMethod,
     amount: number,
-    options?: { manualCardOverride?: boolean; manualCardReason?: string; registerFiscal?: boolean },
+    options?: {
+      cashAmount?: number;
+      cardAmount?: number;
+      manualCardOverride?: boolean;
+      manualCardReason?: string;
+      registerFiscal?: boolean;
+    },
   ): Promise<CashierPaymentResponse> {
     return mapCashierPaymentResponse(
       await apiPost<CashierPaymentResponse>(`/pos/billing/orders/${orderId}/pay/`, {
         method,
         amount,
+        cash_amount: options?.cashAmount,
+        card_amount: options?.cardAmount,
         register_fiscal: options?.registerFiscal ?? true,
         manual_card_override: Boolean(options?.manualCardOverride),
         manual_card_reason: options?.manualCardReason ?? '',

@@ -45,6 +45,10 @@ export type DiningTable = {
   height?: number | string;
   rotation?: number | string;
   activeSession?: ActiveSession | null;
+  activeSessions?: ActiveSession[];
+  activeSessionCount?: number;
+  occupiedGuestCount?: number;
+  availableSeatCount?: number;
 };
 
 export type Hall = {

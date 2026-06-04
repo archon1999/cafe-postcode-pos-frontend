@@ -64,7 +64,13 @@ export interface CashierRepository {
     orderId: string,
     method: PaymentMethod,
     amount: number,
-    options?: { manualCardOverride?: boolean; manualCardReason?: string; registerFiscal?: boolean },
+    options?: {
+      cashAmount?: number;
+      cardAmount?: number;
+      manualCardOverride?: boolean;
+      manualCardReason?: string;
+      registerFiscal?: boolean;
+    },
   ): Promise<CashierPaymentResponse>;
   retryFiscalPayment(paymentId: string): Promise<{
     payment: unknown;

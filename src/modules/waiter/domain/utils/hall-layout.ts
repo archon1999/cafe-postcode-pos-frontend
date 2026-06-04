@@ -59,6 +59,18 @@ export function clampGuestCount(value: number, seatCount: number) {
   return Math.min(Math.max(normalized, 1), getSupportedSeatCount(seatCount));
 }
 
+export function getAvailableSeatCount(table: DiningTable) {
+  if (typeof table.availableSeatCount === 'number') {
+    return Math.max(0, table.availableSeatCount);
+  }
+
+  if (typeof table.occupiedGuestCount === 'number') {
+    return Math.max(0, table.seatCount - table.occupiedGuestCount);
+  }
+
+  return table.activeSession ? 0 : table.seatCount;
+}
+
 export function getTableStatus(table: DiningTable): DiningTableStatus {
   return table.activeSession ? 'occupied' : table.status;
 }

@@ -83,7 +83,7 @@ export function PosShell({ children }: { children: ReactNode }) {
       })}>
       <Box
         component="main"
-        sx={{ flex: '1 1 0', minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        sx={{ flex: '1 1 0', minHeight: 0, overflow: 'visible', display: 'flex', flexDirection: 'column' }}>
         {children}
       </Box>
 

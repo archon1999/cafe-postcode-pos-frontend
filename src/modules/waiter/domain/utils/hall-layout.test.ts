@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { DiningTable, Hall } from '../entities';
 
 import {
+  getAvailableSeatCount,
   getHallGridColumns,
   getHallGridRows,
   getSupportedSeatCount,
@@ -38,6 +39,23 @@ describe('waiter hall layout utils', () => {
     expect(getSupportedSeatCount(4)).toBe(4);
     expect(getSupportedSeatCount(5)).toBe(5);
     expect(getSupportedSeatCount(9)).toBe(6);
+  });
+
+  it('derives available seats from multi-session table counters', () => {
+    expect(getAvailableSeatCount(createTable({ seatCount: 4, occupiedGuestCount: 3 }))).toBe(1);
+    expect(getAvailableSeatCount(createTable({ seatCount: 4, availableSeatCount: 2 }))).toBe(2);
+    expect(
+      getAvailableSeatCount(
+        createTable({
+          seatCount: 4,
+          activeSession: {
+            id: 'session-1',
+            guestCount: 2,
+            status: 'open',
+          },
+        }),
+      ),
+    ).toBe(0);
   });
 
   it('derives visual state from active service state before static table status', () => {

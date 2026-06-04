@@ -54,6 +54,8 @@ type PrintablePayload = {
   subtotal?: number | string;
   service_fee?: number | string;
   serviceFee?: number | string;
+  service_fee_percent?: number | string;
+  serviceFeePercent?: number | string;
   vat_enabled?: boolean;
   vatEnabled?: boolean;
   vat_percent?: number | string;
@@ -244,6 +246,7 @@ function fiscalSnapshotFromPayload(payload: Record<string, unknown>): PrintableP
       })),
     subtotal: Math.max(total - serviceFee, 0),
     service_fee: serviceFee,
+    service_fee_percent: payload.service_fee_percent ?? payload.serviceFeePercent ?? '',
     vat_enabled: vatAmount > 0,
     vat_percent: firstVatItem?.VATPercent ? String(firstVatItem.VATPercent) : '',
     vat_amount: vatAmount,
@@ -277,6 +280,7 @@ function fitLine(left: string, right: string, width = 42) {
 
 function receiptTotals(snapshot: PrintablePayload) {
   const serviceFee = numberValue(snapshot.service_fee ?? snapshot.serviceFee);
+  const serviceFeePercent = snapshot.service_fee_percent ?? snapshot.serviceFeePercent;
   const total = numberValue(snapshot.total);
   const vatEnabled = Boolean(snapshot.vat_enabled ?? snapshot.vatEnabled);
   const vatPercent = snapshot.vat_percent ?? snapshot.vatPercent;
@@ -285,6 +289,7 @@ function receiptTotals(snapshot: PrintablePayload) {
 
   return {
     serviceFee,
+    serviceFeePercent,
     total,
     vatEnabled,
     vatPercent,
@@ -292,6 +297,11 @@ function receiptTotals(snapshot: PrintablePayload) {
     receivedCash: numberValue(snapshot.received_cash ?? snapshot.receivedCash),
     receivedCard: numberValue(snapshot.received_card ?? snapshot.receivedCard),
   };
+}
+
+function percentLabel(label: string, value: unknown) {
+  const rate = percent(value);
+  return rate ? `${label} (${rate}%)` : label;
 }
 
 function deliveryDetails(snapshot: PrintablePayload) {
@@ -360,8 +370,10 @@ export function receiptTextFromPayload(payload: Record<string, unknown> | null |
 
   lines.push('='.repeat(42));
   lines.push(fitLine('JAMI:', money(snapshot.total)));
-  if (totals.vatEnabled && totals.vatAmount > 0) lines.push(fitLine('Sh.j. QQS:', moneyFixed(totals.vatAmount)));
-  if (totals.serviceFee > 0) lines.push(fitLine('XIZMAT HAQI:', money(totals.serviceFee)));
+  if (totals.vatEnabled && totals.vatAmount > 0)
+    lines.push(fitLine(`${percentLabel('Sh.j. QQS', totals.vatPercent)}:`, moneyFixed(totals.vatAmount)));
+  if (totals.serviceFee > 0)
+    lines.push(fitLine(`${percentLabel('XIZMAT HAQI', totals.serviceFeePercent)}:`, money(totals.serviceFee)));
   lines.push('='.repeat(42));
   if (totals.receivedCash > 0) lines.push(fitLine('NAQD PUL:', money(totals.receivedCash)));
   if (totals.receivedCard > 0) lines.push(fitLine('BANK KARTASI:', money(totals.receivedCard)));
@@ -511,8 +523,8 @@ export async function printReceiptInBrowser(payload: Record<string, unknown> | n
       .join('')}
     <div class="equals"></div>
     <div class="row total"><span>JAMI:</span><span class="grand">${money(snapshot.total)}</span></div>
-    ${totals.vatEnabled && totals.vatAmount > 0 ? `<div class="row"><span>Sh.j. QQS:</span><span>${moneyFixed(totals.vatAmount)}</span></div>` : ''}
-    ${totals.serviceFee > 0 ? `<div class="row"><span>XIZMAT HAQI:</span><span>${money(totals.serviceFee)}</span></div>` : ''}
+    ${totals.vatEnabled && totals.vatAmount > 0 ? `<div class="row"><span>${escapeHtml(percentLabel('Sh.j. QQS', totals.vatPercent))}:</span><span>${moneyFixed(totals.vatAmount)}</span></div>` : ''}
+    ${totals.serviceFee > 0 ? `<div class="row"><span>${escapeHtml(percentLabel('XIZMAT HAQI', totals.serviceFeePercent))}:</span><span>${money(totals.serviceFee)}</span></div>` : ''}
     <div class="equals"></div>
     ${totals.receivedCash > 0 ? `<div class="row"><span>NAQD PUL:</span><span>${money(totals.receivedCash)}</span></div>` : ''}
     ${totals.receivedCard > 0 ? `<div class="row"><span>BANK KARTASI:</span><span>${money(totals.receivedCard)}</span></div>` : ''}

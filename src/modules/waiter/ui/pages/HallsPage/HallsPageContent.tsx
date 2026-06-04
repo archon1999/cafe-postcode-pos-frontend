@@ -23,6 +23,7 @@ import { useOpenTableSessionMutation, useReserveTableMutation, useWaiterHallsQue
 import {
   type DiningTable,
   clampGuestCount,
+  getAvailableSeatCount,
   getHallGridColumns,
   getSupportedSeatCount,
   getTableCoreShape,
@@ -251,6 +252,7 @@ function HallTableCard({
     visualState === 'reserved' || visualState === 'cooking' ? '' : getTableMeta(table, copy, formatElapsedMinutes);
   const markers = getVariantMarkers(table.shapeVariant);
   const isTall = coreShape === 'vertical' || Number(table.height ?? 1) > Number(table.width ?? 1);
+  const activeSessionCount = table.activeSessionCount ?? table.activeSessions?.length ?? (table.activeSession ? 1 : 0);
 
   const numberPlateSx =
     coreShape === 'horizontal'
@@ -362,6 +364,29 @@ function HallTableCard({
                 }}
               />
             ) : null}
+            {activeSessionCount > 1 ? (
+              <Box
+                data-testid={`hall-table-${table.tableNumber}-session-badge`}
+                sx={{
+                  position: 'absolute',
+                  top: -8,
+                  right: -8,
+                  minWidth: 28,
+                  height: 28,
+                  px: 0.6,
+                  borderRadius: 999,
+                  display: 'grid',
+                  placeItems: 'center',
+                  backgroundColor: '#28313d',
+                  color: '#ffffff',
+                  fontSize: 12,
+                  fontWeight: 900,
+                  lineHeight: 1,
+                  boxShadow: `0 0 0 4px ${palette.attentionRing}, 0 8px 16px rgba(0,0,0,0.2)`,
+                }}>
+                x{activeSessionCount}
+              </Box>
+            ) : null}
           </Box>
 
           {metaLabel ? (
@@ -417,6 +442,10 @@ export function HallsPageContent() {
   });
   const canManageTables = canAccessWaiterTables(session?.user);
   const canReserveTables = canManageTableReservations(session?.user);
+  const selectedTableAvailableSeats = selectedTable ? getAvailableSeatCount(selectedTable) : 0;
+  const selectedTableGuestLimit = selectedTable
+    ? Math.max(1, Math.min(getSupportedSeatCount(selectedTable.seatCount), selectedTableAvailableSeats || selectedTable.seatCount))
+    : 4;
 
   const halls = useMemo(() => hallsQuery.data ?? [], [hallsQuery.data]);
   const isInitialLoading = hallsQuery.isLoading && !hallsQuery.data;
@@ -505,6 +534,18 @@ export function HallsPageContent() {
       if (!canManageTables) {
         return;
       }
+
+      const availableSeats = getAvailableSeatCount(currentTable);
+      if (availableSeats > 0) {
+        const nextGuestCount = Math.max(
+          1,
+          Math.min(getSupportedSeatCount(currentTable.seatCount), availableSeats),
+        );
+        setGuestCount(nextGuestCount);
+        setSelectedTable(currentTable);
+        return;
+      }
+
       void navigate(`/waiter/table-session?sessionId=${currentTable.activeSession.id}`);
       return;
     }
@@ -765,12 +806,27 @@ export function HallsPageContent() {
             <TextField
               label={copy.guestCount}
               type="number"
-              inputProps={{ min: 1, max: getSupportedSeatCount(selectedTable?.seatCount ?? 4) }}
+              inputProps={{ min: 1, max: selectedTableGuestLimit }}
               value={guestCount}
               onChange={(event) =>
-                setGuestCount(clampGuestCount(Number(event.target.value), selectedTable?.seatCount ?? 4))
+                setGuestCount(Math.max(1, Math.min(Math.trunc(Number(event.target.value)) || 1, selectedTableGuestLimit)))
               }
             />
+            {selectedTable?.activeSessions?.length ? (
+              <Stack spacing={1}>
+                {selectedTable.activeSessions.map((activeSession, index) => (
+                  <Button
+                    key={activeSession.id}
+                    variant="outlined"
+                    onClick={() => {
+                      setSelectedTable(null);
+                      void navigate(`/waiter/table-session?sessionId=${activeSession.id}`);
+                    }}>
+                    {copy.openTable} #{index + 1}
+                  </Button>
+                ))}
+              </Stack>
+            ) : null}
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -784,7 +840,7 @@ export function HallsPageContent() {
             })}>
             {copy.close}
           </Button>
-          {canReserveTables && selectedTable?.status !== 'reserved' ? (
+          {canReserveTables && !selectedTable?.activeSession && selectedTable?.status !== 'reserved' ? (
             <Button
               variant="contained"
               onClick={() => reserveTableMutation.mutate()}
@@ -797,7 +853,9 @@ export function HallsPageContent() {
               {copy.reserveTable}
             </Button>
           ) : null}
-          {selectedTable && (selectedTable.status === 'reserved' ? canReserveTables : canManageTables) ? (
+          {selectedTable &&
+          selectedTableGuestLimit > 0 &&
+          (selectedTable.status === 'reserved' ? canReserveTables : canManageTables) ? (
             <Button
               variant="contained"
               onClick={() => openSessionMutation.mutate()}

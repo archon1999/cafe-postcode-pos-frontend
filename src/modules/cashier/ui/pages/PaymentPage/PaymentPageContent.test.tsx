@@ -17,7 +17,7 @@ const paymentMutateAsyncMock = vi.fn();
 const printReceiptWithFallbackMock = vi.fn(() => Promise.resolve(true));
 const clipboardWriteTextMock = vi.fn();
 let orderChannelMock = 'takeaway';
-let enabledPaymentMethodsMock: Array<'cash' | 'card' | 'qr'> = ['cash'];
+let enabledPaymentMethodsMock: Array<'cash' | 'card' | 'mixed'> = ['cash'];
 let paymentMutationStateMock = {
   isPending: false,
   isError: false,
@@ -266,6 +266,240 @@ describe('PaymentPageContent', () => {
     expect(screen.getAllByText(/30\s000 so'm/).length).toBeGreaterThan(0);
   });
 
+  it('shows cash and card payment methods without mixed or QR', () => {
+    enabledPaymentMethodsMock = ['cash', 'card', 'mixed'];
+
+    render(<PaymentPageContent orderId="order-1" />);
+
+    expect(screen.getByRole('button', { name: 'Naqd' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Karta' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Aralash' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'QR' })).toBeNull();
+  });
+
+  it('submits split payment parts sequentially with the selected fiscal intent', async () => {
+    paymentMutateAsyncMock
+      .mockResolvedValueOnce({
+        order: {
+          orderNumber: 101,
+          status: 'submitted',
+          items: [],
+          subtotal: 30000,
+          serviceFee: 0,
+          total: 30000,
+          note: '',
+        },
+        payment: {
+          method: 'cash',
+          amount: 10000,
+          paidAt: '2026-04-18T10:00:00Z',
+        },
+        receipt: null,
+      })
+      .mockResolvedValueOnce({
+        order: {
+          orderNumber: 101,
+          status: 'closed',
+          items: [],
+          subtotal: 30000,
+          serviceFee: 0,
+          total: 30000,
+          note: '',
+          payments: [
+            { id: 'payment-1', method: 'cash', status: 'succeeded', amount: 10000, cashAmount: 10000 },
+            { id: 'payment-2', method: 'cash', status: 'succeeded', amount: 20000, cashAmount: 20000 },
+          ],
+        },
+        payment: {
+          method: 'cash',
+          amount: 20000,
+          paidAt: '2026-04-18T10:01:00Z',
+          externalRef: 'R-3',
+        },
+        receipt: { id: 'receipt-3', payload: { receiptNumber: 'R-3' } },
+    });
+
+    render(<PaymentPageContent orderId="order-1" />);
+    fireEvent.click(screen.getByRole('button', { name: "Bo'lak qo'shish" }));
+    fireEvent.change(screen.getByLabelText("To'lov 1"), { target: { value: '10000' } });
+    fireEvent.change(screen.getByLabelText("To'lov 2"), { target: { value: '20000' } });
+    fireEvent.click(screen.getByRole('button', { name: /Fiscal bilan/ }));
+
+    await waitFor(() => {
+      expect(paymentMutateAsyncMock).toHaveBeenNthCalledWith(1, {
+        method: 'cash',
+        amount: 10000,
+        registerFiscal: true,
+      });
+      expect(paymentMutateAsyncMock).toHaveBeenNthCalledWith(2, {
+        method: 'cash',
+        amount: 20000,
+        registerFiscal: true,
+      });
+    });
+    expect(await screen.findByText('Chek tayyor')).toBeTruthy();
+  });
+
+  it('uses one split editor for cash and card parts', async () => {
+    enabledPaymentMethodsMock = ['cash', 'card', 'mixed'];
+    paymentMutateAsyncMock
+      .mockResolvedValueOnce({
+        order: {
+          orderNumber: 101,
+          status: 'submitted',
+          items: [],
+          subtotal: 30000,
+          serviceFee: 0,
+          total: 30000,
+          note: '',
+        },
+        payment: {
+          method: 'cash',
+          amount: 15000,
+          paidAt: '2026-04-18T10:00:00Z',
+        },
+        receipt: null,
+      })
+      .mockResolvedValueOnce({
+        order: {
+          orderNumber: 101,
+          status: 'closed',
+          items: [],
+          subtotal: 30000,
+          serviceFee: 0,
+          total: 30000,
+          note: '',
+        },
+        payment: {
+          method: 'card',
+          amount: 15000,
+          paidAt: '2026-04-18T10:01:00Z',
+          externalRef: 'R-4',
+        },
+        receipt: { id: 'receipt-4', payload: { receiptNumber: 'R-4' } },
+      });
+
+    render(<PaymentPageContent orderId="order-1" />);
+    fireEvent.click(screen.getByRole('button', { name: "Bo'lak qo'shish" }));
+
+    expect(screen.getByText("To'lov bo'laklari")).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Naqd' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Karta' })).toBeNull();
+    expect((screen.getByLabelText("To'lov 1") as HTMLInputElement).value).toBe('15000');
+    expect((screen.getByLabelText("To'lov 2") as HTMLInputElement).value).toBe('15000');
+    const paymentMethodSelects = screen.getAllByLabelText("To'lov turi");
+    fireEvent.mouseDown(paymentMethodSelects[1]);
+    fireEvent.click(await screen.findByRole('option', { name: 'Karta' }));
+
+    fireEvent.click(screen.getByRole('button', { name: /Fiscal bilan/ }));
+
+    await waitFor(() => {
+      expect(paymentMutateAsyncMock).toHaveBeenNthCalledWith(1, {
+        method: 'cash',
+        amount: 15000,
+        registerFiscal: true,
+      });
+      expect(paymentMutateAsyncMock).toHaveBeenNthCalledWith(2, {
+        method: 'card',
+        amount: 15000,
+        registerFiscal: true,
+      });
+    });
+  });
+
+  it('keeps paid split parts visible and retries only the failed card part', async () => {
+    enabledPaymentMethodsMock = ['cash', 'card'];
+    paymentMutateAsyncMock
+      .mockResolvedValueOnce({
+        order: {
+          orderNumber: 101,
+          status: 'submitted',
+          items: [],
+          subtotal: 30000,
+          serviceFee: 0,
+          total: 30000,
+          note: '',
+        },
+        payment: {
+          method: 'cash',
+          amount: 15000,
+          paidAt: '2026-04-18T10:00:00Z',
+        },
+        receipt: null,
+      })
+      .mockRejectedValueOnce({
+        response: {
+          data: {
+            detail: 'Canceled',
+            payment: {
+              provider_payload: {
+                provider: 'marta-softpos',
+                status: 'CANCELED',
+                message: 'Canceled',
+              },
+            },
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        order: {
+          orderNumber: 101,
+          status: 'closed',
+          items: [],
+          subtotal: 30000,
+          serviceFee: 0,
+          total: 30000,
+          note: '',
+        },
+        payment: {
+          method: 'card',
+          amount: 15000,
+          paidAt: '2026-04-18T10:01:00Z',
+          externalRef: 'R-5',
+        },
+        receipt: { id: 'receipt-5', payload: { receiptNumber: 'R-5' } },
+      });
+
+    render(<PaymentPageContent orderId="order-1" />);
+    fireEvent.click(screen.getByRole('button', { name: "Bo'lak qo'shish" }));
+    const paymentMethodSelects = screen.getAllByLabelText("To'lov turi");
+    fireEvent.mouseDown(paymentMethodSelects[1]);
+    fireEvent.click(await screen.findByRole('option', { name: 'Karta' }));
+
+    fireEvent.click(screen.getByRole('button', { name: /Fiscal bilan/ }));
+
+    await waitFor(() => {
+      expect(paymentMutateAsyncMock).toHaveBeenCalledTimes(2);
+    });
+    expect(screen.getByText("To'langan summa")).toBeTruthy();
+    expect((screen.getByLabelText("To'lov 1") as HTMLInputElement).disabled).toBe(true);
+    expect((screen.getByLabelText("To'lov 2") as HTMLInputElement).disabled).toBe(false);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Fiscalga qayta yuborish' }));
+
+    await waitFor(() => {
+      expect(paymentMutateAsyncMock).toHaveBeenNthCalledWith(3, {
+        method: 'card',
+        amount: 15000,
+        registerFiscal: true,
+      });
+    });
+  });
+
+  it('rejects zero split part amounts without submitting', () => {
+    enabledPaymentMethodsMock = ['cash', 'card'];
+
+    render(<PaymentPageContent orderId="order-1" />);
+    fireEvent.click(screen.getByRole('button', { name: "Bo'lak qo'shish" }));
+    fireEvent.change(screen.getByLabelText("To'lov 1"), { target: { value: '0' } });
+    fireEvent.change(screen.getByLabelText("To'lov 2"), { target: { value: '30000' } });
+
+    expect((screen.getByRole('button', { name: /Fiscal bilan/ }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: /Fiscal bilan/ }));
+
+    expect(paymentMutateAsyncMock).not.toHaveBeenCalled();
+  });
+
   it('asks whether to print after finishing the payment receipt dialog', async () => {
     paymentMutateAsyncMock.mockResolvedValueOnce({
       order: {
@@ -384,7 +618,7 @@ describe('PaymentPageContent', () => {
 
     render(<PaymentPageContent orderId="order-1" />);
     fireEvent.click(screen.getByRole('button', { name: 'Karta' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Fiscal bilan to‘lov' }));
+    fireEvent.click(screen.getByRole('button', { name: /Fiscal bilan/ }));
 
     expect(await screen.findByText('MARTA request/response')).toBeTruthy();
     expect(screen.getByText(/"httpStatus": 500/)).toBeTruthy();

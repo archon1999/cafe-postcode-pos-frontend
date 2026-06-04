@@ -7,9 +7,11 @@ import {
   DialogContent,
   DialogTitle,
   IconButton,
+  MenuItem,
   Snackbar,
   Stack,
   TextField,
+  Tooltip,
   Typography,
   alpha,
   useMediaQuery,
@@ -53,6 +55,13 @@ import { PosIconAction, PosSettingsMenu } from 'shared/ui/pos-primitives';
 
 export type PaymentPageContentProps = {
   orderId?: string | null;
+};
+
+type SplitPaymentPart = {
+  id: string;
+  method: 'cash' | 'card';
+  amount: string;
+  status?: 'paid';
 };
 
 type MutationErrorPayload = {
@@ -127,9 +136,9 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   const [settingsAnchor, setSettingsAnchor] = useState<HTMLElement | null>(null);
   const [method, setMethod] = useState<PaymentMethod>('cash');
   const [amount, setAmount] = useState('0');
+  const [splitParts, setSplitParts] = useState<SplitPaymentPart[] | null>(null);
+  const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
   const [pendingRegisterFiscal, setPendingRegisterFiscal] = useState(true);
-  const [qrDialogOpen, setQrDialogOpen] = useState(false);
-  const [qrCountdown, setQrCountdown] = useState(5);
   const [receiptData, setReceiptData] = useState<CashierPaymentResponse | null>(null);
   const [paymentErrorToastOpen, setPaymentErrorToastOpen] = useState(false);
   const [paymentErrorMessage, setPaymentErrorMessage] = useState('');
@@ -155,7 +164,6 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   const orderQuery = useCashierPaymentOrderQuery(normalizedOrderId);
   const paymentMutation = useCashierPaymentMutation({
     orderId: normalizedOrderId,
-    onSuccess: () => setQrDialogOpen(false),
   });
   const addPaymentOrderItemMutation = useAddCashierPaymentOrderItemMutation({
     orderId: normalizedOrderId,
@@ -222,71 +230,75 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   );
 
   useEffect(() => {
-    if (remainingTotal > 0) {
+    if (remainingTotal > 0 && !splitParts) {
       setAmount(String(remainingTotal));
     }
-  }, [remainingTotal]);
+  }, [remainingTotal, splitParts]);
 
   useEffect(() => {
     if (paymentMutation.isError) {
       const detail = getMutationErrorDetail(paymentMutation.error) || copy.paymentFailed;
       setPaymentErrorMessage(detail);
       setPaymentErrorToastOpen(true);
-      if (method === 'card') {
+      if (method === 'card' || splitParts?.some((part) => part.method === 'card')) {
         setLastCardFailureMessage(detail);
         setLastCardFailureDebugJson(getMartaNon2xxDebugJson(paymentMutation.error));
         setCardFailureDialogOpen(true);
       }
     }
-  }, [copy.paymentFailed, paymentMutation.error, paymentMutation.isError]);
-
-  useEffect(() => {
-    if (!qrDialogOpen || method !== 'qr' || paymentMutation.isPending || paymentMutation.isSuccess) {
-      return;
-    }
-
-    setQrCountdown(5);
-    const intervalId = window.setInterval(() => {
-      setQrCountdown((currentValue) => (currentValue > 0 ? currentValue - 1 : 0));
-    }, 1000);
-    const timeoutId = window.setTimeout(async () => {
-      try {
-        const response = await paymentMutation.mutateAsync({
-          method: 'qr',
-          amount: Number(amount || 0),
-          registerFiscal: pendingRegisterFiscal,
-        });
-        setReceiptData(response);
-      } catch (error) {
-        setPaymentErrorMessage(getMutationErrorDetail(error) || copy.paymentFailed);
-        setPaymentErrorToastOpen(true);
-      }
-    }, 5000);
-
-    return () => {
-      window.clearInterval(intervalId);
-      window.clearTimeout(timeoutId);
-    };
-  }, [amount, method, paymentMutation, pendingRegisterFiscal, qrDialogOpen]);
+  }, [copy.paymentFailed, method, paymentMutation.error, paymentMutation.isError, splitParts]);
 
   const paymentOptions = useMemo(
     () =>
-      (selectedCashDesk?.enabledPaymentMethods ?? ['cash', 'card', 'qr']).map((value) => ({
-        value,
-        label: value === 'cash' ? copy.cash : value === 'card' ? copy.card : copy.qr,
-      })),
-    [copy.card, copy.cash, copy.qr, selectedCashDesk?.enabledPaymentMethods],
+      (selectedCashDesk?.enabledPaymentMethods ?? ['cash', 'card'])
+        .filter((value): value is PaymentMethod => value === 'cash' || value === 'card')
+        .map((value) => ({
+          value,
+          label: value === 'cash' ? copy.cash : copy.card,
+        })),
+    [copy.card, copy.cash, selectedCashDesk?.enabledPaymentMethods],
   );
+  const addPaymentPartLabel = "Bo'lak qo'shish";
+  const splitPaymentTitle = "To'lov bo'laklari";
+
+  useEffect(() => {
+    if (paymentOptions.length && !paymentOptions.some((option) => option.value === method)) {
+      setMethod(paymentOptions[0].value);
+    }
+  }, [method, paymentOptions]);
 
   const afterPaymentPath =
     isBuilderOrder && canAccessTakeawayBuilder(session?.user) ? '/cashier/builder' : '/cashier/open-checks';
+  const paymentAmount = Number(amount || 0);
+  const splitTotal = useMemo(
+    () => (splitParts ?? []).reduce((sum, part) => sum + Number(part.amount || 0), 0),
+    [splitParts],
+  );
+  const pendingSplitParts = useMemo(() => (splitParts ?? []).filter((part) => part.status !== 'paid'), [splitParts]);
+  const pendingSplitTotal = useMemo(
+    () => pendingSplitParts.reduce((sum, part) => sum + Number(part.amount || 0), 0),
+    [pendingSplitParts],
+  );
+  const isSplitPayment = Boolean(splitParts);
+  const hasZeroSplitAmount = Boolean(pendingSplitParts.some((part) => Number(part.amount || 0) <= 0));
+  const splitValidationMessage = hasZeroSplitAmount ? copy.zeroAmountNotAllowed : copy.mixedAmountMismatch;
+  const isPaymentAmountValid = paymentAmount > 0;
+  const isSplitPaymentValid =
+    !splitParts ||
+    (splitParts.length >= 2 &&
+      !hasZeroSplitAmount &&
+      pendingSplitTotal > 0 &&
+      splitTotal === paymentAmount);
+  const isPaymentProcessing = isSubmittingPayment;
   const canSubmitPayment = Boolean(
     normalizedOrderId &&
       canProcessPayments &&
       cashierContextQuery.data?.currentShift &&
       markingMissingCount === 0 &&
-      Number(amount || 0) > 0 &&
-      !paymentMutation.isPending,
+      isPaymentAmountValid &&
+      (isSplitPayment ? pendingSplitTotal <= remainingTotal : paymentAmount <= remainingTotal) &&
+      isSplitPaymentValid &&
+      !isPaymentProcessing,
   );
   const serviceFeePercent = Number(orderQuery.data?.serviceFeePercent ?? 0);
   const serviceFeeAmount = Number(orderQuery.data?.serviceFee ?? 0);
@@ -303,7 +315,6 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     [receiptData?.receipt, receiptData?.receipts],
   );
   const primaryReceipt = receiptDialogReceipts[0] ?? receiptData?.receipt ?? null;
-  const isPaymentProcessing = paymentMutation.isPending;
   const fallbackReceiptPayload = useMemo(() => {
     if (!receiptData) {
       return null;
@@ -313,7 +324,39 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     const receiptNumber = payment.externalRef || getCashierOrderNumberLabel({ orderNumber: order.orderNumber });
     const activeItems = aggregateCashierOrderItems(order.items?.filter((item) => item.status !== 'cancelled'));
     const paymentAmount = Number(payment.amount ?? 0);
-    const isCash = payment.method === 'cash';
+    const succeededPayments = (order.payments ?? []).filter((orderPayment) => orderPayment.status === 'succeeded');
+    const aggregateCashAmount = succeededPayments.reduce(
+      (sum, orderPayment) =>
+        sum +
+        Number(
+          orderPayment.cashAmount ??
+            orderPayment.cash_amount ??
+            (orderPayment.method === 'cash' ? orderPayment.amount : 0),
+        ),
+      0,
+    );
+    const aggregateCardAmount = succeededPayments.reduce(
+      (sum, orderPayment) =>
+        sum +
+        Number(
+          orderPayment.cardAmount ??
+            orderPayment.card_amount ??
+            (orderPayment.method === 'cash' ? 0 : orderPayment.amount),
+        ),
+      0,
+    );
+    const receivedCash = Number(
+      aggregateCashAmount ||
+        payment.cashAmount ||
+        payment.cash_amount ||
+        (payment.method === 'cash' ? paymentAmount : 0),
+    );
+    const receivedCard = Number(
+      aggregateCardAmount ||
+        payment.cardAmount ||
+        payment.card_amount ||
+        (payment.method === 'cash' ? 0 : paymentAmount),
+    );
 
     return {
       snapshot: {
@@ -337,12 +380,13 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
         })),
         subtotal: order.subtotal,
         service_fee: order.serviceFee,
+        service_fee_percent: order.serviceFeePercent,
         vat_enabled: order.vatEnabled,
         vat_percent: order.vatPercent,
         vat_amount: order.vatAmount,
-        total: paymentAmount,
-        received_cash: isCash ? paymentAmount : 0,
-        received_card: isCash ? 0 : paymentAmount,
+        total: order.status === 'closed' ? order.total : paymentAmount,
+        received_cash: receivedCash,
+        received_card: receivedCard,
         order_note: order.note,
       },
     };
@@ -358,6 +402,60 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     setReceiptPrintPromptOpen(false);
     setReceiptData(null);
     void navigate(afterPaymentPath, { replace: true });
+  };
+
+  const shouldShowReceiptFlow = (response: CashierPaymentResponse) =>
+    Boolean(response.receipt || response.receipts?.length || response.order.status === 'closed');
+
+  const handleSuccessfulPaymentResponse = (response: CashierPaymentResponse, paidAmount: number) => {
+    if (shouldShowReceiptFlow(response)) {
+      setReceiptData(response);
+      return;
+    }
+
+    const nextRemainingTotal = Math.max(remainingTotal - paidAmount, 0);
+    setAmount(String(nextRemainingTotal));
+    setSplitParts(null);
+  };
+
+  const createInitialSplitParts = () => {
+    const defaultPartMethod = method === 'card' ? 'card' : 'cash';
+
+    if (splitParts) {
+      setSplitParts((parts) => [
+        ...(parts ?? []),
+        {
+          id: `${Date.now()}`,
+          method: defaultPartMethod,
+          amount: '0',
+        },
+      ]);
+      return;
+    }
+
+    const firstAmount = Math.floor(paymentAmount / 2);
+    const secondAmount = Math.max(paymentAmount - firstAmount, 0);
+
+    setSplitParts([
+      { id: `${Date.now()}-1`, method, amount: String(firstAmount) },
+      { id: `${Date.now()}-2`, method, amount: String(secondAmount) },
+    ]);
+  };
+
+  const updateSplitPart = (id: string, changes: Partial<SplitPaymentPart>) => {
+    setSplitParts((parts) => parts?.map((part) => (part.id === id ? { ...part, ...changes } : part)) ?? null);
+  };
+
+  const removeSplitPart = (id: string) => {
+    setSplitParts((parts) => {
+      if (!parts || parts.length <= 2) {
+        return parts?.some((part) => part.status === 'paid') ? parts : null;
+      }
+      if (parts.find((part) => part.id === id)?.status === 'paid') {
+        return parts;
+      }
+      return parts.filter((part) => part.id !== id);
+    });
   };
 
   const handleReceiptPromptPrint = async () => {
@@ -395,28 +493,76 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   });
 
   const handlePayment = async (registerFiscal: boolean) => {
-    setPendingRegisterFiscal(registerFiscal);
-    if (method === 'qr') {
-      setQrDialogOpen(true);
+    if (isSubmittingPayment) {
       return;
     }
 
+    setIsSubmittingPayment(true);
+    setPendingRegisterFiscal(registerFiscal);
+
     try {
-      const response = await paymentMutation.mutateAsync({ method, amount: Number(amount || 0), registerFiscal });
-      setReceiptData(response);
+      if (splitParts) {
+        const parts = splitParts.map((part) => ({
+          ...part,
+          amount: Number(part.amount || 0),
+        }));
+        const payableParts = parts.filter((part) => part.status !== 'paid');
+        const paidPartIds = new Set(parts.filter((part) => part.status === 'paid').map((part) => part.id));
+        let latestResponse: CashierPaymentResponse | null = null;
+        let paidAmount = 0;
+
+        for (const part of payableParts) {
+          try {
+            latestResponse = await paymentMutation.mutateAsync({
+              method: part.method,
+              amount: part.amount,
+              registerFiscal,
+            });
+            paidAmount += part.amount;
+            paidPartIds.add(part.id);
+          } catch (error) {
+            const preservedParts = parts.map((currentPart) =>
+              paidPartIds.has(currentPart.id)
+                ? { ...currentPart, amount: String(currentPart.amount), status: 'paid' as const }
+                : { ...currentPart, amount: String(currentPart.amount) },
+            );
+            setSplitParts(preservedParts);
+            setAmount(String(preservedParts.reduce((sum, preservedPart) => sum + Number(preservedPart.amount || 0), 0)));
+            throw error;
+          }
+        }
+
+        if (latestResponse) {
+          handleSuccessfulPaymentResponse(latestResponse, paidAmount);
+        }
+        return;
+      }
+
+      const response = await paymentMutation.mutateAsync({
+        method,
+        amount: paymentAmount,
+        registerFiscal,
+      });
+      handleSuccessfulPaymentResponse(response, paymentAmount);
     } catch (error) {
       const detail = getMutationErrorDetail(error) || copy.paymentFailed;
       setPaymentErrorMessage(detail);
       setPaymentErrorToastOpen(true);
-      if (method === 'card') {
+      if (method === 'card' || splitParts?.some((part) => part.method === 'card')) {
         setLastCardFailureMessage(detail);
         setLastCardFailureDebugJson(getMartaNon2xxDebugJson(error));
         setCardFailureDialogOpen(true);
       }
+    } finally {
+      setIsSubmittingPayment(false);
     }
   };
 
   const handleManualCardComplete = async () => {
+    if (method !== 'card' || isSubmittingPayment) {
+      return;
+    }
+    setIsSubmittingPayment(true);
     try {
       const response = await paymentMutation.mutateAsync({
         method: 'card',
@@ -430,6 +576,8 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     } catch (error) {
       setPaymentErrorMessage(getMutationErrorDetail(error) || copy.paymentFailed);
       setPaymentErrorToastOpen(true);
+    } finally {
+      setIsSubmittingPayment(false);
     }
   };
 
@@ -530,12 +678,13 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
         sx={{
           flex: 1,
           minHeight: 0,
-          overflowY: 'auto',
+          overflowY: { xs: 'auto', lg: 'hidden' },
           overflowX: 'hidden',
           display: 'grid',
           gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 360px' },
           gap: { xs: 2, md: 2.5 },
-          alignContent: 'start',
+          alignContent: { xs: 'start', lg: 'stretch' },
+          alignItems: { xs: 'start', lg: 'stretch' },
           pb: 0.4,
         }}>
         <Box
@@ -544,6 +693,9 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
             backgroundColor: muiTheme.palette.mode === 'dark' ? '#1f2125' : '#f8f1e8',
             p: { xs: 1.8, md: 2.4 },
             border: `1px solid ${alpha('#ffffff', muiTheme.palette.mode === 'dark' ? 0.04 : 0.28)}`,
+            minHeight: 0,
+            overflowY: { xs: 'visible', lg: 'auto' },
+            overflowX: 'hidden',
           })}>
           <Stack spacing={2}>
             <Stack direction="row" spacing={1.5} alignItems="center">
@@ -680,34 +832,154 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
             backgroundColor: muiTheme.palette.mode === 'dark' ? '#1f2125' : '#f8f1e8',
             p: { xs: 1.8, md: 2.4 },
             border: `1px solid ${alpha('#ffffff', muiTheme.palette.mode === 'dark' ? 0.04 : 0.28)}`,
+            minHeight: 0,
+            overflowY: { xs: 'visible', lg: 'auto' },
+            overflowX: 'hidden',
           })}>
           <Stack spacing={2.2}>
-            <Typography variant="h5">{copy.paymentMethod}</Typography>
-
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} useFlexGap flexWrap="wrap">
-              {paymentOptions.map((option) => (
-                <Button
-                  key={option.value}
-                  variant="contained"
-                  onClick={() => setMethod(option.value)}
-                  sx={(muiTheme) => ({
-                    flex: 1,
-                    minWidth: { xs: '100%', sm: 120 },
-                    backgroundImage: 'none',
-                    backgroundColor:
-                      method === option.value
-                        ? muiTheme.palette.primary.main
-                        : muiTheme.palette.mode === 'dark'
-                          ? '#2c2f34'
-                          : '#ece4d7',
-                    color: method === option.value ? '#ffffff' : 'text.primary',
-                  })}>
-                  {option.label}
-                </Button>
-              ))}
+            <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
+              <Typography variant="h5">{copy.paymentMethod}</Typography>
             </Stack>
 
-            <TextField label={copy.total} value={amount} onChange={(event) => setAmount(event.target.value)} />
+            {!splitParts ? (
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} useFlexGap flexWrap="wrap">
+                {paymentOptions.map((option) => (
+                  <Button
+                    key={option.value}
+                    variant="contained"
+                    onClick={() => {
+                      setMethod(option.value);
+                      setSplitParts(null);
+                    }}
+                    sx={(muiTheme) => ({
+                      flex: 1,
+                      minWidth: { xs: '100%', sm: 120 },
+                      backgroundImage: 'none',
+                      backgroundColor:
+                        method === option.value
+                          ? muiTheme.palette.primary.main
+                          : muiTheme.palette.mode === 'dark'
+                            ? '#2c2f34'
+                            : '#ece4d7',
+                      color: method === option.value ? '#ffffff' : 'text.primary',
+                    })}>
+                    {option.label}
+                  </Button>
+                ))}
+              </Stack>
+            ) : null}
+
+            <Stack direction="row" spacing={1} alignItems="flex-start">
+              <Tooltip title={!isPaymentAmountValid ? copy.zeroAmountNotAllowed : ''} arrow>
+                <TextField
+                  label={copy.total}
+                  value={amount}
+                  onChange={(event) => setAmount(event.target.value)}
+                  error={!isPaymentAmountValid}
+                  fullWidth
+                />
+              </Tooltip>
+              <Tooltip title={addPaymentPartLabel} arrow>
+                <IconButton
+                  aria-label={addPaymentPartLabel}
+                  onClick={createInitialSplitParts}
+                  sx={(muiTheme) => ({
+                    width: 56,
+                    height: 56,
+                    borderRadius: '8px',
+                    backgroundColor: muiTheme.palette.mode === 'dark' ? '#2c2f34' : '#ece4d7',
+                    color: muiTheme.palette.primary.main,
+                    '&:hover': {
+                      backgroundColor: muiTheme.palette.mode === 'dark' ? '#34383f' : '#e2d7c8',
+                    },
+                  })}>
+                  <Icon icon="solar:add-circle-bold" width={25} />
+                </IconButton>
+              </Tooltip>
+            </Stack>
+            {splitParts ? (
+              <Stack
+                spacing={1.1}
+                sx={(muiTheme) => {
+                  const hasSplitTotalMismatch = !hasZeroSplitAmount && !isSplitPaymentValid;
+
+                  return {
+                    borderRadius: '10px',
+                    border: `1px solid ${alpha(
+                      hasSplitTotalMismatch ? muiTheme.palette.error.main : muiTheme.palette.text.primary,
+                      hasSplitTotalMismatch ? 0.45 : 0.12,
+                    )}`,
+                    backgroundColor:
+                      muiTheme.palette.mode === 'dark'
+                        ? alpha('#ffffff', 0.02)
+                        : alpha(hasSplitTotalMismatch ? muiTheme.palette.error.main : '#ffffff', 0.45),
+                    p: 1.2,
+                  };
+                }}>
+                <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
+                  <Typography variant="body1" sx={{ fontWeight: 800 }}>
+                    {splitPaymentTitle}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    color={!hasZeroSplitAmount && !isSplitPaymentValid ? 'error' : 'text.secondary'}>
+                    {formatCompactMoney(splitTotal, locale)}
+                  </Typography>
+                </Stack>
+                {splitParts.map((part, index) => (
+                  (() => {
+                    const isPartPaid = part.status === 'paid';
+                    const partHasZeroAmount = !isPartPaid && Number(part.amount || 0) <= 0;
+                    const partHasError = !isPartPaid && (partHasZeroAmount || (!hasZeroSplitAmount && !isSplitPaymentValid));
+                    const partValidationMessage = partHasZeroAmount
+                      ? copy.zeroAmountNotAllowed
+                      : !isPartPaid && !isSplitPaymentValid
+                        ? splitValidationMessage
+                        : '';
+
+                    return (
+                      <Stack key={part.id} direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems="center">
+                        <TextField
+                          select
+                          label={copy.paymentMethod}
+                          value={part.method}
+                          onChange={(event) =>
+                            updateSplitPart(part.id, { method: event.target.value === 'card' ? 'card' : 'cash' })
+                          }
+                          disabled={isPartPaid}
+                          sx={{ minWidth: { xs: '100%', sm: 132 } }}>
+                          <MenuItem value="cash">{copy.cash}</MenuItem>
+                          <MenuItem value="card">{copy.card}</MenuItem>
+                        </TextField>
+                        <Tooltip title={partValidationMessage} arrow>
+                          <TextField
+                            label={`${copy.pay} ${index + 1}`}
+                            value={part.amount}
+                            type="number"
+                            onChange={(event) => updateSplitPart(part.id, { amount: event.target.value })}
+                            error={partHasError}
+                            disabled={isPartPaid}
+                            fullWidth
+                          />
+                        </Tooltip>
+                        {isPartPaid ? (
+                          <Typography
+                            variant="caption"
+                            color="success.main"
+                            sx={{ minWidth: 52, fontWeight: 800, textAlign: 'center' }}>
+                            {copy.receiptAmount}
+                          </Typography>
+                        ) : (
+                          <IconButton aria-label={copy.removeOne} onClick={() => removeSplitPart(part.id)}>
+                            <Icon icon="solar:minus-circle-bold" width={22} />
+                          </IconButton>
+                        )}
+                      </Stack>
+                    );
+                  })()
+                ))}
+              </Stack>
+            ) : null}
 
             <Stack spacing={1}>
               <Stack direction="row" justifyContent="space-between">
@@ -740,16 +1012,20 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
               ) : null}
               <Stack direction="row" justifyContent="space-between" alignItems="center">
                 <Typography variant="h5">{copy.grandTotal}:</Typography>
-                <Typography variant="h4">{formatCompactMoney(orderQuery.data?.total, locale)}</Typography>
-              </Stack>
-              <Stack direction="row" justifyContent="space-between">
-                <Typography variant="body1" color="text.secondary">
-                  {copy.pay}:
-                </Typography>
-                <Typography variant="body1" color="text.secondary">
-                  {formatCompactMoney(remainingTotal, locale)}
+                <Typography variant="h4" sx={{ flex: 1, ml: 2, textAlign: 'right' }}>
+                  {formatCompactMoney(orderQuery.data?.total, locale)}
                 </Typography>
               </Stack>
+              {remainingTotal > 0 && remainingTotal !== Number(orderQuery.data?.total ?? 0) ? (
+                <Stack direction="row" justifyContent="space-between">
+                  <Typography variant="body1" color="text.secondary">
+                    {copy.pay}:
+                  </Typography>
+                  <Typography variant="body1" color="text.secondary">
+                    {formatCompactMoney(remainingTotal, locale)}
+                  </Typography>
+                </Stack>
+              ) : null}
               {selectedCashDesk ? (
                 <Stack direction="row" justifyContent="space-between">
                   <Typography variant="body1" color="text.secondary">
@@ -796,77 +1072,6 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
         </Box>
       </Box>
 
-      <Dialog open={qrDialogOpen} onClose={() => setQrDialogOpen(false)} maxWidth="xs" fullWidth fullScreen={isMobile}>
-        <DialogTitle>{copy.qrTitle}</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2.2} sx={{ pt: 1 }}>
-            <Typography variant="body1" color="text.secondary">
-              {copy.qrSubtitle}
-            </Typography>
-
-            <Box
-              sx={(muiTheme) => ({
-                width: 220,
-                height: 220,
-                mx: 'auto',
-                borderRadius: '18px',
-                backgroundColor: muiTheme.palette.mode === 'dark' ? '#0f1012' : '#ffffff',
-                border: `10px solid ${muiTheme.palette.mode === 'dark' ? '#f6f8fb' : '#111216'}`,
-                backgroundImage:
-                  'linear-gradient(90deg, rgba(0,0,0,0.92) 12%, transparent 12%, transparent 20%, rgba(0,0,0,0.92) 20%, rgba(0,0,0,0.92) 32%, transparent 32%, transparent 40%, rgba(0,0,0,0.92) 40%, rgba(0,0,0,0.92) 48%, transparent 48%, transparent 56%, rgba(0,0,0,0.92) 56%, rgba(0,0,0,0.92) 68%, transparent 68%, transparent 76%, rgba(0,0,0,0.92) 76%), linear-gradient(rgba(0,0,0,0.92) 12%, transparent 12%, transparent 20%, rgba(0,0,0,0.92) 20%, rgba(0,0,0,0.92) 32%, transparent 32%, transparent 40%, rgba(0,0,0,0.92) 40%, rgba(0,0,0,0.92) 48%, transparent 48%, transparent 56%, rgba(0,0,0,0.92) 56%, rgba(0,0,0,0.92) 68%, transparent 68%, transparent 76%, rgba(0,0,0,0.92) 76%)',
-                backgroundSize: '40px 40px',
-                position: 'relative',
-                overflow: 'hidden',
-                '&::after': {
-                  content: '""',
-                  position: 'absolute',
-                  insetInline: 14,
-                  top: `${((5 - qrCountdown) / 5) * 180}px`,
-                  height: 6,
-                  borderRadius: 999,
-                  backgroundColor: '#24c5bf',
-                  boxShadow: '0 0 18px rgba(36, 197, 191, 0.8)',
-                },
-              })}
-            />
-
-            <Box
-              sx={(muiTheme) => ({
-                height: 8,
-                borderRadius: 999,
-                backgroundColor: muiTheme.palette.mode === 'dark' ? '#2a2d31' : '#e4daca',
-                overflow: 'hidden',
-              })}>
-              <Box
-                sx={(muiTheme) => ({
-                  width: `${((5 - qrCountdown) / 5) * 100}%`,
-                  height: '100%',
-                  backgroundColor: muiTheme.palette.primary.main,
-                })}
-              />
-            </Box>
-
-            <Stack direction="row" justifyContent="space-between" alignItems="center">
-              <Typography variant="body2" color="text.secondary">
-                {copy.qrCountdown}
-              </Typography>
-              <Typography variant="h6">{formatPosCopy(copy.secondsShort, { count: qrCountdown })}</Typography>
-            </Stack>
-
-            <Button
-              variant="contained"
-              onClick={() => setQrDialogOpen(false)}
-              sx={(muiTheme) => ({
-                backgroundImage: 'none',
-                backgroundColor: muiTheme.palette.mode === 'dark' ? '#4d535a' : '#d8cfbf',
-                color: muiTheme.palette.mode === 'dark' ? '#f5f5f5' : muiTheme.palette.text.primary,
-              })}>
-              {copy.cancelQr}
-            </Button>
-          </Stack>
-        </DialogContent>
-      </Dialog>
-
       <Dialog
         open={cardFailureDialogOpen}
         onClose={() => setCardFailureDialogOpen(false)}
@@ -880,9 +1085,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
               {lastCardFailureMessage || copy.paymentFailed}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              {
-                copy.cardPaymentFailedDescription
-              }
+              {copy.cardPaymentFailedDescription}
             </Typography>
             {lastCardFailureDebugJson ? (
               <Stack spacing={1}>
@@ -923,9 +1126,11 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
             disabled={isPaymentProcessing}>
             {copy.retryFiscal}
           </Button>
-          <Button variant="contained" onClick={() => void handleManualCardComplete()} disabled={isPaymentProcessing}>
-            {copy.manualCard}
-          </Button>
+          {method === 'card' ? (
+            <Button variant="contained" onClick={() => void handleManualCardComplete()} disabled={isPaymentProcessing}>
+              {copy.manualCard}
+            </Button>
+          ) : null}
         </DialogActions>
       </Dialog>
 
@@ -1011,8 +1216,8 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
               <Typography>
                 {receiptData?.payment.method === 'card'
                   ? copy.card
-                  : receiptData?.payment.method === 'qr'
-                    ? copy.qr
+                  : receiptData?.payment.method === 'mixed'
+                    ? copy.mixed
                     : copy.cash}
               </Typography>
             </Stack>

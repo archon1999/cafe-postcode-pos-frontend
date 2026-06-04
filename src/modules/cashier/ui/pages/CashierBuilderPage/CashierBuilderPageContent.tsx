@@ -477,7 +477,17 @@ export function CashierBuilderPageContent() {
           gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 360px' },
           gap: { xs: 2, md: 2.5 },
         }}>
-        <Stack spacing={2} sx={{ minHeight: 0, overflowY: 'auto', overflowX: 'hidden', pb: 0.4 }}>
+        <Stack
+          spacing={2}
+          sx={{
+            minHeight: 0,
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            px: 0.45,
+            pt: 0.35,
+            pb: 2,
+            mx: -0.45,
+          }}>
           <Typography variant="h4">{selectedCategory?.name ?? copy.menu}</Typography>
 
           <Box
