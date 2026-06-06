@@ -10,6 +10,9 @@ export type CashierContextCashDesk = {
   location: string;
   enabledPaymentMethods: Array<'cash' | 'card' | 'mixed'>;
   paymentIntegration?: string | null;
+  printerIntegration?: string | null;
+  printerIntegrationName?: string | null;
+  printerIntegrationPrinterName?: string | null;
   fiscalProvider: string;
   receiptPrinterEnabled: boolean;
   terminalId: string;

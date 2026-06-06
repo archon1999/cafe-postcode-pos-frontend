@@ -188,6 +188,8 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     const activeCashDeskId = cashierContextQuery.data?.currentShift?.cashDesk;
     return cashDesks.find((cashDesk) => cashDesk.id === activeCashDeskId) ?? cashDesks[0] ?? null;
   }, [cashierContextQuery.data?.availableCashDesks, cashierContextQuery.data?.currentShift?.cashDesk]);
+  const receiptLocalAgentEnabled = Boolean(selectedCashDesk?.printerIntegration);
+  const receiptLocalAgentPrinterName = selectedCashDesk?.printerIntegrationPrinterName ?? null;
 
   const remainingTotal = useMemo(() => {
     const total = Number(orderQuery.data?.total ?? 0);
@@ -285,10 +287,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   const isPaymentAmountValid = paymentAmount > 0;
   const isSplitPaymentValid =
     !splitParts ||
-    (splitParts.length >= 2 &&
-      !hasZeroSplitAmount &&
-      pendingSplitTotal > 0 &&
-      splitTotal === paymentAmount);
+    (splitParts.length >= 2 && !hasZeroSplitAmount && pendingSplitTotal > 0 && splitTotal === paymentAmount);
   const isPaymentProcessing = isSubmittingPayment;
   const canSubmitPayment = Boolean(
     normalizedOrderId &&
@@ -467,7 +466,12 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     try {
       const receiptsToPrint = receiptDialogReceipts.length > 0 ? receiptDialogReceipts : [null];
       await Promise.all(
-        receiptsToPrint.map((receipt) => printReceiptWithFallback(receipt?.payload ?? fallbackReceiptPayload)),
+        receiptsToPrint.map((receipt) =>
+          printReceiptWithFallback(receipt?.payload ?? fallbackReceiptPayload, {
+            preferLocalAgent: receiptLocalAgentEnabled,
+            printerName: receiptLocalAgentPrinterName,
+          }),
+        ),
       );
       setPrintToastOpen(true);
     } catch {
@@ -527,7 +531,9 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
                 : { ...currentPart, amount: String(currentPart.amount) },
             );
             setSplitParts(preservedParts);
-            setAmount(String(preservedParts.reduce((sum, preservedPart) => sum + Number(preservedPart.amount || 0), 0)));
+            setAmount(
+              String(preservedParts.reduce((sum, preservedPart) => sum + Number(preservedPart.amount || 0), 0)),
+            );
             throw error;
           }
         }
@@ -926,11 +932,12 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
                     {formatCompactMoney(splitTotal, locale)}
                   </Typography>
                 </Stack>
-                {splitParts.map((part, index) => (
+                {splitParts.map((part, index) =>
                   (() => {
                     const isPartPaid = part.status === 'paid';
                     const partHasZeroAmount = !isPartPaid && Number(part.amount || 0) <= 0;
-                    const partHasError = !isPartPaid && (partHasZeroAmount || (!hasZeroSplitAmount && !isSplitPaymentValid));
+                    const partHasError =
+                      !isPartPaid && (partHasZeroAmount || (!hasZeroSplitAmount && !isSplitPaymentValid));
                     const partValidationMessage = partHasZeroAmount
                       ? copy.zeroAmountNotAllowed
                       : !isPartPaid && !isSplitPaymentValid
@@ -976,8 +983,8 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
                         )}
                       </Stack>
                     );
-                  })()
-                ))}
+                  })(),
+                )}
               </Stack>
             ) : null}
 

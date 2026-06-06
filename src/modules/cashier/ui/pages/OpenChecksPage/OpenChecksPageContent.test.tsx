@@ -38,6 +38,19 @@ vi.mock('modules/auth', () => ({
 }));
 
 vi.mock('modules/cashier/application', () => ({
+  useCashierContextQuery: () => ({
+    data: {
+      availableCashDesks: [
+        {
+          id: 'desk-1',
+          name: 'Main cash desk',
+          enabledPaymentMethods: ['cash'],
+          printerIntegration: 'printer-1',
+        },
+      ],
+      currentShift: { cashDesk: 'desk-1' },
+    },
+  }),
   useCashierOpenChecksQuery: (status: 'open' | 'closed' | 'fiscal_unresolved') => ({
     isLoading: false,
     data:
@@ -249,7 +262,7 @@ describe('OpenChecksPageContent', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ha, chiqarish' }));
 
     await waitFor(() => {
-      expect(printReceiptWithFallbackMock).toHaveBeenCalledWith({ receiptNumber: 'R-2' });
+      expect(printReceiptWithFallbackMock).toHaveBeenCalledWith({ receiptNumber: 'R-2' }, { preferLocalAgent: true });
       expect(fiscalUnresolvedRefetchMock).toHaveBeenCalled();
     });
   });

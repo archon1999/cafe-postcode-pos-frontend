@@ -1,5 +1,3 @@
-import QRCode from 'qrcode';
-
 type PrintableItem = {
   name?: string;
   quantity?: number | string;
@@ -79,6 +77,11 @@ type PrintablePayload = {
   orderNote?: string;
 };
 
+type PrintReceiptOptions = {
+  preferLocalAgent?: boolean;
+  printerName?: string | null;
+};
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
 }
@@ -97,6 +100,10 @@ function numberValue(value: unknown) {
   return Number.isFinite(number) ? number : 0;
 }
 
+function qrValue(snapshot: PrintablePayload) {
+  return String(snapshot.qr_code_url ?? snapshot.qrCodeUrl ?? '').trim();
+}
+
 function escapeHtml(value: unknown) {
   return String(value ?? '')
     .replaceAll('&', '&amp;')
@@ -104,27 +111,6 @@ function escapeHtml(value: unknown) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#039;');
-}
-
-function qrValue(snapshot: PrintablePayload) {
-  return String(snapshot.qr_code_url ?? snapshot.qrCodeUrl ?? '').trim();
-}
-
-async function qrDataUrl(value: string) {
-  if (!value) return '';
-  try {
-    return await QRCode.toDataURL(value, {
-      errorCorrectionLevel: 'M',
-      margin: 1,
-      width: 180,
-      color: {
-        dark: '#000000',
-        light: '#ffffff',
-      },
-    });
-  } catch {
-    return '';
-  }
 }
 
 function money(value: unknown) {
@@ -401,7 +387,14 @@ export function receiptTextFromPayload(payload: Record<string, unknown> | null |
   return lines.filter((line) => line !== '').join('\n');
 }
 
-export async function printReceiptWithLocalAgent(payload: Record<string, unknown> | null | undefined) {
+export async function printReceiptWithLocalAgent(
+  payload: Record<string, unknown> | null | undefined,
+  options: PrintReceiptOptions = {},
+) {
+  if (options.preferLocalAgent === false) {
+    return false;
+  }
+
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), 2500);
   const snapshot = snapshotFromPayload(payload);
@@ -414,7 +407,10 @@ export async function printReceiptWithLocalAgent(payload: Record<string, unknown
         text: receiptTextFromPayload(payload),
         qr_code: qrValue(snapshot),
         cut_after_print: true,
+        feed_lines_before_cut: 5,
         job_name: 'Cafe Postcode Receipt',
+        printer_name: options.printerName || undefined,
+        encoding: 'cp437',
       }),
       signal: controller.signal,
     });
@@ -428,8 +424,11 @@ export async function printReceiptWithLocalAgent(payload: Record<string, unknown
   }
 }
 
-export async function printReceiptWithFallback(payload: Record<string, unknown> | null | undefined) {
-  const printed = await printReceiptWithLocalAgent(payload);
+export async function printReceiptWithFallback(
+  payload: Record<string, unknown> | null | undefined,
+  options: PrintReceiptOptions = {},
+) {
+  const printed = await printReceiptWithLocalAgent(payload, options);
   if (!printed) {
     await printReceiptInBrowser(payload);
   }
@@ -437,115 +436,42 @@ export async function printReceiptWithFallback(payload: Record<string, unknown> 
 }
 
 export async function printReceiptInBrowser(payload: Record<string, unknown> | null | undefined) {
-  const snapshot = snapshotFromPayload(payload);
-  const items = Array.isArray(snapshot.items) ? snapshot.items : [];
-  const totals = receiptTotals(snapshot);
-  const orderNumber =
-    snapshot.order_number ?? snapshot.orderNumber ?? snapshot.receipt_number ?? snapshot.receiptNumber ?? '';
-  const receiptNumber = snapshot.receipt_number ?? snapshot.receiptNumber;
-  const title =
-    snapshot.restaurant_legal_name ??
-    snapshot.restaurantLegalName ??
-    snapshot.restaurant_name ??
-    snapshot.restaurantName ??
-    'Chek';
-  const printedAt = snapshot.printed_at_label ?? snapshot.printedAtLabel;
-  const { date, time } = dateTimeParts(printedAt);
-  const cashierName = snapshot.cashier_name ?? snapshot.cashierName ?? snapshot.waiter_name ?? snapshot.waiterName;
-  const terminalId = snapshot.terminal_id ?? snapshot.terminalId;
-  const factoryId = snapshot.factory_id ?? snapshot.factoryId;
-  const fiscalSign = snapshot.fiscal_sign ?? snapshot.fiscalSign;
-  const qrCodeUrl = qrValue(snapshot);
-  const qrImage = await qrDataUrl(qrCodeUrl);
-  const delivery = deliveryDetails(snapshot);
-
+  const text = receiptTextFromPayload(payload);
   const html = `<!doctype html>
 <html>
 <head>
   <meta charset="utf-8" />
   <title>Chek</title>
   <style>
-    @page { size: 80mm auto; margin: 4mm; }
+    @page { size: 80mm auto; margin: 0; }
     * { box-sizing: border-box; }
-    body { font-family: "Courier New", monospace; color: #111; margin: 0; font-size: 11px; font-weight: 600; }
-    .receipt { width: 72mm; }
-    h1 { font-size: 12px; margin: 0 0 2px; text-align: center; text-transform: uppercase; }
-    .center { text-align: center; }
-    .meta, .row, .item, .line { display: flex; justify-content: space-between; gap: 8px; }
-    .meta { color: #111; margin: 1px 0; }
-    .muted { color: #555; }
-    hr { border: 0; border-top: 1px dashed #111; margin: 6px 0; }
-    .dash { border-top-style: dashed; }
-    .equals { border-top: 2px solid #111; margin: 7px 0; }
-    .item-block { margin: 0; }
-    .item-name { font-weight: 800; text-transform: uppercase; overflow-wrap: anywhere; }
-    .price { min-width: 76px; text-align: right; }
-    .grand { font-weight: 900; font-size: 24px; }
-    .total { font-weight: 900; font-size: 21px; align-items: baseline; }
-    .total span:first-child { font-size: 22px; }
-    .note, .subline { color: #222; margin: 1px 0; overflow-wrap: anywhere; }
-    .subrow { display: flex; justify-content: space-between; gap: 8px; margin: 1px 0; }
-    .label { color: #222; }
-    .value { text-align: right; overflow-wrap: anywhere; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 80mm;
+      min-height: 0;
+      background: #fff;
+      color: #000;
+    }
+    body {
+      font-family: "Courier New", Consolas, monospace;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+    pre {
+      display: block;
+      width: 100%;
+      margin: 0;
+      padding: 1.5mm 1mm 4mm;
+      white-space: pre;
+      overflow: visible;
+    }
   </style>
 </head>
-<body>
-  <section class="receipt">
-    <h1>${escapeHtml(title)}</h1>
-    ${snapshot.restaurant_address || snapshot.restaurantAddress ? `<div class="center muted">${escapeHtml(snapshot.restaurant_address ?? snapshot.restaurantAddress)}</div>` : ''}
-    <hr />
-    <div class="meta"><span>CHEK: ${escapeHtml(receiptNumber || orderNumber || '-')}</span><span>${escapeHtml(`${date || '-'} ${time || '-'}`.trim())}</span></div>
-    <div class="meta"><span>POS: 1</span><span>KASSIR: ${escapeHtml(cashierName || '-')}</span></div>
-    <div class="meta"><span>STIR: ${escapeHtml(snapshot.tax_number ?? snapshot.taxNumber ?? '-')}</span><span>NKM S/R: ${escapeHtml(terminalId || '-')}</span></div>
-    ${delivery.phone ? `<div class="meta"><span>TEL:</span><span>${escapeHtml(delivery.phone)}</span></div>` : ''}
-    ${delivery.address ? `<div class="line"><span>MANZIL:</span><span class="value">${escapeHtml(delivery.address)}</span></div>` : ''}
-    <hr />
-    ${snapshot.table_label || snapshot.tableLabel ? `<div class="meta"><span>${escapeHtml(snapshot.table_label ?? snapshot.tableLabel)}</span><span>${escapeHtml(snapshot.channel_label ?? snapshot.channelLabel ?? 'sotuv')}</span></div>` : ''}
-    ${items
-      .map((item) => {
-        const quantity = itemQuantityValue(item);
-        const unitPrice = itemUnitPriceValue(item);
-        const itemVatPercent = item.vat_percent ?? item.vatPercent;
-        const itemVatAmount = numberValue(item.vat_amount ?? item.vatAmount);
-        const unitCode = item.unit_code ?? item.unitCode;
-        return `<div class="item-block"><div class="item-name">${escapeHtml(item.name ?? 'Mahsulot')}</div><div class="subrow"><span>${escapeHtml(quantity)} dona x ${moneyFixed(unitPrice)}</span><span class="price">${money(item.line_total ?? item.lineTotal)}</span></div>${
-          itemVatPercent
-            ? `<div class="subrow"><span>Sh.j. QQS: ${escapeHtml(percent(itemVatPercent))}%</span><span>${itemVatAmount > 0 ? moneyFixed(itemVatAmount) : ''}</span></div>`
-            : ''
-        }${item.spic ? `<div class="subrow"><span>MXIK KOD:</span><span>${escapeHtml(item.spic)}</span></div>` : ''}${
-          item.barcode ? `<div class="subrow"><span>SH/K:</span><span>${escapeHtml(item.barcode)}</span></div>` : ''
-        }${unitCode ? `<div class="subrow"><span>O'lchov:</span><span>${escapeHtml(unitCode)}</span></div>` : ''}${
-          item.labels?.length
-            ? `<div class="subrow"><span>MARKIROVKA:</span><span>${escapeHtml(item.labels.join(', '))}</span></div>`
-            : ''
-        }${item.note ? `<div class="note">${escapeHtml(item.note)}</div>` : ''}<hr /></div>`;
-      })
-      .join('')}
-    <div class="equals"></div>
-    <div class="row total"><span>JAMI:</span><span class="grand">${money(snapshot.total)}</span></div>
-    ${totals.vatEnabled && totals.vatAmount > 0 ? `<div class="row"><span>${escapeHtml(percentLabel('Sh.j. QQS', totals.vatPercent))}:</span><span>${moneyFixed(totals.vatAmount)}</span></div>` : ''}
-    ${totals.serviceFee > 0 ? `<div class="row"><span>${escapeHtml(percentLabel('XIZMAT HAQI', totals.serviceFeePercent))}:</span><span>${money(totals.serviceFee)}</span></div>` : ''}
-    <div class="equals"></div>
-    ${totals.receivedCash > 0 ? `<div class="row"><span>NAQD PUL:</span><span>${money(totals.receivedCash)}</span></div>` : ''}
-    ${totals.receivedCard > 0 ? `<div class="row"><span>BANK KARTASI:</span><span>${money(totals.receivedCard)}</span></div>` : ''}
-    ${
-      terminalId || factoryId || fiscalSign
-        ? `<hr />${factoryId ? `<div class="meta"><span>FM:</span><span>${escapeHtml(factoryId)}</span></div>` : ''}${
-            fiscalSign ? `<div class="meta"><span>FB:</span><span>${escapeHtml(fiscalSign)}</span></div>` : ''
-          }${terminalId ? `<div class="meta"><span>NKM S/R:</span><span>${escapeHtml(terminalId)}</span></div>` : ''}`
-        : ''
-    }
-    ${
-      qrCodeUrl
-        ? `<hr /><div class="center">${qrImage ? `<img src="${escapeHtml(qrImage)}" alt="Soliq QR Code" style="width:34mm;height:34mm;" />` : ''}</div>`
-        : ''
-    }
-    ${snapshot.order_note || snapshot.orderNote ? `<hr /><div>${escapeHtml(snapshot.order_note ?? snapshot.orderNote)}</div>` : ''}
-  </section>
-  <script>window.onload = () => { window.print(); };</script>
-</body>
+<body><pre>${escapeHtml(text)}</pre></body>
 </html>`;
-
+  const url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
   const frame = document.createElement('iframe');
   frame.style.position = 'fixed';
   frame.style.right = '0';
@@ -554,10 +480,13 @@ export async function printReceiptInBrowser(payload: Record<string, unknown> | n
   frame.style.height = '0';
   frame.style.border = '0';
   document.body.appendChild(frame);
-  const doc = frame.contentWindow?.document;
-  if (!doc) return;
-  doc.open();
-  doc.write(html);
-  doc.close();
-  window.setTimeout(() => frame.remove(), 30000);
+  frame.onload = () => {
+    frame.contentWindow?.focus();
+    frame.contentWindow?.print();
+  };
+  frame.src = url;
+  window.setTimeout(() => {
+    URL.revokeObjectURL(url);
+    frame.remove();
+  }, 30000);
 }

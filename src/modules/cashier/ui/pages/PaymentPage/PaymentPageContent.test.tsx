@@ -61,7 +61,14 @@ vi.mock('modules/cashier/application', () => ({
   }),
   useCashierContextQuery: () => ({
     data: {
-      availableCashDesks: [{ id: 'desk-1', name: 'Main cash desk', enabledPaymentMethods: enabledPaymentMethodsMock }],
+      availableCashDesks: [
+        {
+          id: 'desk-1',
+          name: 'Main cash desk',
+          enabledPaymentMethods: enabledPaymentMethodsMock,
+          printerIntegration: 'printer-1',
+        },
+      ],
       currentShift: { cashDesk: 'desk-1' },
     },
   }),
@@ -317,7 +324,7 @@ describe('PaymentPageContent', () => {
           externalRef: 'R-3',
         },
         receipt: { id: 'receipt-3', payload: { receiptNumber: 'R-3' } },
-    });
+      });
 
     render(<PaymentPageContent orderId="order-1" />);
     fireEvent.click(screen.getByRole('button', { name: "Bo'lak qo'shish" }));
@@ -531,7 +538,7 @@ describe('PaymentPageContent', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ha, chiqarish' }));
 
     await waitFor(() => {
-      expect(printReceiptWithFallbackMock).toHaveBeenCalledWith({ receiptNumber: 'R-1' });
+      expect(printReceiptWithFallbackMock).toHaveBeenCalledWith({ receiptNumber: 'R-1' }, { preferLocalAgent: true });
       expect(navigateMock).toHaveBeenCalledWith('/cashier/open-checks', { replace: true });
     });
   });
