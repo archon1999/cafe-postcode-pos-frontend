@@ -295,7 +295,7 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
       if (requiresClientPrint) {
         const code = String(result.code ?? '');
         toast.info(code === 'PRINTER_NOT_CONFIGURED' ? 'Printer sozlamalari ulanmagan' : 'Printer ishlamayapti');
-        await printReceiptWithFallback(response.receipt?.payload ?? null);
+        await printReceiptWithFallback(response.receipt?.payload ?? null, { receiptId: response.receipt?.id });
 
         if (response.receipt?.id) {
           try {

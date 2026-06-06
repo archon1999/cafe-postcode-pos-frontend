@@ -527,7 +527,7 @@ export function OpenChecksPageContent() {
     const activeCashDeskId = cashierContextQuery.data?.currentShift?.cashDesk;
     return cashDesks.find((cashDesk) => cashDesk.id === activeCashDeskId) ?? cashDesks[0] ?? null;
   }, [cashierContextQuery.data?.availableCashDesks, cashierContextQuery.data?.currentShift?.cashDesk]);
-  const receiptLocalAgentEnabled = Boolean(selectedCashDesk?.printerIntegration);
+  const receiptLocalAgentEnabled = true;
   const receiptPrintOptions = useMemo(
     () => ({
       preferLocalAgent: receiptLocalAgentEnabled,
@@ -610,7 +610,10 @@ export function OpenChecksPageContent() {
     try {
       await Promise.all(
         (retryReceiptDialog?.receipts ?? []).map((receipt) =>
-          printReceiptWithFallback(receipt.payload ?? null, receiptPrintOptions),
+          printReceiptWithFallback(receipt.payload ?? null, {
+            ...receiptPrintOptions,
+            receiptId: receipt.id,
+          }),
         ),
       );
     } catch {
@@ -667,19 +670,31 @@ export function OpenChecksPageContent() {
             const code = String(result.code ?? '');
             if (code === 'PRINTER_NOT_CONFIGURED') {
               toast.info('Printer sozlamalari ulanmagan');
-              void printReceiptWithFallback(response.receipt?.payload ?? latestReceipt.payload ?? null, receiptPrintOptions);
+              void printReceiptWithFallback(response.receipt?.payload ?? latestReceipt.payload ?? null, {
+                ...receiptPrintOptions,
+                receiptId: response.receipt?.id ?? latestReceipt.id,
+              });
               return;
             }
             if (code === 'PRINTER_UNAVAILABLE' || result.ok === false) {
               toast.info('Printer ishlamayapti');
-              void printReceiptWithFallback(response.receipt?.payload ?? latestReceipt.payload ?? null, receiptPrintOptions);
+              void printReceiptWithFallback(response.receipt?.payload ?? latestReceipt.payload ?? null, {
+                ...receiptPrintOptions,
+                receiptId: response.receipt?.id ?? latestReceipt.id,
+              });
               return;
             }
-            void printReceiptWithFallback(response.receipt?.payload ?? latestReceipt.payload ?? null, receiptPrintOptions);
+            void printReceiptWithFallback(response.receipt?.payload ?? latestReceipt.payload ?? null, {
+              ...receiptPrintOptions,
+              receiptId: response.receipt?.id ?? latestReceipt.id,
+            });
           })
           .catch(() => {
             toast.info('Printer ishlamayapti');
-            void printReceiptWithFallback(latestReceipt.payload ?? null, receiptPrintOptions);
+            void printReceiptWithFallback(latestReceipt.payload ?? null, {
+              ...receiptPrintOptions,
+              receiptId: latestReceipt.id,
+            });
           });
       }}
       onRetryFiscal={() => {

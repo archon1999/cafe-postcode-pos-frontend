@@ -4,9 +4,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { printReceiptWithFallback, receiptTextFromPayload } from './browserReceipt';
 
+const { apiPostMock } = vi.hoisted(() => ({
+  apiPostMock: vi.fn(),
+}));
+
+vi.mock('shared/api/client', () => ({
+  apiPost: (...args: unknown[]) => apiPostMock(...args),
+}));
+
 describe('browser receipt printing', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    apiPostMock.mockReset();
   });
 
   it('prints delivery phone and address in the header', () => {
@@ -48,66 +57,36 @@ describe('browser receipt printing', () => {
     expect(text).toContain('XIZMAT HAQI (10%):');
   });
 
-  it('falls back to browser receipt HTML printing when local agent fails', async () => {
-    type CapturedBlob = { parts: unknown[]; type: string };
-    const blobs: CapturedBlob[] = [];
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(() => Promise.resolve(new Response(JSON.stringify({ ok: false }), { status: 502 }))),
-    );
-    vi.stubGlobal(
-      'Blob',
-      class {
-        parts: unknown[];
-        type: string;
+  it('prints through backend receipt endpoint when receipt id is provided', async () => {
+    apiPostMock.mockResolvedValueOnce({ result: { ok: true } });
 
-        constructor(parts: unknown[], options?: { type?: string }) {
-          this.parts = parts;
-          this.type = options?.type ?? '';
-        }
+    const printed = await printReceiptWithFallback(
+      {
+        snapshot: {
+          restaurant_name: 'Cafe',
+          receipt_number: 'R-3',
+          printed_at_label: '2026-06-01T10:00:00',
+          items: [],
+          total: 0,
+        },
       },
+      { receiptId: 'receipt-3' },
     );
-    Object.defineProperty(URL, 'createObjectURL', {
-      configurable: true,
-      value: vi.fn((blob: CapturedBlob) => {
-        blobs.push(blob);
-        return 'blob:receipt';
-      }),
-    });
-    Object.defineProperty(URL, 'revokeObjectURL', {
-      configurable: true,
-      value: vi.fn(),
-    });
 
-    await printReceiptWithFallback({
-      snapshot: {
-        restaurant_name: 'Cafe',
-        receipt_number: 'R-3',
-        printed_at_label: '2026-06-01T10:00:00',
-        items: [],
-        total: 0,
-      },
+    expect(printed).toBe(true);
+    expect(apiPostMock).toHaveBeenCalledWith('/pos/billing/receipts/receipt-3/print/', {
+      payload: expect.any(Object),
+      text: expect.stringContaining('CHEK: R-3'),
+      qr_code: '',
     });
-
-    expect(blobs).toHaveLength(1);
-    expect(blobs[0].type).toBe('text/html;charset=utf-8');
-    expect(String(blobs[0].parts[0])).toContain('CHEK: R-3');
-    expect(String(blobs[0].parts[0])).toContain('<pre>');
   });
 
-  it('sends cyrillic-capable encoding to the local agent', async () => {
-    const requests: Record<string, unknown>[] = [];
-    vi.stubGlobal(
-      'fetch',
-      vi.fn((_url: string, init?: RequestInit) => {
-        requests.push(JSON.parse(String(init?.body)));
-        return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
-      }),
-    );
+  it('prints through backend generic endpoint without local browser fallback', async () => {
+    apiPostMock.mockResolvedValueOnce({ result: { ok: false } });
 
-    await printReceiptWithFallback({
+    const printed = await printReceiptWithFallback({
       snapshot: {
-        restaurant_name: 'Қамиш',
+        restaurant_name: 'Qamish',
         receipt_number: 'R-4',
         printed_at_label: '2026-06-01T10:00:00',
         items: [],
@@ -115,7 +94,11 @@ describe('browser receipt printing', () => {
       },
     });
 
-    expect(requests[0].encoding).toBe('cp1251');
-    expect(requests[0].code_page).toBe(46);
+    expect(printed).toBe(false);
+    expect(apiPostMock).toHaveBeenCalledWith('/pos/billing/receipts/print/', {
+      payload: expect.any(Object),
+      text: expect.stringContaining('CHEK: R-4'),
+      qr_code: '',
+    });
   });
 });

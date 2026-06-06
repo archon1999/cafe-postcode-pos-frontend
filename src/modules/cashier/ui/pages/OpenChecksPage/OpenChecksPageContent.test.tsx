@@ -262,7 +262,10 @@ describe('OpenChecksPageContent', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ha, chiqarish' }));
 
     await waitFor(() => {
-      expect(printReceiptWithFallbackMock).toHaveBeenCalledWith({ receiptNumber: 'R-2' }, { preferLocalAgent: true });
+      expect(printReceiptWithFallbackMock).toHaveBeenCalledWith(
+        { receiptNumber: 'R-2' },
+        { preferLocalAgent: true, receiptId: 'receipt-2' },
+      );
       expect(fiscalUnresolvedRefetchMock).toHaveBeenCalled();
     });
   });

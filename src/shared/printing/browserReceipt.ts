@@ -1,3 +1,5 @@
+import { apiPost } from 'shared/api/client';
+
 type PrintableItem = {
   name?: string;
   quantity?: number | string;
@@ -79,6 +81,7 @@ type PrintablePayload = {
 
 type PrintReceiptOptions = {
   preferLocalAgent?: boolean;
+  receiptId?: string | null;
   printerName?: string | null;
   connectionType?: string | null;
   host?: string | null;
@@ -397,37 +400,20 @@ export async function printReceiptWithLocalAgent(
   if (options.preferLocalAgent === false) {
     return false;
   }
-
-  const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => controller.abort(), 2500);
   const snapshot = snapshotFromPayload(payload);
+  const endpoint = options.receiptId
+    ? `/pos/billing/receipts/${options.receiptId}/print/`
+    : '/pos/billing/receipts/print/';
 
   try {
-    const response = await fetch('http://127.0.0.1:18181/print/text', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        text: receiptTextFromPayload(payload),
-        qr_code: qrValue(snapshot),
-        cut_after_print: true,
-        feed_lines_before_cut: 5,
-        job_name: 'Cafe Postcode Receipt',
-        printer_name: options.printerName || undefined,
-        connection_type: options.connectionType || undefined,
-        host: options.host || undefined,
-        port: options.port ? Number(options.port) : undefined,
-        encoding: 'cp1251',
-        code_page: 46,
-      }),
-      signal: controller.signal,
+    const data = await apiPost<{ result?: { ok?: boolean } }>(endpoint, {
+      payload: payload ?? {},
+      text: receiptTextFromPayload(payload),
+      qr_code: qrValue(snapshot),
     });
-    if (!response.ok) return false;
-    const data = (await response.json().catch(() => null)) as { ok?: boolean } | null;
-    return data?.ok === true;
+    return data.result?.ok === true;
   } catch {
     return false;
-  } finally {
-    window.clearTimeout(timeoutId);
   }
 }
 
@@ -435,11 +421,7 @@ export async function printReceiptWithFallback(
   payload: Record<string, unknown> | null | undefined,
   options: PrintReceiptOptions = {},
 ) {
-  const printed = await printReceiptWithLocalAgent(payload, options);
-  if (!printed) {
-    await printReceiptInBrowser(payload);
-  }
-  return printed;
+  return printReceiptWithLocalAgent(payload, options);
 }
 
 export async function printReceiptInBrowser(payload: Record<string, unknown> | null | undefined) {

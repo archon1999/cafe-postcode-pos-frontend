@@ -188,7 +188,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     const activeCashDeskId = cashierContextQuery.data?.currentShift?.cashDesk;
     return cashDesks.find((cashDesk) => cashDesk.id === activeCashDeskId) ?? cashDesks[0] ?? null;
   }, [cashierContextQuery.data?.availableCashDesks, cashierContextQuery.data?.currentShift?.cashDesk]);
-  const receiptLocalAgentEnabled = Boolean(selectedCashDesk?.printerIntegration);
+  const receiptLocalAgentEnabled = true;
   const receiptPrintOptions = useMemo(
     () => ({
       preferLocalAgent: receiptLocalAgentEnabled,
@@ -486,7 +486,10 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
       const receiptsToPrint = receiptDialogReceipts.length > 0 ? receiptDialogReceipts : [null];
       await Promise.all(
         receiptsToPrint.map((receipt) =>
-          printReceiptWithFallback(receipt?.payload ?? fallbackReceiptPayload, receiptPrintOptions),
+          printReceiptWithFallback(receipt?.payload ?? fallbackReceiptPayload, {
+            ...receiptPrintOptions,
+            receiptId: receipt?.id,
+          }),
         ),
       );
       setPrintToastOpen(true);

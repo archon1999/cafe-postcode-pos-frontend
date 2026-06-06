@@ -538,7 +538,10 @@ describe('PaymentPageContent', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ha, chiqarish' }));
 
     await waitFor(() => {
-      expect(printReceiptWithFallbackMock).toHaveBeenCalledWith({ receiptNumber: 'R-1' }, { preferLocalAgent: true });
+      expect(printReceiptWithFallbackMock).toHaveBeenCalledWith(
+        { receiptNumber: 'R-1' },
+        { preferLocalAgent: true, receiptId: 'receipt-1' },
+      );
       expect(navigateMock).toHaveBeenCalledWith('/cashier/open-checks', { replace: true });
     });
   });
