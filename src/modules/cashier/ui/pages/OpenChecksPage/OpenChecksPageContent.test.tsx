@@ -67,7 +67,7 @@ vi.mock('modules/cashier/application', () => ({
       retryFiscalMutateMock(paymentId);
       options?.onSuccess?.({
         results: [],
-        receipts: [{ payload: { receiptNumber: 'R-2' } }],
+        receipts: [{ id: 'receipt-2', payload: { receiptNumber: 'R-2' } }],
       });
     },
   }),
