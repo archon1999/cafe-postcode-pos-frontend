@@ -528,7 +528,26 @@ export function OpenChecksPageContent() {
     return cashDesks.find((cashDesk) => cashDesk.id === activeCashDeskId) ?? cashDesks[0] ?? null;
   }, [cashierContextQuery.data?.availableCashDesks, cashierContextQuery.data?.currentShift?.cashDesk]);
   const receiptLocalAgentEnabled = Boolean(selectedCashDesk?.printerIntegration);
-  const receiptLocalAgentPrinterName = selectedCashDesk?.printerIntegrationPrinterName ?? null;
+  const receiptPrintOptions = useMemo(
+    () => ({
+      preferLocalAgent: receiptLocalAgentEnabled,
+      ...(selectedCashDesk?.printerIntegrationPrinterName
+        ? { printerName: selectedCashDesk.printerIntegrationPrinterName }
+        : {}),
+      ...(selectedCashDesk?.printerIntegrationConnectionType
+        ? { connectionType: selectedCashDesk.printerIntegrationConnectionType }
+        : {}),
+      ...(selectedCashDesk?.printerIntegrationHost ? { host: selectedCashDesk.printerIntegrationHost } : {}),
+      ...(selectedCashDesk?.printerIntegrationPort ? { port: selectedCashDesk.printerIntegrationPort } : {}),
+    }),
+    [
+      receiptLocalAgentEnabled,
+      selectedCashDesk?.printerIntegrationConnectionType,
+      selectedCashDesk?.printerIntegrationHost,
+      selectedCashDesk?.printerIntegrationPort,
+      selectedCashDesk?.printerIntegrationPrinterName,
+    ],
+  );
   const isInitialLoading =
     openOrdersQuery.isLoading && closedOrdersQuery.isLoading && !openOrdersQuery.data && !closedOrdersQuery.data;
   const openOrders = useMemo(() => getChecksOrders(openOrdersQuery.data), [openOrdersQuery.data]);
@@ -591,10 +610,7 @@ export function OpenChecksPageContent() {
     try {
       await Promise.all(
         (retryReceiptDialog?.receipts ?? []).map((receipt) =>
-          printReceiptWithFallback(receipt.payload ?? null, {
-            preferLocalAgent: receiptLocalAgentEnabled,
-            printerName: receiptLocalAgentPrinterName,
-          }),
+          printReceiptWithFallback(receipt.payload ?? null, receiptPrintOptions),
         ),
       );
     } catch {
@@ -651,31 +667,19 @@ export function OpenChecksPageContent() {
             const code = String(result.code ?? '');
             if (code === 'PRINTER_NOT_CONFIGURED') {
               toast.info('Printer sozlamalari ulanmagan');
-              void printReceiptWithFallback(response.receipt?.payload ?? latestReceipt.payload ?? null, {
-                preferLocalAgent: receiptLocalAgentEnabled,
-                printerName: receiptLocalAgentPrinterName,
-              });
+              void printReceiptWithFallback(response.receipt?.payload ?? latestReceipt.payload ?? null, receiptPrintOptions);
               return;
             }
             if (code === 'PRINTER_UNAVAILABLE' || result.ok === false) {
               toast.info('Printer ishlamayapti');
-              void printReceiptWithFallback(response.receipt?.payload ?? latestReceipt.payload ?? null, {
-                preferLocalAgent: receiptLocalAgentEnabled,
-                printerName: receiptLocalAgentPrinterName,
-              });
+              void printReceiptWithFallback(response.receipt?.payload ?? latestReceipt.payload ?? null, receiptPrintOptions);
               return;
             }
-            void printReceiptWithFallback(response.receipt?.payload ?? latestReceipt.payload ?? null, {
-              preferLocalAgent: receiptLocalAgentEnabled,
-              printerName: receiptLocalAgentPrinterName,
-            });
+            void printReceiptWithFallback(response.receipt?.payload ?? latestReceipt.payload ?? null, receiptPrintOptions);
           })
           .catch(() => {
             toast.info('Printer ishlamayapti');
-            void printReceiptWithFallback(latestReceipt.payload ?? null, {
-              preferLocalAgent: receiptLocalAgentEnabled,
-              printerName: receiptLocalAgentPrinterName,
-            });
+            void printReceiptWithFallback(latestReceipt.payload ?? null, receiptPrintOptions);
           });
       }}
       onRetryFiscal={() => {

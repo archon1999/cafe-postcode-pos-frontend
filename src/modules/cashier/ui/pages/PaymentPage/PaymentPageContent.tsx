@@ -189,7 +189,26 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     return cashDesks.find((cashDesk) => cashDesk.id === activeCashDeskId) ?? cashDesks[0] ?? null;
   }, [cashierContextQuery.data?.availableCashDesks, cashierContextQuery.data?.currentShift?.cashDesk]);
   const receiptLocalAgentEnabled = Boolean(selectedCashDesk?.printerIntegration);
-  const receiptLocalAgentPrinterName = selectedCashDesk?.printerIntegrationPrinterName ?? null;
+  const receiptPrintOptions = useMemo(
+    () => ({
+      preferLocalAgent: receiptLocalAgentEnabled,
+      ...(selectedCashDesk?.printerIntegrationPrinterName
+        ? { printerName: selectedCashDesk.printerIntegrationPrinterName }
+        : {}),
+      ...(selectedCashDesk?.printerIntegrationConnectionType
+        ? { connectionType: selectedCashDesk.printerIntegrationConnectionType }
+        : {}),
+      ...(selectedCashDesk?.printerIntegrationHost ? { host: selectedCashDesk.printerIntegrationHost } : {}),
+      ...(selectedCashDesk?.printerIntegrationPort ? { port: selectedCashDesk.printerIntegrationPort } : {}),
+    }),
+    [
+      receiptLocalAgentEnabled,
+      selectedCashDesk?.printerIntegrationConnectionType,
+      selectedCashDesk?.printerIntegrationHost,
+      selectedCashDesk?.printerIntegrationPort,
+      selectedCashDesk?.printerIntegrationPrinterName,
+    ],
+  );
 
   const remainingTotal = useMemo(() => {
     const total = Number(orderQuery.data?.total ?? 0);
@@ -467,10 +486,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
       const receiptsToPrint = receiptDialogReceipts.length > 0 ? receiptDialogReceipts : [null];
       await Promise.all(
         receiptsToPrint.map((receipt) =>
-          printReceiptWithFallback(receipt?.payload ?? fallbackReceiptPayload, {
-            preferLocalAgent: receiptLocalAgentEnabled,
-            printerName: receiptLocalAgentPrinterName,
-          }),
+          printReceiptWithFallback(receipt?.payload ?? fallbackReceiptPayload, receiptPrintOptions),
         ),
       );
       setPrintToastOpen(true);

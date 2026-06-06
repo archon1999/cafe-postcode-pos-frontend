@@ -80,6 +80,9 @@ type PrintablePayload = {
 type PrintReceiptOptions = {
   preferLocalAgent?: boolean;
   printerName?: string | null;
+  connectionType?: string | null;
+  host?: string | null;
+  port?: number | string | null;
 };
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -410,7 +413,11 @@ export async function printReceiptWithLocalAgent(
         feed_lines_before_cut: 5,
         job_name: 'Cafe Postcode Receipt',
         printer_name: options.printerName || undefined,
-        encoding: 'cp437',
+        connection_type: options.connectionType || undefined,
+        host: options.host || undefined,
+        port: options.port ? Number(options.port) : undefined,
+        encoding: 'cp1251',
+        code_page: 46,
       }),
       signal: controller.signal,
     });

@@ -94,4 +94,28 @@ describe('browser receipt printing', () => {
     expect(String(blobs[0].parts[0])).toContain('CHEK: R-3');
     expect(String(blobs[0].parts[0])).toContain('<pre>');
   });
+
+  it('sends cyrillic-capable encoding to the local agent', async () => {
+    const requests: Record<string, unknown>[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((_url: string, init?: RequestInit) => {
+        requests.push(JSON.parse(String(init?.body)));
+        return Promise.resolve(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+      }),
+    );
+
+    await printReceiptWithFallback({
+      snapshot: {
+        restaurant_name: 'Қамиш',
+        receipt_number: 'R-4',
+        printed_at_label: '2026-06-01T10:00:00',
+        items: [],
+        total: 0,
+      },
+    });
+
+    expect(requests[0].encoding).toBe('cp1251');
+    expect(requests[0].code_page).toBe(46);
+  });
 });

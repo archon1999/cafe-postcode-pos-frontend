@@ -13,6 +13,9 @@ export type CashierContextCashDesk = {
   printerIntegration?: string | null;
   printerIntegrationName?: string | null;
   printerIntegrationPrinterName?: string | null;
+  printerIntegrationConnectionType?: 'system_printer' | 'socket' | string | null;
+  printerIntegrationHost?: string | null;
+  printerIntegrationPort?: number | string | null;
   fiscalProvider: string;
   receiptPrinterEnabled: boolean;
   terminalId: string;
