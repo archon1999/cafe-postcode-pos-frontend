@@ -10,7 +10,7 @@ export function PosLegendPill({ label, color }: { label: string; color: string }
         px: 1.18,
         py: 0.68,
         borderRadius: 999,
-        backgroundColor: theme.palette.mode === 'dark' ? '#2a2d31' : '#eee6d9',
+        backgroundColor: 'var(--pos-legend-bg)',
       })}>
       <Box sx={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: color }} />
       <Typography

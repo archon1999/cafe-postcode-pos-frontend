@@ -15,8 +15,8 @@ import { createPosTheme } from './theme';
 registerServiceWorker();
 
 function PosApplication() {
-  const { themeMode } = usePosSession();
-  const theme = useMemo(() => createPosTheme(themeMode), [themeMode]);
+  const { themeColor, themeMode } = usePosSession();
+  const theme = useMemo(() => createPosTheme(themeMode, themeColor), [themeColor, themeMode]);
 
   return (
     <ThemeProvider theme={theme}>

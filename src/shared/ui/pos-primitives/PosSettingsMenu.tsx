@@ -1,5 +1,20 @@
 import { Icon } from '@iconify/react';
-import { Divider, ListItemIcon, ListItemText, Menu, MenuItem } from '@mui/material';
+import {
+  Box,
+  ButtonBase,
+  Chip,
+  Divider,
+  ListItemIcon,
+  ListItemText,
+  Menu,
+  MenuItem,
+  Stack,
+  Typography,
+  alpha,
+} from '@mui/material';
+
+import { getPosThemeColorOptions, type PosThemeColor } from 'app/theme';
+import { useCashierContextQuery } from 'modules/cashier/application';
 
 import type { PosLocale } from '../../locale/copy';
 import { getPosCopy, localeLabels } from '../../locale/copy';
@@ -13,7 +28,9 @@ export function PosSettingsMenu({
   onLock,
   onRefresh,
   onThemeToggle,
+  onThemeColorChange,
   onSignOut,
+  themeColor,
   themeMode,
 }: {
   anchorEl: HTMLElement | null;
@@ -24,13 +41,47 @@ export function PosSettingsMenu({
   onLock?: () => void;
   onRefresh?: () => void;
   onThemeToggle: () => void;
+  onThemeColorChange: (color: PosThemeColor) => void;
   onSignOut: () => void;
+  themeColor: PosThemeColor;
   themeMode: 'light' | 'dark';
 }) {
   const copy = getPosCopy(locale);
+  const fiscalStatusQuery = useCashierContextQuery({
+    enabled: Boolean(anchorEl),
+    refetchInterval: 30000,
+  });
+  const availableCashDesks = fiscalStatusQuery.data?.availableCashDesks ?? [];
+  const selectedCashDesk =
+    availableCashDesks.find((cashDesk) => cashDesk.id === fiscalStatusQuery.data?.currentShift?.cashDesk) ??
+    availableCashDesks[0] ??
+    null;
+  const fiscalDeviceStatus = fiscalStatusQuery.data?.fiscalDeviceStatus;
+  const isFiscalOnline = Boolean(fiscalDeviceStatus?.online);
+  const fiscalStatusLabel = fiscalStatusQuery.isError ? 'Offline' : isFiscalOnline ? 'Online' : 'Offline';
+  const terminalId = fiscalDeviceStatus?.terminalId || selectedCashDesk?.terminalId || selectedCashDesk?.externalCashboxId || '';
+  const themeOptions = getPosThemeColorOptions(themeMode);
+  const selectedThemeColor = themeOptions.some((option) => option.id === themeColor) ? themeColor : themeOptions[0]?.id;
 
   return (
     <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={onClose}>
+      <Box sx={{ px: 2, py: 1.4, minWidth: 260 }}>
+        <Stack spacing={0.8}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.5}>
+            <Typography variant="subtitle1">Fiscal</Typography>
+            <Chip
+              size="small"
+              label={fiscalStatusLabel}
+              color={isFiscalOnline && !fiscalStatusQuery.isError ? 'success' : 'warning'}
+            />
+          </Stack>
+          <Typography variant="body2" color="text.secondary">
+            Terminal: {terminalId || 'sozlanmagan'}
+          </Typography>
+        </Stack>
+      </Box>
+      <Divider />
+
       <MenuItem
         onClick={() => {
           onThemeToggle();
@@ -41,6 +92,93 @@ export function PosSettingsMenu({
         </ListItemIcon>
         <ListItemText primary={copy.theme} secondary={themeMode === 'dark' ? copy.lightMode : copy.darkMode} />
       </MenuItem>
+
+      <Box sx={{ px: 2, pb: 1.5 }}>
+        <Stack spacing={1}>
+          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>
+            {copy.themeColor}
+          </Typography>
+          <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+            {themeOptions.map((option) => {
+              const selected = option.id === selectedThemeColor;
+              const preview = option.modes[themeMode];
+
+              if (!preview) {
+                return null;
+              }
+
+              return (
+                <ButtonBase
+                  key={option.id}
+                  aria-label={option.label}
+                  aria-pressed={selected}
+                  onClick={() => onThemeColorChange(option.id)}
+                  sx={(theme) => ({
+                    width: 72,
+                    height: 48,
+                    borderRadius: 1.7,
+                    p: 0.45,
+                    display: 'block',
+                    background: preview.background.gradient,
+                    border: `2px solid ${selected ? preview.primary.main : alpha(theme.palette.text.primary, 0.14)}`,
+                    boxShadow: selected ? `0 0 0 3px ${alpha(preview.primary.main, 0.18)}` : 'none',
+                    transition: 'transform 0.14s ease, box-shadow 0.14s ease, border-color 0.14s ease',
+                    '&:hover': {
+                      transform: 'translateY(-1px)',
+                      boxShadow: `0 0 0 3px ${alpha(preview.primary.main, selected ? 0.22 : 0.12)}`,
+                    },
+                  })}>
+                  <Box
+                    sx={{
+                      height: '100%',
+                      borderRadius: 1.35,
+                      overflow: 'hidden',
+                      backgroundColor: preview.background.paper,
+                      border: `1px solid ${preview.divider}`,
+                    }}>
+                    <Box
+                      sx={{
+                        height: 9,
+                        display: 'flex',
+                        alignItems: 'center',
+                        px: 0.6,
+                        gap: 0.35,
+                        borderBottom: `1px solid ${preview.divider}`,
+                        backgroundColor:
+                          themeMode === 'dark' ? alpha(preview.text.primary, 0.03) : alpha(preview.text.primary, 0.02),
+                      }}>
+                      <Box sx={{ width: 23, height: 3.5, borderRadius: 99, backgroundColor: preview.primary.main }} />
+                      <Box sx={{ flex: 1 }} />
+                      <Box sx={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: preview.primary.dark }} />
+                      <Box sx={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: preview.secondary }} />
+                    </Box>
+                    <Box sx={{ px: 0.65, py: 0.5 }}>
+                      <Box
+                        sx={{
+                          height: 10,
+                          borderRadius: 1,
+                          border: `2px solid ${alpha(preview.text.secondary, 0.32)}`,
+                          backgroundColor:
+                            themeMode === 'dark' ? alpha('#ffffff', 0.025) : alpha('#ffffff', 0.62),
+                        }}
+                      />
+                      <Box
+                        sx={{
+                          mt: 0.5,
+                          width: 34,
+                          height: 7,
+                          borderRadius: 1,
+                          backgroundColor: preview.shared.menuItemPriceBg,
+                        }}
+                      />
+                    </Box>
+                  </Box>
+                </ButtonBase>
+              );
+            })}
+          </Stack>
+        </Stack>
+      </Box>
 
       <Divider />
 

@@ -42,7 +42,8 @@ import { PosIconAction, PosSettingsMenu } from 'shared/ui/pos-primitives';
 export function CashierShiftPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { session, locale, setLocale, setSession, themeMode, setThemeMode } = usePosSession();
+  const { session, locale, setLocale, setSession, themeColor, setThemeColor, themeMode, setThemeMode } =
+    usePosSession();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const copy = getPosCopy(locale);
@@ -435,10 +436,9 @@ export function CashierShiftPage() {
             maxWidth: 620,
             borderRadius: '18px',
             p: { xs: 2, md: 2.6 },
-            backgroundColor: theme.palette.mode === 'dark' ? '#1f2125' : '#f8f1e8',
+            backgroundColor: 'var(--pos-content-panel-bg)',
             border: `1px solid ${alpha('#ffffff', theme.palette.mode === 'dark' ? 0.05 : 0.32)}`,
-            boxShadow:
-              theme.palette.mode === 'dark' ? '0 20px 40px rgba(0,0,0,0.24)' : '0 18px 38px rgba(121,87,44,0.1)',
+            boxShadow: 'var(--pos-content-panel-shadow)',
           })}>
           {contextQuery.isLoading && !contextQuery.data ? (
             <Typography variant="h6" color="text.secondary">
@@ -525,7 +525,7 @@ export function CashierShiftPage() {
                 variant="contained"
                 sx={(theme) => ({
                   backgroundImage: 'none',
-                  backgroundColor: theme.palette.mode === 'dark' ? '#4d535a' : '#d8cfbf',
+                  backgroundColor: 'var(--pos-secondary-action-bg)',
                   color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
                 })}
                 onClick={() => navigate(nextPath, { replace: true })}>
@@ -542,7 +542,7 @@ export function CashierShiftPage() {
                 variant="contained"
                 sx={(theme) => ({
                   backgroundImage: 'none',
-                  backgroundColor: theme.palette.mode === 'dark' ? '#4d535a' : '#d8cfbf',
+                  backgroundColor: 'var(--pos-secondary-action-bg)',
                   color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
                 })}
                 onClick={() => navigate(getPosHomePath(session), { replace: true })}>
@@ -561,10 +561,12 @@ export function CashierShiftPage() {
         onLock={() => navigate('/lock-screen')}
         onRefresh={() => void contextQuery.refetch()}
         onThemeToggle={() => setThemeMode(themeMode === 'dark' ? 'light' : 'dark')}
+        onThemeColorChange={setThemeColor}
         onSignOut={() => {
           setSession(null);
           navigate('/pin-login', { replace: true });
         }}
+        themeColor={themeColor}
         themeMode={themeMode}
       />
       {renderCloseReportDialog()}

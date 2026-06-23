@@ -108,7 +108,8 @@ function formatPercent(value: number) {
 
 export function TableSessionPageContent({ sessionId, mode, source = null }: TableSessionPageContentProps) {
   const navigate = useNavigate();
-  const { session, locale, setLocale, setSession, themeMode, setThemeMode } = usePosSession();
+  const { session, locale, setLocale, setSession, themeColor, setThemeColor, themeMode, setThemeMode } =
+    usePosSession();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const isTakeawayMode = mode === 'takeaway';
@@ -611,11 +612,11 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
                 bottom: 0,
                 zIndex: 6,
                 borderRadius: '18px',
-                backgroundColor: theme.palette.mode === 'dark' ? alpha('#23262b', 0.94) : alpha('#faf4ea', 0.96),
+                backgroundColor: 'var(--pos-mobile-summary-bg)',
                 backdropFilter: 'blur(18px)',
                 border: `1px solid ${alpha('#ffffff', theme.palette.mode === 'dark' ? 0.08 : 0.34)}`,
                 boxShadow:
-                  theme.palette.mode === 'dark' ? '0 18px 32px rgba(0,0,0,0.3)' : '0 16px 30px rgba(98,70,38,0.14)',
+                  'var(--pos-mobile-summary-shadow)',
                 px: 1.4,
                 py: 1.2,
               })}>
@@ -643,7 +644,7 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
             overflow: 'hidden',
             height: '100%',
             minHeight: 0,
-            backgroundColor: theme.palette.mode === 'dark' ? '#222222' : '#f6f0e7',
+            backgroundColor: 'var(--pos-order-panel-bg)',
             flexDirection: 'column',
             border: `1px solid ${alpha('#ffffff', theme.palette.mode === 'dark' ? 0.04 : 0.3)}`,
           })}>
@@ -655,7 +656,7 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
                     minWidth: 66,
                     height: 66,
                     borderRadius: '10px',
-                    backgroundColor: theme.palette.mode === 'dark' ? '#4b4b4b' : '#dad2c4',
+                    backgroundColor: 'var(--pos-order-avatar-bg)',
                     display: 'grid',
                     placeItems: 'center',
                     fontSize: 30,
@@ -720,7 +721,7 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
                           textAlign: 'left',
                           borderRadius: '10px',
                           overflow: 'hidden',
-                          backgroundColor: theme.palette.mode === 'dark' ? '#2d2d2d' : '#ede5d8',
+                          backgroundColor: 'var(--pos-cart-item-bg)',
                           transition:
                             'background-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease, border-color 0.16s ease',
                           boxShadow:
@@ -728,7 +729,7 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
                               ? `inset 0 0 0 1px ${alpha(theme.palette.primary.main, 0.44)}`
                               : 'none',
                           '&:hover': {
-                            backgroundColor: theme.palette.mode === 'dark' ? '#333438' : '#e7ded1',
+                            backgroundColor: 'var(--pos-cart-item-hover-bg)',
                             transform: 'translateY(-1px)',
                           },
                           '&:active': {
@@ -766,7 +767,7 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
                             spacing={1.2}
                             sx={(theme) => ({
                               borderTop: `1px solid ${alpha('#ffffff', theme.palette.mode === 'dark' ? 0.06 : 0.45)}`,
-                              backgroundColor: theme.palette.mode === 'dark' ? '#383c42' : '#ddd4c7',
+                              backgroundColor: 'var(--pos-menu-item-price-bg)',
                               px: 1.35,
                               py: 1.1,
                             })}>
@@ -787,14 +788,14 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
                                 cursor: 'pointer',
                                 borderRadius: '14px',
                                 color: theme.palette.mode === 'dark' ? '#f6f7f9' : '#262a30',
-                                backgroundColor: theme.palette.mode === 'dark' ? '#272a2f' : '#f5efe5',
+                                backgroundColor: 'var(--pos-cart-action-bg)',
                                 transition: 'background-color 0.14s ease, transform 0.14s ease, box-shadow 0.14s ease',
                                 boxShadow:
                                   theme.palette.mode === 'dark'
                                     ? 'inset 0 0 0 1px rgba(255,255,255,0.08)'
                                     : 'inset 0 0 0 1px rgba(38,42,48,0.08)',
                                 '&:hover': {
-                                  backgroundColor: theme.palette.mode === 'dark' ? '#2f343a' : '#ffffff',
+                                  backgroundColor: 'var(--pos-cart-action-hover-bg)',
                                 },
                                 '&:active': {
                                   transform: 'scale(0.94)',
@@ -822,14 +823,14 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
                                 cursor: 'pointer',
                                 borderRadius: '14px',
                                 color: theme.palette.mode === 'dark' ? '#f6f7f9' : '#262a30',
-                                backgroundColor: theme.palette.mode === 'dark' ? '#272a2f' : '#f5efe5',
+                                backgroundColor: 'var(--pos-cart-action-bg)',
                                 transition: 'background-color 0.14s ease, transform 0.14s ease, box-shadow 0.14s ease',
                                 boxShadow:
                                   theme.palette.mode === 'dark'
                                     ? 'inset 0 0 0 1px rgba(255,255,255,0.08)'
                                     : 'inset 0 0 0 1px rgba(38,42,48,0.08)',
                                 '&:hover': {
-                                  backgroundColor: theme.palette.mode === 'dark' ? '#2f343a' : '#ffffff',
+                                  backgroundColor: 'var(--pos-cart-action-hover-bg)',
                                 },
                                 '&:active': {
                                   transform: 'scale(0.94)',
@@ -1027,7 +1028,7 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
                         textAlign: 'left',
                         borderRadius: '12px',
                         overflow: 'hidden',
-                        backgroundColor: theme.palette.mode === 'dark' ? '#2d2d2d' : '#ede5d8',
+                        backgroundColor: 'var(--pos-cart-item-bg)',
                         boxShadow:
                           selectedCartItemKey === item.key
                             ? `inset 0 0 0 1px ${alpha(theme.palette.primary.main, 0.44)}`
@@ -1064,7 +1065,7 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
                             px: 1.1,
                             py: 1,
                             borderTop: `1px solid ${alpha('#ffffff', theme.palette.mode === 'dark' ? 0.06 : 0.45)}`,
-                            backgroundColor: theme.palette.mode === 'dark' ? '#383c42' : '#ddd4c7',
+                            backgroundColor: 'var(--pos-menu-item-price-bg)',
                           })}>
                           <Button
                             variant="contained"
@@ -1195,10 +1196,12 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
         onRefresh={isMobile ? () => window.location.reload() : undefined}
         onLock={isMobile ? () => navigate('/lock-screen') : undefined}
         onThemeToggle={() => setThemeMode(themeMode === 'dark' ? 'light' : 'dark')}
+        onThemeColorChange={setThemeColor}
         onSignOut={() => {
           setSession(null);
           void navigate('/pin-login', { replace: true });
         }}
+        themeColor={themeColor}
         themeMode={themeMode}
       />
     </PosPageFrame>

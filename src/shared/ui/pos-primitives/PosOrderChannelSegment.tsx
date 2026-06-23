@@ -42,11 +42,11 @@ export function PosOrderChannelSegment({
       sx={(theme) => ({
         p: compact ? 0.6 : 0.7,
         borderRadius: 999,
-        backgroundColor: theme.palette.mode === 'dark' ? '#17181b' : '#e7ddcf',
+        backgroundColor: 'var(--pos-segment-bg)',
         boxShadow:
           theme.palette.mode === 'dark'
-            ? 'inset 0 0 0 1px rgba(255,255,255,0.03)'
-            : 'inset 0 0 0 1px rgba(41,47,56,0.04)',
+            ? 'inset 0 0 0 1px var(--pos-segment-border)'
+            : 'inset 0 0 0 1px var(--pos-segment-border)',
       })}>
       {segmentItems.map((item) => (
         <Box
@@ -66,11 +66,10 @@ export function PosOrderChannelSegment({
             textAlign: 'center',
             font: 'inherit',
             cursor: onChange && !disabled ? 'pointer' : 'default',
-            backgroundColor:
-              item.value === activeChannel ? (theme.palette.mode === 'dark' ? '#4a4a4a' : '#5c5c5c') : 'transparent',
+            backgroundColor: item.value === activeChannel ? 'var(--pos-segment-active-bg)' : 'transparent',
             color:
               item.value === activeChannel
-                ? '#ffffff'
+                ? 'var(--pos-segment-active-color)'
                 : theme.palette.mode === 'dark'
                   ? alpha('#ffffff', 0.72)
                   : alpha('#27313d', 0.68),

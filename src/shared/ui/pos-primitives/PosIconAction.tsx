@@ -1,7 +1,9 @@
 import { Icon } from '@iconify/react';
-import { Button, alpha } from '@mui/material';
+import { Box, Button, alpha } from '@mui/material';
 import type { SxProps, Theme } from '@mui/material/styles';
 import type { MouseEventHandler } from 'react';
+
+import { useCashierContextQuery } from 'modules/cashier/application';
 
 export function PosIconAction({
   icon,
@@ -12,33 +14,55 @@ export function PosIconAction({
   onClick?: MouseEventHandler<HTMLButtonElement>;
   sx?: SxProps<Theme>;
 }) {
+  const isSettingsAction = icon.includes('settings');
+  const fiscalStatusQuery = useCashierContextQuery({
+    enabled: isSettingsAction,
+    refetchInterval: isSettingsAction ? 30000 : false,
+  });
+  const isFiscalOnline = Boolean(fiscalStatusQuery.data?.fiscalDeviceStatus?.online);
+  const badgeColor = fiscalStatusQuery.isError ? '#ff5963' : isFiscalOnline ? '#21c985' : '#ffb020';
+
   return (
     <Button
       variant="contained"
       onClick={onClick}
       sx={[
         (theme) => ({
-          minWidth: { xs: 46, sm: 52, md: 60 },
-          width: { xs: 46, sm: 52, md: 60 },
-          height: { xs: 46, sm: 52, md: 60 },
+          position: 'relative',
+          minWidth: { xs: 46, sm: 50, md: 52, xl: 60 },
+          width: { xs: 46, sm: 50, md: 52, xl: 60 },
+          height: { xs: 46, sm: 50, md: 52, xl: 60 },
           p: 0,
           color: 'text.primary',
           backgroundImage: 'none',
           borderRadius: { xs: '14px', md: '18px' },
-          backgroundColor: theme.palette.mode === 'dark' ? alpha('#2b2e33', 0.58) : alpha('#ffffff', 0.84),
+          background: 'var(--pos-action-bg)',
           backdropFilter: 'blur(20px) saturate(138%)',
-          border: `1px solid ${alpha('#ffffff', theme.palette.mode === 'dark' ? 0.08 : 0.22)}`,
-          boxShadow:
-            theme.palette.mode === 'dark'
-              ? 'inset 0 1px 0 rgba(255,255,255,0.04), 0 10px 22px rgba(0,0,0,0.2)'
-              : '0 10px 24px rgba(67,47,28,0.12)',
+          border: '1px solid var(--pos-action-border)',
+          boxShadow: 'var(--pos-action-shadow)',
           '&:hover': {
-            backgroundColor: theme.palette.mode === 'dark' ? alpha('#353942', 0.7) : alpha('#ffffff', 0.92),
+            background: 'var(--pos-action-hover-bg)',
           },
         }),
         ...(Array.isArray(sx) ? sx : sx ? [sx] : []),
       ]}>
       <Icon icon={icon} width={20} />
+      {isSettingsAction ? (
+        <Box
+          sx={{
+            position: 'absolute',
+            top: { xs: 5, md: 7 },
+            right: { xs: 5, md: 7 },
+            width: { xs: 10, md: 12 },
+            height: { xs: 10, md: 12 },
+            borderRadius: 999,
+            backgroundColor: badgeColor,
+            border: '2px solid',
+            borderColor: 'background.paper',
+            boxShadow: `0 0 0 3px ${alpha(badgeColor, 0.2)}`,
+          }}
+        />
+      ) : null}
     </Button>
   );
 }

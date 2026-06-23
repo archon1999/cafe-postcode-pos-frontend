@@ -110,15 +110,6 @@ function qrValue(snapshot: PrintablePayload) {
   return String(snapshot.qr_code_url ?? snapshot.qrCodeUrl ?? '').trim();
 }
 
-function escapeHtml(value: unknown) {
-  return String(value ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;');
-}
-
 function money(value: unknown) {
   return numberValue(value).toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
@@ -380,9 +371,6 @@ export function receiptTextFromPayload(payload: Record<string, unknown> | null |
     if (terminalId) lines.push(`NKM S/R: ${terminalId}`);
   }
 
-  const qrCodeUrl = snapshot.qr_code_url ?? snapshot.qrCodeUrl;
-  if (qrCodeUrl) lines.push(`QR: ${qrCodeUrl}`);
-
   const orderNote = snapshot.order_note ?? snapshot.orderNote;
   if (orderNote) {
     lines.push('-'.repeat(42));
@@ -422,60 +410,4 @@ export async function printReceiptWithFallback(
   options: PrintReceiptOptions = {},
 ) {
   return printReceiptWithLocalAgent(payload, options);
-}
-
-export async function printReceiptInBrowser(payload: Record<string, unknown> | null | undefined) {
-  const text = receiptTextFromPayload(payload);
-  const html = `<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>Chek</title>
-  <style>
-    @page { size: 80mm auto; margin: 0; }
-    * { box-sizing: border-box; }
-    html, body {
-      margin: 0;
-      padding: 0;
-      width: 80mm;
-      min-height: 0;
-      background: #fff;
-      color: #000;
-    }
-    body {
-      font-family: "Courier New", Consolas, monospace;
-      font-size: 11px;
-      font-weight: 700;
-      line-height: 1.1;
-    }
-    pre {
-      display: block;
-      width: 100%;
-      margin: 0;
-      padding: 1.5mm 1mm 4mm;
-      white-space: pre;
-      overflow: visible;
-    }
-  </style>
-</head>
-<body><pre>${escapeHtml(text)}</pre></body>
-</html>`;
-  const url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
-  const frame = document.createElement('iframe');
-  frame.style.position = 'fixed';
-  frame.style.right = '0';
-  frame.style.bottom = '0';
-  frame.style.width = '0';
-  frame.style.height = '0';
-  frame.style.border = '0';
-  document.body.appendChild(frame);
-  frame.onload = () => {
-    frame.contentWindow?.focus();
-    frame.contentWindow?.print();
-  };
-  frame.src = url;
-  window.setTimeout(() => {
-    URL.revokeObjectURL(url);
-    frame.remove();
-  }, 30000);
 }

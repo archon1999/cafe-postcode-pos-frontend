@@ -7,10 +7,12 @@ import {
   persistLocale,
   persistRestaurantContext,
   persistSession,
+  persistThemeColor,
   persistThemeMode,
   readStoredLocale,
   readStoredRestaurantContext,
   readStoredSession,
+  readStoredThemeColor,
   readStoredThemeMode,
 } from '../data-access';
 
@@ -20,6 +22,7 @@ export function PosSessionProvider({ children }: { children: ReactNode }) {
   const [session, updateSession] = useState<PosSessionPayload | null>(() => readStoredSession());
   const [restaurantContext, updateRestaurantContext] = useState(() => readStoredRestaurantContext());
   const [themeMode, updateThemeMode] = useState(() => readStoredThemeMode());
+  const [themeColor, updateThemeColor] = useState(() => readStoredThemeColor());
   const [locale, updateLocale] = useState(() => readStoredLocale());
 
   const value = useMemo<PosSessionContextValue>(
@@ -36,6 +39,11 @@ export function PosSessionProvider({ children }: { children: ReactNode }) {
         updateThemeMode(mode);
         persistThemeMode(mode);
       },
+      themeColor,
+      setThemeColor: (color) => {
+        updateThemeColor(color);
+        persistThemeColor(color);
+      },
       locale,
       setLocale: (nextLocale) => {
         updateLocale(nextLocale);
@@ -47,7 +55,7 @@ export function PosSessionProvider({ children }: { children: ReactNode }) {
         persistSession(nextValue);
       },
     }),
-    [locale, restaurantContext, session, themeMode],
+    [locale, restaurantContext, session, themeColor, themeMode],
   );
 
   return <PosSessionContext.Provider value={value}>{children}</PosSessionContext.Provider>;

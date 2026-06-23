@@ -129,7 +129,8 @@ function formatPercent(value: number) {
 
 export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   const navigate = useNavigate();
-  const { session, locale, setLocale, setSession, themeMode, setThemeMode } = usePosSession();
+  const { session, locale, setLocale, setSession, themeColor, setThemeColor, themeMode, setThemeMode } =
+    usePosSession();
   const copy = getPosCopy(locale);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -703,23 +704,27 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
         sx={{
           flex: 1,
           minHeight: 0,
-          overflowY: { xs: 'auto', lg: 'hidden' },
+          overflowY: { xs: 'auto', md: 'hidden' },
           overflowX: 'hidden',
           display: 'grid',
-          gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 360px' },
-          gap: { xs: 2, md: 2.5 },
-          alignContent: { xs: 'start', lg: 'stretch' },
-          alignItems: { xs: 'start', lg: 'stretch' },
+          gridTemplateColumns: {
+            xs: '1fr',
+            md: 'minmax(0, 1fr) clamp(320px, 34vw, 360px)',
+            xl: 'minmax(0, 1fr) clamp(380px, 24vw, 430px)',
+          },
+          gap: { xs: 1.5, md: 1.6, xl: 2.4 },
+          alignContent: { xs: 'start', md: 'stretch' },
+          alignItems: { xs: 'start', md: 'stretch' },
           pb: 0.4,
         }}>
         <Box
           sx={(muiTheme) => ({
             borderRadius: '14px',
-            backgroundColor: muiTheme.palette.mode === 'dark' ? '#1f2125' : '#f8f1e8',
+            backgroundColor: 'var(--pos-content-panel-bg)',
             p: { xs: 1.8, md: 2.4 },
             border: `1px solid ${alpha('#ffffff', muiTheme.palette.mode === 'dark' ? 0.04 : 0.28)}`,
             minHeight: 0,
-            overflowY: { xs: 'visible', lg: 'auto' },
+            overflowY: { xs: 'visible', md: 'auto' },
             overflowX: 'hidden',
           })}>
           <Stack spacing={2}>
@@ -729,7 +734,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
                   minWidth: { xs: 56, md: 62 },
                   height: { xs: 56, md: 62 },
                   borderRadius: '10px',
-                  backgroundColor: muiTheme.palette.mode === 'dark' ? '#474c54' : '#dad2c4',
+                  backgroundColor: 'var(--pos-order-avatar-bg)',
                   display: 'grid',
                   placeItems: 'center',
                   fontSize: 28,
@@ -771,7 +776,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
                   sx={(muiTheme) => ({
                     borderRadius: '10px',
                     overflow: 'hidden',
-                    backgroundColor: muiTheme.palette.mode === 'dark' ? '#2c2f34' : '#ede4d7',
+                    backgroundColor: 'var(--pos-payment-item-bg)',
                   })}>
                   <Stack
                     direction="row"
@@ -854,11 +859,11 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
         <Box
           sx={(muiTheme) => ({
             borderRadius: '14px',
-            backgroundColor: muiTheme.palette.mode === 'dark' ? '#1f2125' : '#f8f1e8',
+            backgroundColor: 'var(--pos-content-panel-bg)',
             p: { xs: 1.8, md: 2.4 },
             border: `1px solid ${alpha('#ffffff', muiTheme.palette.mode === 'dark' ? 0.04 : 0.28)}`,
             minHeight: 0,
-            overflowY: { xs: 'visible', lg: 'auto' },
+            overflowY: { xs: 'visible', md: 'auto' },
             overflowX: 'hidden',
           })}>
           <Stack spacing={2.2}>
@@ -883,9 +888,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
                       backgroundColor:
                         method === option.value
                           ? muiTheme.palette.primary.main
-                          : muiTheme.palette.mode === 'dark'
-                            ? '#2c2f34'
-                            : '#ece4d7',
+                          : 'var(--pos-payment-option-bg)',
                       color: method === option.value ? '#ffffff' : 'text.primary',
                     })}>
                     {option.label}
@@ -912,10 +915,10 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
                     width: 56,
                     height: 56,
                     borderRadius: '8px',
-                    backgroundColor: muiTheme.palette.mode === 'dark' ? '#2c2f34' : '#ece4d7',
+                    backgroundColor: 'var(--pos-payment-option-bg)',
                     color: muiTheme.palette.primary.main,
                     '&:hover': {
-                      backgroundColor: muiTheme.palette.mode === 'dark' ? '#34383f' : '#e2d7c8',
+                      backgroundColor: 'var(--pos-payment-option-hover-bg)',
                     },
                   })}>
                   <Icon icon="solar:add-circle-bold" width={25} />
@@ -1133,7 +1136,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
                     borderRadius: '8px',
                     fontSize: 12,
                     lineHeight: 1.45,
-                    backgroundColor: muiTheme.palette.mode === 'dark' ? '#101114' : '#f0ece5',
+                    backgroundColor: 'var(--pos-debug-panel-bg)',
                     color: muiTheme.palette.text.primary,
                   })}>
                   {lastCardFailureDebugJson}
@@ -1198,7 +1201,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
             onClick={() => setRenameDialogOpen(false)}
             sx={(muiTheme) => ({
               backgroundImage: 'none',
-              backgroundColor: muiTheme.palette.mode === 'dark' ? '#4d535a' : '#d8cfbf',
+              backgroundColor: 'var(--pos-secondary-action-bg)',
               color: muiTheme.palette.mode === 'dark' ? '#f5f5f5' : muiTheme.palette.text.primary,
             })}>
             {copy.cancel}
@@ -1293,7 +1296,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
             sx={(muiTheme) => ({
               flex: 1,
               backgroundImage: 'none',
-              backgroundColor: muiTheme.palette.mode === 'dark' ? '#4d535a' : '#d8cfbf',
+              backgroundColor: 'var(--pos-secondary-action-bg)',
               color: muiTheme.palette.mode === 'dark' ? '#f5f5f5' : muiTheme.palette.text.primary,
             })}
             onClick={finishReceiptFlow}>
@@ -1356,10 +1359,12 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
         onShift={() => navigate(`/cashier/shift?next=${encodeURIComponent(afterPaymentPath)}`)}
         onLock={isMobile ? () => navigate('/lock-screen') : undefined}
         onThemeToggle={() => setThemeMode(themeMode === 'dark' ? 'light' : 'dark')}
+        onThemeColorChange={setThemeColor}
         onSignOut={() => {
           setSession(null);
           void navigate('/pin-login', { replace: true });
         }}
+        themeColor={themeColor}
         themeMode={themeMode}
       />
     </PosPageFrame>

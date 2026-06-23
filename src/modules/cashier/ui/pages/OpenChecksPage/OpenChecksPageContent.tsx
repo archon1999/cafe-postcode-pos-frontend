@@ -17,11 +17,11 @@ import {
   useMediaQuery,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import { useMemo, useState, type KeyboardEvent } from 'react';
+import { useMemo, useRef, useState, type KeyboardEvent, type TouchEvent } from 'react';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 
-import { canAccessTakeawayBuilder, canManageCashierPayments, usePosSession } from 'modules/auth';
+import { canManageCashierPayments, usePosSession } from 'modules/auth';
 import {
   useCashierContextQuery,
   useCashierFiscalRetryMutation,
@@ -77,6 +77,7 @@ function OpenChecksList({
   selectedTab,
   onRename,
   onSelect,
+  onSwipeEdit,
 }: {
   copy: ReturnType<typeof getPosCopy>;
   locale: PosLocale;
@@ -85,9 +86,60 @@ function OpenChecksList({
   selectedTab: CashierCheckStatus;
   onRename: (order: CashierOrder) => void;
   onSelect: (orderId: string) => void;
+  onSwipeEdit: (order: CashierOrder) => void;
 }) {
+  const swipeStartRef = useRef<{ orderId: string; x: number; y: number } | null>(null);
+  const [swipedOrderId, setSwipedOrderId] = useState<string | null>(null);
+
+  const handleTouchStart = (event: TouchEvent<HTMLDivElement>, order: CashierOrder) => {
+    const touch = event.touches[0];
+    swipeStartRef.current = { orderId: order.id, x: touch.clientX, y: touch.clientY };
+    setSwipedOrderId(null);
+  };
+
+  const handleTouchMove = (event: TouchEvent<HTMLDivElement>, order: CashierOrder) => {
+    const start = swipeStartRef.current;
+    const touch = event.touches[0];
+    if (!start || start.orderId !== order.id || !touch) return;
+
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+    if (Math.abs(deltaY) > Math.abs(deltaX)) return;
+
+    if (deltaX < -28 && selectedTab === 'open') {
+      setSwipedOrderId(order.id);
+    }
+  };
+
+  const handleTouchEnd = (event: TouchEvent<HTMLDivElement>, order: CashierOrder) => {
+    const start = swipeStartRef.current;
+    const touch = event.changedTouches[0];
+    swipeStartRef.current = null;
+    if (!start || start.orderId !== order.id || !touch || selectedTab !== 'open') {
+      setSwipedOrderId(null);
+      return;
+    }
+
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+    if (deltaX < -72 && Math.abs(deltaX) > Math.abs(deltaY) * 1.4) {
+      onSwipeEdit(order);
+      return;
+    }
+    setSwipedOrderId(null);
+  };
+
   return (
-    <Stack spacing={1.35} sx={{ height: '100%', minHeight: 0, overflowY: 'auto', pr: { xs: 0.2, md: 0.6 } }}>
+    <Stack
+      spacing={1.35}
+      sx={{
+        height: '100%',
+        minHeight: 0,
+        minWidth: 0,
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        pr: { xs: 0.2, md: 0.6 },
+      }}>
       {orders.length > 0 ? (
         orders.map((order) => (
           <Box
@@ -95,6 +147,9 @@ function OpenChecksList({
             component="div"
             role="button"
             tabIndex={0}
+            onTouchStart={(event) => handleTouchStart(event, order)}
+            onTouchMove={(event) => handleTouchMove(event, order)}
+            onTouchEnd={(event) => handleTouchEnd(event, order)}
             onClick={() => onSelect(order.id)}
             onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
               if (event.key === 'Enter' || event.key === ' ') {
@@ -109,6 +164,7 @@ function OpenChecksList({
               borderRadius: '10px',
               px: 2,
               py: 1.65,
+              position: 'relative',
               cursor: 'pointer',
               color: 'inherit',
               outline: 0,
@@ -120,7 +176,36 @@ function OpenChecksList({
                   : theme.palette.mode === 'dark'
                     ? '#292929'
                     : alpha('#ffffff', 0.76),
+              transform: swipedOrderId === order.id ? 'translateX(-54px)' : 'translateX(0)',
+              transition: 'transform 140ms ease',
+              touchAction: 'pan-y',
+              '&::after': {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                right: -58,
+                width: 52,
+                height: '100%',
+                borderRadius: '10px',
+                backgroundColor: theme.palette.primary.main,
+                opacity: selectedTab === 'open' && swipedOrderId === order.id ? 1 : 0,
+                transition: 'opacity 140ms ease',
+              },
             })}>
+            {selectedTab === 'open' && swipedOrderId === order.id ? (
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: '50%',
+                  right: -42,
+                  transform: 'translateY(-50%)',
+                  color: '#fff',
+                  zIndex: 1,
+                  pointerEvents: 'none',
+                }}>
+                <Icon icon="solar:pen-2-bold-duotone" width={22} />
+              </Box>
+            ) : null}
             <Stack direction="row" justifyContent="space-between" spacing={2} alignItems="center">
               <Stack direction="row" spacing={1.75} alignItems="center">
                 <Box
@@ -255,7 +340,7 @@ function OpenChecksDetail({
         overflow: 'hidden',
         height: '100%',
         minHeight: 0,
-        backgroundColor: theme.palette.mode === 'dark' ? '#222222' : '#f6f0e7',
+        backgroundColor: 'var(--pos-order-panel-bg)',
         display: 'flex',
         flexDirection: 'column',
         border: `1px solid ${alpha('#ffffff', theme.palette.mode === 'dark' ? 0.04 : 0.3)}`,
@@ -263,16 +348,16 @@ function OpenChecksDetail({
       <Box sx={{ p: 2.5 }}>
         <Stack direction="row" spacing={1.5} alignItems="center">
           <Box
-            sx={(theme) => ({
+            sx={{
               minWidth: 66,
               height: 66,
               borderRadius: '10px',
-              backgroundColor: theme.palette.mode === 'dark' ? '#4b4b4b' : '#dad2c4',
+              backgroundColor: 'var(--pos-order-avatar-bg)',
               display: 'grid',
               placeItems: 'center',
               fontSize: 30,
               fontWeight: 700,
-            })}>
+            }}>
             {order.channel === 'delivery'
               ? 'YD'
               : order.channel === 'takeaway'
@@ -334,11 +419,11 @@ function OpenChecksDetail({
               {items.map((item) => (
                 <Box
                   key={item.id}
-                  sx={(theme) => ({
+                  sx={{
                     borderRadius: '10px',
                     overflow: 'hidden',
-                    backgroundColor: theme.palette.mode === 'dark' ? '#2d2d2d' : '#ede5d8',
-                  })}>
+                    backgroundColor: 'var(--pos-cart-item-bg)',
+                  }}>
                   <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ p: 1.65 }}>
                     <Stack spacing={0.35} sx={{ pr: 1 }}>
                       <Typography
@@ -433,7 +518,7 @@ function OpenChecksDetail({
                 sx={(theme) => ({
                   flex: 1,
                   backgroundImage: 'none',
-                  backgroundColor: theme.palette.mode === 'dark' ? '#4d535a' : '#d8cfbf',
+                  backgroundColor: 'var(--pos-secondary-action-bg)',
                   color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
                 })}
                 onClick={onReprint}>
@@ -454,7 +539,8 @@ function OpenChecksDetail({
 
 export function OpenChecksPageContent() {
   const navigate = useNavigate();
-  const { session, locale, setLocale, setSession, themeMode, setThemeMode } = usePosSession();
+  const { session, locale, setLocale, setSession, themeColor, setThemeColor, themeMode, setThemeMode } =
+    usePosSession();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const copy = getPosCopy(locale);
@@ -712,6 +798,11 @@ export function OpenChecksPageContent() {
     />
   ) : null;
 
+  const handleSwipeEdit = (order: CashierOrder) => {
+    const channel = order.channel === 'delivery' ? 'delivery' : 'takeaway';
+    void navigate(`/cashier/builder?orderId=${order.id}&channel=${channel}`);
+  };
+
   if (isInitialLoading) {
     return <PosOpenChecksSkeleton mobile={isMobile} />;
   }
@@ -739,9 +830,6 @@ export function OpenChecksPageContent() {
           />
 
           <Stack direction="row" spacing={1.5}>
-            {canAccessTakeawayBuilder(session?.user) ? (
-              <PosIconAction icon="solar:hamburger-menu-bold-duotone" onClick={() => navigate('/cashier/builder')} />
-            ) : null}
             {!isMobile ? (
               <PosIconAction icon="solar:refresh-bold-duotone" onClick={() => window.location.reload()} />
             ) : null}
@@ -793,6 +881,7 @@ export function OpenChecksPageContent() {
             selectedOrderId={selectedOrderId}
             selectedTab={selectedTab}
             onRename={handleOpenRenameDialog}
+            onSwipeEdit={handleSwipeEdit}
             onSelect={(orderId) => {
               setSelectedOrderId(orderId);
               setMobileDetailOpen(true);
@@ -805,8 +894,12 @@ export function OpenChecksPageContent() {
             flex: 1,
             minHeight: 0,
             display: 'grid',
-            gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 370px' },
-            gap: 2.5,
+            gridTemplateColumns: {
+              xs: '1fr',
+              md: 'minmax(0, 1fr) clamp(320px, 34vw, 370px)',
+              xl: 'minmax(0, 1fr) clamp(380px, 24vw, 430px)',
+            },
+            gap: { xs: 1.5, md: 1.6, xl: 2.4 },
           }}>
           <OpenChecksList
             copy={copy}
@@ -815,6 +908,7 @@ export function OpenChecksPageContent() {
             selectedOrderId={selectedOrder?.id}
             selectedTab={selectedTab}
             onRename={handleOpenRenameDialog}
+            onSwipeEdit={handleSwipeEdit}
             onSelect={setSelectedOrderId}
           />
           <Box sx={{ minHeight: 0 }}>{detailPanel}</Box>
@@ -908,7 +1002,7 @@ export function OpenChecksPageContent() {
             sx={(theme) => ({
               flex: 1,
               backgroundImage: 'none',
-              backgroundColor: theme.palette.mode === 'dark' ? '#4d535a' : '#d8cfbf',
+              backgroundColor: 'var(--pos-secondary-action-bg)',
               color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
             })}
             onClick={finishRetryReceiptFlow}>
@@ -933,10 +1027,12 @@ export function OpenChecksPageContent() {
         onShift={() => navigate('/cashier/shift?next=/cashier/open-checks')}
         onLock={isMobile ? () => navigate('/lock-screen') : undefined}
         onThemeToggle={() => setThemeMode(themeMode === 'dark' ? 'light' : 'dark')}
+        onThemeColorChange={setThemeColor}
         onSignOut={() => {
           setSession(null);
           void navigate('/pin-login', { replace: true });
         }}
+        themeColor={themeColor}
         themeMode={themeMode}
       />
 
@@ -975,7 +1071,7 @@ export function OpenChecksPageContent() {
             onClick={() => setRenameOrder(null)}
             sx={(theme) => ({
               backgroundImage: 'none',
-              backgroundColor: theme.palette.mode === 'dark' ? '#4d535a' : '#d8cfbf',
+              backgroundColor: 'var(--pos-secondary-action-bg)',
               color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
             })}>
             {copy.cancel}

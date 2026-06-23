@@ -1,4 +1,4 @@
-import type { PosThemeMode } from 'app/theme';
+import type { PosThemeColor, PosThemeMode } from 'app/theme';
 import type { PosLocale } from 'shared/locale/copy';
 
 export type PosUser = {
@@ -56,6 +56,8 @@ export type PosSessionContextValue = {
   setRestaurantContext: (value: PosRestaurantContext | null) => void;
   themeMode: PosThemeMode;
   setThemeMode: (mode: PosThemeMode) => void;
+  themeColor: PosThemeColor;
+  setThemeColor: (color: PosThemeColor) => void;
   locale: PosLocale;
   setLocale: (locale: PosLocale) => void;
 };

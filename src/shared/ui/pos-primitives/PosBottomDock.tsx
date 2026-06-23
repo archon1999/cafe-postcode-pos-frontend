@@ -126,24 +126,10 @@ export function PosBottomDock({ items }: { items: DockItem[] }) {
                     : theme.palette.mode === 'dark'
                       ? '#a8acb3'
                       : theme.palette.text.secondary,
-                  border: `1px solid ${alpha('#ffffff', theme.palette.mode === 'dark' ? (active ? 0.24 : 0.12) : active ? 0.62 : 0.34)}`,
-                  background:
-                    theme.palette.mode === 'dark'
-                      ? active
-                        ? 'linear-gradient(180deg, rgba(255,255,255,0.13) 0%, rgba(255,255,255,0.025) 18%, rgba(20,22,26,0.1) 100%), linear-gradient(180deg, rgba(126,130,137,0.88) 0%, rgba(87,91,98,0.74) 52%, rgba(57,60,66,0.82) 100%)'
-                        : 'linear-gradient(180deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.018) 18%, rgba(16,18,21,0.12) 100%), linear-gradient(180deg, rgba(67,70,76,0.62) 0%, rgba(47,50,56,0.62) 52%, rgba(32,35,40,0.76) 100%)'
-                      : active
-                        ? 'linear-gradient(180deg, rgba(255,255,255,0.84) 0%, rgba(248,241,233,0.76) 100%)'
-                        : 'linear-gradient(180deg, rgba(255,255,255,0.58) 0%, rgba(242,233,220,0.42) 100%)',
+                  border: `1px solid ${active ? 'var(--pos-dock-border-active)' : 'var(--pos-dock-border-idle)'}`,
+                  background: active ? 'var(--pos-dock-active-bg)' : 'var(--pos-dock-idle-bg)',
                   backdropFilter: 'blur(28px) saturate(150%)',
-                  boxShadow:
-                    theme.palette.mode === 'dark'
-                      ? active
-                        ? 'inset 0 1px 0 rgba(255,255,255,0.22), inset 0 -14px 20px rgba(0,0,0,0.12), 0 14px 26px rgba(0,0,0,0.24)'
-                        : 'inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -14px 20px rgba(0,0,0,0.1), 0 10px 20px rgba(0,0,0,0.18)'
-                      : active
-                        ? 'inset 0 1px 0 rgba(255,255,255,0.7), 0 18px 32px rgba(112,79,43,0.18)'
-                        : 'inset 0 1px 0 rgba(255,255,255,0.45), 0 14px 26px rgba(112,79,43,0.14)',
+                  boxShadow: active ? 'var(--pos-dock-active-shadow)' : 'var(--pos-dock-idle-shadow)',
                   transform: active ? 'translateY(-1px)' : 'none',
                   transition: 'transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease',
                   '&::before': {
@@ -151,10 +137,7 @@ export function PosBottomDock({ items }: { items: DockItem[] }) {
                     position: 'absolute',
                     inset: 1,
                     borderRadius: 'inherit',
-                    background:
-                      theme.palette.mode === 'dark'
-                        ? `linear-gradient(180deg, ${alpha('#ffffff', active ? 0.2 : 0.1)} 0%, rgba(255,255,255,0.02) 26%, rgba(255,255,255,0) 58%, ${alpha('#ffffff', active ? 0.06 : 0.03)} 100%)`
-                        : `linear-gradient(180deg, ${alpha('#ffffff', active ? 0.38 : 0.2)} 0%, rgba(255,255,255,0.04) 52%, ${alpha('#ffffff', active ? 0.12 : 0.08)} 100%)`,
+                    background: active ? 'var(--pos-dock-overlay-active)' : 'var(--pos-dock-overlay-idle)',
                     pointerEvents: 'none',
                   },
                   '&::after': {
@@ -169,7 +152,7 @@ export function PosBottomDock({ items }: { items: DockItem[] }) {
                   },
                   '&:hover': {
                     transform: 'translateY(-3px)',
-                    borderColor: alpha('#ffffff', theme.palette.mode === 'dark' ? 0.28 : 0.62),
+                    borderColor: 'var(--pos-dock-hover-border)',
                   },
                 })}>
                 {item.badge ? (

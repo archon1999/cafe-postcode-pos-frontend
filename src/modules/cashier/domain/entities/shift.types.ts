@@ -52,6 +52,14 @@ export type CashShiftSummary = {
   openedByName?: string | null;
 };
 
+export type FiscalDeviceStatus = {
+  online: boolean;
+  provider: string;
+  terminalId: string;
+  detail: string;
+  checkedAt: string;
+};
+
 export type CashierContext = {
   branchFiscalProfile: BranchFiscalProfile;
   availableCashDesks: CashierContextCashDesk[];
@@ -59,6 +67,7 @@ export type CashierContext = {
   currentShift: CashShiftSummary | null;
   activeShifts: CashShiftSummary[];
   fiscalShiftOpen: boolean;
+  fiscalDeviceStatus?: FiscalDeviceStatus;
 };
 
 export type CashierShiftCloseResponse = CashierContext & {

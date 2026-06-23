@@ -68,19 +68,15 @@ export function PosShell({ children }: { children: ReactNode }) {
 
   return (
     <Box
-      sx={(theme) => ({
+      sx={{
         height: '100dvh',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
         px: isCatalogPage ? 0 : { xs: 1.25, sm: 1.6, md: 2.4, lg: 3.5 },
         pt: isCatalogPage ? 0 : { xs: 1.25, sm: 1.6, md: 2.4, lg: 2.8 },
-        background: isCatalogPage
-          ? '#050505'
-          : theme.palette.mode === 'dark'
-            ? 'linear-gradient(180deg, #1b1d20 0%, #1a1c1f 100%)'
-            : 'linear-gradient(180deg, #f5ecdf 0%, #ebdfd0 100%)',
-      })}>
+        background: isCatalogPage ? '#050505' : 'var(--pos-shell-background)',
+      }}>
       <Box
         component="main"
         sx={{ flex: '1 1 0', minHeight: 0, overflow: 'visible', display: 'flex', flexDirection: 'column' }}>

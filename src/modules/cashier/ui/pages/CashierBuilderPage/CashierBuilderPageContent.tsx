@@ -23,6 +23,7 @@ import { usePosSession } from 'modules/auth';
 import {
   useCashierBuilderOrdersQuery,
   useCashierMenuQuery,
+  useCashierPaymentOrderQuery,
   useSubmitCashierOrderMutation,
   cashierKeys,
 } from 'modules/cashier/application';
@@ -35,6 +36,7 @@ import {
   isValidDeliveryPhone,
   normalizeDeliveryAddress,
   type CashierBuilderOrderChannel,
+  type CashierMenuCategory,
   type CashierOrderItem,
 } from 'modules/cashier/domain';
 import { resolveApiBaseUrl } from 'shared/api/apiUrl';
@@ -68,6 +70,8 @@ type AggregatedCashierCartItem = {
 };
 
 type PendingDeliveryAction = 'submit' | 'checkout';
+
+const EMPTY_CATEGORIES: CashierMenuCategory[] = [];
 
 function resolveMenuItemImageUrl(imageUrl?: string | null) {
   if (!imageUrl) {
@@ -104,11 +108,13 @@ function resolveBuilderChannel(value: string | null): CashierBuilderOrderChannel
 export function CashierBuilderPageContent() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { session, locale, setLocale, setSession, themeMode, setThemeMode } = usePosSession();
+  const { session, locale, setLocale, setSession, themeColor, setThemeColor, themeMode, setThemeMode } =
+    usePosSession();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const copy = getPosCopy(locale);
+  const editOrderId = searchParams.get('orderId');
   const [builderChannel, setBuilderChannel] = useState<CashierBuilderOrderChannel>(() =>
     resolveBuilderChannel(searchParams.get('channel')),
   );
@@ -127,14 +133,16 @@ export function CashierBuilderPageContent() {
 
   const menuQuery = useCashierMenuQuery();
   const ordersQuery = useCashierBuilderOrdersQuery();
+  const editOrderQuery = useCashierPaymentOrderQuery(editOrderId);
   const serverOrder = useMemo(
-    () => getCurrentCashierBuilderOrder(ordersQuery.data, session?.user.id, builderChannel),
-    [builderChannel, ordersQuery.data, session?.user.id],
+    () => editOrderQuery.data ?? getCurrentCashierBuilderOrder(ordersQuery.data, session?.user.id, builderChannel),
+    [builderChannel, editOrderQuery.data, ordersQuery.data, session?.user.id],
   );
   const { currentOrder, addItem, removeItem, hasPendingOperations } = useOptimisticBuilderOrder({
     baseOrder: serverOrder,
-    canonicalQueryKey: cashierKeys.builderOrders,
-    canonicalQueryFn: () => cashierRepository.getOpenOrders(),
+    canonicalQueryKey: editOrderId ? cashierKeys.paymentOrder(editOrderId) : cashierKeys.builderOrders,
+    canonicalQueryFn: async () =>
+      editOrderId ? [await cashierRepository.getOrder(editOrderId)] : cashierRepository.getOpenOrders(),
     channel: builderChannel,
     createOrder: async (note) => {
       const response = await cashierRepository.createBuilderOrder({ channel: builderChannel, note });
@@ -145,8 +153,11 @@ export function CashierBuilderPageContent() {
     defaultVatEnabled: Boolean(session?.restaurantContext?.vatEnabled),
     defaultVatPercent: session?.restaurantContext?.vatPercent ?? 0,
     removeOrderItem: (itemId) => cashierRepository.removeOrderItem(itemId),
-    resetKey: builderChannel,
-    selectCurrentOrder: (orders) => getCurrentCashierBuilderOrder(orders, session?.user.id, builderChannel),
+    resetKey: `${builderChannel}:${editOrderId ?? ''}`,
+    selectCurrentOrder: (orders) =>
+      editOrderId
+        ? orders.find((order) => order.id === editOrderId)
+        : getCurrentCashierBuilderOrder(orders, session?.user.id, builderChannel),
     addOrderItem: (orderId, menuItem, note) => cashierRepository.addOrderItem(orderId, menuItem.id, note),
     syncErrorMessage: copy.itemSyncFailed,
   });
@@ -178,7 +189,7 @@ export function CashierBuilderPageContent() {
     },
   });
 
-  const categories = menuQuery.data ?? [];
+  const categories = menuQuery.data ?? EMPTY_CATEGORIES;
   const defaultCategory = useMemo(() => getDefaultCashierMenuCategory(categories), [categories]);
   const selectedCategory = categories.find((category) => category.id === selectedCategoryId) ?? defaultCategory;
   const groupedOrderItems = useMemo(() => {
@@ -451,7 +462,6 @@ export function CashierBuilderPageContent() {
             direction="row"
             spacing={{ xs: 1, md: 1.5 }}
             sx={{ justifyContent: { xs: 'flex-end', md: 'flex-start' } }}>
-            <PosIconAction icon="solar:bill-list-bold-duotone" onClick={() => navigate('/cashier/open-checks')} />
             <PosIconAction
               icon="solar:chef-hat-bold-duotone"
               onClick={() => navigate(`/menu/catalog?source=cashier&channel=${builderChannel}`)}
@@ -474,11 +484,15 @@ export function CashierBuilderPageContent() {
           flex: 1,
           minHeight: 0,
           display: 'grid',
-          gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 360px' },
-          gap: { xs: 2, md: 2.5 },
+          gridTemplateColumns: {
+            xs: '1fr',
+            md: 'minmax(0, 1fr) clamp(320px, 34vw, 360px)',
+            xl: 'minmax(0, 1fr) clamp(380px, 24vw, 430px)',
+          },
+          gap: { xs: 1.5, md: 1.6, xl: 2.4 },
         }}>
         <Stack
-          spacing={2}
+          spacing={{ xs: 1.5, md: 1.6, xl: 2 }}
           sx={{
             minHeight: 0,
             overflowY: 'auto',
@@ -496,14 +510,19 @@ export function CashierBuilderPageContent() {
               gridTemplateColumns: {
                 xs: 'repeat(2, minmax(0, 1fr))',
                 md: 'repeat(2, minmax(0, 1fr))',
-                lg: 'repeat(4, minmax(0, 1fr))',
+                lg: 'repeat(3, minmax(0, 1fr))',
+                xl: 'repeat(4, minmax(0, 1fr))',
+                '@media (min-width: 1800px)': {
+                  gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
+                },
               },
-              gap: 1.4,
+              gap: { xs: 1.1, md: 1.2, xl: 1.4 },
             }}>
             {(selectedCategory?.items ?? []).map((menuItem) => {
               const displayPrice = Number(menuItem.price ?? 0);
               const menuItemImageUrl = resolveMenuItemImageUrl(menuItem.imageUrl);
-              const hasSelectedCount = (menuItemMeta.countMap.get(menuItem.id) ?? 0) > 0;
+              const selectedCountForMenuItem = menuItemMeta.countMap.get(menuItem.id) ?? 0;
+              const hasSelectedCount = selectedCountForMenuItem > 0;
 
               return (
                 <Box
@@ -516,21 +535,21 @@ export function CashierBuilderPageContent() {
                     border: 0,
                     p: 0,
                     position: 'relative',
-                    minHeight: { xs: 114, md: 126 },
+                    minHeight: { xs: 112, md: 118, xl: 126 },
                     overflow: 'hidden',
                     borderRadius: '10px',
                     cursor: 'pointer',
                     textAlign: 'left',
                     transition:
                       'transform 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease, border-color 0.16s ease',
-                    backgroundColor: theme.palette.mode === 'dark' ? '#26282c' : '#f1e7da',
+                    backgroundColor: 'var(--pos-menu-product-card-bg)',
                     backgroundImage: 'none',
                     boxShadow:
                       theme.palette.mode === 'dark'
                         ? 'inset 0 0 0 1px rgba(255,255,255,0.04)'
                         : 'inset 0 0 0 1px rgba(40,51,65,0.06)',
                     '&:hover': {
-                      backgroundColor: theme.palette.mode === 'dark' ? '#2d3035' : '#ebe1d3',
+                      backgroundColor: 'var(--pos-menu-product-card-hover-bg)',
                       transform: 'translateY(-2px)',
                       boxShadow:
                         theme.palette.mode === 'dark'
@@ -545,27 +564,6 @@ export function CashierBuilderPageContent() {
                       outlineOffset: 2,
                     },
                   })}>
-                  {(menuItemMeta.countMap.get(menuItem.id) ?? 0) > 0 ? (
-                    <Box
-                      sx={(theme) => ({
-                        position: 'absolute',
-                        top: 10,
-                        left: 10,
-                        minWidth: 32,
-                        height: 32,
-                        px: 1,
-                        borderRadius: '50%',
-                        backgroundColor: theme.palette.mode === 'dark' ? '#141619' : '#252525',
-                        color: '#ffffff',
-                        display: 'grid',
-                        placeItems: 'center',
-                        fontSize: 15,
-                        fontWeight: 700,
-                        boxShadow: '0 8px 18px rgba(0,0,0,0.2)',
-                      })}>
-                      {menuItemMeta.countMap.get(menuItem.id)}
-                    </Box>
-                  ) : null}
                   {menuItemImageUrl ? (
                     <Box
                       component="img"
@@ -585,13 +583,12 @@ export function CashierBuilderPageContent() {
                       }}
                     />
                   ) : null}
-                  <Stack justifyContent="space-between" sx={{ minHeight: { xs: 114, md: 126 } }}>
+                  <Stack justifyContent="space-between" sx={{ minHeight: { xs: 112, md: 118, xl: 126 } }}>
                     <Stack
                       spacing={0.75}
                       sx={{
-                        p: { xs: 1.35, md: 1.85 },
-                        pr: menuItemImageUrl ? { xs: 7.25, md: 9.5 } : undefined,
-                        pl: hasSelectedCount ? { xs: 5.25, md: 5.75 } : undefined,
+                        p: { xs: 1.25, md: 1.45, xl: 1.85 },
+                        pr: menuItemImageUrl ? { xs: 7.25, md: 8.4, xl: 9.5 } : undefined,
                       }}>
                       <Typography variant="body2" color="text.secondary">
                         {menuItem.prepStationName ?? copy.menu}
@@ -625,13 +622,29 @@ export function CashierBuilderPageContent() {
                         fontSize: { xs: 14, md: 16 },
                         fontWeight: 700,
                         color: theme.palette.mode === 'dark' ? '#f0f2f5' : theme.palette.text.primary,
-                        backgroundColor: theme.palette.mode === 'dark' ? '#4f555d' : '#d9d0c2',
+                        backgroundColor: 'var(--pos-menu-product-price-bg)',
                       })}>
                       <Typography component="span" sx={{ fontWeight: 700, fontSize: { xs: 13.5, md: 16 } }}>
                         {formatCompactMoney(displayPrice, locale)}
                       </Typography>
-                      {(menuItemMeta.countMap.get(menuItem.id) ?? 0) > 0 ? (
-                        <Stack direction="row" spacing={0.8}>
+                      {hasSelectedCount ? (
+                        <Stack direction="row" spacing={0.8} alignItems="center">
+                          <Box
+                            sx={(theme) => ({
+                              minWidth: 28,
+                              height: 28,
+                              px: 0.9,
+                              borderRadius: '999px',
+                              backgroundColor: theme.palette.mode === 'dark' ? '#141619' : '#252525',
+                              color: '#ffffff',
+                              display: 'grid',
+                              placeItems: 'center',
+                              fontSize: 14,
+                              fontWeight: 700,
+                              lineHeight: 1,
+                            })}>
+                            {selectedCountForMenuItem}
+                          </Box>
                           <Box
                             component="button"
                             type="button"
@@ -722,11 +735,10 @@ export function CashierBuilderPageContent() {
                 bottom: 0,
                 zIndex: 6,
                 borderRadius: '18px',
-                backgroundColor: theme.palette.mode === 'dark' ? alpha('#23262b', 0.94) : alpha('#faf4ea', 0.96),
+                backgroundColor: 'var(--pos-mobile-summary-bg)',
                 backdropFilter: 'blur(18px)',
                 border: `1px solid ${alpha('#ffffff', theme.palette.mode === 'dark' ? 0.08 : 0.34)}`,
-                boxShadow:
-                  theme.palette.mode === 'dark' ? '0 18px 32px rgba(0,0,0,0.3)' : '0 16px 30px rgba(98,70,38,0.14)',
+                boxShadow: 'var(--pos-mobile-summary-shadow)',
                 px: 1.4,
                 py: 1.2,
               })}>
@@ -754,7 +766,7 @@ export function CashierBuilderPageContent() {
             overflow: 'hidden',
             height: '100%',
             minHeight: 0,
-            backgroundColor: theme.palette.mode === 'dark' ? '#1f2125' : '#f8f1e8',
+            backgroundColor: 'var(--pos-order-panel-bg)',
             flexDirection: 'column',
             border: `1px solid ${alpha('#ffffff', theme.palette.mode === 'dark' ? 0.04 : 0.3)}`,
           })}>
@@ -762,16 +774,16 @@ export function CashierBuilderPageContent() {
             <Stack spacing={1.7}>
               <Stack direction="row" spacing={1.5} alignItems="center">
                 <Box
-                  sx={(theme) => ({
+                  sx={{
                     minWidth: 64,
                     height: 64,
                     borderRadius: '10px',
-                    backgroundColor: theme.palette.mode === 'dark' ? '#464b53' : '#dad2c4',
+                    backgroundColor: 'var(--pos-order-avatar-bg)',
                     display: 'grid',
                     placeItems: 'center',
                     fontSize: 28,
                     fontWeight: 700,
-                  })}>
+                  }}>
                   TG
                 </Box>
 
@@ -822,7 +834,7 @@ export function CashierBuilderPageContent() {
                           textAlign: 'left',
                           borderRadius: '10px',
                           overflow: 'hidden',
-                          backgroundColor: theme.palette.mode === 'dark' ? '#2c2f34' : '#ede4d7',
+                          backgroundColor: 'var(--pos-cart-item-bg)',
                           transition:
                             'background-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease, border-color 0.16s ease',
                           boxShadow:
@@ -830,7 +842,7 @@ export function CashierBuilderPageContent() {
                               ? `inset 0 0 0 1px ${alpha(theme.palette.primary.main, 0.44)}`
                               : 'none',
                           '&:hover': {
-                            backgroundColor: theme.palette.mode === 'dark' ? '#33363c' : '#e7ded1',
+                            backgroundColor: 'var(--pos-cart-item-hover-bg)',
                             transform: 'translateY(-1px)',
                           },
                           '&:active': {
@@ -846,7 +858,10 @@ export function CashierBuilderPageContent() {
                                   ? { textDecoration: 'line-through', opacity: 0.68 }
                                   : undefined
                               }>
-                              {formatPosCopy(copy.itemQuantityLabel, { name: item.catalogItemName, quantity: item.quantity })}
+                              {formatPosCopy(copy.itemQuantityLabel, {
+                                name: item.catalogItemName,
+                                quantity: item.quantity,
+                              })}
                             </Typography>
                             {item.note ? (
                               <Typography variant="body2" color="text.secondary">
@@ -878,7 +893,7 @@ export function CashierBuilderPageContent() {
                             spacing={1.2}
                             sx={(theme) => ({
                               borderTop: `1px solid ${alpha('#ffffff', theme.palette.mode === 'dark' ? 0.06 : 0.45)}`,
-                              backgroundColor: theme.palette.mode === 'dark' ? '#383c42' : '#ddd4c7',
+                              backgroundColor: 'var(--pos-menu-item-price-bg)',
                               px: 1.35,
                               py: 1.1,
                             })}>
@@ -899,14 +914,14 @@ export function CashierBuilderPageContent() {
                                 cursor: 'pointer',
                                 borderRadius: '14px',
                                 color: theme.palette.mode === 'dark' ? '#f6f7f9' : '#262a30',
-                                backgroundColor: theme.palette.mode === 'dark' ? '#272a2f' : '#f5efe5',
+                                backgroundColor: 'var(--pos-cart-action-bg)',
                                 transition: 'background-color 0.14s ease, transform 0.14s ease, box-shadow 0.14s ease',
                                 boxShadow:
                                   theme.palette.mode === 'dark'
                                     ? 'inset 0 0 0 1px rgba(255,255,255,0.08)'
                                     : 'inset 0 0 0 1px rgba(38,42,48,0.08)',
                                 '&:hover': {
-                                  backgroundColor: theme.palette.mode === 'dark' ? '#2f343a' : '#ffffff',
+                                  backgroundColor: 'var(--pos-cart-action-hover-bg)',
                                 },
                                 '&:active': {
                                   transform: 'scale(0.94)',
@@ -934,14 +949,14 @@ export function CashierBuilderPageContent() {
                                 cursor: 'pointer',
                                 borderRadius: '14px',
                                 color: theme.palette.mode === 'dark' ? '#f6f7f9' : '#262a30',
-                                backgroundColor: theme.palette.mode === 'dark' ? '#272a2f' : '#f5efe5',
+                                backgroundColor: 'var(--pos-cart-action-bg)',
                                 transition: 'background-color 0.14s ease, transform 0.14s ease, box-shadow 0.14s ease',
                                 boxShadow:
                                   theme.palette.mode === 'dark'
                                     ? 'inset 0 0 0 1px rgba(255,255,255,0.08)'
                                     : 'inset 0 0 0 1px rgba(38,42,48,0.08)',
                                 '&:hover': {
-                                  backgroundColor: theme.palette.mode === 'dark' ? '#2f343a' : '#ffffff',
+                                  backgroundColor: 'var(--pos-cart-action-hover-bg)',
                                 },
                                 '&:active': {
                                   transform: 'scale(0.94)',
@@ -1024,7 +1039,7 @@ export function CashierBuilderPageContent() {
                   sx={(theme) => ({
                     flex: 1,
                     backgroundImage: 'none',
-                    backgroundColor: theme.palette.mode === 'dark' ? '#4d535a' : '#d8cfbf',
+                    backgroundColor: 'var(--pos-secondary-action-bg)',
                     color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
                   })}
                   disabled={isSubmitDisabled}
@@ -1109,7 +1124,7 @@ export function CashierBuilderPageContent() {
                         textAlign: 'left',
                         borderRadius: '12px',
                         overflow: 'hidden',
-                        backgroundColor: theme.palette.mode === 'dark' ? '#2d2d2d' : '#ede5d8',
+                        backgroundColor: 'var(--pos-cart-item-bg)',
                         boxShadow:
                           selectedCartItemKey === item.key
                             ? `inset 0 0 0 1px ${alpha(theme.palette.primary.main, 0.44)}`
@@ -1124,7 +1139,10 @@ export function CashierBuilderPageContent() {
                                 ? { textDecoration: 'line-through', opacity: 0.68 }
                                 : undefined
                             }>
-                            {formatPosCopy(copy.itemQuantityLabel, { name: item.catalogItemName, quantity: item.quantity })}
+                            {formatPosCopy(copy.itemQuantityLabel, {
+                              name: item.catalogItemName,
+                              quantity: item.quantity,
+                            })}
                           </Typography>
                           {item.note ? (
                             <Typography variant="caption" color="text.secondary">
@@ -1156,7 +1174,7 @@ export function CashierBuilderPageContent() {
                             px: 1.1,
                             py: 1,
                             borderTop: `1px solid ${alpha('#ffffff', theme.palette.mode === 'dark' ? 0.06 : 0.45)}`,
-                            backgroundColor: theme.palette.mode === 'dark' ? '#383c42' : '#ddd4c7',
+                            backgroundColor: 'var(--pos-menu-item-price-bg)',
                           })}>
                           <Button
                             variant="contained"
@@ -1237,7 +1255,7 @@ export function CashierBuilderPageContent() {
                   sx={(theme) => ({
                     flex: 1,
                     backgroundImage: 'none',
-                    backgroundColor: theme.palette.mode === 'dark' ? '#4d535a' : '#d8cfbf',
+                    backgroundColor: 'var(--pos-secondary-action-bg)',
                     color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
                   })}
                   disabled={isSubmitDisabled}
@@ -1321,10 +1339,12 @@ export function CashierBuilderPageContent() {
         onShift={() => navigate('/cashier/shift?next=/cashier/builder')}
         onLock={isMobile ? () => navigate('/lock-screen') : undefined}
         onThemeToggle={() => setThemeMode(themeMode === 'dark' ? 'light' : 'dark')}
+        onThemeColorChange={setThemeColor}
         onSignOut={() => {
           setSession(null);
           void navigate('/pin-login', { replace: true });
         }}
+        themeColor={themeColor}
         themeMode={themeMode}
       />
       <Snackbar

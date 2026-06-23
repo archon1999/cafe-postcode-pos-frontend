@@ -1,10 +1,11 @@
-import type { PosThemeMode } from 'app/theme';
+import { DEFAULT_POS_THEME_COLOR, isPosThemeColor, type PosThemeColor, type PosThemeMode } from 'app/theme';
 import type { PosRestaurantContext, PosSessionPayload, PosTariff, PosUser } from 'modules/auth/domain';
 import type { PosLocale } from 'shared/locale/copy';
 
 const STORAGE_KEY = 'restaurant-pos-session';
 const RESTAURANT_CONTEXT_KEY = 'restaurant-pos-context';
 const THEME_KEY = 'restaurant-pos-theme-mode';
+const THEME_COLOR_KEY = 'restaurant-pos-theme-color';
 const LOCALE_KEY = 'restaurant-pos-locale';
 
 type SessionCompatUser = Omit<PosUser, 'fullName' | 'permissionCodes'> & {
@@ -161,6 +162,16 @@ export function readStoredThemeMode(): PosThemeMode {
 
 export function persistThemeMode(mode: PosThemeMode) {
   localStorage.setItem(THEME_KEY, mode);
+}
+
+export function readStoredThemeColor(): PosThemeColor {
+  const rawValue = localStorage.getItem(THEME_COLOR_KEY);
+
+  return isPosThemeColor(rawValue) ? rawValue : DEFAULT_POS_THEME_COLOR;
+}
+
+export function persistThemeColor(color: PosThemeColor) {
+  localStorage.setItem(THEME_COLOR_KEY, color);
 }
 
 export function readStoredLocale(): PosLocale {

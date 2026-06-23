@@ -69,26 +69,18 @@ export function PosSectionTabs({
               variant="contained"
               onClick={() => onChange(item.value)}
               sx={(theme) => ({
-                minWidth: { xs: 118, sm: 138, md: 170 },
-                minHeight: { xs: 50, md: 60 },
-                px: { xs: 1.5, md: 2.3 },
+                minWidth: { xs: 118, sm: 138, md: 150, xl: 170 },
+                minHeight: { xs: 50, md: 54, xl: 60 },
+                px: { xs: 1.5, md: 1.8, xl: 2.3 },
                 backgroundImage: 'none',
                 borderRadius: { xs: '14px', md: '18px' },
-                backgroundColor: isActive
-                  ? theme.palette.primary.main
-                  : theme.palette.mode === 'dark'
-                    ? '#292c31'
-                    : '#ede7dc',
-                color: isActive ? '#ffffff' : theme.palette.mode === 'dark' ? '#a4a8ae' : 'text.secondary',
-                fontSize: { xs: 13.5, md: 15.5 },
+                backgroundColor: isActive ? 'var(--pos-tab-active-bg)' : 'var(--pos-tab-idle-bg)',
+                color: isActive ? 'var(--pos-tab-active-color)' : 'var(--pos-tab-idle-color)',
+                fontSize: { xs: 13.5, md: 14.5, xl: 15.5 },
                 fontWeight: 600,
-                boxShadow: isActive ? '0 10px 18px rgba(27,132,236,0.2)' : 'none',
+                boxShadow: isActive ? 'var(--pos-tab-active-shadow)' : 'none',
                 '&:hover': {
-                  backgroundColor: isActive
-                    ? theme.palette.primary.dark
-                    : theme.palette.mode === 'dark'
-                      ? '#31343a'
-                      : '#e4ddcf',
+                  backgroundColor: isActive ? 'var(--pos-tab-active-hover-bg)' : 'var(--pos-tab-idle-hover-bg)',
                 },
               })}>
               {item.label}
@@ -113,20 +105,20 @@ export function PosSectionTabs({
   };
 
   const scrollButtonSx = (enabled: boolean) => (theme: any) => ({
-    minWidth: { xs: 42, sm: 46, md: 60 },
-    width: { xs: 42, sm: 46, md: 60 },
-    height: { xs: 42, sm: 46, md: 60 },
+    minWidth: { xs: 42, sm: 46, md: 52, xl: 60 },
+    width: { xs: 42, sm: 46, md: 52, xl: 60 },
+    height: { xs: 42, sm: 46, md: 52, xl: 60 },
     p: 0,
     borderRadius: { xs: '14px', md: '18px' },
     backgroundImage: 'none',
-    backgroundColor: theme.palette.mode === 'dark' ? '#292c31' : '#ede7dc',
+    backgroundColor: 'var(--pos-tab-idle-bg)',
     color: theme.palette.mode === 'dark' ? '#d7dbe0' : theme.palette.text.primary,
     opacity: enabled ? 1 : 0,
     pointerEvents: enabled ? 'auto' : 'none',
     transform: enabled ? 'translateY(0)' : 'translateY(6px)',
     transition: 'opacity 0.18s ease, transform 0.18s ease, background-color 0.18s ease',
     '&:hover': {
-      backgroundColor: theme.palette.mode === 'dark' ? '#31343a' : '#e4ddcf',
+      backgroundColor: 'var(--pos-tab-idle-hover-bg)',
     },
     '&:active': {
       transform: 'scale(0.96)',
@@ -165,29 +157,21 @@ export function PosSectionTabs({
                 variant="contained"
                 onClick={() => onChange(item.value)}
                 sx={(theme) => ({
-                  minWidth: { xs: 118, sm: 138, md: 170 },
-                  minHeight: { xs: 50, md: 60 },
-                  px: { xs: 1.55, md: 2.3 },
+                  minWidth: { xs: 118, sm: 138, md: 150, xl: 170 },
+                  minHeight: { xs: 50, md: 54, xl: 60 },
+                  px: { xs: 1.55, md: 1.8, xl: 2.3 },
                   backgroundImage: 'none',
                   borderRadius: { xs: '14px', md: '18px' },
-                  backgroundColor: isActive
-                    ? theme.palette.primary.main
-                    : theme.palette.mode === 'dark'
-                      ? '#292c31'
-                      : '#ede7dc',
-                  color: isActive ? '#ffffff' : theme.palette.mode === 'dark' ? '#a4a8ae' : 'text.secondary',
-                  fontSize: { xs: 13.5, md: 15.5 },
+                  backgroundColor: isActive ? 'var(--pos-tab-active-bg)' : 'var(--pos-tab-idle-bg)',
+                  color: isActive ? 'var(--pos-tab-active-color)' : 'var(--pos-tab-idle-color)',
+                  fontSize: { xs: 13.5, md: 14.5, xl: 15.5 },
                   fontWeight: 600,
-                  boxShadow: isActive ? '0 10px 18px rgba(27,132,236,0.2)' : 'none',
+                  boxShadow: isActive ? 'var(--pos-tab-active-shadow)' : 'none',
                   justifyContent: 'center',
                   gap: 1,
                   flexShrink: 0,
                   '&:hover': {
-                    backgroundColor: isActive
-                      ? theme.palette.primary.dark
-                      : theme.palette.mode === 'dark'
-                        ? '#31343a'
-                        : '#e4ddcf',
+                    backgroundColor: isActive ? 'var(--pos-tab-active-hover-bg)' : 'var(--pos-tab-idle-hover-bg)',
                   },
                 })}>
                 {item.label}

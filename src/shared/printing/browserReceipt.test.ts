@@ -101,4 +101,26 @@ describe('browser receipt printing', () => {
       qr_code: '',
     });
   });
+
+  it('sends fiscal QR as structured QR code instead of printing the URL in text', async () => {
+    apiPostMock.mockResolvedValueOnce({ result: { ok: true } });
+
+    const printed = await printReceiptWithFallback({
+      snapshot: {
+        restaurant_name: 'Cafe',
+        receipt_number: 'R-5',
+        printed_at_label: '2026-06-01T10:00:00',
+        items: [],
+        total: 0,
+        qr_code_url: 'https://ofd.soliq.uz/check?r=R-5',
+      },
+    });
+
+    expect(printed).toBe(true);
+    expect(apiPostMock).toHaveBeenCalledWith('/pos/billing/receipts/print/', {
+      payload: expect.any(Object),
+      text: expect.not.stringContaining('https://ofd.soliq.uz/check'),
+      qr_code: 'https://ofd.soliq.uz/check?r=R-5',
+    });
+  });
 });

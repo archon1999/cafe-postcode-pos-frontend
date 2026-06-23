@@ -411,7 +411,8 @@ function HallTableCard({
 
 export function HallsPageContent() {
   const navigate = useNavigate();
-  const { session, locale, setLocale, setSession, themeMode, setThemeMode } = usePosSession();
+  const { session, locale, setLocale, setSession, themeColor, setThemeColor, themeMode, setThemeMode } =
+    usePosSession();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -874,10 +875,12 @@ export function HallsPageContent() {
         onRefresh={isMobile ? () => window.location.reload() : undefined}
         onLock={isMobile ? () => void navigate('/lock-screen') : undefined}
         onThemeToggle={() => setThemeMode(themeMode === 'dark' ? 'light' : 'dark')}
+        onThemeColorChange={setThemeColor}
         onSignOut={() => {
           setSession(null);
           void navigate('/pin-login', { replace: true });
         }}
+        themeColor={themeColor}
         themeMode={themeMode}
       />
     </PosPageFrame>

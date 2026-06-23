@@ -158,7 +158,7 @@ function PosOpenChecksDetailSkeleton() {
         overflow: 'hidden',
         height: '100%',
         minHeight: 0,
-        backgroundColor: theme.palette.mode === 'dark' ? '#222222' : '#f6f0e7',
+        backgroundColor: 'var(--pos-order-panel-bg)',
         display: 'flex',
         flexDirection: 'column',
         border: `1px solid ${alpha('#ffffff', theme.palette.mode === 'dark' ? 0.04 : 0.3)}`,
@@ -184,7 +184,7 @@ function PosOpenChecksDetailSkeleton() {
               sx={(theme) => ({
                 borderRadius: '10px',
                 p: 1.65,
-                backgroundColor: theme.palette.mode === 'dark' ? '#2d2d2d' : '#ede5d8',
+                backgroundColor: 'var(--pos-cart-item-bg)',
               })}>
               <Stack direction="row" justifyContent="space-between" spacing={2}>
                 <Stack spacing={0.45} sx={{ flex: 1 }}>
@@ -228,8 +228,12 @@ export function PosOpenChecksSkeleton({ mobile }: { mobile: boolean }) {
             flex: 1,
             minHeight: 0,
             display: 'grid',
-            gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 370px' },
-            gap: 2.5,
+            gridTemplateColumns: {
+              xs: '1fr',
+              md: 'minmax(0, 1fr) clamp(320px, 34vw, 370px)',
+              xl: 'minmax(0, 1fr) clamp(380px, 24vw, 430px)',
+            },
+            gap: { xs: 1.5, md: 1.6, xl: 2.4 },
           }}>
           <PosOpenChecksListSkeleton />
           <PosOpenChecksDetailSkeleton />
@@ -247,7 +251,7 @@ function PosBuilderCartSkeleton() {
         overflow: 'hidden',
         height: '100%',
         minHeight: 0,
-        backgroundColor: theme.palette.mode === 'dark' ? '#222222' : '#f6f0e7',
+        backgroundColor: 'var(--pos-order-panel-bg)',
         display: 'flex',
         flexDirection: 'column',
         border: `1px solid ${alpha('#ffffff', theme.palette.mode === 'dark' ? 0.04 : 0.3)}`,
@@ -269,7 +273,7 @@ function PosBuilderCartSkeleton() {
               sx={(theme) => ({
                 borderRadius: '12px',
                 p: 1.5,
-                backgroundColor: theme.palette.mode === 'dark' ? '#2d2d2d' : '#ede5d8',
+                backgroundColor: 'var(--pos-cart-item-bg)',
               })}>
               <Stack direction="row" justifyContent="space-between" spacing={1.5}>
                 <Stack spacing={0.5} sx={{ flex: 1 }}>
@@ -322,8 +326,12 @@ export function PosBuilderPageSkeleton({ mobile }: { mobile: boolean }) {
           flex: 1,
           minHeight: 0,
           display: 'grid',
-          gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 360px' },
-          gap: { xs: 2, md: 2.5 },
+          gridTemplateColumns: {
+            xs: '1fr',
+            md: 'minmax(0, 1fr) clamp(320px, 34vw, 360px)',
+            xl: 'minmax(0, 1fr) clamp(380px, 24vw, 430px)',
+          },
+          gap: { xs: 1.5, md: 1.6, xl: 2.4 },
         }}>
         <Stack spacing={2} sx={{ minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
           <Skeleton variant="rounded" width={240} height={34} />
@@ -334,9 +342,13 @@ export function PosBuilderPageSkeleton({ mobile }: { mobile: boolean }) {
               gridTemplateColumns: {
                 xs: 'repeat(2, minmax(0, 1fr))',
                 md: 'repeat(2, minmax(0, 1fr))',
-                lg: 'repeat(4, minmax(0, 1fr))',
+                lg: 'repeat(3, minmax(0, 1fr))',
+                xl: 'repeat(4, minmax(0, 1fr))',
+                '@media (min-width: 1800px)': {
+                  gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
+                },
               },
-              gap: 1.5,
+              gap: { xs: 1.1, md: 1.2, xl: 1.4 },
             }}>
             {Array.from({ length: 8 }).map((_, index) => (
               <PosOverviewCardSkeleton key={index} height={126} />
