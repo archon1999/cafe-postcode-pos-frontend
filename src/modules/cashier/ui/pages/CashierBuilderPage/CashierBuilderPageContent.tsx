@@ -583,7 +583,7 @@ export function CashierBuilderPageContent() {
                       }}
                     />
                   ) : null}
-                  <Stack justifyContent="space-between" sx={{ minHeight: { xs: 112, md: 118, xl: 126 } }}>
+                  <Stack justifyContent="space-between" sx={{ height: '100%', minHeight: 0 }}>
                     <Stack
                       spacing={0.75}
                       sx={{
@@ -614,6 +614,7 @@ export function CashierBuilderPageContent() {
                     <Box
                       sx={(theme) => ({
                         minHeight: 40,
+                        mt: 'auto',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
