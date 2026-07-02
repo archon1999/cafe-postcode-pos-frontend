@@ -1,4 +1,4 @@
-const CACHE_NAME = 'restaurant-pos-shell-v4';
+const CACHE_NAME = 'restaurant-pos-shell-v5';
 const APP_SHELL = ['/', '/manifest.webmanifest', '/icons/pos-icon.svg'];
 
 function isCacheableRequest(request) {
@@ -22,6 +22,9 @@ self.addEventListener('activate', (event) => {
       self.clients.claim(),
       caches.keys().then((keys) =>
         Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))),
+      ),
+      self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) =>
+        Promise.all(clients.map((client) => client.navigate(client.url))),
       ),
     ]),
   );

@@ -10,8 +10,10 @@ import type {
 type CashierMenuItemDto = CashierMenuItem;
 type CashierMenuCategoryDto = Omit<CashierMenuCategory, 'items'> & { items: CashierMenuItemDto[] };
 type CashierOrderItemDto = CashierOrderItem;
-type CashierOrderDto = Omit<CashierOrder, 'items' | 'displayName'> & {
+type CashierOrderDto = Omit<CashierOrder, 'items' | 'orderNumber' | 'displayName'> & {
   items: CashierOrderItemDto[];
+  orderNumber?: number;
+  order_number?: number;
   displayName?: string | null;
   display_name?: string | null;
   deliveryPhone?: string | null;
@@ -37,6 +39,7 @@ export function mapCashierMenuCategories(dtos: CashierMenuCategoryDto[]) {
 export function mapCashierOrder(dto: CashierOrderDto): CashierOrder {
   return {
     ...dto,
+    orderNumber: dto.orderNumber ?? dto.order_number ?? 0,
     displayName: dto.displayName ?? dto.display_name ?? null,
     deliveryPhone: dto.deliveryPhone ?? dto.delivery_phone ?? null,
     deliveryAddress: dto.deliveryAddress ?? dto.delivery_address ?? null,
