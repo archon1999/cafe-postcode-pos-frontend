@@ -213,13 +213,7 @@ function OpenChecksList({
               color: 'inherit',
               outline: 0,
               backgroundColor:
-                selectedOrderId === order.id
-                  ? theme.palette.mode === 'dark'
-                    ? '#343434'
-                    : '#efe7db'
-                  : theme.palette.mode === 'dark'
-                    ? '#292929'
-                    : alpha('#ffffff', 0.76),
+                selectedOrderId === order.id ? 'var(--pos-check-card-selected-bg)' : 'var(--pos-check-card-bg)',
               transform: swipedOrderId === order.id ? 'translateX(-54px)' : 'translateX(0)',
               transition: 'transform 140ms ease',
               touchAction: 'pan-y',
@@ -257,7 +251,7 @@ function OpenChecksList({
                     minWidth: 56,
                     height: 56,
                     borderRadius: '9px',
-                    backgroundColor: theme.palette.mode === 'dark' ? '#565656' : '#d8d0c2',
+                    backgroundColor: 'var(--pos-check-card-avatar-bg)',
                     display: 'grid',
                     placeItems: 'center',
                     fontSize: 22,
@@ -320,7 +314,7 @@ function OpenChecksList({
             minHeight: 420,
             display: 'grid',
             placeItems: 'center',
-            backgroundColor: theme.palette.mode === 'dark' ? '#252525' : alpha('#ffffff', 0.75),
+            backgroundColor: 'var(--pos-check-card-empty-bg)',
           })}>
           <Typography variant="h6" color="text.secondary">
             {selectedTab === 'open'

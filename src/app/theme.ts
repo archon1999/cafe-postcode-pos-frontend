@@ -54,6 +54,10 @@ type PosThemeModePalette = {
     segmentActiveBg: string;
     segmentActiveColor: string;
     legendBg: string;
+    checkCardBg: string;
+    checkCardSelectedBg: string;
+    checkCardAvatarBg: string;
+    checkCardEmptyBg: string;
     menuItemPriceBg: string;
     orderPanelBg: string;
     contentPanelBg: string;
@@ -115,6 +119,10 @@ const blueShared = {
     segmentActiveBg: '#5c5c5c',
     segmentActiveColor: '#ffffff',
     legendBg: '#eee6d9',
+    checkCardBg: 'rgba(255,255,255,0.76)',
+    checkCardSelectedBg: '#efe7db',
+    checkCardAvatarBg: '#d8d0c2',
+    checkCardEmptyBg: 'rgba(255,255,255,0.75)',
     menuItemPriceBg: '#d7cebf',
     orderPanelBg: '#f6f0e7',
     contentPanelBg: '#f8f1e8',
@@ -167,6 +175,10 @@ const blueShared = {
     segmentActiveBg: '#4a4a4a',
     segmentActiveColor: '#ffffff',
     legendBg: '#2a2d31',
+    checkCardBg: '#292929',
+    checkCardSelectedBg: '#343434',
+    checkCardAvatarBg: '#565656',
+    checkCardEmptyBg: '#252525',
     menuItemPriceBg: '#383c42',
     orderPanelBg: '#222222',
     contentPanelBg: '#1f2125',
@@ -236,6 +248,10 @@ function createAccentShared(mode: PosThemeMode, primary: string, primaryDark: st
     segmentActiveBg: isDark ? alpha(accent, 0.22) : alpha(accent, 0.2),
     segmentActiveColor: isDark ? '#ffffff' : '#17212b',
     legendBg: isDark ? alpha(accent, 0.095) : alpha(accent, 0.085),
+    checkCardBg: isDark ? '#292929' : 'rgba(255,255,255,0.76)',
+    checkCardSelectedBg: isDark ? '#343434' : alpha(accent, 0.11),
+    checkCardAvatarBg: isDark ? '#565656' : alpha(accent, 0.18),
+    checkCardEmptyBg: isDark ? '#252525' : 'rgba(255,255,255,0.75)',
     menuItemPriceBg: isDark ? '#383c42' : '#e8eef5',
     orderPanelBg: isDark ? '#222222' : '#ffffff',
     contentPanelBg: isDark ? '#1f2125' : '#ffffff',
@@ -279,6 +295,10 @@ const amberShared = {
     segmentActiveBg: '#a65f16',
     segmentActiveColor: '#fff8ec',
     legendBg: '#ead7bb',
+    checkCardBg: 'rgba(255,250,242,0.8)',
+    checkCardSelectedBg: '#efe2cd',
+    checkCardAvatarBg: '#dfc6a0',
+    checkCardEmptyBg: 'rgba(255,250,242,0.72)',
     menuItemPriceBg: '#dcc39d',
     orderPanelBg: '#f5eadb',
     contentPanelBg: '#f7efe3',
@@ -317,6 +337,10 @@ const amberShared = {
     segmentActiveBg: '#6e451c',
     segmentActiveColor: '#fff4df',
     legendBg: '#352a21',
+    checkCardBg: '#2b231c',
+    checkCardSelectedBg: '#352a20',
+    checkCardAvatarBg: '#5a4732',
+    checkCardEmptyBg: '#231d18',
     menuItemPriceBg: '#514231',
     orderPanelBg: '#261f19',
     contentPanelBg: '#292018',
@@ -358,6 +382,10 @@ const roseShared = {
     segmentActiveBg: '#7d6bc2',
     segmentActiveColor: '#ffffff',
     legendBg: '#eadbe3',
+    checkCardBg: 'rgba(255,250,253,0.78)',
+    checkCardSelectedBg: '#f0dfe8',
+    checkCardAvatarBg: '#e0c9d4',
+    checkCardEmptyBg: 'rgba(255,250,253,0.72)',
     menuItemPriceBg: '#ddc7d2',
     orderPanelBg: '#f7edf2',
     contentPanelBg: '#faf1f5',
@@ -396,6 +424,10 @@ const roseShared = {
     segmentActiveBg: '#5f4aa0',
     segmentActiveColor: '#fff6fa',
     legendBg: '#362938',
+    checkCardBg: '#2e2430',
+    checkCardSelectedBg: '#3a2b3b',
+    checkCardAvatarBg: '#5a4051',
+    checkCardEmptyBg: '#281f2a',
     menuItemPriceBg: '#50394a',
     orderPanelBg: '#281e28',
     contentPanelBg: '#2a202b',
@@ -781,6 +813,10 @@ export function createPosTheme(mode: PosThemeMode = 'dark', color: PosThemeColor
             '--pos-segment-active-bg': sharedColors.segmentActiveBg,
             '--pos-segment-active-color': sharedColors.segmentActiveColor,
             '--pos-legend-bg': sharedColors.legendBg,
+            '--pos-check-card-bg': sharedColors.checkCardBg,
+            '--pos-check-card-selected-bg': sharedColors.checkCardSelectedBg,
+            '--pos-check-card-avatar-bg': sharedColors.checkCardAvatarBg,
+            '--pos-check-card-empty-bg': sharedColors.checkCardEmptyBg,
             '--pos-menu-item-price-bg': sharedColors.menuItemPriceBg,
             '--pos-order-panel-bg': sharedColors.orderPanelBg,
             '--pos-content-panel-bg': sharedColors.contentPanelBg,
