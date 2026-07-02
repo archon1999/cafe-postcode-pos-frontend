@@ -128,6 +128,7 @@ describe('browser receipt printing', () => {
     const text = receiptTextFromPayload({
       order_number: 1,
       receipt_number: '6',
+      channel_label: 'Dostavka',
       request: {
         Receipt: {
           Operation: 0,
@@ -143,6 +144,7 @@ describe('browser receipt printing', () => {
     });
 
     expect(text).toContain('Buyurtma raqami: 1');
+    expect(text).toContain('Buyurtma turi: Dostavka');
     expect(text).toContain('CHEK:');
     expect(text).toContain('6');
     expect(text).not.toContain('Buyurtma raqami: 6');

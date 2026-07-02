@@ -204,7 +204,11 @@ function fiscalSnapshotFromPayload(payload: Record<string, unknown>): PrintableP
     tax_number: extraInfo?.TIN ? String(extraInfo.TIN) : String(payload.tax_number ?? payload.taxNumber ?? ''),
     receipt_number: receiptNumber,
     order_number: orderNumber,
-    channel_label: String(receipt.Operation ?? '') === '1' ? 'Qaytarish' : 'Sotuv',
+    channel_label: String(
+      payload.channel_label ??
+        payload.channelLabel ??
+        (String(receipt.Operation ?? '') === '1' ? 'Qaytarish' : 'Sotuv'),
+    ),
     delivery_phone: String(payload.delivery_phone ?? payload.deliveryPhone ?? ''),
     delivery_address: String(payload.delivery_address ?? payload.deliveryAddress ?? ''),
     printed_at_label: String(receipt.Time ?? payload.issued_at ?? payload.issuedAt ?? ''),
