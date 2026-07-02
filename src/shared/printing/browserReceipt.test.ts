@@ -145,8 +145,7 @@ describe('browser receipt printing', () => {
 
     expect(text).toContain('Buyurtma raqami: 1');
     expect(text).toContain('Buyurtma turi: Dostavka');
-    expect(text).toContain('CHEK:');
-    expect(text).toContain('6');
+    expect(text).not.toContain('CHEK:');
     expect(text).not.toContain('Buyurtma raqami: 6');
   });
 });

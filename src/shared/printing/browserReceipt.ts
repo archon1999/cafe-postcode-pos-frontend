@@ -406,7 +406,6 @@ export function receiptTextFromPayload(payload: Record<string, unknown> | null |
   lines.push('='.repeat(42));
   if (totals.receivedCash > 0) lines.push(fitLine('NAQD PUL:', money(totals.receivedCash)));
   if (totals.receivedCard > 0) lines.push(fitLine('BANK KARTASI:', money(totals.receivedCard)));
-  if (receiptNumber) lines.push(fitLine('CHEK:', String(receiptNumber)));
 
   const terminalId = snapshot.terminal_id ?? snapshot.terminalId;
   const factoryId = snapshot.factory_id ?? snapshot.factoryId;
