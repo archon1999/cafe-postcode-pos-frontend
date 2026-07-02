@@ -169,6 +169,7 @@ function fiscalSnapshotFromPayload(payload: Record<string, unknown>): PrintableP
   const receivedCard = Number(receipt.ReceivedCard || 0);
   const total = fiscalMoney(receivedCash + receivedCard);
   const receiptNumber = String(payload.receipt_number ?? payload.receiptNumber ?? response?.ReceiptSeq ?? '');
+  const orderNumber = String(payload.order_number ?? payload.orderNumber ?? receiptNumber);
   const vatAmount = items.reduce((sum, entry) => {
     const item = asRecord(entry) ?? {};
     return sum + fiscalMoney(item.VAT);
@@ -202,7 +203,7 @@ function fiscalSnapshotFromPayload(payload: Record<string, unknown>): PrintableP
     restaurant_social: String(payload.restaurant_social ?? payload.restaurantSocial ?? ''),
     tax_number: extraInfo?.TIN ? String(extraInfo.TIN) : String(payload.tax_number ?? payload.taxNumber ?? ''),
     receipt_number: receiptNumber,
-    order_number: receiptNumber,
+    order_number: orderNumber,
     channel_label: String(receipt.Operation ?? '') === '1' ? 'Qaytarish' : 'Sotuv',
     delivery_phone: String(payload.delivery_phone ?? payload.deliveryPhone ?? ''),
     delivery_address: String(payload.delivery_address ?? payload.deliveryAddress ?? ''),

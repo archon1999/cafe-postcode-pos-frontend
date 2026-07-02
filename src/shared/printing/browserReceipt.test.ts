@@ -123,4 +123,28 @@ describe('browser receipt printing', () => {
       qr_code: 'https://ofd.soliq.uz/check?r=R-5',
     });
   });
+
+  it('keeps order number separate from fiscal receipt sequence', () => {
+    const text = receiptTextFromPayload({
+      order_number: 1,
+      receipt_number: '6',
+      request: {
+        Receipt: {
+          Operation: 0,
+          Time: '2026-07-02T12:37:17',
+          ReceivedCash: 7400000,
+          ReceivedCard: 0,
+          Items: [{ Name: 'BBQ CHEESEBURGER', Amount: 1000, Price: 2800000 }],
+        },
+      },
+      response: {
+        ReceiptSeq: '6',
+      },
+    });
+
+    expect(text).toContain('Buyurtma raqami: 1');
+    expect(text).toContain('CHEK:');
+    expect(text).toContain('6');
+    expect(text).not.toContain('Buyurtma raqami: 6');
+  });
 });
