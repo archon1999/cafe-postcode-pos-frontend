@@ -66,7 +66,7 @@ function getChecksCount(data: ChecksQueryData) {
 }
 
 function getReceiptChannelLabel(channel?: string | null) {
-  if (channel === 'delivery') return 'Dostavka';
+  if (channel === 'delivery') return 'Yetkazib berish';
   if (channel === 'online') return 'Online';
   return 'Zalda';
 }

@@ -79,7 +79,7 @@ function getMutationErrorDetail(error: unknown) {
 }
 
 function getReceiptChannelLabel(channel?: string | null) {
-  if (channel === 'delivery') return 'Dostavka';
+  if (channel === 'delivery') return 'Yetkazib berish';
   if (channel === 'online') return 'Online';
   return 'Zalda';
 }
@@ -286,6 +286,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     ? canAddCashierPaymentOrderItems(session?.user)
     : canAccessWaiterTables(session?.user);
   const canRemovePaymentItems = Boolean(isBuilderOrder && canRemoveCashierPaymentOrderItems(session?.user));
+  const markingCheckEnabled = Boolean(session?.restaurantContext?.markingCheckEnabled);
   const markingMissingCount = useMemo(
     () =>
       (orderQuery.data?.items ?? []).reduce((sum, item) => {
@@ -358,7 +359,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     normalizedOrderId &&
       canProcessPayments &&
       cashierContextQuery.data?.currentShift &&
-      markingMissingCount === 0 &&
+      (!markingCheckEnabled || markingMissingCount === 0) &&
       isPaymentAmountValid &&
       (isSplitPayment ? pendingSplitTotal <= remainingTotal : paymentAmount <= remainingTotal) &&
       isSplitPaymentValid &&
@@ -542,8 +543,8 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
           printReceiptWithFallback(
             receiptData ? withReceiptOrderContext(receipt?.payload ?? fallbackReceiptPayload, receiptData.order) : null,
             {
-            ...receiptPrintOptions,
-            receiptId: receipt?.id,
+              ...receiptPrintOptions,
+              receiptId: receipt?.id,
             },
           ),
         ),
@@ -941,9 +942,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
                       minWidth: { xs: '100%', sm: 120 },
                       backgroundImage: 'none',
                       backgroundColor:
-                        method === option.value
-                          ? muiTheme.palette.primary.main
-                          : 'var(--pos-payment-option-bg)',
+                        method === option.value ? muiTheme.palette.primary.main : 'var(--pos-payment-option-bg)',
                       color: method === option.value ? '#ffffff' : 'text.primary',
                     })}>
                     {option.label}
@@ -1122,7 +1121,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
               ) : null}
             </Stack>
 
-            {markingMissingCount > 0 ? (
+            {markingCheckEnabled && markingMissingCount > 0 ? (
               <Typography variant="body2" color="warning.main">
                 {formatPosCopy(copy.markingMissing, { count: markingMissingCount })}
               </Typography>

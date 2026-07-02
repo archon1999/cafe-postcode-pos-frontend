@@ -49,6 +49,7 @@ export type PosRestaurantContext = {
   serviceFeePercent?: number | string;
   vatEnabled?: boolean;
   vatPercent?: number | string;
+  markingCheckEnabled?: boolean;
 };
 
 export type PosSessionContextValue = {

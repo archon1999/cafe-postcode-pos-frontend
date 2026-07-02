@@ -35,6 +35,7 @@ type RestaurantContextCompat = PosRestaurantContext & {
   service_fee_percent?: number | string;
   vat_enabled?: boolean;
   vat_percent?: number | string;
+  marking_check_enabled?: boolean;
 };
 
 type LegacySessionPayload = Omit<PosSessionPayload, 'user' | 'tariff' | 'roleCodes'> & {
@@ -62,12 +63,12 @@ function normalizeRestaurantContext(rawContext: RestaurantContextCompat | PosRes
   const address = rawContext.address ?? (rawContext as RestaurantContextCompat).address;
   const backgroundImageUrl =
     rawContext.posAuthBackgroundImageUrl ?? (rawContext as RestaurantContextCompat).pos_auth_background_image_url;
-  const serviceFeeEnabled =
-    rawContext.serviceFeeEnabled ?? (rawContext as RestaurantContextCompat).service_fee_enabled;
-  const serviceFeePercent =
-    rawContext.serviceFeePercent ?? (rawContext as RestaurantContextCompat).service_fee_percent;
+  const serviceFeeEnabled = rawContext.serviceFeeEnabled ?? (rawContext as RestaurantContextCompat).service_fee_enabled;
+  const serviceFeePercent = rawContext.serviceFeePercent ?? (rawContext as RestaurantContextCompat).service_fee_percent;
   const vatEnabled = rawContext.vatEnabled ?? (rawContext as RestaurantContextCompat).vat_enabled;
   const vatPercent = rawContext.vatPercent ?? (rawContext as RestaurantContextCompat).vat_percent;
+  const markingCheckEnabled =
+    rawContext.markingCheckEnabled ?? (rawContext as RestaurantContextCompat).marking_check_enabled;
 
   if (phone !== undefined) context.phone = phone;
   if (social !== undefined) context.social = social;
@@ -77,6 +78,7 @@ function normalizeRestaurantContext(rawContext: RestaurantContextCompat | PosRes
   if (serviceFeePercent !== undefined) context.serviceFeePercent = serviceFeePercent;
   if (vatEnabled !== undefined) context.vatEnabled = vatEnabled;
   if (vatPercent !== undefined) context.vatPercent = vatPercent;
+  if (markingCheckEnabled !== undefined) context.markingCheckEnabled = markingCheckEnabled;
 
   return context;
 }

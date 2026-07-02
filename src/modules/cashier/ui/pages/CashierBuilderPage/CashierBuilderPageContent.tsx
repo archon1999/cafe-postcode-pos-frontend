@@ -280,6 +280,7 @@ export function CashierBuilderPageContent() {
   const vatAmount = Number(currentOrder?.vatAmount ?? 0);
   const shouldShowVat = vatEnabled && vatPercent > 0;
   const vatLabel = `${copy.vat} (${formatPercent(vatPercent)}%)`;
+  const markingCheckEnabled = Boolean(session?.restaurantContext?.markingCheckEnabled);
   const missingMarkingCount = useMemo(
     () =>
       (currentOrder?.items ?? []).reduce((sum, item) => {
@@ -289,7 +290,7 @@ export function CashierBuilderPageContent() {
       }, 0),
     [currentOrder?.items],
   );
-  const hasMissingMarkings = missingMarkingCount > 0;
+  const hasMissingMarkings = markingCheckEnabled && missingMarkingCount > 0;
   const missingMarkingMessage = `${missingMarkingCount} ta markirovka skanerlanmagan`;
   const isSubmitDisabled =
     !currentOrder ||
@@ -1007,7 +1008,7 @@ export function CashierBuilderPageContent() {
               value={kitchenNote}
               onChange={(event) => setKitchenNote(event.target.value)}
               multiline
-              minRows={2}
+              minRows={1}
             />
 
             <Stack direction="row" justifyContent="space-between">

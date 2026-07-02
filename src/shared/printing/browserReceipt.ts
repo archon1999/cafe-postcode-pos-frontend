@@ -1,4 +1,5 @@
 import { apiPost } from 'shared/api/client';
+import QRCode from 'qrcode';
 
 type PrintableItem = {
   name?: string;
@@ -94,6 +95,8 @@ type PrintReceiptOptions = {
   port?: number | string | null;
 };
 
+const RECEIPT_WIDTH = 48;
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
 }
@@ -114,6 +117,61 @@ function numberValue(value: unknown) {
 
 function qrValue(snapshot: PrintablePayload) {
   return String(snapshot.qr_code_url ?? snapshot.qrCodeUrl ?? '').trim();
+}
+
+function base64FromBytes(bytes: number[]) {
+  let binary = '';
+  for (let index = 0; index < bytes.length; index += 0x8000) {
+    binary += String.fromCharCode(...bytes.slice(index, index + 0x8000));
+  }
+  return btoa(binary);
+}
+
+function qrRasterBase64(value: string) {
+  const text = value.trim();
+  if (!text) return '';
+  const qr = QRCode.create(text, { errorCorrectionLevel: 'M' });
+  const moduleCount = qr.modules.size;
+  const quietModules = 4;
+  const scale = 4;
+  const pixelSize = (moduleCount + quietModules * 2) * scale;
+  const widthBytes = Math.ceil(pixelSize / 8);
+  const bytes: number[] = [
+    0x0a,
+    0x1b,
+    0x61,
+    0x01,
+    0x1d,
+    0x76,
+    0x30,
+    0x00,
+    widthBytes & 0xff,
+    (widthBytes >> 8) & 0xff,
+    pixelSize & 0xff,
+    (pixelSize >> 8) & 0xff,
+  ];
+
+  for (let y = 0; y < pixelSize; y += 1) {
+    for (let byteIndex = 0; byteIndex < widthBytes; byteIndex += 1) {
+      let byte = 0;
+      for (let bit = 0; bit < 8; bit += 1) {
+        const x = byteIndex * 8 + bit;
+        const moduleX = Math.floor(x / scale) - quietModules;
+        const moduleY = Math.floor(y / scale) - quietModules;
+        const isBlack =
+          moduleX >= 0 &&
+          moduleY >= 0 &&
+          moduleX < moduleCount &&
+          moduleY < moduleCount &&
+          Boolean(qr.modules.get(moduleX, moduleY));
+        if (isBlack) byte |= 0x80 >> bit;
+      }
+      bytes.push(byte);
+    }
+  }
+
+  bytes.push(0x1b, 0x61, 0x00, 0x0a);
+  return base64FromBytes(bytes);
 }
 
 function money(value: unknown) {
@@ -152,11 +210,66 @@ function dateTimeParts(value: unknown) {
   return { date, time: time.slice(0, 8) };
 }
 
-function centered(value: string, width = 42) {
+function centered(value: string, width = RECEIPT_WIDTH) {
   const text = value.trim();
   if (text.length >= width) return text;
   const left = Math.floor((width - text.length) / 2);
   return `${' '.repeat(left)}${text}`;
+}
+
+function wrapText(value: string, width = RECEIPT_WIDTH) {
+  const text = value.replace(/\s+/g, ' ').trim();
+  if (!text) return [];
+  const lines: string[] = [];
+  let current = '';
+  for (const word of text.split(' ')) {
+    if (!current) {
+      current = word;
+    } else if (current.length + 1 + word.length <= width) {
+      current = `${current} ${word}`;
+    } else {
+      lines.push(current);
+      current = word;
+    }
+    while (current.length > width) {
+      lines.push(current.slice(0, width));
+      current = current.slice(width);
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
+}
+
+function prefixedLines(prefix: string, value: string, width = RECEIPT_WIDTH) {
+  const cleanValue = value.replace(/\s+/g, ' ').trim();
+  if (!cleanValue) return [];
+  const words = cleanValue.split(' ');
+  const lines: string[] = [];
+  let current = prefix;
+  for (const word of words) {
+    const next = current === prefix ? `${current}${word}` : `${current} ${word}`;
+    if (next.length <= width) {
+      current = next;
+    } else {
+      if (current !== prefix) lines.push(current);
+      current = word;
+    }
+    while (current.length > width) {
+      lines.push(current.slice(0, width));
+      current = current.slice(width);
+    }
+  }
+  if (current && current !== prefix) lines.push(current);
+  return lines;
+}
+
+function normalizeOrderType(value: unknown) {
+  const text = String(value ?? '').trim();
+  const lowered = text.toLowerCase();
+  if (['dostavka', 'delivery', 'yetkazib berish'].includes(lowered)) return 'Yetkazib berish';
+  if (['takeaway', 'olib ketish'].includes(lowered)) return 'Olib ketish';
+  if (['hall', 'zal', 'zalda'].includes(lowered)) return 'Zalda';
+  return text || 'Zalda';
 }
 
 function fiscalSnapshotFromPayload(payload: Record<string, unknown>): PrintablePayload | null {
@@ -244,10 +357,10 @@ function fiscalSnapshotFromPayload(payload: Record<string, unknown>): PrintableP
     total,
     received_cash: fiscalMoney(receivedCash),
     received_card: fiscalMoney(receivedCard),
-    terminal_id: response?.TerminalID ? String(response.TerminalID) : '',
-    factory_id: payload.factory_id ? String(payload.factory_id) : '',
-    fiscal_sign: response?.FiscalSign ? String(response.FiscalSign) : '',
-    qr_code_url: response?.QRCodeURL ? String(response.QRCodeURL) : '',
+    terminal_id: String(payload.terminal_id ?? payload.terminalId ?? response?.TerminalID ?? ''),
+    factory_id: String(payload.factory_id ?? payload.factoryId ?? ''),
+    fiscal_sign: String(payload.fiscal_sign ?? payload.fiscalSign ?? response?.FiscalSign ?? ''),
+    qr_code_url: String(payload.qr_code_url ?? payload.qrCodeUrl ?? response?.QRCodeURL ?? ''),
   };
 }
 
@@ -261,15 +374,18 @@ function snapshotFromPayload(payload: Record<string, unknown> | null | undefined
   return (payload as PrintablePayload | null | undefined) ?? {};
 }
 
-function fitLine(left: string, right: string, width = 42) {
+function fitLine(left: string, right: string, width = RECEIPT_WIDTH) {
   const cleanLeft = left.replace(/\s+/g, ' ').trim();
   const cleanRight = right.replace(/\s+/g, ' ').trim();
+  if (cleanRight.length >= width - cleanLeft.length - 1) {
+    return [cleanLeft, ...wrapText(cleanRight, width).map((line) => line.padStart(width))].join('\n');
+  }
   const available = Math.max(width - cleanRight.length - 1, 0);
   const visibleLeft = cleanLeft.length > available ? cleanLeft.slice(0, available) : cleanLeft;
   return `${visibleLeft}${' '.repeat(Math.max(width - visibleLeft.length - cleanRight.length, 1))}${cleanRight}`;
 }
 
-function itemLine(left: string, quantity: string, right: string, width = 42) {
+function itemLine(left: string, quantity: string, right: string, width = RECEIPT_WIDTH) {
   const cleanLeft = left.replace(/\s+/g, ' ').trim();
   const cleanQuantity = quantity.replace(/\s+/g, ' ').trim();
   const cleanRight = right.replace(/\s+/g, ' ').trim();
@@ -328,6 +444,7 @@ function receiptTotals(snapshot: PrintablePayload) {
 }
 
 function percentLabel(label: string, value: unknown) {
+  if (numberValue(value) <= 0) return label;
   const rate = percent(value);
   return rate ? `${label} (${rate}%)` : label;
 }
@@ -366,29 +483,29 @@ export function receiptTextFromPayload(payload: Record<string, unknown> | null |
   const restaurantAddress = String(snapshot.restaurant_address ?? snapshot.restaurantAddress ?? '').trim();
   const restaurantPhone = String(snapshot.restaurant_phone ?? snapshot.restaurantPhone ?? '').trim();
   const restaurantSocial = socialLine(snapshot.restaurant_social ?? snapshot.restaurantSocial);
-  const orderType = String(snapshot.channel_label ?? snapshot.channelLabel ?? 'sotuv').trim();
+  const orderType = normalizeOrderType(snapshot.channel_label ?? snapshot.channelLabel ?? 'Zalda');
   const orderNumberLabel = String(orderNumber || '-').replace(/^#/, '');
   const lines = [
     centered(title.toUpperCase()),
-    '-'.repeat(42),
+    '-'.repeat(RECEIPT_WIDTH),
     centered(`Buyurtma raqami: ${orderNumberLabel}`),
-    '-'.repeat(42),
-    restaurantAddress ? `Manzil: ${restaurantAddress}` : '',
+    '-'.repeat(RECEIPT_WIDTH),
+    ...prefixedLines('Manzil: ', restaurantAddress),
     restaurantPhone ? `Tel: ${restaurantPhone}` : '',
     restaurantSocial,
-    '-'.repeat(42),
+    '-'.repeat(RECEIPT_WIDTH),
     `Sana: ${receiptDate(date || '-')}`,
     `Buyurtma vaqti: ${time || '-'}`,
     `Buyurtma turi: ${orderType}`,
-    '-'.repeat(42),
+    '-'.repeat(RECEIPT_WIDTH),
   ].filter(Boolean);
 
   const tableLabel = snapshot.table_label ?? snapshot.tableLabel;
   if (tableLabel) lines.push(String(tableLabel));
   if (cashierName) lines.push(`Kassir: ${cashierName}`);
   if (delivery.phone) lines.push(`Mijoz tel: ${delivery.phone}`);
-  if (delivery.address) lines.push(`Mijoz manzil: ${delivery.address}`);
-  if (tableLabel || cashierName || delivery.phone || delivery.address) lines.push('-'.repeat(42));
+  if (delivery.address) lines.push(...prefixedLines('Mijoz manzil: ', delivery.address));
+  if (tableLabel || cashierName || delivery.phone || delivery.address) lines.push('-'.repeat(RECEIPT_WIDTH));
 
   for (const item of items) {
     const quantity = itemQuantityValue(item);
@@ -403,16 +520,16 @@ export function receiptTextFromPayload(payload: Record<string, unknown> | null |
     if (unitCode) lines.push(fitLine("O'lchov:", String(unitCode)));
     if (item.labels?.length) lines.push(fitLine('MARKIROVKA:', item.labels.join(', ')));
     if (item.note) lines.push(String(item.note));
-    lines.push('-'.repeat(42));
+    lines.push('-'.repeat(RECEIPT_WIDTH));
   }
 
-  lines.push('='.repeat(42));
+  lines.push('='.repeat(RECEIPT_WIDTH));
   lines.push(fitLine('JAMI:', money(snapshot.total)));
   if (totals.vatEnabled && totals.vatAmount > 0)
     lines.push(fitLine(`${percentLabel('Sh.j. QQS', totals.vatPercent)}:`, moneyFixed(totals.vatAmount)));
   if (totals.serviceFee > 0)
     lines.push(fitLine(`${percentLabel('XIZMAT HAQI', totals.serviceFeePercent)}:`, money(totals.serviceFee)));
-  lines.push('='.repeat(42));
+  lines.push('='.repeat(RECEIPT_WIDTH));
   if (totals.receivedCash > 0) lines.push(fitLine('NAQD PUL:', money(totals.receivedCash)));
   if (totals.receivedCard > 0) lines.push(fitLine('BANK KARTASI:', money(totals.receivedCard)));
 
@@ -420,20 +537,20 @@ export function receiptTextFromPayload(payload: Record<string, unknown> | null |
   const factoryId = snapshot.factory_id ?? snapshot.factoryId;
   const fiscalSign = snapshot.fiscal_sign ?? snapshot.fiscalSign;
   if (terminalId || factoryId || fiscalSign) {
-    lines.push('-'.repeat(42));
+    lines.push('-'.repeat(RECEIPT_WIDTH));
     lines.push(fitLine('STIR:', String(snapshot.tax_number ?? snapshot.taxNumber ?? '-')));
-    if (factoryId) lines.push(`FM: ${factoryId}`);
+    if (factoryId) lines.push(fitLine('FM:', String(factoryId)));
     if (fiscalSign) lines.push(fitLine('FB:', String(fiscalSign)));
-    if (terminalId) lines.push(`NKM S/R: ${terminalId}`);
+    if (terminalId) lines.push(fitLine('NKM S/R:', String(terminalId)));
   }
 
   const orderNote = snapshot.order_note ?? snapshot.orderNote;
   if (orderNote) {
-    lines.push('-'.repeat(42));
+    lines.push('-'.repeat(RECEIPT_WIDTH));
     lines.push(String(orderNote));
   }
 
-  lines.push('-'.repeat(42));
+  lines.push('-'.repeat(RECEIPT_WIDTH));
   lines.push(centered('Buyurtmangiz uchun raxmat!'));
   lines.push(centered('Yoqimli ishtaha!'));
   lines.push('', '');
@@ -453,10 +570,12 @@ export async function printReceiptWithLocalAgent(
     : '/pos/billing/receipts/print/';
 
   try {
+    const qrCode = qrValue(snapshot);
     const data = await apiPost<{ result?: { ok?: boolean } }>(endpoint, {
       payload: payload ?? {},
       text: receiptTextFromPayload(payload),
-      qr_code: qrValue(snapshot),
+      qr_code: qrCode,
+      qr_raster_base64: qrRasterBase64(qrCode),
     });
     return data.result?.ok === true;
   } catch {

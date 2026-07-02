@@ -78,6 +78,7 @@ describe('browser receipt printing', () => {
       payload: expect.any(Object),
       text: expect.stringContaining('R-3'),
       qr_code: '',
+      qr_raster_base64: '',
     });
   });
 
@@ -99,6 +100,7 @@ describe('browser receipt printing', () => {
       payload: expect.any(Object),
       text: expect.stringContaining('R-4'),
       qr_code: '',
+      qr_raster_base64: '',
     });
   });
 
@@ -121,7 +123,9 @@ describe('browser receipt printing', () => {
       payload: expect.any(Object),
       text: expect.not.stringContaining('https://ofd.soliq.uz/check'),
       qr_code: 'https://ofd.soliq.uz/check?r=R-5',
+      qr_raster_base64: expect.any(String),
     });
+    expect(apiPostMock.mock.calls[0][1].qr_raster_base64.length).toBeGreaterThan(100);
   });
 
   it('keeps order number separate from fiscal receipt sequence', () => {
@@ -145,9 +149,37 @@ describe('browser receipt printing', () => {
     });
 
     expect(text).toContain('Buyurtma raqami: 1');
-    expect(text).toContain('Buyurtma turi: Dostavka');
+    expect(text).toContain('Buyurtma turi: Yetkazib berish');
     expect(text).not.toContain('CHEK:');
     expect(text).not.toContain('Buyurtma raqami: 6');
     expect(text).not.toContain('Buyurtma raqami: 15');
+  });
+
+  it('reads fiscal QR from top-level payload fallback', async () => {
+    apiPostMock.mockResolvedValueOnce({ result: { ok: true } });
+
+    await printReceiptWithFallback({
+      qr_code_url: 'https://ofd.soliq.uz/check?r=top-level',
+      request: {
+        Receipt: {
+          Operation: 0,
+          Time: '2026-07-02T12:37:17',
+          ReceivedCash: 100000,
+          ReceivedCard: 0,
+          Items: [{ Name: 'Coffee', Amount: 1000, Price: 100000 }],
+        },
+      },
+      response: {
+        ReceiptSeq: '7',
+      },
+    });
+
+    expect(apiPostMock).toHaveBeenCalledWith('/pos/billing/receipts/print/', {
+      payload: expect.any(Object),
+      text: expect.any(String),
+      qr_code: 'https://ofd.soliq.uz/check?r=top-level',
+      qr_raster_base64: expect.any(String),
+    });
+    expect(apiPostMock.mock.calls[0][1].qr_raster_base64.length).toBeGreaterThan(100);
   });
 });

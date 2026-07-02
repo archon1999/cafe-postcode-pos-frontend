@@ -9,6 +9,7 @@ import { CashierBuilderPageContent } from './CashierBuilderPageContent';
 const navigateMock = vi.fn();
 const useCashierBuilderOrdersQueryMock = vi.fn();
 const useCashierMenuQueryMock = vi.fn();
+const useCashierPaymentOrderQueryMock = vi.fn();
 const useOptimisticBuilderOrderMock = vi.fn();
 const submitOrderMutateAsyncMock = vi.fn();
 const updateOrderDeliveryDetailsMock = vi.fn();
@@ -40,6 +41,7 @@ vi.mock('modules/cashier/application', () => ({
   },
   useCashierBuilderOrdersQuery: (...args: unknown[]) => useCashierBuilderOrdersQueryMock(...args),
   useCashierMenuQuery: (...args: unknown[]) => useCashierMenuQueryMock(...args),
+  useCashierPaymentOrderQuery: (...args: unknown[]) => useCashierPaymentOrderQueryMock(...args),
   useSubmitCashierOrderMutation: () => ({
     isPending: false,
     mutate: vi.fn(),
@@ -133,6 +135,10 @@ describe('CashierBuilderPageContent', () => {
       isLoading: false,
       data: [],
       refetch: vi.fn(),
+    });
+    useCashierPaymentOrderQueryMock.mockReset();
+    useCashierPaymentOrderQueryMock.mockReturnValue({
+      data: null,
     });
     useOptimisticBuilderOrderMock.mockReset();
     useOptimisticBuilderOrderMock.mockImplementation((options: { channel: 'delivery' | 'takeaway' }) => ({
