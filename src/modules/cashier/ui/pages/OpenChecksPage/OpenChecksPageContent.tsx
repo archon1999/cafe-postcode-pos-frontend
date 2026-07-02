@@ -65,6 +65,45 @@ function getChecksCount(data: ChecksQueryData) {
   return Array.isArray(data) ? data.length : (data?.count ?? data?.orders?.length ?? 0);
 }
 
+function getReceiptChannelLabel(channel?: string | null) {
+  if (channel === 'delivery') return 'Dostavka';
+  if (channel === 'online') return 'Online';
+  return 'Zalda';
+}
+
+function withReceiptOrderContext(payload: Record<string, unknown> | null | undefined, order?: CashierOrder | null) {
+  if (!order) return payload ?? null;
+  const orderNumberLabel = getCashierOrderNumberLabel({ orderNumber: order.orderNumber });
+  const tableLabel = order.tableName || order.hallName ? [order.hallName, order.tableName].filter(Boolean).join(' / ') : '';
+  const context = {
+    order_number: orderNumberLabel,
+    orderNumber: orderNumberLabel,
+    channel_label: getReceiptChannelLabel(order.channel),
+    channelLabel: getReceiptChannelLabel(order.channel),
+    table_label: tableLabel,
+    tableLabel,
+    delivery_phone: order.deliveryPhone ?? '',
+    deliveryPhone: order.deliveryPhone ?? '',
+    delivery_address: order.deliveryAddress ?? '',
+    deliveryAddress: order.deliveryAddress ?? '',
+  };
+  const source = payload ?? {};
+  const snapshot = source.snapshot;
+  if (snapshot && typeof snapshot === 'object' && !Array.isArray(snapshot)) {
+    return {
+      ...source,
+      snapshot: {
+        ...(snapshot as Record<string, unknown>),
+        ...context,
+      },
+    };
+  }
+  return {
+    ...source,
+    ...context,
+  };
+}
+
 function formatPercent(value: number) {
   return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/\.?0+$/, '');
 }
@@ -696,7 +735,7 @@ export function OpenChecksPageContent() {
     try {
       await Promise.all(
         (retryReceiptDialog?.receipts ?? []).map((receipt) =>
-          printReceiptWithFallback(receipt.payload ?? null, {
+          printReceiptWithFallback(withReceiptOrderContext(receipt.payload ?? null, selectedOrder), {
             ...receiptPrintOptions,
             receiptId: receipt.id,
           }),
@@ -756,7 +795,7 @@ export function OpenChecksPageContent() {
             const code = String(result.code ?? '');
             if (code === 'PRINTER_NOT_CONFIGURED') {
               toast.info('Printer sozlamalari ulanmagan');
-              void printReceiptWithFallback(response.receipt?.payload ?? latestReceipt.payload ?? null, {
+              void printReceiptWithFallback(withReceiptOrderContext(response.receipt?.payload ?? latestReceipt.payload ?? null, selectedOrder), {
                 ...receiptPrintOptions,
                 receiptId: response.receipt?.id ?? latestReceipt.id,
               });
@@ -764,20 +803,20 @@ export function OpenChecksPageContent() {
             }
             if (code === 'PRINTER_UNAVAILABLE' || result.ok === false) {
               toast.info('Printer ishlamayapti');
-              void printReceiptWithFallback(response.receipt?.payload ?? latestReceipt.payload ?? null, {
+              void printReceiptWithFallback(withReceiptOrderContext(response.receipt?.payload ?? latestReceipt.payload ?? null, selectedOrder), {
                 ...receiptPrintOptions,
                 receiptId: response.receipt?.id ?? latestReceipt.id,
               });
               return;
             }
-            void printReceiptWithFallback(response.receipt?.payload ?? latestReceipt.payload ?? null, {
+            void printReceiptWithFallback(withReceiptOrderContext(response.receipt?.payload ?? latestReceipt.payload ?? null, selectedOrder), {
               ...receiptPrintOptions,
               receiptId: response.receipt?.id ?? latestReceipt.id,
             });
           })
           .catch(() => {
             toast.info('Printer ishlamayapti');
-            void printReceiptWithFallback(latestReceipt.payload ?? null, {
+            void printReceiptWithFallback(withReceiptOrderContext(latestReceipt.payload ?? null, selectedOrder), {
               ...receiptPrintOptions,
               receiptId: latestReceipt.id,
             });

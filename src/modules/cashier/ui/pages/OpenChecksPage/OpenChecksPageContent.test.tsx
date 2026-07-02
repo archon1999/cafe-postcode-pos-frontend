@@ -263,7 +263,11 @@ describe('OpenChecksPageContent', () => {
 
     await waitFor(() => {
       expect(printReceiptWithFallbackMock).toHaveBeenCalledWith(
-        { receiptNumber: 'R-2' },
+        expect.objectContaining({
+          receiptNumber: 'R-2',
+          order_number: '#104',
+          channel_label: 'Zalda',
+        }),
         { preferLocalAgent: true, receiptId: 'receipt-2' },
       );
       expect(fiscalUnresolvedRefetchMock).toHaveBeenCalled();

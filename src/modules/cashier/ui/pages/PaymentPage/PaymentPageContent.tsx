@@ -78,6 +78,46 @@ function getMutationErrorDetail(error: unknown) {
   return errorResponse?.detail ?? '';
 }
 
+function getReceiptChannelLabel(channel?: string | null) {
+  if (channel === 'delivery') return 'Dostavka';
+  if (channel === 'online') return 'Online';
+  return 'Zalda';
+}
+
+function withReceiptOrderContext(
+  payload: Record<string, unknown> | null | undefined,
+  order: CashierPaymentResponse['order'],
+) {
+  const orderNumberLabel = getCashierOrderNumberLabel({ orderNumber: order.orderNumber });
+  const context = {
+    order_number: orderNumberLabel,
+    orderNumber: orderNumberLabel,
+    channel_label: getReceiptChannelLabel(order.channel),
+    channelLabel: getReceiptChannelLabel(order.channel),
+    table_label: order.tableName || order.hallName ? [order.hallName, order.tableName].filter(Boolean).join(' / ') : '',
+    tableLabel: order.tableName || order.hallName ? [order.hallName, order.tableName].filter(Boolean).join(' / ') : '',
+    delivery_phone: order.deliveryPhone ?? '',
+    deliveryPhone: order.deliveryPhone ?? '',
+    delivery_address: order.deliveryAddress ?? '',
+    deliveryAddress: order.deliveryAddress ?? '',
+  };
+  const source = payload ?? {};
+  const snapshot = source.snapshot;
+  if (snapshot && typeof snapshot === 'object' && !Array.isArray(snapshot)) {
+    return {
+      ...source,
+      snapshot: {
+        ...(snapshot as Record<string, unknown>),
+        ...context,
+      },
+    };
+  }
+  return {
+    ...source,
+    ...context,
+  };
+}
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
 }
@@ -386,7 +426,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
         restaurant_social: session?.restaurantContext?.social ?? '',
         order_number: getCashierOrderNumberLabel({ orderNumber: order.orderNumber }),
         receipt_number: receiptNumber,
-        channel_label: 'sotuv',
+        channel_label: getReceiptChannelLabel(order.channel),
         table_label:
           order.tableName || order.hallName ? [order.hallName, order.tableName].filter(Boolean).join(' / ') : '',
         delivery_phone: order.deliveryPhone ?? '',
@@ -493,10 +533,13 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
       const receiptsToPrint = receiptDialogReceipts.length > 0 ? receiptDialogReceipts : [null];
       await Promise.all(
         receiptsToPrint.map((receipt) =>
-          printReceiptWithFallback(receipt?.payload ?? fallbackReceiptPayload, {
+          printReceiptWithFallback(
+            receiptData ? withReceiptOrderContext(receipt?.payload ?? fallbackReceiptPayload, receiptData.order) : null,
+            {
             ...receiptPrintOptions,
             receiptId: receipt?.id,
-          }),
+            },
+          ),
         ),
       );
       setPrintToastOpen(true);

@@ -539,7 +539,11 @@ describe('PaymentPageContent', () => {
 
     await waitFor(() => {
       expect(printReceiptWithFallbackMock).toHaveBeenCalledWith(
-        { receiptNumber: 'R-1' },
+        expect.objectContaining({
+          receiptNumber: 'R-1',
+          order_number: '#101',
+          channel_label: 'Zalda',
+        }),
         { preferLocalAgent: true, receiptId: 'receipt-1' },
       );
       expect(navigateMock).toHaveBeenCalledWith('/cashier/open-checks', { replace: true });
