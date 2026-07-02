@@ -381,6 +381,9 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
       snapshot: {
         restaurant_name: session?.restaurantContext?.restaurantName ?? 'Chek',
         restaurant_legal_name: session?.restaurantContext?.restaurantName ?? 'Chek',
+        restaurant_address: session?.restaurantContext?.address ?? '',
+        restaurant_phone: session?.restaurantContext?.phone ?? '',
+        restaurant_social: session?.restaurantContext?.social ?? '',
         order_number: getCashierOrderNumberLabel({ orderNumber: order.orderNumber }),
         receipt_number: receiptNumber,
         channel_label: 'sotuv',
@@ -411,7 +414,10 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     };
   }, [
     receiptData,
+    session?.restaurantContext?.address,
+    session?.restaurantContext?.phone,
     session?.restaurantContext?.restaurantName,
+    session?.restaurantContext?.social,
     session?.user.fullName,
     session?.user.id,
     session?.user.username,

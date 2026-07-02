@@ -41,6 +41,9 @@ export type PosRestaurantCodePayload = {
 export type PosRestaurantContext = {
   restaurantId: string;
   restaurantName: string;
+  phone?: string;
+  social?: string;
+  address?: string;
   posAuthBackgroundImageUrl?: string | null;
   serviceFeeEnabled?: boolean;
   serviceFeePercent?: number | string;

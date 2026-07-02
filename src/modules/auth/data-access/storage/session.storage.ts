@@ -27,6 +27,9 @@ type SessionCompatTariff = Partial<NonNullable<PosTariff>> & {
 type RestaurantContextCompat = PosRestaurantContext & {
   restaurant_id?: string;
   restaurant_name?: string;
+  phone?: string;
+  social?: string;
+  address?: string;
   pos_auth_background_image_url?: string | null;
   service_fee_enabled?: boolean;
   service_fee_percent?: number | string;
@@ -54,6 +57,9 @@ function normalizeRestaurantContext(rawContext: RestaurantContextCompat | PosRes
     restaurantId: rawContext.restaurantId ?? (rawContext as RestaurantContextCompat).restaurant_id ?? '',
     restaurantName: rawContext.restaurantName ?? (rawContext as RestaurantContextCompat).restaurant_name ?? '',
   };
+  const phone = rawContext.phone ?? (rawContext as RestaurantContextCompat).phone;
+  const social = rawContext.social ?? (rawContext as RestaurantContextCompat).social;
+  const address = rawContext.address ?? (rawContext as RestaurantContextCompat).address;
   const backgroundImageUrl =
     rawContext.posAuthBackgroundImageUrl ?? (rawContext as RestaurantContextCompat).pos_auth_background_image_url;
   const serviceFeeEnabled =
@@ -63,6 +69,9 @@ function normalizeRestaurantContext(rawContext: RestaurantContextCompat | PosRes
   const vatEnabled = rawContext.vatEnabled ?? (rawContext as RestaurantContextCompat).vat_enabled;
   const vatPercent = rawContext.vatPercent ?? (rawContext as RestaurantContextCompat).vat_percent;
 
+  if (phone !== undefined) context.phone = phone;
+  if (social !== undefined) context.social = social;
+  if (address !== undefined) context.address = address;
   if (backgroundImageUrl !== undefined) context.posAuthBackgroundImageUrl = backgroundImageUrl;
   if (serviceFeeEnabled !== undefined) context.serviceFeeEnabled = serviceFeeEnabled;
   if (serviceFeePercent !== undefined) context.serviceFeePercent = serviceFeePercent;

@@ -26,6 +26,10 @@ type PrintablePayload = {
   restaurantLegalName?: string;
   restaurant_address?: string;
   restaurantAddress?: string;
+  restaurant_phone?: string;
+  restaurantPhone?: string;
+  restaurant_social?: string;
+  restaurantSocial?: string;
   tax_number?: string;
   taxNumber?: string;
   order_number?: number | string;
@@ -128,12 +132,6 @@ function itemQuantityValue(item: PrintableItem) {
   return Number.isFinite(quantity) && quantity > 0 ? quantity : 1;
 }
 
-function itemUnitPriceValue(item: PrintableItem) {
-  const explicit = numberValue(item.unit_price ?? item.unitPrice);
-  if (explicit > 0) return explicit;
-  return numberValue(item.line_total ?? item.lineTotal) / itemQuantityValue(item);
-}
-
 function includedVatAmount(total: unknown, vatPercent: unknown) {
   const amount = numberValue(total);
   const rate = numberValue(vatPercent);
@@ -170,7 +168,7 @@ function fiscalSnapshotFromPayload(payload: Record<string, unknown>): PrintableP
   const receivedCash = Number(receipt.ReceivedCash || 0);
   const receivedCard = Number(receipt.ReceivedCard || 0);
   const total = fiscalMoney(receivedCash + receivedCard);
-  const receiptNumber = payload.receipt_number ?? payload.receiptNumber ?? response?.ReceiptSeq ?? '';
+  const receiptNumber = String(payload.receipt_number ?? payload.receiptNumber ?? response?.ReceiptSeq ?? '');
   const vatAmount = items.reduce((sum, entry) => {
     const item = asRecord(entry) ?? {};
     return sum + fiscalMoney(item.VAT);
@@ -200,6 +198,8 @@ function fiscalSnapshotFromPayload(payload: Record<string, unknown>): PrintableP
         'Chek',
     ),
     restaurant_address: String(payload.restaurant_address ?? payload.restaurantAddress ?? ''),
+    restaurant_phone: String(payload.restaurant_phone ?? payload.restaurantPhone ?? ''),
+    restaurant_social: String(payload.restaurant_social ?? payload.restaurantSocial ?? ''),
     tax_number: extraInfo?.TIN ? String(extraInfo.TIN) : String(payload.tax_number ?? payload.taxNumber ?? ''),
     receipt_number: receiptNumber,
     order_number: receiptNumber,
@@ -229,7 +229,7 @@ function fiscalSnapshotFromPayload(payload: Record<string, unknown>): PrintableP
       })),
     subtotal: Math.max(total - serviceFee, 0),
     service_fee: serviceFee,
-    service_fee_percent: payload.service_fee_percent ?? payload.serviceFeePercent ?? '',
+    service_fee_percent: String(payload.service_fee_percent ?? payload.serviceFeePercent ?? ''),
     vat_enabled: vatAmount > 0,
     vat_percent: firstVatItem?.VATPercent ? String(firstVatItem.VATPercent) : '',
     vat_amount: vatAmount,
@@ -259,6 +259,43 @@ function fitLine(left: string, right: string, width = 42) {
   const available = Math.max(width - cleanRight.length - 1, 0);
   const visibleLeft = cleanLeft.length > available ? cleanLeft.slice(0, available) : cleanLeft;
   return `${visibleLeft}${' '.repeat(Math.max(width - visibleLeft.length - cleanRight.length, 1))}${cleanRight}`;
+}
+
+function itemLine(left: string, quantity: string, right: string, width = 42) {
+  const cleanLeft = left.replace(/\s+/g, ' ').trim();
+  const cleanQuantity = quantity.replace(/\s+/g, ' ').trim();
+  const cleanRight = right.replace(/\s+/g, ' ').trim();
+  const rightStart = Math.max(width - cleanRight.length, 0);
+  const leftLimit = Math.max(Math.min(22, rightStart - cleanQuantity.length - 2), 8);
+  const visibleLeft = cleanLeft.length > leftLimit ? cleanLeft.slice(0, leftLimit) : cleanLeft;
+  const middleStart = Math.min(
+    Math.max(24, visibleLeft.length + 1),
+    Math.max(rightStart - cleanQuantity.length - 1, visibleLeft.length + 1),
+  );
+  const chars = Array.from({ length: width }, () => ' ');
+  for (let index = 0; index < visibleLeft.length && index < width; index += 1) chars[index] = visibleLeft[index];
+  for (let index = 0; index < cleanQuantity.length && middleStart + index < width; index += 1)
+    chars[middleStart + index] = cleanQuantity[index];
+  for (let index = 0; index < cleanRight.length && rightStart + index < width; index += 1)
+    chars[rightStart + index] = cleanRight[index];
+  return chars.join('').trimEnd();
+}
+
+function receiptDate(value: string) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return `${value.slice(8, 10)}.${value.slice(5, 7)}.${value.slice(0, 4)}`;
+  }
+  return value;
+}
+
+function socialLine(value: unknown) {
+  const text = String(value ?? '').trim();
+  if (!text) return '';
+  if (text.includes(':')) return text;
+  const lowered = text.toLowerCase();
+  if (lowered.includes('instagram') || lowered.startsWith('insta') || lowered.startsWith('@')) return `Instagram: ${text}`;
+  if (lowered.includes('telegram') || lowered.startsWith('tg')) return `Telegram: ${text}`;
+  return `Social: ${text}`;
 }
 
 function receiptTotals(snapshot: PrintablePayload) {
@@ -303,41 +340,45 @@ export function receiptTextFromPayload(payload: Record<string, unknown> | null |
     snapshot.order_number ?? snapshot.orderNumber ?? snapshot.receipt_number ?? snapshot.receiptNumber ?? '';
   const receiptNumber = snapshot.receipt_number ?? snapshot.receiptNumber;
   const title = String(
-    snapshot.restaurant_legal_name ??
-      snapshot.restaurantLegalName ??
-      snapshot.restaurant_name ??
+    snapshot.restaurant_name ??
       snapshot.restaurantName ??
+      snapshot.restaurant_legal_name ??
+      snapshot.restaurantLegalName ??
       'Chek',
   );
   const printedAt = snapshot.printed_at_label ?? snapshot.printedAtLabel;
   const { date, time } = dateTimeParts(printedAt);
   const cashierName = snapshot.cashier_name ?? snapshot.cashierName ?? snapshot.waiter_name ?? snapshot.waiterName;
+  const restaurantAddress = String(snapshot.restaurant_address ?? snapshot.restaurantAddress ?? '').trim();
+  const restaurantPhone = String(snapshot.restaurant_phone ?? snapshot.restaurantPhone ?? '').trim();
+  const restaurantSocial = socialLine(snapshot.restaurant_social ?? snapshot.restaurantSocial);
+  const orderType = String(snapshot.channel_label ?? snapshot.channelLabel ?? 'sotuv').trim();
+  const orderNumberLabel = String(orderNumber || '-').replace(/^#/, '');
   const lines = [
-    centered(title),
-    snapshot.restaurant_address || snapshot.restaurantAddress
-      ? centered(String(snapshot.restaurant_address ?? snapshot.restaurantAddress))
-      : '',
-    '',
-    fitLine(`CHEK: ${receiptNumber || orderNumber || '-'}`, `${date || '-'} ${time || '-'}`.trim()),
-    fitLine('POS: 1', `KASSIR: ${cashierName || '-'}`),
-    fitLine(
-      `STIR: ${String(snapshot.tax_number ?? snapshot.taxNumber ?? '-')}`,
-      `NKM S/R: ${String(snapshot.terminal_id ?? snapshot.terminalId ?? '-')}`,
-    ),
-    delivery.phone ? fitLine('TEL:', delivery.phone) : '',
-    delivery.address ? `MANZIL: ${delivery.address}` : '',
+    centered(title.toUpperCase()),
+    '-'.repeat(42),
+    centered(`Buyurtma raqami: ${orderNumberLabel}`),
+    '-'.repeat(42),
+    restaurantAddress ? `Manzil: ${restaurantAddress}` : '',
+    restaurantPhone ? `Tel: ${restaurantPhone}` : '',
+    restaurantSocial,
+    '-'.repeat(42),
+    `Sana: ${receiptDate(date || '-')}`,
+    `Buyurtma vaqti: ${time || '-'}`,
+    `Buyurtma turi: ${orderType}`,
     '-'.repeat(42),
   ].filter(Boolean);
 
   const tableLabel = snapshot.table_label ?? snapshot.tableLabel;
-  if (tableLabel)
-    lines.push(fitLine(String(tableLabel), String(snapshot.channel_label ?? snapshot.channelLabel ?? 'sotuv')));
+  if (tableLabel) lines.push(String(tableLabel));
+  if (cashierName) lines.push(`Kassir: ${cashierName}`);
+  if (delivery.phone) lines.push(`Mijoz tel: ${delivery.phone}`);
+  if (delivery.address) lines.push(`Mijoz manzil: ${delivery.address}`);
+  if (tableLabel || cashierName || delivery.phone || delivery.address) lines.push('-'.repeat(42));
 
   for (const item of items) {
     const quantity = itemQuantityValue(item);
-    const unitPrice = itemUnitPriceValue(item);
-    lines.push(String(item.name ?? 'Mahsulot').toUpperCase());
-    lines.push(fitLine(`${quantity} dona x ${moneyFixed(unitPrice)}`, money(item.line_total ?? item.lineTotal)));
+    lines.push(itemLine(String(item.name ?? 'Mahsulot'), `x${quantity}`, money(item.line_total ?? item.lineTotal)));
     const itemVatPercent = item.vat_percent ?? item.vatPercent;
     const itemVatAmount = numberValue(item.vat_amount ?? item.vatAmount);
     if (itemVatPercent)
@@ -360,12 +401,14 @@ export function receiptTextFromPayload(payload: Record<string, unknown> | null |
   lines.push('='.repeat(42));
   if (totals.receivedCash > 0) lines.push(fitLine('NAQD PUL:', money(totals.receivedCash)));
   if (totals.receivedCard > 0) lines.push(fitLine('BANK KARTASI:', money(totals.receivedCard)));
+  if (receiptNumber) lines.push(fitLine('CHEK:', String(receiptNumber)));
 
   const terminalId = snapshot.terminal_id ?? snapshot.terminalId;
   const factoryId = snapshot.factory_id ?? snapshot.factoryId;
   const fiscalSign = snapshot.fiscal_sign ?? snapshot.fiscalSign;
   if (terminalId || factoryId || fiscalSign) {
     lines.push('-'.repeat(42));
+    lines.push(fitLine('STIR:', String(snapshot.tax_number ?? snapshot.taxNumber ?? '-')));
     if (factoryId) lines.push(`FM: ${factoryId}`);
     if (fiscalSign) lines.push(fitLine('FB:', String(fiscalSign)));
     if (terminalId) lines.push(`NKM S/R: ${terminalId}`);
@@ -377,6 +420,9 @@ export function receiptTextFromPayload(payload: Record<string, unknown> | null |
     lines.push(String(orderNote));
   }
 
+  lines.push('-'.repeat(42));
+  lines.push(centered('Buyurtmangiz uchun raxmat!'));
+  lines.push(centered('Yoqimli ishtaha!'));
   lines.push('', '');
   return lines.filter((line) => line !== '').join('\n');
 }

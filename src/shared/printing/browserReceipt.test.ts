@@ -31,9 +31,9 @@ describe('browser receipt printing', () => {
       },
     });
 
-    expect(text).toContain('TEL:');
+    expect(text).toContain('Mijoz tel:');
     expect(text).toContain('90-123-45-67');
-    expect(text).toContain('MANZIL: Chilonzor 12');
+    expect(text).toContain('Mijoz manzil: Chilonzor 12');
   });
 
   it('prints service fee and VAT percentages in totals', () => {
@@ -76,7 +76,7 @@ describe('browser receipt printing', () => {
     expect(printed).toBe(true);
     expect(apiPostMock).toHaveBeenCalledWith('/pos/billing/receipts/receipt-3/print/', {
       payload: expect.any(Object),
-      text: expect.stringContaining('CHEK: R-3'),
+      text: expect.stringContaining('R-3'),
       qr_code: '',
     });
   });
@@ -97,7 +97,7 @@ describe('browser receipt printing', () => {
     expect(printed).toBe(false);
     expect(apiPostMock).toHaveBeenCalledWith('/pos/billing/receipts/print/', {
       payload: expect.any(Object),
-      text: expect.stringContaining('CHEK: R-4'),
+      text: expect.stringContaining('R-4'),
       qr_code: '',
     });
   });
