@@ -50,12 +50,15 @@ export function aggregateCashierOrderItems(items: CashierOrderItem[] | undefined
 }
 
 export function getCashierOrderNumberLabel(order: Pick<CashierOrder, 'orderNumber'>) {
-  return `A${String(order.orderNumber).padStart(5, '0')}`;
+  return `#${Number(order.orderNumber || 0)}`;
 }
 
 export function getCashierOrderDisplayName(order: Pick<CashierOrder, 'orderNumber' | 'displayName'>) {
   const normalizedDisplayName = order.displayName?.trim();
-  return normalizedDisplayName || getCashierOrderNumberLabel(order);
+  if (!normalizedDisplayName) {
+    return getCashierOrderNumberLabel(order);
+  }
+  return /^\d+$/.test(normalizedDisplayName) ? `#${normalizedDisplayName}` : normalizedDisplayName;
 }
 
 export function getCurrentCashierBuilderOrder(
@@ -64,7 +67,6 @@ export function getCurrentCashierBuilderOrder(
   channel: CashierBuilderOrderChannel = 'takeaway',
 ) {
   return (orders ?? []).find(
-    (order) =>
-      !order.tableSession && order.channel === channel && order.status === 'open' && order.openedBy === userId,
+    (order) => !order.tableSession && order.channel === channel && order.status === 'open' && order.openedBy === userId,
   );
 }

@@ -14,6 +14,7 @@ export type WaiterOrder = {
   tableSession: string | null;
   openedBy?: string;
   orderNumber: number;
+  displayName?: string | null;
   status: string;
   subtotal: number | string;
   serviceFee: number | string;

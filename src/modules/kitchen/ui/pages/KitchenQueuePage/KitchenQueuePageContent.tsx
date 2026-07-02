@@ -244,7 +244,7 @@ export function KitchenQueuePageContent() {
                         </Stack>
                         <Stack spacing={0.18} alignItems="flex-end">
                           <Typography sx={{ fontSize: 17, fontWeight: 700, lineHeight: 1.1 }}>
-                            A{String(ticket.orderNumber).padStart(5, '0')}
+                            #{ticket.orderNumber}
                           </Typography>
                           <Typography variant="body2" sx={{ color: '#9a9fa8', fontSize: 13 }}>
                             {formatTime(ticket.createdAt, locale)}

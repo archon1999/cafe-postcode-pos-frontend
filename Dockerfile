@@ -1,9 +1,10 @@
 FROM node:22-alpine AS build
 
 WORKDIR /app
+ENV NPM_CONFIG_REGISTRY=https://registry.npmmirror.com
 
 COPY package*.json ./
-RUN npm install -g npm@10.9.2 && npm ci --force
+RUN npm ci --force
 
 COPY . .
 RUN npm run prod:build

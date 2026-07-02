@@ -29,6 +29,7 @@ import {
 } from 'modules/cashier/application';
 import { cashierRepository } from 'modules/cashier/data-access';
 import {
+  getCashierOrderDisplayName,
   getCurrentCashierBuilderOrder,
   getDefaultCashierMenuCategory,
   groupCashierOrderItemsByStation,
@@ -45,7 +46,7 @@ import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { formatPosCopy, getPosCopy } from 'shared/locale/copy';
 import { useOptimisticBuilderOrder } from 'shared/pos/useOptimisticBuilderOrder';
 import { useScannerInput } from 'shared/pos/useScannerInput';
-import { formatCompactMoney } from 'shared/pos/utils';
+import { formatCompactMoney, formatMoneyParts } from 'shared/pos/utils';
 import {
   PosBuilderPageSkeleton,
   PosIconAction,
@@ -520,6 +521,7 @@ export function CashierBuilderPageContent() {
             }}>
             {(selectedCategory?.items ?? []).map((menuItem) => {
               const displayPrice = Number(menuItem.price ?? 0);
+              const displayPriceParts = formatMoneyParts(displayPrice, locale);
               const menuItemImageUrl = resolveMenuItemImageUrl(menuItem.imageUrl);
               const selectedCountForMenuItem = menuItemMeta.countMap.get(menuItem.id) ?? 0;
               const hasSelectedCount = selectedCountForMenuItem > 0;
@@ -625,9 +627,6 @@ export function CashierBuilderPageContent() {
                         color: theme.palette.mode === 'dark' ? '#f0f2f5' : theme.palette.text.primary,
                         backgroundColor: 'var(--pos-menu-product-price-bg)',
                       })}>
-                      <Typography component="span" sx={{ fontWeight: 700, fontSize: { xs: 13.5, md: 16 } }}>
-                        {formatCompactMoney(displayPrice, locale)}
-                      </Typography>
                       {hasSelectedCount ? (
                         <Stack direction="row" spacing={0.8} alignItems="center">
                           <Box
@@ -722,6 +721,24 @@ export function CashierBuilderPageContent() {
                           </Box>
                         </Stack>
                       ) : null}
+                      <Typography
+                        component="span"
+                        sx={{
+                          ml: 'auto',
+                          display: 'inline-flex',
+                          alignItems: 'baseline',
+                          gap: 0.45,
+                          textAlign: 'right',
+                          fontWeight: 800,
+                          whiteSpace: 'nowrap',
+                        }}>
+                        <Box component="span" sx={{ fontSize: { xs: 20, md: 24 }, lineHeight: 1, fontWeight: 900 }}>
+                          {displayPriceParts.amount}
+                        </Box>
+                        <Box component="span" sx={{ fontSize: { xs: 13.5, md: 16 }, lineHeight: 1, fontWeight: 700 }}>
+                          {displayPriceParts.currency}
+                        </Box>
+                      </Typography>
                     </Box>
                   </Stack>
                 </Box>
@@ -790,7 +807,7 @@ export function CashierBuilderPageContent() {
 
                 <Stack spacing={0.45}>
                   <Typography variant="body1" color="text.secondary">
-                    {copy.orders}: {currentOrder ? `A${String(currentOrder.orderNumber).padStart(5, '0')}` : 'A00000'}
+                    {copy.orders}: {currentOrder ? getCashierOrderDisplayName(currentOrder) : '#0'}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     {session?.user.fullName}
@@ -1083,7 +1100,7 @@ export function CashierBuilderPageContent() {
             <Stack spacing={0.25}>
               <Typography variant="h6">{copy.bills}</Typography>
               <Typography variant="body2" color="text.secondary">
-                {copy.orders}: {currentOrder ? `A${String(currentOrder.orderNumber).padStart(5, '0')}` : 'A00000'}
+                {copy.orders}: {currentOrder ? getCashierOrderDisplayName(currentOrder) : '#0'}
               </Typography>
             </Stack>
             <PosIconAction icon="solar:close-circle-bold-duotone" onClick={() => setCartOpen(false)} />

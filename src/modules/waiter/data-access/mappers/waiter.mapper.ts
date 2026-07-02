@@ -36,7 +36,11 @@ type DiningTableDto = Omit<
 type HallDto = Omit<Hall, 'tables'> & { tables: DiningTableDto[] };
 type TableSessionDto = TableSession;
 type WaiterOrderItemDto = WaiterOrderItem;
-type WaiterOrderDto = Omit<WaiterOrder, 'items'> & { items: WaiterOrderItemDto[] };
+type WaiterOrderDto = Omit<WaiterOrder, 'items' | 'displayName'> & {
+  items: WaiterOrderItemDto[];
+  displayName?: string | null;
+  display_name?: string | null;
+};
 type WaiterSessionResponseDto = WaiterSessionResponse;
 type WaiterCreateOrderResponseDto = WaiterCreateOrderResponse;
 
@@ -90,6 +94,7 @@ export function mapTableSession(dto: TableSessionDto): TableSession {
 export function mapWaiterOrder(dto: WaiterOrderDto): WaiterOrder {
   return {
     ...dto,
+    displayName: dto.displayName ?? dto.display_name ?? null,
     items: dto.items.map((item) => ({ ...item })),
   };
 }

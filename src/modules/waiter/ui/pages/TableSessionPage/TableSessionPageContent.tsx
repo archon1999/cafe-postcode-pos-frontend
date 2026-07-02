@@ -26,7 +26,7 @@ import { getDefaultWaiterMenuCategory, groupWaiterOrderItemsByStation } from 'mo
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { formatPosCopy, getPosCopy } from 'shared/locale/copy';
 import { useOptimisticBuilderOrder } from 'shared/pos/useOptimisticBuilderOrder';
-import { formatCompactMoney } from 'shared/pos/utils';
+import { formatCompactMoney, formatMoneyParts } from 'shared/pos/utils';
 import { printReceiptWithFallback } from 'shared/printing/browserReceipt';
 import {
   PosBuilderPageSkeleton,
@@ -53,6 +53,17 @@ export type TableSessionPageContentProps = {
   mode: 'hall' | 'takeaway';
   source?: string | null;
 };
+
+function formatOrderLabel(order: { orderNumber: number; displayName?: string | null } | null | undefined) {
+  if (!order) {
+    return '#0';
+  }
+  const displayName = order.displayName?.trim();
+  if (displayName) {
+    return /^\d+$/.test(displayName) ? `#${displayName}` : displayName;
+  }
+  return `#${Number(order.orderNumber || 0)}`;
+}
 
 function extractErrorMessage(payload: unknown): string | null {
   if (typeof payload === 'string' && payload.trim()) {
@@ -419,6 +430,7 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
             }}>
             {(selectedCategory?.items ?? []).map((menuItem) => {
               const displayPrice = Number(menuItem.price ?? 0);
+              const displayPriceParts = formatMoneyParts(displayPrice, locale);
 
               return (
                 <Box
@@ -517,9 +529,6 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
                         color: theme.palette.mode === 'dark' ? '#f0f0f0' : theme.palette.text.primary,
                         backgroundColor: theme.palette.mode === 'dark' ? '#555555' : '#d8d0c2',
                       })}>
-                      <Typography component="span" sx={{ fontWeight: 700, fontSize: { xs: 13.5, md: 16 } }}>
-                        {formatCompactMoney(displayPrice, locale)}
-                      </Typography>
                       {(menuItemMeta.countMap.get(menuItem.id) ?? 0) > 0 ? (
                         <Stack direction="row" spacing={0.8}>
                           <Box
@@ -598,6 +607,24 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
                           </Box>
                         </Stack>
                       ) : null}
+                      <Typography
+                        component="span"
+                        sx={{
+                          ml: 'auto',
+                          display: 'inline-flex',
+                          alignItems: 'baseline',
+                          gap: 0.45,
+                          textAlign: 'right',
+                          fontWeight: 800,
+                          whiteSpace: 'nowrap',
+                        }}>
+                        <Box component="span" sx={{ fontSize: { xs: 20, md: 24 }, lineHeight: 1, fontWeight: 900 }}>
+                          {displayPriceParts.amount}
+                        </Box>
+                        <Box component="span" sx={{ fontSize: { xs: 13.5, md: 16 }, lineHeight: 1, fontWeight: 700 }}>
+                          {displayPriceParts.currency}
+                        </Box>
+                      </Typography>
                     </Box>
                   </Stack>
                 </Box>
@@ -668,7 +695,7 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
 
                 <Stack spacing={0.45} sx={{ minWidth: 0 }}>
                   <Typography variant="body1" color="text.secondary">
-                    {copy.orders}: {currentOrder ? `A${String(currentOrder.orderNumber).padStart(5, '0')}` : 'A00000'}
+                    {copy.orders}: {formatOrderLabel(currentOrder)}
                   </Typography>
                   <Stack direction="row" spacing={1.4} alignItems="center" useFlexGap flexWrap="wrap">
                     <Stack direction="row" spacing={0.7} alignItems="center" minWidth={0}>
@@ -991,7 +1018,7 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
             <Stack spacing={0.25}>
               <Typography variant="h6">{copy.bills}</Typography>
               <Typography variant="body2" color="text.secondary">
-                {copy.orders}: {currentOrder ? `A${String(currentOrder.orderNumber).padStart(5, '0')}` : 'A00000'}
+                {copy.orders}: {formatOrderLabel(currentOrder)}
               </Typography>
             </Stack>
             <PosIconAction icon="solar:close-circle-bold-duotone" onClick={() => setCartOpen(false)} />

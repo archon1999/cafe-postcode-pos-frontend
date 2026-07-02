@@ -14,8 +14,16 @@ const currencyLabelMap: Record<PosLocale, string> = {
 };
 
 export function formatMoney(value: number | string | null | undefined, locale: PosLocale) {
+  const { amount, currency } = formatMoneyParts(value, locale);
+  return `${amount} ${currency}`;
+}
+
+export function formatMoneyParts(value: number | string | null | undefined, locale: PosLocale) {
   const numericValue = Number(value ?? 0);
-  return `${new Intl.NumberFormat(localeMap[locale]).format(numericValue)} ${currencyLabelMap[locale]}`;
+  return {
+    amount: new Intl.NumberFormat(localeMap[locale]).format(numericValue),
+    currency: currencyLabelMap[locale],
+  };
 }
 
 export function formatCompactMoney(value: number | string | null | undefined, locale: PosLocale) {

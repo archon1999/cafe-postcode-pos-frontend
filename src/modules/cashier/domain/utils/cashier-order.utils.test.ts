@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import type { CashierOrder } from '../entities';
 
-import { getCashierOrderDisplayName, getCashierOrderNumberLabel, getCurrentCashierBuilderOrder } from './cashier-order.utils';
+import {
+  getCashierOrderDisplayName,
+  getCashierOrderNumberLabel,
+  getCurrentCashierBuilderOrder,
+} from './cashier-order.utils';
 
 describe('cashier order display helpers', () => {
   it('uses the custom display name when provided', () => {
@@ -10,8 +14,9 @@ describe('cashier order display helpers', () => {
   });
 
   it('falls back to the formatted order number when custom name is empty', () => {
-    expect(getCashierOrderDisplayName({ orderNumber: 24, displayName: '   ' })).toBe('A00024');
-    expect(getCashierOrderNumberLabel({ orderNumber: 24 })).toBe('A00024');
+    expect(getCashierOrderDisplayName({ orderNumber: 24, displayName: '   ' })).toBe('#24');
+    expect(getCashierOrderDisplayName({ orderNumber: 24, displayName: '7' })).toBe('#7');
+    expect(getCashierOrderNumberLabel({ orderNumber: 24 })).toBe('#24');
   });
 });
 

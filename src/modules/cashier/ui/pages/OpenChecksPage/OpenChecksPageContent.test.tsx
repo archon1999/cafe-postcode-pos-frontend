@@ -94,9 +94,9 @@ vi.mock('modules/cashier/application', () => ({
 
 vi.mock('modules/cashier/domain', () => ({
   groupCashierOrderItemsByStation: () => [['Issiq oshxona', []]],
-  getCashierOrderNumberLabel: (order: { orderNumber: number }) => `A${String(order.orderNumber).padStart(5, '0')}`,
+  getCashierOrderNumberLabel: (order: { orderNumber: number }) => `#${order.orderNumber}`,
   getCashierOrderDisplayName: (order: { orderNumber: number; displayName?: string | null }) =>
-    order.displayName?.trim() || `A${String(order.orderNumber).padStart(5, '0')}`,
+    order.displayName?.trim() || `#${order.orderNumber}`,
 }));
 
 vi.mock('shared/layout/PosPageFrame', () => ({
