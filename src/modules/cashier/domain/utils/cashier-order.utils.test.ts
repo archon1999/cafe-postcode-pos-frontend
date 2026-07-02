@@ -14,9 +14,9 @@ describe('cashier order display helpers', () => {
   });
 
   it('falls back to the formatted order number when custom name is empty', () => {
-    expect(getCashierOrderDisplayName({ orderNumber: 24, displayName: '   ' })).toBe('#24');
+    expect(getCashierOrderDisplayName({ orderNumber: 24, displayName: '   ' })).toBe('ID 24');
     expect(getCashierOrderDisplayName({ orderNumber: 24, displayName: '7' })).toBe('#7');
-    expect(getCashierOrderNumberLabel({ orderNumber: 24 })).toBe('#24');
+    expect(getCashierOrderNumberLabel({ orderNumber: 24 })).toBe('ID 24');
   });
 });
 

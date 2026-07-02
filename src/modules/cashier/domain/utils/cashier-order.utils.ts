@@ -50,7 +50,7 @@ export function aggregateCashierOrderItems(items: CashierOrderItem[] | undefined
 }
 
 export function getCashierOrderNumberLabel(order: Pick<CashierOrder, 'orderNumber'>) {
-  return `#${Number(order.orderNumber || 0)}`;
+  return `ID ${Number(order.orderNumber || 0)}`;
 }
 
 export function getCashierOrderDisplayName(order: Pick<CashierOrder, 'orderNumber' | 'displayName'>) {

@@ -131,10 +131,10 @@ vi.mock('modules/cashier/domain', () => ({
       lineTotal: 30000,
     },
   ],
-  getCashierOrderNumberLabel: (order: { orderNumber: number }) => `#${order.orderNumber}`,
+  getCashierOrderNumberLabel: (order: { orderNumber: number }) => `ID ${order.orderNumber}`,
   getCashierOrderDisplayName: (order: { orderNumber: number; displayName?: string | null }) => {
     const displayName = order.displayName?.trim();
-    if (!displayName) return `#${order.orderNumber}`;
+    if (!displayName) return `ID ${order.orderNumber}`;
     return /^\d+$/.test(displayName) ? `#${displayName}` : displayName;
   },
 }));
@@ -265,7 +265,7 @@ describe('PaymentPageContent', () => {
     render(<PaymentPageContent orderId="order-1" />);
 
     expect(screen.getByText('VIP mijoz')).toBeTruthy();
-    expect(screen.getByText('Buyurtma: #101')).toBeTruthy();
+    expect(screen.getByText('Buyurtma: ID 101')).toBeTruthy();
   });
 
   it('shows included VAT in the payment totals without changing the grand total', () => {

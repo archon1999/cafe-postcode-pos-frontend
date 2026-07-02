@@ -56,13 +56,13 @@ export type TableSessionPageContentProps = {
 
 function formatOrderLabel(order: { orderNumber: number; displayName?: string | null } | null | undefined) {
   if (!order) {
-    return '#0';
+    return 'ID 0';
   }
   const displayName = order.displayName?.trim();
   if (displayName) {
     return /^\d+$/.test(displayName) ? `#${displayName}` : displayName;
   }
-  return `#${Number(order.orderNumber || 0)}`;
+  return `ID ${Number(order.orderNumber || 0)}`;
 }
 
 function extractErrorMessage(payload: unknown): string | null {

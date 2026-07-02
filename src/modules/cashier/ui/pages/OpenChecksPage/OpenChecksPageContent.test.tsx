@@ -94,10 +94,10 @@ vi.mock('modules/cashier/application', () => ({
 
 vi.mock('modules/cashier/domain', () => ({
   groupCashierOrderItemsByStation: () => [['Issiq oshxona', []]],
-  getCashierOrderNumberLabel: (order: { orderNumber: number }) => `#${order.orderNumber}`,
+  getCashierOrderNumberLabel: (order: { orderNumber: number }) => `ID ${order.orderNumber}`,
   getCashierOrderDisplayName: (order: { orderNumber: number; displayName?: string | null }) => {
     const displayName = order.displayName?.trim();
-    if (!displayName) return `#${order.orderNumber}`;
+    if (!displayName) return `ID ${order.orderNumber}`;
     return /^\d+$/.test(displayName) ? `#${displayName}` : displayName;
   },
 }));
