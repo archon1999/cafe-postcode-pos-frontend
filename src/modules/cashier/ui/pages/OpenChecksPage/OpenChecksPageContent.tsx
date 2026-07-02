@@ -73,9 +73,14 @@ function getReceiptChannelLabel(channel?: string | null) {
 
 function withReceiptOrderContext(payload: Record<string, unknown> | null | undefined, order?: CashierOrder | null) {
   if (!order) return payload ?? null;
-  const orderNumberLabel = getCashierOrderNumberLabel({ orderNumber: order.orderNumber });
+  const orderNumberLabel = getCashierOrderDisplayName({
+    orderNumber: order.orderNumber,
+    displayName: order.displayName,
+  });
   const tableLabel = order.tableName || order.hallName ? [order.hallName, order.tableName].filter(Boolean).join(' / ') : '';
   const context = {
+    order_label: orderNumberLabel,
+    orderLabel: orderNumberLabel,
     order_number: orderNumberLabel,
     orderNumber: orderNumberLabel,
     channel_label: getReceiptChannelLabel(order.channel),

@@ -88,8 +88,13 @@ function withReceiptOrderContext(
   payload: Record<string, unknown> | null | undefined,
   order: CashierPaymentResponse['order'],
 ) {
-  const orderNumberLabel = getCashierOrderNumberLabel({ orderNumber: order.orderNumber });
+  const orderNumberLabel = getCashierOrderDisplayName({
+    orderNumber: order.orderNumber,
+    displayName: order.displayName,
+  });
   const context = {
+    order_label: orderNumberLabel,
+    orderLabel: orderNumberLabel,
     order_number: orderNumberLabel,
     orderNumber: orderNumberLabel,
     channel_label: getReceiptChannelLabel(order.channel),
@@ -424,7 +429,8 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
         restaurant_address: session?.restaurantContext?.address ?? '',
         restaurant_phone: session?.restaurantContext?.phone ?? '',
         restaurant_social: session?.restaurantContext?.social ?? '',
-        order_number: getCashierOrderNumberLabel({ orderNumber: order.orderNumber }),
+        order_label: getCashierOrderDisplayName({ orderNumber: order.orderNumber, displayName: order.displayName }),
+        order_number: getCashierOrderDisplayName({ orderNumber: order.orderNumber, displayName: order.displayName }),
         receipt_number: receiptNumber,
         channel_label: getReceiptChannelLabel(order.channel),
         table_label:

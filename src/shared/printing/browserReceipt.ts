@@ -34,6 +34,8 @@ type PrintablePayload = {
   taxNumber?: string;
   order_number?: number | string;
   orderNumber?: number | string;
+  order_label?: number | string;
+  orderLabel?: number | string;
   receipt_number?: number | string;
   receiptNumber?: number | string;
   channel_label?: string;
@@ -169,7 +171,7 @@ function fiscalSnapshotFromPayload(payload: Record<string, unknown>): PrintableP
   const receivedCard = Number(receipt.ReceivedCard || 0);
   const total = fiscalMoney(receivedCash + receivedCard);
   const receiptNumber = String(payload.receipt_number ?? payload.receiptNumber ?? response?.ReceiptSeq ?? '');
-  const orderNumber = String(payload.order_number ?? payload.orderNumber ?? receiptNumber);
+  const orderNumber = String(payload.order_label ?? payload.orderLabel ?? payload.order_number ?? payload.orderNumber ?? receiptNumber);
   const vatAmount = items.reduce((sum, entry) => {
     const item = asRecord(entry) ?? {};
     return sum + fiscalMoney(item.VAT);
@@ -204,6 +206,7 @@ function fiscalSnapshotFromPayload(payload: Record<string, unknown>): PrintableP
     tax_number: extraInfo?.TIN ? String(extraInfo.TIN) : String(payload.tax_number ?? payload.taxNumber ?? ''),
     receipt_number: receiptNumber,
     order_number: orderNumber,
+    order_label: orderNumber,
     channel_label: String(
       payload.channel_label ??
         payload.channelLabel ??
@@ -342,7 +345,13 @@ export function receiptTextFromPayload(payload: Record<string, unknown> | null |
   const totals = receiptTotals(snapshot);
   const delivery = deliveryDetails(snapshot);
   const orderNumber =
-    snapshot.order_number ?? snapshot.orderNumber ?? snapshot.receipt_number ?? snapshot.receiptNumber ?? '';
+    snapshot.order_label ??
+    snapshot.orderLabel ??
+    snapshot.order_number ??
+    snapshot.orderNumber ??
+    snapshot.receipt_number ??
+    snapshot.receiptNumber ??
+    '';
   const receiptNumber = snapshot.receipt_number ?? snapshot.receiptNumber;
   const title = String(
     snapshot.restaurant_name ??

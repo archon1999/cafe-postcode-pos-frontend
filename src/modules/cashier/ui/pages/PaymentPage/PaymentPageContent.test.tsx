@@ -132,8 +132,11 @@ vi.mock('modules/cashier/domain', () => ({
     },
   ],
   getCashierOrderNumberLabel: (order: { orderNumber: number }) => `#${order.orderNumber}`,
-  getCashierOrderDisplayName: (order: { orderNumber: number; displayName?: string | null }) =>
-    order.displayName?.trim() || `#${order.orderNumber}`,
+  getCashierOrderDisplayName: (order: { orderNumber: number; displayName?: string | null }) => {
+    const displayName = order.displayName?.trim();
+    if (!displayName) return `#${order.orderNumber}`;
+    return /^\d+$/.test(displayName) ? `#${displayName}` : displayName;
+  },
 }));
 
 vi.mock('shared/layout/PosPageFrame', () => ({
@@ -511,6 +514,7 @@ describe('PaymentPageContent', () => {
     paymentMutateAsyncMock.mockResolvedValueOnce({
       order: {
         orderNumber: 101,
+        displayName: '5',
         items: [],
         subtotal: 30000,
         serviceFee: 0,
@@ -541,7 +545,8 @@ describe('PaymentPageContent', () => {
       expect(printReceiptWithFallbackMock).toHaveBeenCalledWith(
         expect.objectContaining({
           receiptNumber: 'R-1',
-          order_number: '#101',
+          order_label: '#5',
+          order_number: '#5',
           channel_label: 'Zalda',
         }),
         { preferLocalAgent: true, receiptId: 'receipt-1' },

@@ -126,7 +126,8 @@ describe('browser receipt printing', () => {
 
   it('keeps order number separate from fiscal receipt sequence', () => {
     const text = receiptTextFromPayload({
-      order_number: 1,
+      order_label: '#1',
+      order_number: 15,
       receipt_number: '6',
       channel_label: 'Dostavka',
       request: {
@@ -147,5 +148,6 @@ describe('browser receipt printing', () => {
     expect(text).toContain('Buyurtma turi: Dostavka');
     expect(text).not.toContain('CHEK:');
     expect(text).not.toContain('Buyurtma raqami: 6');
+    expect(text).not.toContain('Buyurtma raqami: 15');
   });
 });

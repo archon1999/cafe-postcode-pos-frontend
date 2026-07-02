@@ -95,8 +95,11 @@ vi.mock('modules/cashier/application', () => ({
 vi.mock('modules/cashier/domain', () => ({
   groupCashierOrderItemsByStation: () => [['Issiq oshxona', []]],
   getCashierOrderNumberLabel: (order: { orderNumber: number }) => `#${order.orderNumber}`,
-  getCashierOrderDisplayName: (order: { orderNumber: number; displayName?: string | null }) =>
-    order.displayName?.trim() || `#${order.orderNumber}`,
+  getCashierOrderDisplayName: (order: { orderNumber: number; displayName?: string | null }) => {
+    const displayName = order.displayName?.trim();
+    if (!displayName) return `#${order.orderNumber}`;
+    return /^\d+$/.test(displayName) ? `#${displayName}` : displayName;
+  },
 }));
 
 vi.mock('shared/layout/PosPageFrame', () => ({
@@ -232,6 +235,7 @@ describe('OpenChecksPageContent', () => {
       {
         id: 'order-4',
         orderNumber: 104,
+        displayName: '5',
         status: 'fiscal_unresolved',
         subtotal: 20000,
         serviceFee: 0,
@@ -265,7 +269,8 @@ describe('OpenChecksPageContent', () => {
       expect(printReceiptWithFallbackMock).toHaveBeenCalledWith(
         expect.objectContaining({
           receiptNumber: 'R-2',
-          order_number: '#104',
+          order_label: '#5',
+          order_number: '#5',
           channel_label: 'Zalda',
         }),
         { preferLocalAgent: true, receiptId: 'receipt-2' },
