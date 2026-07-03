@@ -544,8 +544,40 @@ export function HallsPageContent() {
       }, 1),
     [gridColumns, visibleTables],
   );
-  const mapContentWidth = gridColumns * HALL_GRID_MIN_CELL_WIDTH + Math.max(0, gridColumns - 1) * HALL_GRID_GAP;
-  const mapContentHeight = gridRows * HALL_GRID_ROW_HEIGHT + Math.max(0, gridRows - 1) * HALL_GRID_GAP;
+  const tableLayoutBounds = useMemo(() => {
+    if (!visibleTables.length) {
+      return {
+        minX: 0,
+        minY: 0,
+        columns: gridColumns,
+        rows: gridRows,
+      };
+    }
+
+    let minX = Number.POSITIVE_INFINITY;
+    let minY = Number.POSITIVE_INFINITY;
+    let maxX = 0;
+    let maxY = 0;
+
+    for (const table of visibleTables) {
+      const placement = getTableGridPlacement(table, gridColumns);
+      minX = Math.min(minX, placement.positionX);
+      minY = Math.min(minY, placement.positionY);
+      maxX = Math.max(maxX, placement.positionX + placement.width);
+      maxY = Math.max(maxY, placement.positionY + placement.height);
+    }
+
+    return {
+      minX,
+      minY,
+      columns: Math.max(1, maxX - minX),
+      rows: Math.max(1, maxY - minY),
+    };
+  }, [gridColumns, gridRows, visibleTables]);
+  const mapContentWidth =
+    tableLayoutBounds.columns * HALL_GRID_MIN_CELL_WIDTH + Math.max(0, tableLayoutBounds.columns - 1) * HALL_GRID_GAP;
+  const mapContentHeight =
+    tableLayoutBounds.rows * HALL_GRID_ROW_HEIGHT + Math.max(0, tableLayoutBounds.rows - 1) * HALL_GRID_GAP;
   const fitScale = useMemo(() => {
     if (!mapViewportSize.width || !mapViewportSize.height || !mapContentWidth || !mapContentHeight) {
       return 1;
@@ -589,7 +621,7 @@ export function HallsPageContent() {
     resizeObserver.observe(viewport);
 
     return () => resizeObserver.disconnect();
-  }, []);
+  }, [isInitialLoading, selectedHall?.id, selectedZoneId]);
 
   useEffect(() => {
     setMapScaleMode('fill');
@@ -937,7 +969,7 @@ export function HallsPageContent() {
                 data-testid="hall-layout-grid"
                 sx={{
                   display: 'grid',
-                  gridTemplateColumns: `repeat(${gridColumns}, ${HALL_GRID_MIN_CELL_WIDTH}px)`,
+                  gridTemplateColumns: `repeat(${tableLayoutBounds.columns}, ${HALL_GRID_MIN_CELL_WIDTH}px)`,
                   gridAutoRows: `${HALL_GRID_ROW_HEIGHT}px`,
                   gap: `${HALL_GRID_GAP}px`,
                   width: mapContentWidth,
@@ -956,8 +988,8 @@ export function HallsPageContent() {
                       <Box
                         key={table.id}
                         sx={{
-                          gridColumn: `${placement.positionX + 1} / span ${placement.width}`,
-                          gridRow: `${placement.positionY + 1} / span ${placement.height}`,
+                          gridColumn: `${placement.positionX - tableLayoutBounds.minX + 1} / span ${placement.width}`,
+                          gridRow: `${placement.positionY - tableLayoutBounds.minY + 1} / span ${placement.height}`,
                         }}>
                         <HallTableCard copy={copy} table={table} onSelect={handleTableSelect} />
                       </Box>
