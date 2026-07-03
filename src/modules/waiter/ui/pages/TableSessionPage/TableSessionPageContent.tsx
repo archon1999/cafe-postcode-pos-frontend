@@ -23,6 +23,7 @@ import {
 } from 'modules/waiter/application';
 import { waiterRepository } from 'modules/waiter/data-access';
 import { getDefaultWaiterMenuCategory, groupWaiterOrderItemsByStation } from 'modules/waiter/domain';
+import { resolveApiBaseUrl } from 'shared/api/apiUrl';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { formatPosCopy, getPosCopy } from 'shared/locale/copy';
 import { useOptimisticBuilderOrder } from 'shared/pos/useOptimisticBuilderOrder';
@@ -115,6 +116,18 @@ function extractThrownErrorMessage(error: unknown) {
 
 function formatPercent(value: number) {
   return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/\.?0+$/, '');
+}
+
+function resolveMenuItemImageUrl(imageUrl?: string | null) {
+  if (!imageUrl) {
+    return null;
+  }
+
+  try {
+    return new URL(imageUrl, resolveApiBaseUrl()).toString();
+  } catch {
+    return imageUrl;
+  }
 }
 
 export function TableSessionPageContent({ sessionId, mode, source = null }: TableSessionPageContentProps) {
@@ -424,13 +437,20 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
               gridTemplateColumns: {
                 xs: 'repeat(2, minmax(0, 1fr))',
                 md: 'repeat(2, minmax(0, 1fr))',
-                lg: 'repeat(4, minmax(0, 1fr))',
+                lg: 'repeat(3, minmax(0, 1fr))',
+                xl: 'repeat(4, minmax(0, 1fr))',
+                '@media (min-width: 1800px)': {
+                  gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
+                },
               },
-              gap: 1.5,
+              gap: { xs: 1.1, md: 1.2, xl: 1.4 },
             }}>
             {(selectedCategory?.items ?? []).map((menuItem) => {
               const displayPrice = Number(menuItem.price ?? 0);
               const displayPriceParts = formatMoneyParts(displayPrice, locale);
+              const menuItemImageUrl = resolveMenuItemImageUrl(menuItem.imageUrl ?? menuItem.image_url);
+              const selectedCountForMenuItem = menuItemMeta.countMap.get(menuItem.id) ?? 0;
+              const hasSelectedCount = selectedCountForMenuItem > 0;
 
               return (
                 <Box
@@ -443,21 +463,21 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
                     border: 0,
                     p: 0,
                     position: 'relative',
-                    minHeight: { xs: 114, md: 126 },
+                    minHeight: { xs: 112, md: 118, xl: 126 },
                     overflow: 'hidden',
                     borderRadius: '10px',
                     cursor: 'pointer',
                     textAlign: 'left',
                     transition:
                       'transform 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease, border-color 0.16s ease',
-                    backgroundColor: theme.palette.mode === 'dark' ? '#2a2a2a' : '#f1e9dd',
+                    backgroundColor: 'var(--pos-menu-product-card-bg)',
                     backgroundImage: 'none',
                     boxShadow:
                       theme.palette.mode === 'dark'
                         ? 'inset 0 0 0 1px rgba(255,255,255,0.04)'
                         : 'inset 0 0 0 1px rgba(40,51,65,0.06)',
                     '&:hover': {
-                      backgroundColor: theme.palette.mode === 'dark' ? '#313131' : '#ece2d4',
+                      backgroundColor: 'var(--pos-menu-product-card-hover-bg)',
                       transform: 'translateY(-2px)',
                       boxShadow:
                         theme.palette.mode === 'dark'
@@ -472,29 +492,32 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
                       outlineOffset: 2,
                     },
                   })}>
-                  {(menuItemMeta.countMap.get(menuItem.id) ?? 0) > 0 ? (
+                  {menuItemImageUrl ? (
                     <Box
-                      sx={(theme) => ({
+                      component="img"
+                      src={menuItemImageUrl}
+                      alt={menuItem.name}
+                      loading="lazy"
+                      sx={{
                         position: 'absolute',
                         top: 10,
                         right: 10,
-                        minWidth: 32,
-                        height: 32,
-                        px: 1,
-                        borderRadius: '50%',
-                        backgroundColor: theme.palette.mode === 'dark' ? '#141619' : '#252525',
-                        color: '#ffffff',
-                        display: 'grid',
-                        placeItems: 'center',
-                        fontSize: 15,
-                        fontWeight: 700,
-                        boxShadow: '0 8px 18px rgba(0,0,0,0.2)',
-                      })}>
-                      {menuItemMeta.countMap.get(menuItem.id)}
-                    </Box>
+                        width: { xs: 48, md: 58 },
+                        height: { xs: 48, md: 58 },
+                        objectFit: 'cover',
+                        borderRadius: '8px',
+                        boxShadow: '0 8px 18px rgba(0,0,0,0.18)',
+                        backgroundColor: alpha('#ffffff', 0.3),
+                      }}
+                    />
                   ) : null}
-                  <Stack justifyContent="space-between" sx={{ minHeight: { xs: 114, md: 126 } }}>
-                    <Stack spacing={0.85} sx={{ p: { xs: 1.35, md: 1.85 } }}>
+                  <Stack justifyContent="space-between" sx={{ height: '100%', minHeight: 0 }}>
+                    <Stack
+                      spacing={0.75}
+                      sx={{
+                        p: { xs: 1.25, md: 1.45, xl: 1.85 },
+                        pr: menuItemImageUrl ? { xs: 7.25, md: 8.4, xl: 9.5 } : undefined,
+                      }}>
                       <Typography variant="body2" color="text.secondary">
                         {menuItem.prepStationName ?? copy.menu}
                       </Typography>
@@ -519,6 +542,7 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
                     <Box
                       sx={(theme) => ({
                         minHeight: 40,
+                        mt: 'auto',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
@@ -526,11 +550,27 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
                         gap: 1.2,
                         fontSize: { xs: 14, md: 16 },
                         fontWeight: 700,
-                        color: theme.palette.mode === 'dark' ? '#f0f0f0' : theme.palette.text.primary,
-                        backgroundColor: theme.palette.mode === 'dark' ? '#555555' : '#d8d0c2',
+                        color: theme.palette.mode === 'dark' ? '#f0f2f5' : theme.palette.text.primary,
+                        backgroundColor: 'var(--pos-menu-product-price-bg)',
                       })}>
-                      {(menuItemMeta.countMap.get(menuItem.id) ?? 0) > 0 ? (
-                        <Stack direction="row" spacing={0.8}>
+                      {hasSelectedCount ? (
+                        <Stack direction="row" spacing={0.8} alignItems="center">
+                          <Box
+                            sx={(theme) => ({
+                              minWidth: 28,
+                              height: 28,
+                              px: 0.9,
+                              borderRadius: '999px',
+                              backgroundColor: theme.palette.mode === 'dark' ? '#141619' : '#252525',
+                              color: '#ffffff',
+                              display: 'grid',
+                              placeItems: 'center',
+                              fontSize: 14,
+                              fontWeight: 700,
+                              lineHeight: 1,
+                            })}>
+                            {selectedCountForMenuItem}
+                          </Box>
                           <Box
                             component="button"
                             type="button"
@@ -906,7 +946,7 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
                 setKitchenNote(event.target.value);
               }}
               multiline
-              minRows={2}
+              minRows={1}
             />
 
             <Stack direction="row" justifyContent="space-between">

@@ -187,6 +187,31 @@ describe('TableSessionPageContent', () => {
     expect(navigateMock).toHaveBeenCalledWith('/menu/catalog?source=waiter&sessionId=session-1');
   });
 
+  it('renders menu item images like the cashier builder', () => {
+    useWaiterMenuQueryMock.mockReturnValue({
+      isLoading: false,
+      data: [
+        {
+          id: 'cat-1',
+          name: 'Taomlar',
+          items: [
+            {
+              id: 'item-1',
+              name: 'Osh',
+              price: 30000,
+              prepStationName: 'Issiq oshxona',
+              imageUrl: 'https://cdn.example.com/osh.png',
+            },
+          ],
+        },
+      ],
+    });
+
+    render(<TableSessionPageContent sessionId="session-1" mode="hall" />);
+
+    expect(screen.getByRole('img', { name: 'Osh' }).getAttribute('src')).toBe('https://cdn.example.com/osh.png');
+  });
+
   it('shows included VAT in the order summary without changing the grand total', () => {
     render(<TableSessionPageContent sessionId="session-1" mode="hall" />);
 
