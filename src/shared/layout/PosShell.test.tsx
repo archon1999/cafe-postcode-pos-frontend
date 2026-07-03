@@ -21,9 +21,9 @@ vi.mock('modules/kitchen', () => ({
   useKitchenActiveTicketCountQuery: () => ({ data: 0 }),
 }));
 
-function renderShell(children: ReactNode = <div>content</div>) {
+function renderShell(path = '/waiter/halls', children: ReactNode = <div>content</div>) {
   return render(
-    <MemoryRouter initialEntries={['/waiter/halls']}>
+    <MemoryRouter initialEntries={[path]}>
       <PosShell>{children}</PosShell>
     </MemoryRouter>,
   );
@@ -50,10 +50,18 @@ describe('PosShell', () => {
     usePosSessionMock.mockReset();
   });
 
-  it('keeps the halls dock visible when it is the only available POS surface', () => {
+  it('hides the single halls dock item on the halls overview page', () => {
     mockSession(['pos_halls.view']);
 
-    renderShell();
+    renderShell('/waiter/halls');
+
+    expect(screen.queryByRole('link', { name: 'Zallar' })).toBeNull();
+  });
+
+  it('keeps the halls dock visible inside a table session when it is the only available POS surface', () => {
+    mockSession(['pos_halls.view']);
+
+    renderShell('/waiter/table-session?sessionId=session-1');
 
     expect(screen.getByRole('link', { name: 'Zallar' }).getAttribute('href')).toBe('/waiter/halls');
   });

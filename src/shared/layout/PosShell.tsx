@@ -24,6 +24,7 @@ export function PosShell({ children }: { children: ReactNode }) {
   const waiterEnabled = canAccessWaiter(session?.user);
   const cashierBuilderEnabled = canAccessTakeawayBuilder(session?.user);
   const isCatalogPage = location.pathname === '/menu/catalog';
+  const isHallsPage = location.pathname.startsWith('/waiter/halls');
 
   const openChecksCountQuery = useCashierOpenChecksCountQuery(cashierEnabled);
   const kitchenActiveCountQuery = useKitchenActiveTicketCountQuery(kitchenEnabled);
@@ -65,7 +66,7 @@ export function PosShell({ children }: { children: ReactNode }) {
     path: string;
     badge?: number;
   }>;
-  const shouldShowDock = dockItems.length > 1 || dockItems[0]?.key === 'halls';
+  const shouldShowDock = dockItems.length > 1 || (dockItems[0]?.key === 'halls' && !isHallsPage);
 
   return (
     <Box

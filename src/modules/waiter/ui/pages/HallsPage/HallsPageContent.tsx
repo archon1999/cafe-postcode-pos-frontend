@@ -6,6 +6,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  IconButton,
   Menu,
   MenuItem,
   Stack,
@@ -15,7 +16,7 @@ import {
   useMediaQuery,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { canAccessWaiterTables, canManageTableReservations, usePosSession } from 'modules/auth';
@@ -48,6 +49,16 @@ import {
 
 const HALL_GRID_MIN_CELL_WIDTH = 126;
 const HALL_GRID_ROW_HEIGHT = 134;
+const HALL_GRID_GAP = 18;
+const HALL_MAP_MIN_SCALE = 0.45;
+const HALL_MAP_MAX_SCALE = 1.6;
+const HALL_MAP_ZOOM_STEP = 0.12;
+
+function clampMapScale(value: number) {
+  return Math.min(HALL_MAP_MAX_SCALE, Math.max(HALL_MAP_MIN_SCALE, value));
+}
+
+type HallMapScaleMode = 'fit' | 'fill' | 'manual';
 
 function formatFloorLabel(locale: string, level: number) {
   if (locale === 'uz-crl') {
@@ -425,6 +436,10 @@ export function HallsPageContent() {
   const [settingsAnchor, setSettingsAnchor] = useState<HTMLElement | null>(null);
   const [floorAnchor, setFloorAnchor] = useState<HTMLElement | null>(null);
   const [hallAnchor, setHallAnchor] = useState<HTMLElement | null>(null);
+  const [mapScale, setMapScale] = useState(1);
+  const [mapScaleMode, setMapScaleMode] = useState<HallMapScaleMode>('fill');
+  const [mapViewportSize, setMapViewportSize] = useState({ width: 0, height: 0 });
+  const mapViewportRef = useRef<HTMLDivElement | null>(null);
 
   const hallsQuery = useWaiterHallsQuery();
   const openSessionMutation = useOpenTableSessionMutation({
@@ -528,6 +543,130 @@ export function HallsPageContent() {
         return Math.max(maxRows, placement.positionY + placement.height);
       }, 1),
     [gridColumns, visibleTables],
+  );
+  const mapContentWidth = gridColumns * HALL_GRID_MIN_CELL_WIDTH + Math.max(0, gridColumns - 1) * HALL_GRID_GAP;
+  const mapContentHeight = gridRows * HALL_GRID_ROW_HEIGHT + Math.max(0, gridRows - 1) * HALL_GRID_GAP;
+  const fitScale = useMemo(() => {
+    if (!mapViewportSize.width || !mapViewportSize.height || !mapContentWidth || !mapContentHeight) {
+      return 1;
+    }
+
+    const availableWidth = Math.max(1, mapViewportSize.width - 28);
+    const availableHeight = Math.max(1, mapViewportSize.height - 28);
+    return clampMapScale(Math.min(1, availableWidth / mapContentWidth, availableHeight / mapContentHeight));
+  }, [mapContentHeight, mapContentWidth, mapViewportSize.height, mapViewportSize.width]);
+  const fillScale = useMemo(() => {
+    if (!mapViewportSize.width || !mapContentWidth) {
+      return 1;
+    }
+
+    const availableWidth = Math.max(1, mapViewportSize.width - 28);
+    return clampMapScale(availableWidth / mapContentWidth);
+  }, [mapContentWidth, mapViewportSize.width]);
+  const scaledMapWidth = mapContentWidth * mapScale;
+  const scaledMapHeight = mapContentHeight * mapScale;
+
+  useEffect(() => {
+    const viewport = mapViewportRef.current;
+    if (!viewport) {
+      return;
+    }
+
+    const updateViewportSize = () => {
+      setMapViewportSize({
+        width: viewport.clientWidth,
+        height: viewport.clientHeight,
+      });
+    };
+
+    updateViewportSize();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', updateViewportSize);
+      return () => window.removeEventListener('resize', updateViewportSize);
+    }
+
+    const resizeObserver = new ResizeObserver(updateViewportSize);
+    resizeObserver.observe(viewport);
+
+    return () => resizeObserver.disconnect();
+  }, []);
+
+  useEffect(() => {
+    setMapScaleMode('fill');
+  }, [mapContentHeight, mapContentWidth, selectedHall?.id, selectedZoneId]);
+
+  useEffect(() => {
+    if (mapScaleMode === 'fit') {
+      setMapScale(fitScale);
+    } else if (mapScaleMode === 'fill') {
+      setMapScale(fillScale);
+    }
+  }, [fillScale, fitScale, mapScaleMode]);
+
+  const handleMapFitFillToggle = useCallback(() => {
+    setMapScaleMode((currentMode) => {
+      const nextMode = currentMode === 'fill' ? 'fit' : 'fill';
+      setMapScale(nextMode === 'fit' ? fitScale : fillScale);
+      return nextMode;
+    });
+  }, [fillScale, fitScale]);
+
+  const handleMapZoom = useCallback((direction: 1 | -1) => {
+    setMapScaleMode('manual');
+    setMapScale((currentScale) => clampMapScale(Number((currentScale + direction * HALL_MAP_ZOOM_STEP).toFixed(2))));
+  }, []);
+  const mapZoomControls = (
+    <Stack
+      direction="row"
+      spacing={0.45}
+      sx={(theme) => ({
+        flexShrink: 0,
+        alignItems: 'center',
+        p: 0.35,
+        borderRadius: { xs: '14px', md: '16px' },
+        backgroundColor: theme.palette.mode === 'dark' ? alpha('#151719', 0.72) : alpha('#ffffff', 0.86),
+        border: `1px solid ${alpha('#ffffff', theme.palette.mode === 'dark' ? 0.06 : 0.5)}`,
+        boxShadow:
+          theme.palette.mode === 'dark'
+            ? '0 14px 28px rgba(0,0,0,0.22)'
+            : '0 14px 28px rgba(65, 46, 24, 0.1)',
+        backdropFilter: 'blur(16px)',
+      })}>
+      <IconButton
+        aria-label="Xaritani kichraytirish"
+        size="small"
+        disabled={mapScale <= HALL_MAP_MIN_SCALE + 0.01}
+        onClick={() => handleMapZoom(-1)}>
+        <Icon icon="solar:minus-circle-bold-duotone" width={22} />
+      </IconButton>
+      <Box
+        sx={{
+          minWidth: { xs: 42, md: 48 },
+          display: 'grid',
+          placeItems: 'center',
+          fontSize: { xs: 12, md: 13 },
+          fontWeight: 800,
+          color: 'text.secondary',
+        }}>
+        {Math.round(mapScale * 100)}%
+      </Box>
+      <IconButton
+        aria-label="Xaritani kattalashtirish"
+        size="small"
+        disabled={mapScale >= HALL_MAP_MAX_SCALE - 0.01}
+        onClick={() => handleMapZoom(1)}>
+        <Icon icon="solar:add-circle-bold-duotone" width={22} />
+      </IconButton>
+      <IconButton
+        aria-label={mapScaleMode === 'fill' ? "Xaritani sig'dirish" : "Xaritani kenglikka to'ldirish"}
+        size="small"
+        onClick={handleMapFitFillToggle}>
+        <Icon
+          icon={mapScaleMode === 'fill' ? 'solar:quit-full-screen-square-bold-duotone' : 'solar:full-screen-square-bold-duotone'}
+          width={22}
+        />
+      </IconButton>
+    </Stack>
   );
 
   const handleTableSelect = (currentTable: DiningTable) => {
@@ -711,6 +850,7 @@ export function HallsPageContent() {
             direction="row"
             spacing={{ xs: 1, md: 1.5 }}
             sx={{ justifyContent: { xs: 'flex-end', md: 'flex-start' } }}>
+            {mapZoomControls}
             {!isMobile ? (
               <PosIconAction icon="solar:refresh-bold-duotone" onClick={() => window.location.reload()} />
             ) : null}
@@ -735,6 +875,7 @@ export function HallsPageContent() {
           border: `1px solid ${alpha('#ffffff', theme.palette.mode === 'dark' ? 0.03 : 0.34)}`,
           px: { xs: 1.9, md: 2.6 },
           py: { xs: 1.9, md: 2.45 },
+          mb: 2,
           boxShadow:
             theme.palette.mode === 'dark'
               ? 'inset 0 1px 0 rgba(255,255,255,0.02)'
@@ -765,34 +906,65 @@ export function HallsPageContent() {
           </Box>
         ) : null}
 
-        <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', pb: 1 }}>
+        <Box
+          ref={mapViewportRef}
+          sx={(theme) => ({
+            flex: 1,
+            minHeight: 0,
+            overflow: 'auto',
+            pb: 1,
+            position: 'relative',
+            borderRadius: '20px',
+            backgroundColor: theme.palette.mode === 'dark' ? alpha('#ffffff', 0.015) : alpha('#fffdf8', 0.42),
+            scrollbarWidth: 'thin',
+          })}>
           <Box
-            data-testid="hall-layout-grid"
             sx={{
-              display: 'grid',
-              gridTemplateColumns: `repeat(${gridColumns}, minmax(${HALL_GRID_MIN_CELL_WIDTH}px, 1fr))`,
-              gridAutoRows: `${HALL_GRID_ROW_HEIGHT}px`,
-              gap: { xs: 1.5, md: 1.7 },
-              minWidth: gridColumns * HALL_GRID_MIN_CELL_WIDTH,
-              minHeight: gridRows * HALL_GRID_ROW_HEIGHT,
-              alignItems: 'stretch',
+              minWidth: '100%',
+              minHeight: '100%',
+              display: 'flex',
+              justifyContent: scaledMapWidth <= mapViewportSize.width ? 'center' : 'flex-start',
+              alignItems: scaledMapHeight <= mapViewportSize.height ? 'center' : 'flex-start',
+              p: 1.25,
             }}>
-            {visibleTables
-              .slice()
-              .sort((leftTable, rightTable) => leftTable.tableNumber - rightTable.tableNumber)
-              .map((table) => {
-                const placement = getTableGridPlacement(table, gridColumns);
-                return (
-                  <Box
-                    key={table.id}
-                    sx={{
-                      gridColumn: `${placement.positionX + 1} / span ${placement.width}`,
-                      gridRow: `${placement.positionY + 1} / span ${placement.height}`,
-                    }}>
-                    <HallTableCard copy={copy} table={table} onSelect={handleTableSelect} />
-                  </Box>
-                );
-              })}
+            <Box
+              sx={{
+                width: scaledMapWidth,
+                height: scaledMapHeight,
+                flex: '0 0 auto',
+              }}>
+              <Box
+                data-testid="hall-layout-grid"
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: `repeat(${gridColumns}, ${HALL_GRID_MIN_CELL_WIDTH}px)`,
+                  gridAutoRows: `${HALL_GRID_ROW_HEIGHT}px`,
+                  gap: `${HALL_GRID_GAP}px`,
+                  width: mapContentWidth,
+                  height: mapContentHeight,
+                  alignItems: 'stretch',
+                  transform: `scale(${mapScale})`,
+                  transformOrigin: 'top left',
+                  transition: 'transform 160ms ease',
+                }}>
+                {visibleTables
+                  .slice()
+                  .sort((leftTable, rightTable) => leftTable.tableNumber - rightTable.tableNumber)
+                  .map((table) => {
+                    const placement = getTableGridPlacement(table, gridColumns);
+                    return (
+                      <Box
+                        key={table.id}
+                        sx={{
+                          gridColumn: `${placement.positionX + 1} / span ${placement.width}`,
+                          gridRow: `${placement.positionY + 1} / span ${placement.height}`,
+                        }}>
+                        <HallTableCard copy={copy} table={table} onSelect={handleTableSelect} />
+                      </Box>
+                    );
+                  })}
+              </Box>
+            </Box>
           </Box>
         </Box>
       </Box>
