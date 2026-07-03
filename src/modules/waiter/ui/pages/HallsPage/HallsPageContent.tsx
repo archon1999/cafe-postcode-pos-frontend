@@ -53,12 +53,57 @@ const HALL_GRID_GAP = 18;
 const HALL_MAP_MIN_SCALE = 0.45;
 const HALL_MAP_MAX_SCALE = 1.6;
 const HALL_MAP_ZOOM_STEP = 0.12;
+const HALL_MAP_STORAGE_KEY = 'pos.waiter.halls.mapScale';
+
+type HallMapScaleMode = 'fit' | 'fill' | 'manual';
+
+type HallMapScaleSettings = {
+  mode: HallMapScaleMode;
+  scale: number;
+};
 
 function clampMapScale(value: number) {
   return Math.min(HALL_MAP_MAX_SCALE, Math.max(HALL_MAP_MIN_SCALE, value));
 }
 
-type HallMapScaleMode = 'fit' | 'fill' | 'manual';
+function isHallMapScaleMode(value: unknown): value is HallMapScaleMode {
+  return value === 'fit' || value === 'fill' || value === 'manual';
+}
+
+function readHallMapScaleSettings(): HallMapScaleSettings {
+  if (typeof window === 'undefined') {
+    return { mode: 'manual', scale: 1 };
+  }
+
+  try {
+    const rawSettings = window.localStorage.getItem(HALL_MAP_STORAGE_KEY);
+    if (!rawSettings) {
+      return { mode: 'manual', scale: 1 };
+    }
+
+    const parsedSettings = JSON.parse(rawSettings) as Partial<HallMapScaleSettings>;
+    const parsedScale = Number(parsedSettings.scale);
+
+    return {
+      mode: isHallMapScaleMode(parsedSettings.mode) ? parsedSettings.mode : 'manual',
+      scale: Number.isFinite(parsedScale) ? clampMapScale(parsedScale) : 1,
+    };
+  } catch {
+    return { mode: 'manual', scale: 1 };
+  }
+}
+
+function writeHallMapScaleSettings(settings: HallMapScaleSettings) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(HALL_MAP_STORAGE_KEY, JSON.stringify(settings));
+  } catch {
+    // Ignore storage failures; zoom should still work for the current session.
+  }
+}
 
 function formatFloorLabel(locale: string, level: number) {
   if (locale === 'uz-crl') {
@@ -436,8 +481,9 @@ export function HallsPageContent() {
   const [settingsAnchor, setSettingsAnchor] = useState<HTMLElement | null>(null);
   const [floorAnchor, setFloorAnchor] = useState<HTMLElement | null>(null);
   const [hallAnchor, setHallAnchor] = useState<HTMLElement | null>(null);
-  const [mapScale, setMapScale] = useState(1);
-  const [mapScaleMode, setMapScaleMode] = useState<HallMapScaleMode>('fill');
+  const [initialMapScaleSettings] = useState(readHallMapScaleSettings);
+  const [mapScale, setMapScale] = useState(initialMapScaleSettings.scale);
+  const [mapScaleMode, setMapScaleMode] = useState<HallMapScaleMode>(initialMapScaleSettings.mode);
   const [mapViewportSize, setMapViewportSize] = useState({ width: 0, height: 0 });
   const mapViewportRef = useRef<HTMLDivElement | null>(null);
 
@@ -624,10 +670,6 @@ export function HallsPageContent() {
   }, [isInitialLoading, selectedHall?.id, selectedZoneId]);
 
   useEffect(() => {
-    setMapScaleMode('fill');
-  }, [mapContentHeight, mapContentWidth, selectedHall?.id, selectedZoneId]);
-
-  useEffect(() => {
     if (mapScaleMode === 'fit') {
       setMapScale(fitScale);
     } else if (mapScaleMode === 'fill') {
@@ -647,6 +689,14 @@ export function HallsPageContent() {
     setMapScaleMode('manual');
     setMapScale((currentScale) => clampMapScale(Number((currentScale + direction * HALL_MAP_ZOOM_STEP).toFixed(2))));
   }, []);
+
+  useEffect(() => {
+    writeHallMapScaleSettings({
+      mode: mapScaleMode,
+      scale: mapScale,
+    });
+  }, [mapScale, mapScaleMode]);
+
   const mapZoomControls = (
     <Stack
       direction="row"
