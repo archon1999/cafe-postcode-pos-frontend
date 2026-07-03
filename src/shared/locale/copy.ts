@@ -152,6 +152,8 @@ const localeDictionary = {
     plainPayment: "Oddiy to'lov",
     fiscalPayment: "Fiscal bilan to'lov",
     retryFiscal: 'Fiscalga qayta yuborish',
+    fiscalClose: 'Fiscal bilan yopish',
+    fiscalChecks: 'Fiscal hisoblar',
     cardPaymentFailedTitle: "Karta to'lovi yakunlanmadi",
     cardPaymentFailedDescription:
       "Qayta urinib ko'ring yoki terminaldan tashqarida karta orqali to'lov qabul qilingan bo'lsa, manual card sifatida yakunlang.",
@@ -342,6 +344,8 @@ const localeDictionary = {
     plainPayment: 'Оддий тўлов',
     fiscalPayment: 'Fiscal билан тўлов',
     retryFiscal: 'Fiscalга қайта юбориш',
+    fiscalClose: 'Fiscal билан ёпиш',
+    fiscalChecks: 'Fiscal ҳисоблар',
     cardPaymentFailedTitle: 'Карта тўлови якунланмади',
     cardPaymentFailedDescription:
       'Қайта уриниб кўринг ёки терминалдан ташқарида карта орқали тўлов қабул қилинган бўлса, manual card сифатида якунланг.',
@@ -532,6 +536,8 @@ const localeDictionary = {
     plainPayment: 'Обычная оплата',
     fiscalPayment: 'Оплата с fiscal',
     retryFiscal: 'Повторно отправить в fiscal',
+    fiscalClose: 'Закрыть через fiscal',
+    fiscalChecks: 'Фискальные счета',
     cardPaymentFailedTitle: 'Оплата картой не завершена',
     cardPaymentFailedDescription:
       'Попробуйте еще раз или завершите как manual card, если оплата картой была принята вне терминала.',

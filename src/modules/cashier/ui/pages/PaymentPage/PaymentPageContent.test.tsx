@@ -555,6 +555,54 @@ describe('PaymentPageContent', () => {
     });
   });
 
+  it('prints plain payment fallback receipt without VAT or ID-prefixed order number', async () => {
+    paymentMutateAsyncMock.mockResolvedValueOnce({
+      order: {
+        orderNumber: 101,
+        displayName: 'VIP mijoz',
+        status: 'closed',
+        items: [],
+        subtotal: 30000,
+        serviceFee: 0,
+        vatEnabled: true,
+        vatPercent: 12,
+        vatAmount: 3214,
+        total: 30000,
+        note: '',
+      },
+      payment: {
+        method: 'cash',
+        amount: 30000,
+        paidAt: '2026-04-18T10:00:00Z',
+      },
+      receipt: null,
+    });
+
+    render(<PaymentPageContent orderId="order-1" />);
+    fireEvent.click(screen.getByRole('button', { name: /Fiscal bilan/ }));
+    expect(await screen.findByText('Chek tayyor')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Yakunlash' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Ha, chiqarish' }));
+
+    await waitFor(() => {
+      expect(printReceiptWithFallbackMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          snapshot: expect.objectContaining({
+            order_label: '101',
+            orderLabel: '101',
+            order_number: '101',
+            orderNumber: '101',
+            vat_enabled: false,
+            vat_percent: 0,
+            vat_amount: 0,
+          }),
+        }),
+        { preferLocalAgent: true, receiptId: undefined },
+      );
+    });
+  });
+
   it('can finish the payment receipt dialog without printing', async () => {
     paymentMutateAsyncMock.mockResolvedValueOnce({
       order: {

@@ -100,14 +100,14 @@ function withReceiptOrderContext(payload: Record<string, unknown> | null | undef
     return {
       ...source,
       snapshot: {
-        ...(snapshot as Record<string, unknown>),
         ...context,
+        ...(snapshot as Record<string, unknown>),
       },
     };
   }
   return {
-    ...source,
     ...context,
+    ...source,
   };
 }
 
@@ -131,10 +131,7 @@ function getPaymentCardAmount(payment: CashierPayment) {
 
 function buildClosedOrderFallbackReceiptPayload(order: CashierOrder, payment: CashierPayment, session: PosSession) {
   const restaurantContext = session?.restaurantContext;
-  const orderNumberLabel = getCashierOrderDisplayName({
-    orderNumber: order.orderNumber,
-    displayName: order.displayName,
-  });
+  const orderNumberLabel = String(Number(order.orderNumber || 0) || order.orderNumber || '');
   const tableLabel = order.tableName || order.hallName ? [order.hallName, order.tableName].filter(Boolean).join(' / ') : '';
   const activeItems = aggregateCashierOrderItems(order.items?.filter((item) => item.status !== 'cancelled'));
   const succeededPayments = (order.payments ?? []).filter((item) => item.status === 'succeeded');
@@ -150,7 +147,9 @@ function buildClosedOrderFallbackReceiptPayload(order: CashierOrder, payment: Ca
       restaurant_phone: restaurantContext?.phone ?? '',
       restaurant_social: restaurantContext?.social ?? '',
       order_label: orderNumberLabel,
+      orderLabel: orderNumberLabel,
       order_number: orderNumberLabel,
+      orderNumber: orderNumberLabel,
       receipt_number: payment.id,
       channel_label: getReceiptChannelLabel(order.channel),
       table_label: tableLabel,
@@ -168,9 +167,9 @@ function buildClosedOrderFallbackReceiptPayload(order: CashierOrder, payment: Ca
       subtotal: Number(order.subtotal ?? 0),
       service_fee: Number(order.serviceFee ?? 0),
       service_fee_percent: Number(order.serviceFeePercent ?? 0),
-      vat_enabled: Boolean(order.vatEnabled),
-      vat_percent: Number(order.vatPercent ?? 0),
-      vat_amount: Number(order.vatAmount ?? 0),
+      vat_enabled: false,
+      vat_percent: 0,
+      vat_amount: 0,
       total: Number(order.total ?? payment.amount ?? 0),
       received_cash: receivedCash,
       received_card: receivedCard,
@@ -391,7 +390,7 @@ function OpenChecksList({
               ? copy.noChecks
               : selectedTab === 'closed'
                 ? copy.noClosedChecks
-                : 'Yopilmagan hisoblar yo‘q'}
+                : `${copy.fiscalChecks} yo'q`}
           </Typography>
         </Box>
       )}
@@ -617,7 +616,7 @@ function OpenChecksDetail({
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.1}>
             {retryFiscalAvailable ? (
               <Button variant="contained" color="warning" sx={{ flex: 1 }} onClick={onRetryFiscal}>
-                {copy.retryFiscal}
+                {copy.fiscalClose}
               </Button>
             ) : null}
             {reprintAvailable ? (
@@ -659,6 +658,8 @@ export function OpenChecksPageContent() {
   const [renameOrder, setRenameOrder] = useState<CashierOrder | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [renameError, setRenameError] = useState('');
+  const [closedSearch, setClosedSearch] = useState('');
+  const [closedPage, setClosedPage] = useState(1);
   const [fiscalSearch, setFiscalSearch] = useState('');
   const [fiscalPage, setFiscalPage] = useState(1);
   const [retryReceiptDialog, setRetryReceiptDialog] = useState<RetryFiscalReceiptDialogState | null>(null);
@@ -670,7 +671,7 @@ export function OpenChecksPageContent() {
     onSuccess: (response) => {
       const failedResult = (response.results ?? []).find((item) => item && item.ok === false);
       if (failedResult) {
-        toast.error(String(failedResult.detail ?? failedResult.message ?? 'Fiscalga qayta yuborishda xatolik bor.'));
+        toast.error(String(failedResult.detail ?? failedResult.message ?? 'Fiscal bilan yopishda xatolik bor.'));
         return;
       }
       const receipts = (
@@ -697,9 +698,9 @@ export function OpenChecksPageContent() {
               : copy.cash,
         amount: Number(latestSucceededPayment?.amount ?? 0),
       });
-      toast.success('Fiscalga qayta yuborildi');
+      toast.success('Fiscal bilan yopildi');
     },
-    onError: (error) => toast.error(getApiErrorMessage(error, 'Fiscalga qayta yuborishda xatolik bor.')),
+    onError: (error) => toast.error(getApiErrorMessage(error, 'Fiscal bilan yopishda xatolik bor.')),
   });
   const updateOrderDisplayNameMutation = useCashierUpdateOrderDisplayNameMutation({
     onSuccess: () => {
@@ -709,12 +710,16 @@ export function OpenChecksPageContent() {
   });
 
   const openOrdersQuery = useCashierOpenChecksQuery('open');
-  const closedOrdersQuery = useCashierOpenChecksQuery('closed');
+  const closedOrdersQuery = useCashierOpenChecksQuery('closed', {
+    search: closedSearch,
+    page: closedPage,
+    pageSize: 20,
+  });
   const cashierContextQuery = useCashierContextQuery();
-  const fiscalUnresolvedQuery = useCashierOpenChecksQuery('fiscal_unresolved', {
+  const fiscalClosedQuery = useCashierOpenChecksQuery('fiscal_closed', {
     search: fiscalSearch,
     page: fiscalPage,
-    pageSize: 25,
+    pageSize: 20,
   });
   const selectedCashDesk = useMemo(() => {
     const cashDesks = cashierContextQuery.data?.availableCashDesks ?? [];
@@ -746,12 +751,11 @@ export function OpenChecksPageContent() {
     openOrdersQuery.isLoading && closedOrdersQuery.isLoading && !openOrdersQuery.data && !closedOrdersQuery.data;
   const openOrders = useMemo(() => getChecksOrders(openOrdersQuery.data), [openOrdersQuery.data]);
   const closedOrders = useMemo(() => getChecksOrders(closedOrdersQuery.data), [closedOrdersQuery.data]);
-  const fiscalUnresolvedOrders = useMemo(
-    () => getChecksOrders(fiscalUnresolvedQuery.data),
-    [fiscalUnresolvedQuery.data],
+  const fiscalClosedOrders = useMemo(
+    () => getChecksOrders(fiscalClosedQuery.data),
+    [fiscalClosedQuery.data],
   );
-  const visibleOrders =
-    selectedTab === 'open' ? openOrders : selectedTab === 'closed' ? closedOrders : fiscalUnresolvedOrders;
+  const visibleOrders = selectedTab === 'open' ? openOrders : selectedTab === 'closed' ? closedOrders : fiscalClosedOrders;
   const selectedOrder =
     visibleOrders.find((order) => order.id === selectedOrderId) ?? (isMobile ? undefined : visibleOrders[0]);
   const groupedItems = useMemo(
@@ -765,7 +769,11 @@ export function OpenChecksPageContent() {
   }, [selectedOrder?.payments]);
   const latestReceipt = useMemo(() => {
     const receipts = selectedOrder?.receipts ?? [];
-    return receipts[receipts.length - 1];
+    return (
+      receipts.find((receipt) => receipt.kind === 'fiscal' && receipt.status === 'sent') ??
+      receipts.find((receipt) => receipt.kind === 'fiscal') ??
+      receipts[0]
+    );
   }, [selectedOrder?.receipts]);
   const canOperatePayments = canManageCashierPayments(session?.user);
   const receiptNumber = useMemo(() => {
@@ -777,14 +785,18 @@ export function OpenChecksPageContent() {
       : (latestSucceededPayment?.id ?? copy.receiptUnavailable);
   }, [copy.receiptUnavailable, latestReceipt?.payload, latestSucceededPayment?.id]);
   const canRefund = Boolean(
-    selectedTab === 'closed' && latestSucceededPayment?.id && !latestSucceededPayment?.isRefunded && canOperatePayments,
+    selectedTab !== 'open' &&
+      latestSucceededPayment?.id &&
+      !latestSucceededPayment?.isRefunded &&
+      canOperatePayments,
   );
   const canReprint = Boolean(
-    selectedTab === 'closed' && canOperatePayments && (latestReceipt?.id || latestSucceededPayment?.id),
+    selectedTab !== 'open' &&
+      canOperatePayments &&
+      latestSucceededPayment?.id &&
+      (selectedTab === 'closed' || latestReceipt?.id),
   );
-  const canRetryFiscal = Boolean(
-    selectedTab === 'fiscal_unresolved' && latestSucceededPayment?.id && canOperatePayments,
-  );
+  const canRetryFiscal = Boolean(selectedTab === 'closed' && latestSucceededPayment?.id && canOperatePayments);
   const renameOrderNumberLabel = renameOrder ? getCashierOrderNumberLabel(renameOrder) : copy.orders;
   const renameOrderPreview = renameOrder
     ? getCashierOrderDisplayName({ orderNumber: renameOrder.orderNumber, displayName: renameValue })
@@ -794,7 +806,8 @@ export function OpenChecksPageContent() {
     setRetryReceiptPrintPromptOpen(false);
     setRetryReceiptDialog(null);
     setSelectedOrderId('');
-    void fiscalUnresolvedQuery.refetch();
+    void closedOrdersQuery.refetch();
+    void fiscalClosedQuery.refetch();
   };
 
   const handleRetryReceiptPromptPrint = async () => {
@@ -859,7 +872,7 @@ export function OpenChecksPageContent() {
         if (reprintMutation.isPending || !selectedOrder) {
           return;
         }
-        if (!latestReceipt?.id) {
+        if (selectedTab === 'closed') {
           if (!latestSucceededPayment?.id) {
             return;
           }
@@ -872,6 +885,9 @@ export function OpenChecksPageContent() {
           ).catch(() => {
             toast.info('Printer ishlamayapti');
           });
+          return;
+        }
+        if (!latestReceipt?.id) {
           return;
         }
         reprintMutation
@@ -928,6 +944,63 @@ export function OpenChecksPageContent() {
     void navigate(`/cashier/builder?orderId=${order.id}&channel=${channel}`);
   };
 
+  const isPagedChecksTab = selectedTab === 'closed' || selectedTab === 'fiscal_closed';
+  const pagedChecksData = selectedTab === 'closed' ? closedOrdersQuery.data : fiscalClosedQuery.data;
+  const pagedChecksPage = selectedTab === 'closed' ? closedPage : fiscalPage;
+  const pagedChecksSearch = selectedTab === 'closed' ? closedSearch : fiscalSearch;
+  const pagedChecksPageCount = Math.max(1, Array.isArray(pagedChecksData) ? 1 : (pagedChecksData?.numPages ?? 1));
+  const handlePagedSearchChange = (value: string) => {
+    if (selectedTab === 'closed') {
+      setClosedSearch(value);
+      setClosedPage(1);
+      return;
+    }
+    setFiscalSearch(value);
+    setFiscalPage(1);
+  };
+  const handlePagedPageChange = (page: number) => {
+    if (selectedTab === 'closed') {
+      setClosedPage(page);
+      return;
+    }
+    setFiscalPage(page);
+  };
+  const renderChecksListPanel = (options: { selectedOrderId?: string; onSelect: (orderId: string) => void }) => (
+    <Stack spacing={1.2} sx={{ height: '100%', minHeight: 0 }}>
+      {isPagedChecksTab ? (
+        <TextField
+          size="small"
+          placeholder="Qidirish"
+          value={pagedChecksSearch}
+          onChange={(event) => handlePagedSearchChange(event.target.value)}
+          sx={{ maxWidth: { md: 360 } }}
+        />
+      ) : null}
+      <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+        <OpenChecksList
+          copy={copy}
+          locale={locale}
+          orders={visibleOrders}
+          selectedOrderId={options.selectedOrderId}
+          selectedTab={selectedTab}
+          onRename={handleOpenRenameDialog}
+          onSwipeEdit={handleSwipeEdit}
+          onSelect={options.onSelect}
+        />
+      </Box>
+      {isPagedChecksTab ? (
+        <Stack direction="row" justifyContent="center" sx={{ flexShrink: 0, pt: 0.2 }}>
+          <Pagination
+            count={pagedChecksPageCount}
+            page={pagedChecksPage}
+            onChange={(_, page) => handlePagedPageChange(page)}
+            shape="rounded"
+          />
+        </Stack>
+      ) : null}
+    </Stack>
+  );
+
   if (isInitialLoading) {
     return <PosOpenChecksSkeleton mobile={isMobile} />;
   }
@@ -946,10 +1019,10 @@ export function OpenChecksPageContent() {
             }}
             items={[
               { value: 'open', label: `${copy.openChecks} (${openOrders.length})` },
-              { value: 'closed', label: `${copy.closedChecks} (${closedOrders.length})` },
+              { value: 'closed', label: `${copy.closedChecks} (${getChecksCount(closedOrdersQuery.data)})` },
               {
-                value: 'fiscal_unresolved',
-                label: `Yopilmagan hisoblar (${getChecksCount(fiscalUnresolvedQuery.data)})`,
+                value: 'fiscal_closed',
+                label: `${copy.fiscalChecks} (${getChecksCount(fiscalClosedQuery.data)})`,
               },
             ]}
           />
@@ -968,50 +1041,15 @@ export function OpenChecksPageContent() {
           </Stack>
         </Stack>
       }>
-      {selectedTab === 'fiscal_unresolved' ? (
-        <Stack
-          direction={{ xs: 'column', md: 'row' }}
-          spacing={1.2}
-          alignItems={{ xs: 'stretch', md: 'center' }}
-          sx={{ mb: 1.5 }}>
-          <TextField
-            size="small"
-            placeholder="Qidirish"
-            value={fiscalSearch}
-            onChange={(event) => {
-              setFiscalSearch(event.target.value);
-              setFiscalPage(1);
-            }}
-            sx={{ maxWidth: { md: 360 } }}
-          />
-          <Box sx={{ flex: 1 }} />
-          <Pagination
-            count={Math.max(
-              1,
-              Array.isArray(fiscalUnresolvedQuery.data) ? 1 : (fiscalUnresolvedQuery.data?.numPages ?? 1),
-            )}
-            page={fiscalPage}
-            onChange={(_, page) => setFiscalPage(page)}
-            shape="rounded"
-          />
-        </Stack>
-      ) : null}
-
       {isMobile ? (
         <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-          <OpenChecksList
-            copy={copy}
-            locale={locale}
-            orders={visibleOrders}
-            selectedOrderId={selectedOrderId}
-            selectedTab={selectedTab}
-            onRename={handleOpenRenameDialog}
-            onSwipeEdit={handleSwipeEdit}
-            onSelect={(orderId) => {
+          {renderChecksListPanel({
+            selectedOrderId,
+            onSelect: (orderId) => {
               setSelectedOrderId(orderId);
               setMobileDetailOpen(true);
-            }}
-          />
+            },
+          })}
         </Box>
       ) : (
         <Box
@@ -1026,16 +1064,7 @@ export function OpenChecksPageContent() {
             },
             gap: { xs: 1.5, md: 1.6, xl: 2.4 },
           }}>
-          <OpenChecksList
-            copy={copy}
-            locale={locale}
-            orders={visibleOrders}
-            selectedOrderId={selectedOrder?.id}
-            selectedTab={selectedTab}
-            onRename={handleOpenRenameDialog}
-            onSwipeEdit={handleSwipeEdit}
-            onSelect={setSelectedOrderId}
-          />
+          {renderChecksListPanel({ selectedOrderId: selectedOrder?.id, onSelect: setSelectedOrderId })}
           <Box sx={{ minHeight: 0 }}>{detailPanel}</Box>
         </Box>
       )}

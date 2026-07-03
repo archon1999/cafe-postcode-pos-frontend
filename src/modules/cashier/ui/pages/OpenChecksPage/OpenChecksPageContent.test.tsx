@@ -9,12 +9,13 @@ import { OpenChecksPageContent } from './OpenChecksPageContent';
 const navigateMock = vi.fn();
 const openOrdersMock = vi.fn();
 const closedOrdersMock = vi.fn();
-const fiscalUnresolvedOrdersMock = vi.fn();
+const fiscalClosedOrdersMock = vi.fn();
 const updateDisplayNameMutateAsyncMock = vi.fn();
 const retryFiscalMutateMock = vi.fn();
-const fiscalUnresolvedRefetchMock = vi.fn();
+const closedRefetchMock = vi.fn();
+const fiscalClosedRefetchMock = vi.fn();
 const reprintMutateAsyncMock = vi.fn();
-const printReceiptWithFallbackMock = vi.fn(() => Promise.resolve(true));
+const printReceiptWithFallbackMock = vi.fn((_payload?: unknown, _options?: unknown) => Promise.resolve(true));
 let openOrdersState: Array<Record<string, unknown>> = [];
 
 vi.mock('react-router', () => ({
@@ -52,15 +53,15 @@ vi.mock('modules/cashier/application', () => ({
       currentShift: { cashDesk: 'desk-1' },
     },
   }),
-  useCashierOpenChecksQuery: (status: 'open' | 'closed' | 'fiscal_unresolved') => ({
+  useCashierOpenChecksQuery: (status: 'open' | 'closed' | 'fiscal_closed') => ({
     isLoading: false,
     data:
       status === 'open'
         ? openOrdersMock()
-        : status === 'fiscal_unresolved'
-          ? fiscalUnresolvedOrdersMock()
+        : status === 'fiscal_closed'
+          ? fiscalClosedOrdersMock()
           : closedOrdersMock(),
-    refetch: status === 'fiscal_unresolved' ? fiscalUnresolvedRefetchMock : vi.fn(),
+    refetch: status === 'closed' ? closedRefetchMock : status === 'fiscal_closed' ? fiscalClosedRefetchMock : vi.fn(),
   }),
   useCashierFiscalRetryMutation: (options?: { onSuccess?: (response: Record<string, unknown>) => void }) => ({
     isPending: false,
@@ -138,7 +139,7 @@ vi.mock('shared/ui/pos-primitives', () => ({
 }));
 
 vi.mock('shared/printing/browserReceipt', () => ({
-  printReceiptWithFallback: (...args: unknown[]) => printReceiptWithFallbackMock(...args),
+  printReceiptWithFallback: (payload?: unknown, options?: unknown) => printReceiptWithFallbackMock(payload, options),
 }));
 
 describe('OpenChecksPageContent', () => {
@@ -147,10 +148,11 @@ describe('OpenChecksPageContent', () => {
     navigateMock.mockReset();
     openOrdersMock.mockReset();
     closedOrdersMock.mockReset();
-    fiscalUnresolvedOrdersMock.mockReset();
+    fiscalClosedOrdersMock.mockReset();
     updateDisplayNameMutateAsyncMock.mockReset();
     retryFiscalMutateMock.mockReset();
-    fiscalUnresolvedRefetchMock.mockReset();
+    closedRefetchMock.mockReset();
+    fiscalClosedRefetchMock.mockReset();
     reprintMutateAsyncMock.mockReset();
     printReceiptWithFallbackMock.mockClear();
     openOrdersState = [
@@ -176,7 +178,7 @@ describe('OpenChecksPageContent', () => {
     ];
     openOrdersMock.mockImplementation(() => openOrdersState);
     closedOrdersMock.mockReturnValue([]);
-    fiscalUnresolvedOrdersMock.mockReturnValue([]);
+    fiscalClosedOrdersMock.mockReturnValue([]);
   });
 
   it('does not show the go-to-menu action for open hall checks', () => {
@@ -251,6 +253,9 @@ describe('OpenChecksPageContent', () => {
         closedAt: '2026-04-18T09:30:00Z',
         payments: [{ id: 'payment-6', amount: 22000, status: 'succeeded', method: 'cash' }],
         receipts: [],
+        vatEnabled: true,
+        vatPercent: 12,
+        vatAmount: 2357,
       },
     ]);
 
@@ -263,12 +268,17 @@ describe('OpenChecksPageContent', () => {
         expect.objectContaining({
           snapshot: expect.objectContaining({
             restaurant_name: 'Chek',
-            order_label: '#55',
-            order_number: '#55',
+            order_label: '106',
+            orderLabel: '106',
+            order_number: '106',
+            orderNumber: '106',
             receipt_number: 'payment-6',
             channel_label: 'Zalda',
             total: 22000,
             received_cash: 22000,
+            vat_enabled: false,
+            vat_percent: 0,
+            vat_amount: 0,
             items: [
               expect.objectContaining({
                 name: 'Shaverma',
@@ -282,6 +292,46 @@ describe('OpenChecksPageContent', () => {
       );
     });
     expect(reprintMutateAsyncMock).not.toHaveBeenCalled();
+  });
+
+  it('reprints a fiscal receipt from fiscal checks', async () => {
+    openOrdersMock.mockReturnValue([]);
+    fiscalClosedOrdersMock.mockReturnValue([
+      {
+        id: 'order-7',
+        orderNumber: 107,
+        displayName: '',
+        status: 'closed',
+        subtotal: 30000,
+        serviceFee: 0,
+        serviceFeePercent: 0,
+        total: 30000,
+        note: '',
+        channel: 'hall',
+        items: [],
+        tableSession: 'session-7',
+        tableName: 'Stol 7',
+        guestCount: 2,
+        openedByName: 'Ali',
+        cashierName: 'Adham',
+        createdAt: '2026-04-18T09:00:00Z',
+        closedAt: '2026-04-18T09:30:00Z',
+        payments: [{ id: 'payment-7', amount: 30000, status: 'succeeded', method: 'cash' }],
+        receipts: [{ id: 'receipt-7', kind: 'fiscal', status: 'sent', payload: { receiptNumber: 'F-7' } }],
+      },
+    ]);
+    reprintMutateAsyncMock.mockResolvedValue({
+      result: { ok: true },
+      receipt: { id: 'receipt-7', payload: { receiptNumber: 'F-7' } },
+    });
+
+    render(<OpenChecksPageContent />);
+    fireEvent.click(screen.getByRole('button', { name: /Fiscal hisoblar/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Chekni qayta chiqarish' }));
+
+    await waitFor(() => {
+      expect(reprintMutateAsyncMock).toHaveBeenCalledWith('receipt-7');
+    });
   });
 
   it('renames an open check from the dialog and renders the new title', async () => {
@@ -300,12 +350,12 @@ describe('OpenChecksPageContent', () => {
 
   it('asks whether to print after finishing the retry receipt dialog', async () => {
     openOrdersMock.mockReturnValue([]);
-    fiscalUnresolvedOrdersMock.mockReturnValue([
+    closedOrdersMock.mockReturnValue([
       {
         id: 'order-4',
         orderNumber: 104,
         displayName: '5',
-        status: 'fiscal_unresolved',
+        status: 'closed',
         subtotal: 20000,
         serviceFee: 0,
         total: 20000,
@@ -323,8 +373,8 @@ describe('OpenChecksPageContent', () => {
     ]);
 
     render(<OpenChecksPageContent />);
-    fireEvent.click(screen.getByRole('button', { name: /Yopilmagan hisoblar/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Fiscalga qayta yuborish' }));
+    fireEvent.click(screen.getByRole('button', { name: /Yopiq hisoblar/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Fiscal bilan yopish' }));
 
     expect(await screen.findByText('Chek tayyor')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Chekni chiqarish' })).toBeNull();
@@ -344,17 +394,18 @@ describe('OpenChecksPageContent', () => {
         }),
         { preferLocalAgent: true, receiptId: 'receipt-2' },
       );
-      expect(fiscalUnresolvedRefetchMock).toHaveBeenCalled();
+      expect(closedRefetchMock).toHaveBeenCalled();
+      expect(fiscalClosedRefetchMock).toHaveBeenCalled();
     });
   });
 
   it('can finish the retry receipt dialog without printing', async () => {
     openOrdersMock.mockReturnValue([]);
-    fiscalUnresolvedOrdersMock.mockReturnValue([
+    closedOrdersMock.mockReturnValue([
       {
         id: 'order-5',
         orderNumber: 105,
-        status: 'fiscal_unresolved',
+        status: 'closed',
         subtotal: 25000,
         serviceFee: 0,
         total: 25000,
@@ -372,12 +423,13 @@ describe('OpenChecksPageContent', () => {
     ]);
 
     render(<OpenChecksPageContent />);
-    fireEvent.click(screen.getByRole('button', { name: /Yopilmagan hisoblar/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Fiscalga qayta yuborish' }));
+    fireEvent.click(screen.getByRole('button', { name: /Yopiq hisoblar/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Fiscal bilan yopish' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Yakunlash' }));
     fireEvent.click(await screen.findByRole('button', { name: "Yo'q" }));
 
     expect(printReceiptWithFallbackMock).not.toHaveBeenCalled();
-    expect(fiscalUnresolvedRefetchMock).toHaveBeenCalled();
+    expect(closedRefetchMock).toHaveBeenCalled();
+    expect(fiscalClosedRefetchMock).toHaveBeenCalled();
   });
 });

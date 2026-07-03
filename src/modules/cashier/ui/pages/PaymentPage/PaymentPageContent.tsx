@@ -112,14 +112,14 @@ function withReceiptOrderContext(
     return {
       ...source,
       snapshot: {
-        ...(snapshot as Record<string, unknown>),
         ...context,
+        ...(snapshot as Record<string, unknown>),
       },
     };
   }
   return {
-    ...source,
     ...context,
+    ...source,
   };
 }
 
@@ -430,8 +430,10 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
         restaurant_address: session?.restaurantContext?.address ?? '',
         restaurant_phone: session?.restaurantContext?.phone ?? '',
         restaurant_social: session?.restaurantContext?.social ?? '',
-        order_label: getCashierOrderDisplayName({ orderNumber: order.orderNumber, displayName: order.displayName }),
-        order_number: getCashierOrderDisplayName({ orderNumber: order.orderNumber, displayName: order.displayName }),
+        order_label: String(Number(order.orderNumber || 0) || order.orderNumber || ''),
+        orderLabel: String(Number(order.orderNumber || 0) || order.orderNumber || ''),
+        order_number: String(Number(order.orderNumber || 0) || order.orderNumber || ''),
+        orderNumber: String(Number(order.orderNumber || 0) || order.orderNumber || ''),
         receipt_number: receiptNumber,
         channel_label: getReceiptChannelLabel(order.channel),
         table_label:
@@ -450,9 +452,9 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
         subtotal: order.subtotal,
         service_fee: order.serviceFee,
         service_fee_percent: order.serviceFeePercent,
-        vat_enabled: order.vatEnabled,
-        vat_percent: order.vatPercent,
-        vat_amount: order.vatAmount,
+        vat_enabled: false,
+        vat_percent: 0,
+        vat_amount: 0,
         total: order.status === 'closed' ? order.total : paymentAmount,
         received_cash: receivedCash,
         received_card: receivedCard,

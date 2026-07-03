@@ -134,6 +134,7 @@ describe('browser receipt printing', () => {
       order_number: 15,
       receipt_number: '6',
       channel_label: 'Dostavka',
+      cashier_name: 'Adham',
       request: {
         Receipt: {
           Operation: 0,
@@ -150,6 +151,7 @@ describe('browser receipt printing', () => {
 
     expect(text).toContain('Buyurtma raqami: 1');
     expect(text).toContain('Buyurtma turi: Yetkazib berish');
+    expect(text).toContain('Kassir: Adham');
     expect(text).not.toContain('CHEK:');
     expect(text).not.toContain('Buyurtma raqami: 6');
     expect(text).not.toContain('Buyurtma raqami: 15');

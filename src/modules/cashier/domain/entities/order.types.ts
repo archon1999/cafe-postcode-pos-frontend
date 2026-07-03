@@ -22,7 +22,7 @@ export type CashierOrderItem = {
   marking_scanned_count?: number;
 };
 
-export type CashierCheckStatus = 'open' | 'closed' | 'fiscal_unresolved';
+export type CashierCheckStatus = 'open' | 'closed' | 'fiscal_closed';
 export type CashierBuilderOrderChannel = 'delivery' | 'takeaway';
 
 export type CashierOrder = {

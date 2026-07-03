@@ -133,7 +133,7 @@ export function useCashierPaymentMutation(options: { orderId: string | null; onS
       await queryClient.invalidateQueries({ queryKey: cashierKeys.context });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('open') });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('closed') });
-      await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('fiscal_unresolved') });
+      await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('fiscal_closed') });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.builderOrders });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.paymentOrder(orderId) });
       await queryClient.invalidateQueries({ queryKey: ['kitchen', 'queue'] });
@@ -157,7 +157,7 @@ export function useAddCashierPaymentOrderItemMutation(options: { orderId: string
       await queryClient.invalidateQueries({ queryKey: cashierKeys.builderOrders });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('open') });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('closed') });
-      await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('fiscal_unresolved') });
+      await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('fiscal_closed') });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.paymentOrder(orderId) });
       await queryClient.invalidateQueries({ queryKey: ['kitchen', 'queue'] });
       onSuccess?.();
@@ -176,7 +176,7 @@ export function useRemoveCashierPaymentOrderItemMutation(options: { orderId: str
       await queryClient.invalidateQueries({ queryKey: cashierKeys.builderOrders });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('open') });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('closed') });
-      await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('fiscal_unresolved') });
+      await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('fiscal_closed') });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.paymentOrder(orderId) });
       await queryClient.invalidateQueries({ queryKey: ['kitchen', 'queue'] });
       onSuccess?.();
@@ -211,7 +211,7 @@ export function useCloseCashierShiftMutation(options?: {
       await queryClient.invalidateQueries({ queryKey: cashierKeys.context });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('open') });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('closed') });
-      await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('fiscal_unresolved') });
+      await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('fiscal_closed') });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.builderOrders });
       options?.onSuccess?.(response);
     },
@@ -229,7 +229,7 @@ export function useCashierRefundMutation(options?: { onSuccess?: () => void }) {
       await queryClient.invalidateQueries({ queryKey: cashierKeys.context });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('open') });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('closed') });
-      await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('fiscal_unresolved') });
+      await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('fiscal_closed') });
       options?.onSuccess?.();
     },
   });

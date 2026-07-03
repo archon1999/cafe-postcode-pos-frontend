@@ -325,6 +325,9 @@ function fiscalSnapshotFromPayload(payload: Record<string, unknown>): PrintableP
         payload.channelLabel ??
         (String(receipt.Operation ?? '') === '1' ? 'Qaytarish' : 'Sotuv'),
     ),
+    cashier_name: String(payload.cashier_name ?? payload.cashierName ?? ''),
+    cashier_id: String(payload.cashier_id ?? payload.cashierId ?? ''),
+    waiter_name: String(payload.waiter_name ?? payload.waiterName ?? ''),
     delivery_phone: String(payload.delivery_phone ?? payload.deliveryPhone ?? ''),
     delivery_address: String(payload.delivery_address ?? payload.deliveryAddress ?? ''),
     printed_at_label: String(receipt.Time ?? payload.issued_at ?? payload.issuedAt ?? ''),
