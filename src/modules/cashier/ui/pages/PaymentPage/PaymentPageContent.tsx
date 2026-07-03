@@ -509,8 +509,8 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     const secondAmount = Math.max(paymentAmount - firstAmount, 0);
 
     setSplitParts([
-      { id: `${Date.now()}-1`, method, amount: String(firstAmount) },
-      { id: `${Date.now()}-2`, method, amount: String(secondAmount) },
+      { id: `${Date.now()}-1`, method: defaultPartMethod, amount: String(firstAmount) },
+      { id: `${Date.now()}-2`, method: defaultPartMethod, amount: String(secondAmount) },
     ]);
   };
 

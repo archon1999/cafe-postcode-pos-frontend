@@ -13,6 +13,7 @@ const fiscalUnresolvedOrdersMock = vi.fn();
 const updateDisplayNameMutateAsyncMock = vi.fn();
 const retryFiscalMutateMock = vi.fn();
 const fiscalUnresolvedRefetchMock = vi.fn();
+const reprintMutateAsyncMock = vi.fn();
 const printReceiptWithFallbackMock = vi.fn(() => Promise.resolve(true));
 let openOrdersState: Array<Record<string, unknown>> = [];
 
@@ -77,7 +78,7 @@ vi.mock('modules/cashier/application', () => ({
   }),
   useCashierReprintMutation: () => ({
     isPending: false,
-    mutate: vi.fn(),
+    mutateAsync: reprintMutateAsyncMock,
   }),
   useCashierUpdateOrderDisplayNameMutation: (options?: { onSuccess?: (orderId: string) => void }) => ({
     isPending: false,
@@ -93,6 +94,7 @@ vi.mock('modules/cashier/application', () => ({
 }));
 
 vi.mock('modules/cashier/domain', () => ({
+  aggregateCashierOrderItems: (items: unknown[]) => items,
   groupCashierOrderItemsByStation: () => [['Issiq oshxona', []]],
   getCashierOrderNumberLabel: (order: { orderNumber: number }) => `ID ${order.orderNumber}`,
   getCashierOrderDisplayName: (order: { orderNumber: number; displayName?: string | null }) => {
@@ -149,6 +151,7 @@ describe('OpenChecksPageContent', () => {
     updateDisplayNameMutateAsyncMock.mockReset();
     retryFiscalMutateMock.mockReset();
     fiscalUnresolvedRefetchMock.mockReset();
+    reprintMutateAsyncMock.mockReset();
     printReceiptWithFallbackMock.mockClear();
     openOrdersState = [
       {
@@ -213,6 +216,72 @@ describe('OpenChecksPageContent', () => {
     fireEvent.click(screen.getByRole('button', { name: /Yopiq hisoblar/ }));
 
     expect(screen.queryByRole('button', { name: "Menyuga o'tish" })).toBeNull();
+  });
+
+  it('prints a fallback receipt for a closed paid check without a saved receipt', async () => {
+    openOrdersMock.mockReturnValue([]);
+    closedOrdersMock.mockReturnValue([
+      {
+        id: 'order-6',
+        orderNumber: 106,
+        displayName: '55',
+        status: 'closed',
+        subtotal: 22000,
+        serviceFee: 0,
+        serviceFeePercent: 0,
+        total: 22000,
+        note: '',
+        channel: 'takeaway',
+        items: [
+          {
+            id: 'item-1',
+            catalogItem: 'item-1',
+            catalogItemName: 'Shaverma',
+            quantity: 1,
+            lineTotal: 22000,
+            status: 'active',
+          },
+        ],
+        tableSession: null,
+        tableName: '',
+        guestCount: 1,
+        openedByName: 'Ali',
+        cashierName: 'Adham',
+        createdAt: '2026-04-18T09:00:00Z',
+        closedAt: '2026-04-18T09:30:00Z',
+        payments: [{ id: 'payment-6', amount: 22000, status: 'succeeded', method: 'cash' }],
+        receipts: [],
+      },
+    ]);
+
+    render(<OpenChecksPageContent />);
+    fireEvent.click(screen.getByRole('button', { name: /Yopiq hisoblar/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Chekni qayta chiqarish' }));
+
+    await waitFor(() => {
+      expect(printReceiptWithFallbackMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          snapshot: expect.objectContaining({
+            restaurant_name: 'Chek',
+            order_label: '#55',
+            order_number: '#55',
+            receipt_number: 'payment-6',
+            channel_label: 'Zalda',
+            total: 22000,
+            received_cash: 22000,
+            items: [
+              expect.objectContaining({
+                name: 'Shaverma',
+                quantity: 1,
+                lineTotal: 22000,
+              }),
+            ],
+          }),
+        }),
+        { preferLocalAgent: true },
+      );
+    });
+    expect(reprintMutateAsyncMock).not.toHaveBeenCalled();
   });
 
   it('renames an open check from the dialog and renders the new title', async () => {

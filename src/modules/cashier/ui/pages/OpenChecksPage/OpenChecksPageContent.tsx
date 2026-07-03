@@ -31,6 +31,7 @@ import {
   useCashierUpdateOrderDisplayNameMutation,
 } from 'modules/cashier/application';
 import {
+  aggregateCashierOrderItems,
   getCashierOrderDisplayName,
   getCashierOrderNumberLabel,
   groupCashierOrderItemsByStation,
@@ -44,7 +45,8 @@ import { printReceiptWithFallback } from 'shared/printing/browserReceipt';
 import { PosIconAction, PosOpenChecksSkeleton, PosSectionTabs, PosSettingsMenu } from 'shared/ui/pos-primitives';
 
 type CashierPayment = NonNullable<CashierOrder['payments']>[number];
-type RetryFiscalReceipt = { payload?: Record<string, unknown> | null };
+type PosSession = ReturnType<typeof usePosSession>['session'];
+type RetryFiscalReceipt = { id?: string; payload?: Record<string, unknown> | null };
 type RetryFiscalReceiptDialogState = {
   receipts: RetryFiscalReceipt[];
   receiptNumber: string;
@@ -106,6 +108,74 @@ function withReceiptOrderContext(payload: Record<string, unknown> | null | undef
   return {
     ...source,
     ...context,
+  };
+}
+
+function getPaymentCashAmount(payment: CashierPayment) {
+  const explicitCash = payment.fiscalCashAmount ?? payment.fiscal_cash_amount ?? payment.cashAmount ?? payment.cash_amount;
+  if (explicitCash !== undefined && explicitCash !== null) {
+    return Number(explicitCash);
+  }
+
+  return payment.method === 'cash' ? Number(payment.amount ?? 0) : 0;
+}
+
+function getPaymentCardAmount(payment: CashierPayment) {
+  const explicitCard = payment.fiscalCardAmount ?? payment.fiscal_card_amount ?? payment.cardAmount ?? payment.card_amount;
+  if (explicitCard !== undefined && explicitCard !== null) {
+    return Number(explicitCard);
+  }
+
+  return payment.method === 'card' || payment.method === 'qr' ? Number(payment.amount ?? 0) : 0;
+}
+
+function buildClosedOrderFallbackReceiptPayload(order: CashierOrder, payment: CashierPayment, session: PosSession) {
+  const restaurantContext = session?.restaurantContext;
+  const orderNumberLabel = getCashierOrderDisplayName({
+    orderNumber: order.orderNumber,
+    displayName: order.displayName,
+  });
+  const tableLabel = order.tableName || order.hallName ? [order.hallName, order.tableName].filter(Boolean).join(' / ') : '';
+  const activeItems = aggregateCashierOrderItems(order.items?.filter((item) => item.status !== 'cancelled'));
+  const succeededPayments = (order.payments ?? []).filter((item) => item.status === 'succeeded');
+  const receivedCash = succeededPayments.reduce((sum, item) => sum + getPaymentCashAmount(item), 0);
+  const receivedCard = succeededPayments.reduce((sum, item) => sum + getPaymentCardAmount(item), 0);
+  const paidAt = payment.paidAt ?? order.closedAt ?? new Date().toISOString();
+
+  return {
+    snapshot: {
+      restaurant_name: restaurantContext?.restaurantName ?? 'Chek',
+      restaurant_legal_name: restaurantContext?.restaurantName ?? 'Chek',
+      restaurant_address: restaurantContext?.address ?? '',
+      restaurant_phone: restaurantContext?.phone ?? '',
+      restaurant_social: restaurantContext?.social ?? '',
+      order_label: orderNumberLabel,
+      order_number: orderNumberLabel,
+      receipt_number: payment.id,
+      channel_label: getReceiptChannelLabel(order.channel),
+      table_label: tableLabel,
+      delivery_phone: order.deliveryPhone ?? '',
+      delivery_address: order.deliveryAddress ?? '',
+      cashier_name: session?.user?.fullName || session?.user?.username || order.cashierName || '',
+      cashier_id: session?.user?.id ?? '',
+      printed_at_label: paidAt,
+      items: activeItems.map((item) => ({
+        name: item.catalogItemName,
+        quantity: Number(item.quantity ?? 0),
+        lineTotal: Number(item.lineTotal ?? 0),
+        note: item.note ?? '',
+      })),
+      subtotal: Number(order.subtotal ?? 0),
+      service_fee: Number(order.serviceFee ?? 0),
+      service_fee_percent: Number(order.serviceFeePercent ?? 0),
+      vat_enabled: Boolean(order.vatEnabled),
+      vat_percent: Number(order.vatPercent ?? 0),
+      vat_amount: Number(order.vatAmount ?? 0),
+      total: Number(order.total ?? payment.amount ?? 0),
+      received_cash: receivedCash,
+      received_card: receivedCard,
+      order_note: order.note ?? '',
+    },
   };
 }
 
@@ -709,7 +779,9 @@ export function OpenChecksPageContent() {
   const canRefund = Boolean(
     selectedTab === 'closed' && latestSucceededPayment?.id && !latestSucceededPayment?.isRefunded && canOperatePayments,
   );
-  const canReprint = Boolean(selectedTab === 'closed' && latestReceipt?.id && canOperatePayments);
+  const canReprint = Boolean(
+    selectedTab === 'closed' && canOperatePayments && (latestReceipt?.id || latestSucceededPayment?.id),
+  );
   const canRetryFiscal = Boolean(
     selectedTab === 'fiscal_unresolved' && latestSucceededPayment?.id && canOperatePayments,
   );
@@ -784,7 +856,22 @@ export function OpenChecksPageContent() {
         refundMutation.mutate({ paymentId: latestSucceededPayment.id });
       }}
       onReprint={() => {
-        if (!latestReceipt?.id || reprintMutation.isPending) {
+        if (reprintMutation.isPending || !selectedOrder) {
+          return;
+        }
+        if (!latestReceipt?.id) {
+          if (!latestSucceededPayment?.id) {
+            return;
+          }
+          void printReceiptWithFallback(
+            withReceiptOrderContext(
+              buildClosedOrderFallbackReceiptPayload(selectedOrder, latestSucceededPayment, session),
+              selectedOrder,
+            ),
+            receiptPrintOptions,
+          ).catch(() => {
+            toast.info('Printer ishlamayapti');
+          });
           return;
         }
         reprintMutation

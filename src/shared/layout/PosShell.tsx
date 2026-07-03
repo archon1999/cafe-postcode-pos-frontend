@@ -65,6 +65,7 @@ export function PosShell({ children }: { children: ReactNode }) {
     path: string;
     badge?: number;
   }>;
+  const shouldShowDock = dockItems.length > 1 || dockItems[0]?.key === 'halls';
 
   return (
     <Box
@@ -83,7 +84,7 @@ export function PosShell({ children }: { children: ReactNode }) {
         {children}
       </Box>
 
-      {dockItems.length > 1 && !isCatalogPage ? <PosBottomDock items={dockItems} /> : null}
+      {shouldShowDock && !isCatalogPage ? <PosBottomDock items={dockItems} /> : null}
     </Box>
   );
 }
