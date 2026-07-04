@@ -268,10 +268,10 @@ describe('OpenChecksPageContent', () => {
         expect.objectContaining({
           snapshot: expect.objectContaining({
             restaurant_name: 'Chek',
-            order_label: '106',
-            orderLabel: '106',
-            order_number: '106',
-            orderNumber: '106',
+            order_label: '#55',
+            orderLabel: '#55',
+            order_number: '#55',
+            orderNumber: '#55',
             receipt_number: 'payment-6',
             channel_label: 'Zalda',
             total: 22000,

@@ -387,6 +387,10 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     const order = receiptData.order;
     const payment = receiptData.payment;
     const receiptNumber = payment.externalRef || getCashierOrderNumberLabel({ orderNumber: order.orderNumber });
+    const orderReceiptLabel = getCashierOrderDisplayName({
+      orderNumber: order.orderNumber,
+      displayName: order.displayName,
+    });
     const activeItems = aggregateCashierOrderItems(order.items?.filter((item) => item.status !== 'cancelled'));
     const paymentAmount = Number(payment.amount ?? 0);
     const succeededPayments = (order.payments ?? []).filter((orderPayment) => orderPayment.status === 'succeeded');
@@ -430,10 +434,10 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
         restaurant_address: session?.restaurantContext?.address ?? '',
         restaurant_phone: session?.restaurantContext?.phone ?? '',
         restaurant_social: session?.restaurantContext?.social ?? '',
-        order_label: String(Number(order.orderNumber || 0) || order.orderNumber || ''),
-        orderLabel: String(Number(order.orderNumber || 0) || order.orderNumber || ''),
-        order_number: String(Number(order.orderNumber || 0) || order.orderNumber || ''),
-        orderNumber: String(Number(order.orderNumber || 0) || order.orderNumber || ''),
+        order_label: orderReceiptLabel,
+        orderLabel: orderReceiptLabel,
+        order_number: orderReceiptLabel,
+        orderNumber: orderReceiptLabel,
         receipt_number: receiptNumber,
         channel_label: getReceiptChannelLabel(order.channel),
         table_label:

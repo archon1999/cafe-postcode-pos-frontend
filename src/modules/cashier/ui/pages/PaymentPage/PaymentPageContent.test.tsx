@@ -555,7 +555,7 @@ describe('PaymentPageContent', () => {
     });
   });
 
-  it('prints plain payment fallback receipt without VAT or ID-prefixed order number', async () => {
+  it('prints plain payment fallback receipt with the same order label as kitchen checks', async () => {
     paymentMutateAsyncMock.mockResolvedValueOnce({
       order: {
         orderNumber: 101,
@@ -589,10 +589,10 @@ describe('PaymentPageContent', () => {
       expect(printReceiptWithFallbackMock).toHaveBeenCalledWith(
         expect.objectContaining({
           snapshot: expect.objectContaining({
-            order_label: '101',
-            orderLabel: '101',
-            order_number: '101',
-            orderNumber: '101',
+            order_label: 'VIP mijoz',
+            orderLabel: 'VIP mijoz',
+            order_number: 'VIP mijoz',
+            orderNumber: 'VIP mijoz',
             vat_enabled: false,
             vat_percent: 0,
             vat_amount: 0,

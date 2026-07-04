@@ -131,7 +131,10 @@ function getPaymentCardAmount(payment: CashierPayment) {
 
 function buildClosedOrderFallbackReceiptPayload(order: CashierOrder, payment: CashierPayment, session: PosSession) {
   const restaurantContext = session?.restaurantContext;
-  const orderNumberLabel = String(Number(order.orderNumber || 0) || order.orderNumber || '');
+  const orderNumberLabel = getCashierOrderDisplayName({
+    orderNumber: order.orderNumber,
+    displayName: order.displayName,
+  });
   const tableLabel = order.tableName || order.hallName ? [order.hallName, order.tableName].filter(Boolean).join(' / ') : '';
   const activeItems = aggregateCashierOrderItems(order.items?.filter((item) => item.status !== 'cancelled'));
   const succeededPayments = (order.payments ?? []).filter((item) => item.status === 'succeeded');
