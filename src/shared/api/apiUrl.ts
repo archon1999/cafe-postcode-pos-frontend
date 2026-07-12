@@ -1,4 +1,5 @@
-const LOCAL_API_ORIGIN = 'http://127.0.0.1:8000';
+import { readEdgeOrigin, readStoredEdgeOrigin } from './edgeConnection';
+
 const APP_API_PATH = 'api/v1';
 const VERSIONED_API_PATTERN = /\/api\/v\d+(?:\/|$)/;
 
@@ -15,6 +16,10 @@ function joinUrl(baseUrl: string, path: string) {
 }
 
 export function resolveApiBaseUrl() {
+  const edgeOrigin = readStoredEdgeOrigin();
+  if (edgeOrigin) {
+    return joinUrl(edgeOrigin, 'v1');
+  }
   const configuredBaseUrl = stripTrailingSlashes(normalizeConfigValue(import.meta.env.VITE_API_BASE_URL));
 
   if (configuredBaseUrl) {
@@ -29,14 +34,5 @@ export function resolveApiBaseUrl() {
     return joinUrl(configuredBaseUrl, APP_API_PATH);
   }
 
-  if (typeof window === 'undefined') {
-    return joinUrl(LOCAL_API_ORIGIN, APP_API_PATH);
-  }
-
-  const { hostname, port, protocol } = window.location;
-  if (port && port !== '8000') {
-    return `${protocol}//${hostname}:8000/${APP_API_PATH}`;
-  }
-
-  return `/${APP_API_PATH}`;
+  return joinUrl(readEdgeOrigin(), 'v1');
 }

@@ -18,6 +18,7 @@ import {
 import { useTheme } from '@mui/material/styles';
 import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
+import { toast } from 'sonner';
 
 import { usePosSession } from 'modules/auth';
 import {
@@ -40,10 +41,12 @@ import {
   type CashierMenuCategory,
   type CashierOrderItem,
 } from 'modules/cashier/domain';
+import { enqueueEdgePrintDocuments } from 'modules/edge-printing/application';
 import { resolveApiBaseUrl } from 'shared/api/apiUrl';
 import { getApiErrorMessage } from 'shared/api/errorMessage';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { formatPosCopy, getPosCopy } from 'shared/locale/copy';
+import { isTemporaryBuilderId } from 'shared/pos/optimistic-builder-order';
 import { useOptimisticBuilderOrder } from 'shared/pos/useOptimisticBuilderOrder';
 import { useScannerInput } from 'shared/pos/useScannerInput';
 import { formatCompactMoney, formatMoneyParts } from 'shared/pos/utils';
@@ -91,11 +94,11 @@ function formatPercent(value: number) {
 }
 
 function getOrderItemMarkingRequiredCount(item: CashierOrderItem) {
-  return Number(item.markingRequiredCount ?? item.marking_required_count ?? 0);
+  return Number(item.markingRequiredCount ?? 0);
 }
 
 function getOrderItemMarkingScannedCount(item: CashierOrderItem) {
-  return Number(item.markingScannedCount ?? item.marking_scanned_count ?? item.markings?.length ?? 0);
+  return Number(item.markingScannedCount ?? item.markings?.length ?? 0);
 }
 
 function getOrderItemsTotalQuantity(items: CashierOrderItem[] | undefined) {
@@ -103,7 +106,7 @@ function getOrderItemsTotalQuantity(items: CashierOrderItem[] | undefined) {
 }
 
 function resolveBuilderChannel(value: string | null): CashierBuilderOrderChannel {
-  return value === 'delivery' ? 'delivery' : 'takeaway';
+  return value === 'delivery' || value === 'takeaway' ? value : 'hall';
 }
 
 export function CashierBuilderPageContent() {
@@ -131,13 +134,14 @@ export function CashierBuilderPageContent() {
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [deliveryDetailsAttempted, setDeliveryDetailsAttempted] = useState(false);
   const [deliveryDetailsSaving, setDeliveryDetailsSaving] = useState(false);
+  const [channelSwitchSaving, setChannelSwitchSaving] = useState(false);
 
   const menuQuery = useCashierMenuQuery();
   const ordersQuery = useCashierBuilderOrdersQuery();
   const editOrderQuery = useCashierPaymentOrderQuery(editOrderId);
   const serverOrder = useMemo(
-    () => editOrderQuery.data ?? getCurrentCashierBuilderOrder(ordersQuery.data, session?.user.id, builderChannel),
-    [builderChannel, editOrderQuery.data, ordersQuery.data, session?.user.id],
+    () => editOrderQuery.data ?? getCurrentCashierBuilderOrder(ordersQuery.data, session?.user.id),
+    [editOrderQuery.data, ordersQuery.data, session?.user.id],
   );
   const { currentOrder, addItem, removeItem, hasPendingOperations } = useOptimisticBuilderOrder({
     baseOrder: serverOrder,
@@ -154,16 +158,24 @@ export function CashierBuilderPageContent() {
     defaultVatEnabled: Boolean(session?.restaurantContext?.vatEnabled),
     defaultVatPercent: session?.restaurantContext?.vatPercent ?? 0,
     removeOrderItem: (itemId) => cashierRepository.removeOrderItem(itemId),
-    resetKey: `${builderChannel}:${editOrderId ?? ''}`,
+    onPrintDocuments: (documentIds) => {
+      void enqueueEdgePrintDocuments(documentIds).then(({ errors }) => {
+        errors.forEach((error) =>
+          toast.error(error instanceof Error ? error.message : 'Oshxona chekini chiqarib bo‘lmadi'),
+        );
+      });
+    },
+    resetKey: editOrderId ?? '',
     selectCurrentOrder: (orders) =>
       editOrderId
         ? orders.find((order) => order.id === editOrderId)
-        : getCurrentCashierBuilderOrder(orders, session?.user.id, builderChannel),
+        : getCurrentCashierBuilderOrder(orders, session?.user.id),
     addOrderItem: (orderId, menuItem, note) => cashierRepository.addOrderItem(orderId, menuItem.id, note),
     syncErrorMessage: copy.itemSyncFailed,
   });
   const submitOrderMutation = useSubmitCashierOrderMutation({
     orderId: currentOrder?.id,
+    onPrintError: (error) => toast.error(error instanceof Error ? error.message : 'Oshxona chekini chiqarib bo‘lmadi'),
     onSuccess: () => {
       setKitchenNote('');
       setCartOpen(false);
@@ -303,7 +315,8 @@ export function CashierBuilderPageContent() {
   const normalizedDeliveryAddress = normalizeDeliveryAddress(deliveryAddress);
   const isDeliveryPhoneValid = isValidDeliveryPhone(deliveryPhone);
   const isDeliveryAddressValid = normalizedDeliveryAddress.length > 0;
-  const channelSwitchDisabled = hasPendingOperations || submitOrderMutation.isPending || deliveryDetailsSaving;
+  const channelSwitchDisabled =
+    hasPendingOperations || submitOrderMutation.isPending || deliveryDetailsSaving || channelSwitchSaving;
   const currentDeliveryOrderId = currentOrder?.id;
   const currentDeliveryOrderChannel = currentOrder?.channel;
   const currentDeliveryPhone = currentOrder?.deliveryPhone;
@@ -401,19 +414,46 @@ export function CashierBuilderPageContent() {
     }
   };
 
-  const handleBuilderChannelChange = (channel: 'hall' | 'delivery' | 'takeaway') => {
-    if (channel !== 'delivery' && channel !== 'takeaway') {
+  const handleBuilderChannelChange = async (channel: 'hall' | 'delivery' | 'takeaway') => {
+    if (channel === builderChannel || channelSwitchSaving) {
+      return;
+    }
+    if (!currentOrder || isTemporaryBuilderId(currentOrder.id)) {
+      setBuilderChannel(channel);
+      setSelectedCartItemKey(null);
       return;
     }
 
-    setBuilderChannel(channel);
-    setSelectedCartItemKey(null);
+    setChannelSwitchSaving(true);
+    try {
+      await cashierRepository.updateOrderChannel(currentOrder.id, channel);
+      await ordersQuery.refetch();
+      if (editOrderId) {
+        await editOrderQuery.refetch();
+      }
+      setBuilderChannel(channel);
+      setSelectedCartItemKey(null);
+    } catch (error) {
+      setScanToast(getApiErrorMessage(error, copy.itemSyncFailed));
+    } finally {
+      setChannelSwitchSaving(false);
+    }
   };
 
   useEffect(() => {
     const channelFromQuery = resolveBuilderChannel(searchParams.get('channel'));
     setBuilderChannel((current) => (current === channelFromQuery ? current : channelFromQuery));
   }, [searchParams]);
+
+  useEffect(() => {
+    if (
+      channelSwitchSaving ||
+      (serverOrder?.channel !== 'hall' && serverOrder?.channel !== 'takeaway' && serverOrder?.channel !== 'delivery')
+    ) {
+      return;
+    }
+    setBuilderChannel((current) => (current === serverOrder.channel ? current : serverOrder.channel));
+  }, [channelSwitchSaving, serverOrder?.channel]);
 
   useEffect(() => {
     if (!currentDeliveryOrderId || currentDeliveryOrderChannel !== 'delivery') {
@@ -442,6 +482,12 @@ export function CashierBuilderPageContent() {
   if (isInitialLoading) {
     return <PosBuilderPageSkeleton mobile={isMobile} />;
   }
+
+  const currentOrderLabel = currentOrder
+    ? isTemporaryBuilderId(currentOrder.id) || /^L-[0-9a-f]{6}$/i.test(currentOrder.displayName?.trim() ?? '')
+      ? copy.orderCreating
+      : getCashierOrderDisplayName(currentOrder)
+    : '#0';
 
   return (
     <PosPageFrame
@@ -808,7 +854,7 @@ export function CashierBuilderPageContent() {
 
                 <Stack spacing={0.45}>
                   <Typography variant="body1" color="text.secondary">
-                    {copy.orders}: {currentOrder ? getCashierOrderDisplayName(currentOrder) : '#0'}
+                    {copy.orders}: {currentOrderLabel}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     {session?.user.fullName}
@@ -821,16 +867,19 @@ export function CashierBuilderPageContent() {
                 channel={builderChannel}
                 disabled={channelSwitchDisabled}
                 items={[
-                  { value: 'takeaway', label: copy.takeaway },
-                  { value: 'delivery', label: copy.delivery },
+                  { value: 'hall', label: copy.hall },
+                  { value: 'takeaway', label: copy.takeawaySwitch },
+                  { value: 'delivery', label: copy.deliverySwitch },
                 ]}
-                onChange={handleBuilderChannelChange}
+                onChange={(channel) => void handleBuilderChannelChange(channel)}
               />
             </Stack>
           </Box>
 
-          <Box sx={{ px: 2.25, pb: 2, flex: 1, overflowY: 'auto' }}>
-            <Stack spacing={1.45}>
+          <Box sx={{ px: 2.25, pb: 2, flex: 1, overflowY: groupedOrderItems.length > 0 ? 'auto' : 'hidden' }}>
+            <Stack
+              spacing={1.45}
+              sx={groupedOrderItems.length === 0 ? { height: '100%', justifyContent: 'center' } : undefined}>
               {groupedOrderItems.length > 0 ? (
                 groupedOrderItems.map(([stationName, items]) => (
                   <Stack key={stationName} spacing={0.85}>
@@ -990,7 +1039,7 @@ export function CashierBuilderPageContent() {
                   </Stack>
                 ))
               ) : (
-                <Stack sx={{ py: 14, textAlign: 'center' }} spacing={1}>
+                <Stack sx={{ textAlign: 'center' }} spacing={1}>
                   <Typography variant="h6">{copy.emptyOrder}</Typography>
                   <Typography variant="body1" color="text.secondary">
                     {copy.builderEmpty}
@@ -1101,7 +1150,7 @@ export function CashierBuilderPageContent() {
             <Stack spacing={0.25}>
               <Typography variant="h6">{copy.bills}</Typography>
               <Typography variant="body2" color="text.secondary">
-                {copy.orders}: {currentOrder ? getCashierOrderDisplayName(currentOrder) : '#0'}
+                {copy.orders}: {currentOrderLabel}
               </Typography>
             </Stack>
             <PosIconAction icon="solar:close-circle-bold-duotone" onClick={() => setCartOpen(false)} />
@@ -1116,7 +1165,7 @@ export function CashierBuilderPageContent() {
                 { value: 'takeaway', label: copy.takeaway },
                 { value: 'delivery', label: copy.delivery },
               ]}
-              onChange={handleBuilderChannelChange}
+              onChange={(channel) => void handleBuilderChannelChange(channel)}
             />
           </Box>
           <Divider />

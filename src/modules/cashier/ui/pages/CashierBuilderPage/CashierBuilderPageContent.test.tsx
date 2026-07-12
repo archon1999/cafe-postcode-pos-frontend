@@ -13,11 +13,22 @@ const useCashierPaymentOrderQueryMock = vi.fn();
 const useOptimisticBuilderOrderMock = vi.fn();
 const submitOrderMutateAsyncMock = vi.fn();
 const updateOrderDeliveryDetailsMock = vi.fn();
+const updateOrderChannelMock = vi.fn();
 let searchParamsValue = '';
+let cachedSearchParamsValue = '';
+let cachedSearchParams = new URLSearchParams();
+
+function getSearchParamsMock() {
+  if (cachedSearchParamsValue !== searchParamsValue) {
+    cachedSearchParamsValue = searchParamsValue;
+    cachedSearchParams = new URLSearchParams(searchParamsValue);
+  }
+  return cachedSearchParams;
+}
 
 vi.mock('react-router', () => ({
   useNavigate: () => navigateMock,
-  useSearchParams: () => [new URLSearchParams(searchParamsValue)],
+  useSearchParams: () => [getSearchParamsMock()],
 }));
 
 vi.mock('modules/auth', () => ({
@@ -56,6 +67,7 @@ vi.mock('modules/cashier/data-access', () => ({
     addOrderItem: vi.fn(),
     removeOrderItem: vi.fn(),
     scanOrderMarking: vi.fn(),
+    updateOrderChannel: (...args: unknown[]) => updateOrderChannelMock(...args),
     updateOrderDeliveryDetails: (...args: unknown[]) => updateOrderDeliveryDetailsMock(...args),
   },
 }));
@@ -118,6 +130,8 @@ describe('CashierBuilderPageContent', () => {
     submitOrderMutateAsyncMock.mockReset();
     updateOrderDeliveryDetailsMock.mockReset();
     updateOrderDeliveryDetailsMock.mockResolvedValue({});
+    updateOrderChannelMock.mockReset();
+    updateOrderChannelMock.mockResolvedValue({ id: 'order-1', channel: 'hall' });
     searchParamsValue = '';
     useCashierMenuQueryMock.mockReset();
     useCashierMenuQueryMock.mockReturnValue({
@@ -139,9 +153,10 @@ describe('CashierBuilderPageContent', () => {
     useCashierPaymentOrderQueryMock.mockReset();
     useCashierPaymentOrderQueryMock.mockReturnValue({
       data: null,
+      refetch: vi.fn(),
     });
     useOptimisticBuilderOrderMock.mockReset();
-    useOptimisticBuilderOrderMock.mockImplementation((options: { channel: 'delivery' | 'takeaway' }) => ({
+    useOptimisticBuilderOrderMock.mockImplementation((options: { channel: 'delivery' | 'hall' | 'takeaway' }) => ({
       currentOrder: {
         id: 'order-1',
         orderNumber: 7,
@@ -171,12 +186,51 @@ describe('CashierBuilderPageContent', () => {
     expect(navigateMock).toHaveBeenCalledWith('/menu/catalog?source=cashier&channel=takeaway');
   });
 
-  it('defaults to takeaway and renders takeaway/delivery channel labels', () => {
+  it('defaults to hall and renders all channel labels', () => {
     render(<CashierBuilderPageContent />);
 
-    expect(useOptimisticBuilderOrderMock).toHaveBeenCalledWith(expect.objectContaining({ channel: 'takeaway' }));
-    expect(screen.getAllByRole('button', { name: 'Olib ketish' }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('button', { name: 'Yetkazib berish' }).length).toBeGreaterThan(0);
+    expect(useOptimisticBuilderOrderMock).toHaveBeenCalledWith(expect.objectContaining({ channel: 'hall' }));
+    expect(screen.getAllByRole('button', { name: 'Zalda' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: 'Soboy' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: 'Dostavka' }).length).toBeGreaterThan(0);
+  });
+
+  it('hides the local order id until the server assigns the real order number', () => {
+    useOptimisticBuilderOrderMock.mockReturnValue({
+      currentOrder: {
+        id: 'c0d10c1b-585b-4732-a7fe-3d25094bc14d6e',
+        displayName: 'L-c14d6e',
+        orderNumber: 1,
+        total: 12000,
+        subtotal: 12000,
+        serviceFee: 0,
+        note: '',
+        channel: 'hall',
+        status: 'open',
+        items: [],
+      },
+      addItem: vi.fn(),
+      removeItem: vi.fn(),
+      hasPendingOperations: false,
+    });
+
+    render(<CashierBuilderPageContent />);
+
+    expect(screen.getAllByText('Buyurtma: Yaratilmoqda...').length).toBeGreaterThan(0);
+    expect(screen.queryByText(/L-c14d6e/)).toBeNull();
+  });
+
+  it('switches to a counter hall order without navigating to the halls page', async () => {
+    searchParamsValue = 'channel=takeaway';
+    render(<CashierBuilderPageContent />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Zalda' }));
+
+    await waitFor(() => {
+      expect(useOptimisticBuilderOrderMock).toHaveBeenLastCalledWith(expect.objectContaining({ channel: 'hall' }));
+    });
+    expect(updateOrderChannelMock).toHaveBeenCalledWith('order-1', 'hall');
+    expect(navigateMock).not.toHaveBeenCalledWith('/waiter/halls');
   });
 
   it('uses payment-first checkout for takeaway', () => {

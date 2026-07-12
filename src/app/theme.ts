@@ -120,7 +120,7 @@ const blueShared = {
     segmentActiveColor: '#ffffff',
     legendBg: '#eee6d9',
     checkCardBg: 'rgba(255,255,255,0.76)',
-    checkCardSelectedBg: '#efe7db',
+    checkCardSelectedBg: '#dfc9aa',
     checkCardAvatarBg: '#d8d0c2',
     checkCardEmptyBg: 'rgba(255,255,255,0.75)',
     menuItemPriceBg: '#d7cebf',

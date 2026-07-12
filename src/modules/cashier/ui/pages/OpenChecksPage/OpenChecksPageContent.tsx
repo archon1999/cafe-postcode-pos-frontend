@@ -23,30 +23,27 @@ import { toast } from 'sonner';
 
 import { canManageCashierPayments, usePosSession } from 'modules/auth';
 import {
-  useCashierContextQuery,
+  useCashierEnsurePaymentPrintDocumentMutation,
   useCashierFiscalRetryMutation,
   useCashierOpenChecksQuery,
   useCashierRefundMutation,
-  useCashierReprintMutation,
   useCashierUpdateOrderDisplayNameMutation,
 } from 'modules/cashier/application';
 import {
-  aggregateCashierOrderItems,
   getCashierOrderDisplayName,
   getCashierOrderNumberLabel,
   groupCashierOrderItemsByStation,
 } from 'modules/cashier/domain';
 import type { CashierCheckStatus, CashierOrder } from 'modules/cashier/domain/entities/order.types';
+import { useEdgePrintMutation } from 'modules/edge-printing';
 import { getApiErrorMessage } from 'shared/api/errorMessage';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { type PosLocale, formatPosCopy, getPosCopy } from 'shared/locale/copy';
 import { formatCompactMoney, formatTime } from 'shared/pos/utils';
-import { printReceiptWithFallback } from 'shared/printing/browserReceipt';
 import { PosIconAction, PosOpenChecksSkeleton, PosSectionTabs, PosSettingsMenu } from 'shared/ui/pos-primitives';
 
 type CashierPayment = NonNullable<CashierOrder['payments']>[number];
-type PosSession = ReturnType<typeof usePosSession>['session'];
-type RetryFiscalReceipt = { id?: string; payload?: Record<string, unknown> | null };
+type RetryFiscalReceipt = { id?: string; printDocument?: string | null; payload?: Record<string, unknown> | null };
 type RetryFiscalReceiptDialogState = {
   receipts: RetryFiscalReceipt[];
   receiptNumber: string;
@@ -65,120 +62,6 @@ function getChecksOrders(data: ChecksQueryData) {
 
 function getChecksCount(data: ChecksQueryData) {
   return Array.isArray(data) ? data.length : (data?.count ?? data?.orders?.length ?? 0);
-}
-
-function getReceiptChannelLabel(channel?: string | null) {
-  if (channel === 'delivery') return 'Yetkazib berish';
-  if (channel === 'online') return 'Online';
-  return 'Zalda';
-}
-
-function withReceiptOrderContext(payload: Record<string, unknown> | null | undefined, order?: CashierOrder | null) {
-  if (!order) return payload ?? null;
-  const orderNumberLabel = getCashierOrderDisplayName({
-    orderNumber: order.orderNumber,
-    displayName: order.displayName,
-  });
-  const tableLabel = order.tableName || order.hallName ? [order.hallName, order.tableName].filter(Boolean).join(' / ') : '';
-  const context = {
-    order_label: orderNumberLabel,
-    orderLabel: orderNumberLabel,
-    order_number: orderNumberLabel,
-    orderNumber: orderNumberLabel,
-    channel_label: getReceiptChannelLabel(order.channel),
-    channelLabel: getReceiptChannelLabel(order.channel),
-    table_label: tableLabel,
-    tableLabel,
-    delivery_phone: order.deliveryPhone ?? '',
-    deliveryPhone: order.deliveryPhone ?? '',
-    delivery_address: order.deliveryAddress ?? '',
-    deliveryAddress: order.deliveryAddress ?? '',
-  };
-  const source = payload ?? {};
-  const snapshot = source.snapshot;
-  if (snapshot && typeof snapshot === 'object' && !Array.isArray(snapshot)) {
-    return {
-      ...source,
-      snapshot: {
-        ...context,
-        ...(snapshot as Record<string, unknown>),
-      },
-    };
-  }
-  return {
-    ...context,
-    ...source,
-  };
-}
-
-function getPaymentCashAmount(payment: CashierPayment) {
-  const explicitCash = payment.fiscalCashAmount ?? payment.fiscal_cash_amount ?? payment.cashAmount ?? payment.cash_amount;
-  if (explicitCash !== undefined && explicitCash !== null) {
-    return Number(explicitCash);
-  }
-
-  return payment.method === 'cash' ? Number(payment.amount ?? 0) : 0;
-}
-
-function getPaymentCardAmount(payment: CashierPayment) {
-  const explicitCard = payment.fiscalCardAmount ?? payment.fiscal_card_amount ?? payment.cardAmount ?? payment.card_amount;
-  if (explicitCard !== undefined && explicitCard !== null) {
-    return Number(explicitCard);
-  }
-
-  return payment.method === 'card' || payment.method === 'qr' ? Number(payment.amount ?? 0) : 0;
-}
-
-function buildClosedOrderFallbackReceiptPayload(order: CashierOrder, payment: CashierPayment, session: PosSession) {
-  const restaurantContext = session?.restaurantContext;
-  const orderNumberLabel = getCashierOrderDisplayName({
-    orderNumber: order.orderNumber,
-    displayName: order.displayName,
-  });
-  const tableLabel = order.tableName || order.hallName ? [order.hallName, order.tableName].filter(Boolean).join(' / ') : '';
-  const activeItems = aggregateCashierOrderItems(order.items?.filter((item) => item.status !== 'cancelled'));
-  const succeededPayments = (order.payments ?? []).filter((item) => item.status === 'succeeded');
-  const receivedCash = succeededPayments.reduce((sum, item) => sum + getPaymentCashAmount(item), 0);
-  const receivedCard = succeededPayments.reduce((sum, item) => sum + getPaymentCardAmount(item), 0);
-  const paidAt = payment.paidAt ?? order.closedAt ?? new Date().toISOString();
-
-  return {
-    snapshot: {
-      restaurant_name: restaurantContext?.restaurantName ?? 'Chek',
-      restaurant_legal_name: restaurantContext?.restaurantName ?? 'Chek',
-      restaurant_address: restaurantContext?.address ?? '',
-      restaurant_phone: restaurantContext?.phone ?? '',
-      restaurant_social: restaurantContext?.social ?? '',
-      order_label: orderNumberLabel,
-      orderLabel: orderNumberLabel,
-      order_number: orderNumberLabel,
-      orderNumber: orderNumberLabel,
-      receipt_number: payment.id,
-      channel_label: getReceiptChannelLabel(order.channel),
-      table_label: tableLabel,
-      delivery_phone: order.deliveryPhone ?? '',
-      delivery_address: order.deliveryAddress ?? '',
-      cashier_name: session?.user?.fullName || session?.user?.username || order.cashierName || '',
-      cashier_id: session?.user?.id ?? '',
-      printed_at_label: paidAt,
-      items: activeItems.map((item) => ({
-        name: item.catalogItemName,
-        quantity: Number(item.quantity ?? 0),
-        lineTotal: Number(item.lineTotal ?? 0),
-        note: item.note ?? '',
-      })),
-      subtotal: Number(order.subtotal ?? 0),
-      service_fee: Number(order.serviceFee ?? 0),
-      service_fee_percent: Number(order.serviceFeePercent ?? 0),
-      vat_enabled: false,
-      vat_percent: 0,
-      vat_amount: 0,
-      total: Number(order.total ?? payment.amount ?? 0),
-      received_cash: receivedCash,
-      received_card: receivedCard,
-      order_note: order.note ?? '',
-    },
-  };
 }
 
 function formatPercent(value: number) {
@@ -319,7 +202,7 @@ function OpenChecksList({
             <Stack direction="row" justifyContent="space-between" spacing={2} alignItems="center">
               <Stack direction="row" spacing={1.75} alignItems="center">
                 <Box
-                  sx={(theme) => ({
+                  sx={{
                     minWidth: 56,
                     height: 56,
                     borderRadius: '9px',
@@ -329,7 +212,7 @@ function OpenChecksList({
                     fontSize: 22,
                     fontWeight: 700,
                     lineHeight: 1,
-                  })}>
+                  }}>
                   {order.channel === 'delivery'
                     ? 'YD'
                     : order.channel === 'takeaway'
@@ -380,14 +263,14 @@ function OpenChecksList({
         ))
       ) : (
         <Box
-          sx={(theme) => ({
+          sx={{
             flex: 1,
             borderRadius: '14px',
             minHeight: 420,
             display: 'grid',
             placeItems: 'center',
             backgroundColor: 'var(--pos-check-card-empty-bg)',
-          })}>
+          }}>
           <Typography variant="h6" color="text.secondary">
             {selectedTab === 'open'
               ? copy.noChecks
@@ -411,7 +294,6 @@ function OpenChecksDetail({
   onReprint,
   onRetryFiscal,
   order,
-  receiptNumber,
   refundAvailable,
   reprintAvailable,
   retryFiscalAvailable,
@@ -426,7 +308,6 @@ function OpenChecksDetail({
   onReprint: () => void;
   onRetryFiscal: () => void;
   order: CashierOrder;
-  receiptNumber: string | number;
   refundAvailable: boolean;
   reprintAvailable: boolean;
   retryFiscalAvailable: boolean;
@@ -511,12 +392,6 @@ function OpenChecksDetail({
                 <Typography variant="body2">
                   {latestSucceededPayment?.method === 'card' ? copy.card : copy.cash}
                 </Typography>
-              </Stack>
-              <Stack direction="row" justifyContent="space-between">
-                <Typography variant="body2" color="text.secondary">
-                  {copy.receiptNumber}
-                </Typography>
-                <Typography variant="body2">{String(receiptNumber)}</Typography>
               </Stack>
             </Stack>
           ) : null}
@@ -616,27 +491,31 @@ function OpenChecksDetail({
             </Button>
           </Stack>
         ) : (
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.1}>
-            {retryFiscalAvailable ? (
-              <Button variant="contained" color="warning" sx={{ flex: 1 }} onClick={onRetryFiscal}>
-                {copy.fiscalClose}
-              </Button>
-            ) : null}
-            {reprintAvailable ? (
-              <Button
-                variant="contained"
-                sx={(theme) => ({
-                  flex: 1,
-                  backgroundImage: 'none',
-                  backgroundColor: 'var(--pos-secondary-action-bg)',
-                  color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
-                })}
-                onClick={onReprint}>
-                {copy.reprintReceipt}
-              </Button>
+          <Stack spacing={1.1}>
+            {retryFiscalAvailable || reprintAvailable ? (
+              <Stack direction="row" spacing={1.1}>
+                {retryFiscalAvailable ? (
+                  <Button variant="contained" color="warning" sx={{ flex: 1 }} onClick={onRetryFiscal}>
+                    {copy.fiscalClose}
+                  </Button>
+                ) : null}
+                {reprintAvailable ? (
+                  <Button
+                    variant="contained"
+                    sx={(theme) => ({
+                      flex: 1,
+                      backgroundImage: 'none',
+                      backgroundColor: 'var(--pos-secondary-action-bg)',
+                      color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
+                    })}
+                    onClick={onReprint}>
+                    {copy.reprintReceipt}
+                  </Button>
+                ) : null}
+              </Stack>
             ) : null}
             {refundAvailable ? (
-              <Button variant="contained" color="error" sx={{ flex: 1 }} onClick={onRefund}>
+              <Button variant="contained" color="error" fullWidth onClick={onRefund}>
                 {copy.refund}
               </Button>
             ) : null}
@@ -669,7 +548,8 @@ export function OpenChecksPageContent() {
   const [retryReceiptPrintPromptOpen, setRetryReceiptPrintPromptOpen] = useState(false);
   const [isRetryReceiptPrintConfirming, setIsRetryReceiptPrintConfirming] = useState(false);
   const refundMutation = useCashierRefundMutation();
-  const reprintMutation = useCashierReprintMutation();
+  const ensurePrintDocumentMutation = useCashierEnsurePaymentPrintDocumentMutation();
+  const edgePrintMutation = useEdgePrintMutation();
   const retryFiscalMutation = useCashierFiscalRetryMutation({
     onSuccess: (response) => {
       const failedResult = (response.results ?? []).find((item) => item && item.ok === false);
@@ -688,7 +568,7 @@ export function OpenChecksPageContent() {
         receipts,
         receiptNumber:
           receipts
-            .map((receipt) => receipt.payload?.receiptNumber ?? receipt.payload?.receipt_number)
+            .map((receipt) => receipt.payload?.receiptNumber)
             .filter(Boolean)
             .join(', ') ||
           latestSucceededPayment?.id ||
@@ -713,52 +593,31 @@ export function OpenChecksPageContent() {
   });
 
   const openOrdersQuery = useCashierOpenChecksQuery('open');
-  const closedOrdersQuery = useCashierOpenChecksQuery('closed', {
-    search: closedSearch,
-    page: closedPage,
-    pageSize: 20,
-  });
-  const cashierContextQuery = useCashierContextQuery();
-  const fiscalClosedQuery = useCashierOpenChecksQuery('fiscal_closed', {
-    search: fiscalSearch,
-    page: fiscalPage,
-    pageSize: 20,
-  });
-  const selectedCashDesk = useMemo(() => {
-    const cashDesks = cashierContextQuery.data?.availableCashDesks ?? [];
-    const activeCashDeskId = cashierContextQuery.data?.currentShift?.cashDesk;
-    return cashDesks.find((cashDesk) => cashDesk.id === activeCashDeskId) ?? cashDesks[0] ?? null;
-  }, [cashierContextQuery.data?.availableCashDesks, cashierContextQuery.data?.currentShift?.cashDesk]);
-  const receiptLocalAgentEnabled = true;
-  const receiptPrintOptions = useMemo(
-    () => ({
-      preferLocalAgent: receiptLocalAgentEnabled,
-      ...(selectedCashDesk?.printerIntegrationPrinterName
-        ? { printerName: selectedCashDesk.printerIntegrationPrinterName }
-        : {}),
-      ...(selectedCashDesk?.printerIntegrationConnectionType
-        ? { connectionType: selectedCashDesk.printerIntegrationConnectionType }
-        : {}),
-      ...(selectedCashDesk?.printerIntegrationHost ? { host: selectedCashDesk.printerIntegrationHost } : {}),
-      ...(selectedCashDesk?.printerIntegrationPort ? { port: selectedCashDesk.printerIntegrationPort } : {}),
-    }),
-    [
-      receiptLocalAgentEnabled,
-      selectedCashDesk?.printerIntegrationConnectionType,
-      selectedCashDesk?.printerIntegrationHost,
-      selectedCashDesk?.printerIntegrationPort,
-      selectedCashDesk?.printerIntegrationPrinterName,
-    ],
+  const closedOrdersQuery = useCashierOpenChecksQuery(
+    'closed',
+    {
+      search: closedSearch,
+      page: closedPage,
+      pageSize: 20,
+    },
+    { refetchInterval: selectedTab === 'closed' ? 15_000 : false },
+  );
+  const fiscalClosedQuery = useCashierOpenChecksQuery(
+    'fiscal_closed',
+    {
+      search: fiscalSearch,
+      page: fiscalPage,
+      pageSize: 20,
+    },
+    { refetchInterval: selectedTab === 'fiscal_closed' ? 15_000 : false },
   );
   const isInitialLoading =
     openOrdersQuery.isLoading && closedOrdersQuery.isLoading && !openOrdersQuery.data && !closedOrdersQuery.data;
   const openOrders = useMemo(() => getChecksOrders(openOrdersQuery.data), [openOrdersQuery.data]);
   const closedOrders = useMemo(() => getChecksOrders(closedOrdersQuery.data), [closedOrdersQuery.data]);
-  const fiscalClosedOrders = useMemo(
-    () => getChecksOrders(fiscalClosedQuery.data),
-    [fiscalClosedQuery.data],
-  );
-  const visibleOrders = selectedTab === 'open' ? openOrders : selectedTab === 'closed' ? closedOrders : fiscalClosedOrders;
+  const fiscalClosedOrders = useMemo(() => getChecksOrders(fiscalClosedQuery.data), [fiscalClosedQuery.data]);
+  const visibleOrders =
+    selectedTab === 'open' ? openOrders : selectedTab === 'closed' ? closedOrders : fiscalClosedOrders;
   const selectedOrder =
     visibleOrders.find((order) => order.id === selectedOrderId) ?? (isMobile ? undefined : visibleOrders[0]);
   const groupedItems = useMemo(
@@ -770,35 +629,11 @@ export function OpenChecksPageContent() {
 
     return succeededPayments[succeededPayments.length - 1];
   }, [selectedOrder?.payments]);
-  const latestReceipt = useMemo(() => {
-    const receipts = selectedOrder?.receipts ?? [];
-    return (
-      receipts.find((receipt) => receipt.kind === 'fiscal' && receipt.status === 'sent') ??
-      receipts.find((receipt) => receipt.kind === 'fiscal') ??
-      receipts[0]
-    );
-  }, [selectedOrder?.receipts]);
   const canOperatePayments = canManageCashierPayments(session?.user);
-  const receiptNumber = useMemo(() => {
-    const payload = latestReceipt?.payload as Record<string, unknown> | undefined;
-    const rawReceiptNumber = payload?.receiptNumber ?? payload?.receipt_number;
-
-    return typeof rawReceiptNumber === 'string' || typeof rawReceiptNumber === 'number'
-      ? rawReceiptNumber
-      : (latestSucceededPayment?.id ?? copy.receiptUnavailable);
-  }, [copy.receiptUnavailable, latestReceipt?.payload, latestSucceededPayment?.id]);
   const canRefund = Boolean(
-    selectedTab !== 'open' &&
-      latestSucceededPayment?.id &&
-      !latestSucceededPayment?.isRefunded &&
-      canOperatePayments,
+    selectedTab !== 'open' && latestSucceededPayment?.id && !latestSucceededPayment?.isRefunded && canOperatePayments,
   );
-  const canReprint = Boolean(
-    selectedTab !== 'open' &&
-      canOperatePayments &&
-      latestSucceededPayment?.id &&
-      (selectedTab === 'closed' || latestReceipt?.id),
-  );
+  const canReprint = Boolean(selectedTab !== 'open' && canOperatePayments && latestSucceededPayment?.id);
   const canRetryFiscal = Boolean(selectedTab === 'closed' && latestSucceededPayment?.id && canOperatePayments);
   const renameOrderNumberLabel = renameOrder ? getCashierOrderNumberLabel(renameOrder) : copy.orders;
   const renameOrderPreview = renameOrder
@@ -820,16 +655,15 @@ export function OpenChecksPageContent() {
 
     setIsRetryReceiptPrintConfirming(true);
     try {
+      const printableReceipts = (retryReceiptDialog?.receipts ?? []).filter((receipt) => receipt.printDocument);
+      if (printableReceipts.length === 0) {
+        throw new Error('Chek uchun print hujjati tayyor emas');
+      }
       await Promise.all(
-        (retryReceiptDialog?.receipts ?? []).map((receipt) =>
-          printReceiptWithFallback(withReceiptOrderContext(receipt.payload ?? null, selectedOrder), {
-            ...receiptPrintOptions,
-            receiptId: receipt.id,
-          }),
-        ),
+        printableReceipts.map((receipt) => edgePrintMutation.mutateAsync({ documentId: receipt.printDocument! })),
       );
-    } catch {
-      // Keep the cashier flow moving even if the browser blocks a print window.
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Chekni chiqarib bo‘lmadi');
     } finally {
       setIsRetryReceiptPrintConfirming(false);
       finishRetryReceiptFlow();
@@ -869,63 +703,31 @@ export function OpenChecksPageContent() {
         if (!latestSucceededPayment?.id || refundMutation.isPending) {
           return;
         }
-        refundMutation.mutate({ paymentId: latestSucceededPayment.id });
+        refundMutation
+          .mutateAsync({ paymentId: latestSucceededPayment.id })
+          .then((response) => {
+            if (response.receipt?.printDocument) {
+              return edgePrintMutation.mutateAsync({ documentId: response.receipt.printDocument });
+            }
+            return undefined;
+          })
+          .catch((error) =>
+            toast.error(error instanceof Error ? error.message : 'Qaytarish chekini chiqarib bo‘lmadi'),
+          );
       }}
       onReprint={() => {
-        if (reprintMutation.isPending || !selectedOrder) {
+        if (ensurePrintDocumentMutation.isPending || !latestSucceededPayment?.id) {
           return;
         }
-        if (selectedTab === 'closed') {
-          if (!latestSucceededPayment?.id) {
-            return;
-          }
-          void printReceiptWithFallback(
-            withReceiptOrderContext(
-              buildClosedOrderFallbackReceiptPayload(selectedOrder, latestSucceededPayment, session),
-              selectedOrder,
-            ),
-            receiptPrintOptions,
-          ).catch(() => {
-            toast.info('Printer ishlamayapti');
-          });
-          return;
-        }
-        if (!latestReceipt?.id) {
-          return;
-        }
-        reprintMutation
-          .mutateAsync(latestReceipt.id)
+        ensurePrintDocumentMutation
+          .mutateAsync(latestSucceededPayment.id)
           .then((response) => {
-            const result = response.result ?? {};
-            const code = String(result.code ?? '');
-            if (code === 'PRINTER_NOT_CONFIGURED') {
-              toast.info('Printer sozlamalari ulanmagan');
-              void printReceiptWithFallback(withReceiptOrderContext(response.receipt?.payload ?? latestReceipt.payload ?? null, selectedOrder), {
-                ...receiptPrintOptions,
-                receiptId: response.receipt?.id ?? latestReceipt.id,
-              });
-              return;
+            if (!response.receipt?.printDocument) {
+              throw new Error('Chek uchun print hujjati tayyor emas');
             }
-            if (code === 'PRINTER_UNAVAILABLE' || result.ok === false) {
-              toast.info('Printer ishlamayapti');
-              void printReceiptWithFallback(withReceiptOrderContext(response.receipt?.payload ?? latestReceipt.payload ?? null, selectedOrder), {
-                ...receiptPrintOptions,
-                receiptId: response.receipt?.id ?? latestReceipt.id,
-              });
-              return;
-            }
-            void printReceiptWithFallback(withReceiptOrderContext(response.receipt?.payload ?? latestReceipt.payload ?? null, selectedOrder), {
-              ...receiptPrintOptions,
-              receiptId: response.receipt?.id ?? latestReceipt.id,
-            });
+            return edgePrintMutation.mutateAsync({ documentId: response.receipt.printDocument });
           })
-          .catch(() => {
-            toast.info('Printer ishlamayapti');
-            void printReceiptWithFallback(withReceiptOrderContext(latestReceipt.payload ?? null, selectedOrder), {
-              ...receiptPrintOptions,
-              receiptId: latestReceipt.id,
-            });
-          });
+          .catch((error) => toast.info(error instanceof Error ? error.message : 'Printer ishlamayapti'));
       }}
       onRetryFiscal={() => {
         if (!latestSucceededPayment?.id || retryFiscalMutation.isPending) {
@@ -934,7 +736,6 @@ export function OpenChecksPageContent() {
         retryFiscalMutation.mutate(latestSucceededPayment.id);
       }}
       order={selectedOrder}
-      receiptNumber={receiptNumber}
       refundAvailable={canRefund}
       reprintAvailable={canReprint}
       retryFiscalAvailable={canRetryFiscal}
@@ -943,7 +744,7 @@ export function OpenChecksPageContent() {
   ) : null;
 
   const handleSwipeEdit = (order: CashierOrder) => {
-    const channel = order.channel === 'delivery' ? 'delivery' : 'takeaway';
+    const channel = order.channel === 'delivery' || order.channel === 'hall' ? order.channel : 'takeaway';
     void navigate(`/cashier/builder?orderId=${order.id}&channel=${channel}`);
   };
 

@@ -66,13 +66,13 @@ vi.mock('modules/waiter/application', () => ({
       {
         id: 'cat-1',
         name: 'Burgers',
-        image_url: 'https://cdn.example.com/burgers.png',
+        imageUrl: 'https://cdn.example.com/burgers.png',
         items: [
           {
             id: 'item-1',
             name: 'Burger',
             description: 'Cheese and tomato',
-            image_url: 'https://cdn.example.com/burger.png',
+            imageUrl: 'https://cdn.example.com/burger.png',
             price: 99000,
             prepStationName: 'Kitchen',
           },

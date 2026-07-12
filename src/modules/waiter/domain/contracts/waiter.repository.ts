@@ -4,7 +4,6 @@ import type {
   WaiterCreateOrderResponse,
   WaiterMenuCategory,
   WaiterOrder,
-  WaiterPrintPrebillResponse,
   WaiterSessionResponse,
 } from '../entities';
 
@@ -17,9 +16,7 @@ export interface WaiterRepository {
   getOrders(): Promise<WaiterOrder[]>;
   createOrder(sessionId: string, note: string): Promise<WaiterCreateOrderResponse>;
   createTakeawayOrder(note: string): Promise<WaiterCreateOrderResponse>;
-  addOrderItem(orderId: string, catalogItemId: string, note: string): Promise<void>;
+  addOrderItem(orderId: string, catalogItemId: string, note: string): Promise<{ kitchenPrintDocuments?: string[] }>;
   removeOrderItem(itemId: string): Promise<void>;
-  submitOrder(orderId: string): Promise<void>;
-  printPrebill(orderId: string): Promise<WaiterPrintPrebillResponse>;
-  markReceiptPrintResult(receiptId: string, result: Record<string, unknown>): Promise<WaiterPrintPrebillResponse>;
+  submitOrder(orderId: string): Promise<WaiterOrder>;
 }

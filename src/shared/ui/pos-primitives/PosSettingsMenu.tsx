@@ -2,7 +2,6 @@ import { Icon } from '@iconify/react';
 import {
   Box,
   ButtonBase,
-  Chip,
   Divider,
   ListItemIcon,
   ListItemText,
@@ -14,7 +13,7 @@ import {
 } from '@mui/material';
 
 import { getPosThemeColorOptions, type PosThemeColor } from 'app/theme';
-import { useCashierContextQuery } from 'modules/cashier/application';
+import { SystemHealthPanel } from 'shared/system-health';
 
 import type { PosLocale } from '../../locale/copy';
 import { getPosCopy, localeLabels } from '../../locale/copy';
@@ -47,39 +46,12 @@ export function PosSettingsMenu({
   themeMode: 'light' | 'dark';
 }) {
   const copy = getPosCopy(locale);
-  const fiscalStatusQuery = useCashierContextQuery({
-    enabled: Boolean(anchorEl),
-    refetchInterval: 30000,
-  });
-  const availableCashDesks = fiscalStatusQuery.data?.availableCashDesks ?? [];
-  const selectedCashDesk =
-    availableCashDesks.find((cashDesk) => cashDesk.id === fiscalStatusQuery.data?.currentShift?.cashDesk) ??
-    availableCashDesks[0] ??
-    null;
-  const fiscalDeviceStatus = fiscalStatusQuery.data?.fiscalDeviceStatus;
-  const isFiscalOnline = Boolean(fiscalDeviceStatus?.online);
-  const fiscalStatusLabel = fiscalStatusQuery.isError ? 'Offline' : isFiscalOnline ? 'Online' : 'Offline';
-  const terminalId = fiscalDeviceStatus?.terminalId || selectedCashDesk?.terminalId || selectedCashDesk?.externalCashboxId || '';
   const themeOptions = getPosThemeColorOptions(themeMode);
   const selectedThemeColor = themeOptions.some((option) => option.id === themeColor) ? themeColor : themeOptions[0]?.id;
 
   return (
     <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={onClose}>
-      <Box sx={{ px: 2, py: 1.4, minWidth: 260 }}>
-        <Stack spacing={0.8}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1.5}>
-            <Typography variant="subtitle1">Fiscal</Typography>
-            <Chip
-              size="small"
-              label={fiscalStatusLabel}
-              color={isFiscalOnline && !fiscalStatusQuery.isError ? 'success' : 'warning'}
-            />
-          </Stack>
-          <Typography variant="body2" color="text.secondary">
-            Terminal: {terminalId || 'sozlanmagan'}
-          </Typography>
-        </Stack>
-      </Box>
+      <SystemHealthPanel enabled={Boolean(anchorEl)} locale={locale} onRequestCloseMenu={() => {}} />
       <Divider />
 
       <MenuItem
@@ -158,8 +130,7 @@ export function PosSettingsMenu({
                           height: 10,
                           borderRadius: 1,
                           border: `2px solid ${alpha(preview.text.secondary, 0.32)}`,
-                          backgroundColor:
-                            themeMode === 'dark' ? alpha('#ffffff', 0.025) : alpha('#ffffff', 0.62),
+                          backgroundColor: themeMode === 'dark' ? alpha('#ffffff', 0.025) : alpha('#ffffff', 0.62),
                         }}
                       />
                       <Box

@@ -4,7 +4,6 @@ import type {
   WaiterCreateOrderResponse,
   WaiterMenuCategory,
   WaiterOrder,
-  WaiterPrintPrebillResponse,
   WaiterRepository,
   WaiterSessionResponse,
 } from 'modules/waiter/domain';
@@ -74,7 +73,7 @@ class WaiterRepositoryImpl implements WaiterRepository {
   }
 
   async addOrderItem(orderId: string, catalogItemId: string, note: string) {
-    await apiPost(`/pos/sales/orders/${orderId}/items/`, {
+    return apiPost<{ kitchenPrintDocuments?: string[] }>(`/pos/sales/orders/${orderId}/items/`, {
       catalogItem: catalogItemId,
       quantity: 1,
       note,
@@ -86,18 +85,7 @@ class WaiterRepositoryImpl implements WaiterRepository {
   }
 
   async submitOrder(orderId: string) {
-    await apiPost(`/pos/sales/orders/${orderId}/submit/`);
-  }
-
-  async printPrebill(orderId: string): Promise<WaiterPrintPrebillResponse> {
-    return apiPost<WaiterPrintPrebillResponse>(`/pos/billing/orders/${orderId}/prebill/print/`);
-  }
-
-  async markReceiptPrintResult(
-    receiptId: string,
-    result: Record<string, unknown>,
-  ): Promise<WaiterPrintPrebillResponse> {
-    return apiPost<WaiterPrintPrebillResponse>(`/pos/billing/receipts/${receiptId}/print-result/`, { result });
+    return apiPost<WaiterOrder>(`/pos/sales/orders/${orderId}/submit/`);
   }
 }
 

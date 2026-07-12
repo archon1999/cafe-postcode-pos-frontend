@@ -1,9 +1,10 @@
 import { useMutation } from '@tanstack/react-query';
 
+import { enqueueEdgePrintDocuments } from 'modules/edge-printing/application';
 import { queryClient } from 'shared/api/query-client';
 
 import { waiterRepository } from '../data-access';
-import type { DiningTable, WaiterMenuItem, WaiterPrintPrebillResponse } from '../domain';
+import type { DiningTable, WaiterMenuItem } from '../domain';
 import { clampGuestCount } from '../domain';
 
 import { waiterKeys } from './keys';
@@ -54,8 +55,9 @@ export function useAddWaiterOrderItemMutation(options: {
   createMode?: 'hall' | 'takeaway';
   kitchenNote: string;
   onSuccess?: () => void;
+  onPrintError?: (error: unknown) => void;
 }) {
-  const { currentOrderId, sessionId, kitchenNote, onSuccess, createMode = 'hall' } = options;
+  const { currentOrderId, sessionId, kitchenNote, onSuccess, onPrintError, createMode = 'hall' } = options;
 
   return useMutation({
     mutationFn: async (menuItem: WaiterMenuItem) => {
@@ -73,13 +75,15 @@ export function useAddWaiterOrderItemMutation(options: {
         orderId = createdOrder.id;
       }
 
-      await waiterRepository.addOrderItem(orderId, menuItem.id, kitchenNote);
+      const result = await waiterRepository.addOrderItem(orderId, menuItem.id, kitchenNote);
+      return enqueueEdgePrintDocuments(result?.kitchenPrintDocuments ?? []);
     },
-    onSuccess: async () => {
+    onSuccess: async (printing) => {
       await queryClient.invalidateQueries({ queryKey: waiterKeys.orders });
       if (sessionId) {
         await queryClient.invalidateQueries({ queryKey: waiterKeys.sessionOrders(sessionId) });
       }
+      printing.errors.forEach(onPrintError ?? (() => undefined));
       onSuccess?.();
     },
   });
@@ -106,8 +110,9 @@ export function useSubmitWaiterOrderMutation(options: {
   orderId?: string;
   sessionId: string | null;
   onSuccess?: () => void;
+  onPrintError?: (error: unknown) => void;
 }) {
-  const { orderId, sessionId, onSuccess } = options;
+  const { orderId, sessionId, onSuccess, onPrintError } = options;
 
   return useMutation({
     mutationFn: async () => {
@@ -115,37 +120,19 @@ export function useSubmitWaiterOrderMutation(options: {
         throw new Error('Current order is not available');
       }
 
-      await waiterRepository.submitOrder(orderId);
+      const order = await waiterRepository.submitOrder(orderId);
+      const printing = await enqueueEdgePrintDocuments(order?.kitchenPrintDocuments ?? []);
+      return { order, printing };
     },
-    onSuccess: async () => {
+    onSuccess: async ({ printing }) => {
       await queryClient.invalidateQueries({ queryKey: waiterKeys.orders });
       if (sessionId) {
         await queryClient.invalidateQueries({ queryKey: waiterKeys.sessionOrders(sessionId) });
       }
       await queryClient.invalidateQueries({ queryKey: ['cashier', 'checks', 'open'] });
       await queryClient.invalidateQueries({ queryKey: ['kitchen', 'queue'] });
+      printing.errors.forEach(onPrintError ?? (() => undefined));
       onSuccess?.();
-    },
-  });
-}
-
-export function usePrintWaiterPrebillMutation(options: {
-  sessionId: string | null;
-  onSuccess?: (response: WaiterPrintPrebillResponse) => void;
-}) {
-  const { sessionId, onSuccess } = options;
-
-  return useMutation({
-    mutationFn: async (orderId: string) => {
-      return waiterRepository.printPrebill(orderId);
-    },
-    onSuccess: async (response) => {
-      await queryClient.invalidateQueries({ queryKey: waiterKeys.orders });
-      if (sessionId) {
-        await queryClient.invalidateQueries({ queryKey: waiterKeys.sessionOrders(sessionId) });
-      }
-      await queryClient.invalidateQueries({ queryKey: ['cashier', 'checks', 'open'] });
-      onSuccess?.(response);
     },
   });
 }

@@ -8,7 +8,7 @@ export function useKitchenQueueQuery() {
   return useQuery({
     queryKey: kitchenKeys.queue,
     queryFn: () => kitchenRepository.getQueue(),
-    refetchInterval: 10000,
+    refetchInterval: 2000,
     refetchIntervalInBackground: false,
   });
 }
@@ -18,7 +18,7 @@ export function useKitchenMonitorQuery(restaurantId: string | null) {
     queryKey: kitchenKeys.monitorQueue(restaurantId),
     enabled: Boolean(restaurantId),
     queryFn: () => kitchenRepository.getMonitorQueue(restaurantId as string),
-    refetchInterval: 10000,
+    refetchInterval: 2000,
     refetchIntervalInBackground: true,
   });
 }

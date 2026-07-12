@@ -11,8 +11,11 @@ import type {
   WaiterSessionResponse,
 } from 'modules/waiter/domain';
 
-type WaiterMenuItemDto = WaiterMenuItem;
-type WaiterMenuCategoryDto = Omit<WaiterMenuCategory, 'items'> & { items: WaiterMenuItemDto[] };
+type WaiterMenuItemDto = WaiterMenuItem & { image_url?: string | null };
+type WaiterMenuCategoryDto = Omit<WaiterMenuCategory, 'items'> & {
+  image_url?: string | null;
+  items: WaiterMenuItemDto[];
+};
 type ActiveSessionDto = ActiveSession & {
   guest_count?: number;
   created_at?: string;

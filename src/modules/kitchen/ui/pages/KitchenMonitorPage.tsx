@@ -74,7 +74,7 @@ type BrowserWindow = typeof window & {
 };
 
 function formatOrderNumber(orderNumber: number) {
-  return `#${orderNumber}`;
+  return `A${String(orderNumber).padStart(5, '0')}`;
 }
 
 function MonitorColumn({

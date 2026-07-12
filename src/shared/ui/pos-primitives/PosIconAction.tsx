@@ -3,7 +3,7 @@ import { Box, Button, alpha } from '@mui/material';
 import type { SxProps, Theme } from '@mui/material/styles';
 import type { MouseEventHandler } from 'react';
 
-import { useCashierContextQuery } from 'modules/cashier/application';
+import { deriveSystemHealthTone, systemHealthToneColors, useSystemHealthQuery } from 'shared/system-health';
 
 export function PosIconAction({
   icon,
@@ -15,19 +15,20 @@ export function PosIconAction({
   sx?: SxProps<Theme>;
 }) {
   const isSettingsAction = icon.includes('settings');
-  const fiscalStatusQuery = useCashierContextQuery({
-    enabled: isSettingsAction,
-    refetchInterval: isSettingsAction ? 30000 : false,
-  });
-  const isFiscalOnline = Boolean(fiscalStatusQuery.data?.fiscalDeviceStatus?.online);
-  const badgeColor = fiscalStatusQuery.isError ? '#ff5963' : isFiscalOnline ? '#21c985' : '#ffb020';
+  const systemHealthQuery = useSystemHealthQuery({ enabled: isSettingsAction });
+  const badgeTone = deriveSystemHealthTone(
+    systemHealthQuery.data?.status,
+    systemHealthQuery.isError || systemHealthQuery.isRefetchError,
+  );
+  const badgeColor = systemHealthToneColors[badgeTone];
 
   return (
     <Button
       variant="contained"
+      aria-label={isSettingsAction ? 'Sozlamalar' : undefined}
       onClick={onClick}
       sx={[
-        (theme) => ({
+        () => ({
           position: 'relative',
           minWidth: { xs: 46, sm: 50, md: 52, xl: 60 },
           width: { xs: 46, sm: 50, md: 52, xl: 60 },

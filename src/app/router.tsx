@@ -7,6 +7,7 @@ import {
   PosPublicOnlyRoute,
   PosRestaurantPublicOnlyRoute,
   RestaurantLoginPage,
+  EdgePairingPage,
   canAccessTakeawayBuilder,
   canAccessCashierPayments,
   canAccessKitchen,
@@ -56,6 +57,10 @@ function PosMonitorRestaurantGuard({ children }: { children: ReactElement }) {
 }
 
 export const posRouter = createBrowserRouter([
+  {
+    path: '/edge-pairing',
+    element: <EdgePairingPage />,
+  },
   {
     path: '/restaurant-login',
     element: (
@@ -120,7 +125,8 @@ export const posRouter = createBrowserRouter([
       {
         path: 'cashier/shift',
         element: (
-          <PosAccessGuard canAccess={(session) => canAccessCashierPayments(session?.user) || canAccessTakeawayBuilder(session?.user)}>
+          <PosAccessGuard
+            canAccess={(session) => canAccessCashierPayments(session?.user) || canAccessTakeawayBuilder(session?.user)}>
             <CashierShiftPage />
           </PosAccessGuard>
         ),

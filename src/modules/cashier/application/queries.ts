@@ -26,20 +26,22 @@ export function useCashierBuilderOrdersQuery() {
   return useQuery({
     queryKey: cashierKeys.builderOrders,
     queryFn: () => cashierRepository.getOpenOrders(),
+    refetchInterval: 2000,
+    refetchIntervalInBackground: false,
   });
 }
 
 export function useCashierOpenChecksQuery(
   status: CashierCheckStatus = 'open',
   params?: CashierChecksParams,
-  options?: { enabled?: boolean; retry?: boolean },
+  options?: { enabled?: boolean; retry?: boolean; refetchInterval?: number | false },
 ) {
   return useQuery({
     queryKey: cashierKeys.checks(status, params),
     queryFn: () => cashierRepository.getOpenChecks(status, params),
     enabled: options?.enabled,
     retry: options?.retry,
-    refetchInterval: 10000,
+    refetchInterval: options?.refetchInterval ?? 2000,
     refetchIntervalInBackground: false,
   });
 }

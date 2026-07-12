@@ -5,7 +5,7 @@ import type {
   KitchenTicket,
   KitchenTicketStatus,
 } from 'modules/kitchen/domain';
-import { apiGet, apiGetPublic, apiPost, unwrapCollection } from 'shared/api/client';
+import { apiGet, apiPost, unwrapCollection } from 'shared/api/client';
 
 import { mapKitchenMonitorQueue, mapKitchenTickets } from '../mappers';
 
@@ -18,7 +18,7 @@ class KitchenRepositoryImpl implements KitchenRepository {
 
   async getMonitorQueue(restaurantId: string): Promise<KitchenMonitorQueue> {
     const params = new URLSearchParams({ restaurant_id: restaurantId });
-    return mapKitchenMonitorQueue(await apiGetPublic<KitchenMonitorQueue>(`/pos/monitor/kitchen-queue/?${params}`));
+    return mapKitchenMonitorQueue(await apiGet<KitchenMonitorQueue>(`/pos/monitor/kitchen-queue/?${params}`));
   }
 
   async updateTicketStatus(ticketId: string, status: KitchenTicketStatus) {

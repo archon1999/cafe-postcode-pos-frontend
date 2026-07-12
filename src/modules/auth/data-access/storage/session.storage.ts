@@ -142,15 +142,24 @@ function readJson<T>(key: string): T | null {
 }
 
 export function readStoredSession() {
-  return normalizeSessionPayload(readJson<LegacySessionPayload>(STORAGE_KEY));
+  const rawValue = sessionStorage.getItem(STORAGE_KEY);
+  if (!rawValue) return null;
+  try {
+    return normalizeSessionPayload(JSON.parse(rawValue) as LegacySessionPayload);
+  } catch {
+    sessionStorage.removeItem(STORAGE_KEY);
+    return null;
+  }
 }
 
 export function persistSession(value: PosSessionPayload | null) {
   const normalizedValue = normalizeSessionPayload(value);
 
   if (normalizedValue) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizedValue));
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(normalizedValue));
+    localStorage.removeItem(STORAGE_KEY);
   } else {
+    sessionStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(STORAGE_KEY);
   }
 }

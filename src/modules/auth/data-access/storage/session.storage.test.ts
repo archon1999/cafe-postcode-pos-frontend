@@ -10,11 +10,12 @@ const STORAGE_KEY = 'restaurant-pos-session';
 
 afterEach(() => {
   localStorage.clear();
+  sessionStorage.clear();
 });
 
 describe('session storage', () => {
   it('normalizes legacy snake_case session payloads to camelCase', () => {
-    localStorage.setItem(
+    sessionStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
         token: 'legacy-token',
@@ -87,7 +88,7 @@ describe('session storage', () => {
       },
     });
 
-    expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}')).toEqual({
+    expect(JSON.parse(sessionStorage.getItem(STORAGE_KEY) ?? '{}')).toEqual({
       token: 'token',
       user: {
         id: 'user-2',
@@ -109,6 +110,7 @@ describe('session storage', () => {
         restaurantName: 'Cafe Pro',
       },
     });
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
   });
 
   it('normalizes mixed legacy and camelCase payloads in memory', () => {

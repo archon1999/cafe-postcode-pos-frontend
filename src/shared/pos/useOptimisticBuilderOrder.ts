@@ -31,7 +31,12 @@ type UseOptimisticBuilderOrderOptions<
   defaultVatPercent?: number | string;
   removeOrderItem: (itemId: string) => Promise<void>;
   selectCurrentOrder: (data: TCanonicalData) => TOrder | undefined;
-  addOrderItem: (orderId: string, menuItem: TMenuItem, note: string) => Promise<void>;
+  addOrderItem: (
+    orderId: string,
+    menuItem: TMenuItem,
+    note: string,
+  ) => Promise<{ kitchenPrintDocuments?: string[] } | void>;
+  onPrintDocuments?: (documentIds: string[]) => void;
   resetKey?: unknown;
   syncErrorMessage: string;
 };
@@ -57,6 +62,7 @@ export function useOptimisticBuilderOrder<
     defaultVatEnabled,
     defaultVatPercent,
     removeOrderItem,
+    onPrintDocuments,
     resetKey,
     selectCurrentOrder,
     addOrderItem,
@@ -155,7 +161,10 @@ export function useOptimisticBuilderOrder<
           return;
         }
 
-        await addOrderItem(orderId, operationBeforeAdd.menuItem, operationBeforeAdd.note);
+        const mutationResult = await addOrderItem(orderId, operationBeforeAdd.menuItem, operationBeforeAdd.note);
+        if (mutationResult?.kitchenPrintDocuments?.length) {
+          onPrintDocuments?.(mutationResult.kitchenPrintDocuments);
+        }
 
         const operationAfterAdd = getPendingAddById(opId);
 
@@ -186,6 +195,7 @@ export function useOptimisticBuilderOrder<
       addOrderItem,
       createOrder,
       getPendingAddById,
+      onPrintDocuments,
       refreshCurrentOrder,
       removeOrderItem,
       resolvedBaseOrder,

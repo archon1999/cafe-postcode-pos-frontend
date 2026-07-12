@@ -7,9 +7,20 @@ import type {
   CashierPaymentResponse,
 } from 'modules/cashier/domain';
 
-type CashierMenuItemDto = CashierMenuItem;
-type CashierMenuCategoryDto = Omit<CashierMenuCategory, 'items'> & { items: CashierMenuItemDto[] };
-type CashierOrderItemDto = CashierOrderItem;
+type CashierMenuItemDto = CashierMenuItem & { image_url?: string | null };
+type CashierMenuCategoryDto = Omit<CashierMenuCategory, 'items'> & {
+  image_url?: string | null;
+  items: CashierMenuItemDto[];
+};
+type CashierMarkingDto = NonNullable<CashierOrderItem['markings']>[number] & {
+  raw_code?: string;
+  scanned_at?: string;
+};
+type CashierOrderItemDto = Omit<CashierOrderItem, 'markings'> & {
+  markings?: CashierMarkingDto[];
+  marking_required_count?: number;
+  marking_scanned_count?: number;
+};
 type CashierOrderDto = Omit<CashierOrder, 'items' | 'orderNumber' | 'displayName'> & {
   items: CashierOrderItemDto[];
   orderNumber?: number;
@@ -43,7 +54,16 @@ export function mapCashierOrder(dto: CashierOrderDto): CashierOrder {
     displayName: dto.displayName ?? dto.display_name ?? null,
     deliveryPhone: dto.deliveryPhone ?? dto.delivery_phone ?? null,
     deliveryAddress: dto.deliveryAddress ?? dto.delivery_address ?? null,
-    items: dto.items.map((item) => ({ ...item })),
+    items: dto.items.map((item) => ({
+      ...item,
+      markingRequiredCount: item.markingRequiredCount ?? item.marking_required_count,
+      markingScannedCount: item.markingScannedCount ?? item.marking_scanned_count,
+      markings: item.markings?.map((marking) => ({
+        ...marking,
+        rawCode: marking.rawCode ?? marking.raw_code,
+        scannedAt: marking.scannedAt ?? marking.scanned_at,
+      })),
+    })),
   };
 }
 

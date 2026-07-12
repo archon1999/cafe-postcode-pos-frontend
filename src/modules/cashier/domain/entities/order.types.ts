@@ -10,20 +10,16 @@ export type CashierOrderItem = {
   markings?: Array<{
     id: string;
     rawCode?: string;
-    raw_code?: string;
     gtin?: string;
     serial?: string;
     scannedAt?: string;
-    scanned_at?: string;
   }>;
   markingRequiredCount?: number;
-  marking_required_count?: number;
   markingScannedCount?: number;
-  marking_scanned_count?: number;
 };
 
 export type CashierCheckStatus = 'open' | 'closed' | 'fiscal_closed';
-export type CashierBuilderOrderChannel = 'delivery' | 'takeaway';
+export type CashierBuilderOrderChannel = 'delivery' | 'hall' | 'takeaway';
 
 export type CashierOrder = {
   id: string;
@@ -58,13 +54,9 @@ export type CashierOrder = {
     status: string;
     method: 'cash' | 'card' | 'qr' | 'mixed';
     cashAmount?: number | string;
-    cash_amount?: number | string;
     cardAmount?: number | string;
-    card_amount?: number | string;
     fiscalCashAmount?: number | string;
-    fiscal_cash_amount?: number | string;
     fiscalCardAmount?: number | string;
-    fiscal_card_amount?: number | string;
     registerFiscal?: boolean;
     refundsTotal?: number | string;
     isRefunded?: boolean;
@@ -72,8 +64,9 @@ export type CashierOrder = {
   }>;
   receipts?: Array<{
     id: string;
+    printDocument?: string | null;
     status: string;
-    kind?: 'prebill' | 'fiscal' | 'refund';
+    kind?: 'plain' | 'fiscal' | 'refund';
     reprintCount?: number;
     lastReprintedAt?: string | null;
     fiscalRequestedAt?: string | null;
@@ -84,6 +77,7 @@ export type CashierOrder = {
     payload?: Record<string, unknown> | null;
     createdAt?: string;
   }>;
+  kitchenPrintDocuments?: string[];
 };
 
 export type CashierCreateOrderResponse = {

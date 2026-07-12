@@ -14,8 +14,9 @@ const updateDisplayNameMutateAsyncMock = vi.fn();
 const retryFiscalMutateMock = vi.fn();
 const closedRefetchMock = vi.fn();
 const fiscalClosedRefetchMock = vi.fn();
-const reprintMutateAsyncMock = vi.fn();
-const printReceiptWithFallbackMock = vi.fn((_payload?: unknown, _options?: unknown) => Promise.resolve(true));
+const ensurePrintDocumentMutateAsyncMock = vi.fn();
+const edgePrintMutateAsyncMock = vi.fn(() => Promise.resolve({ status: 'succeeded' }));
+const refundMutateAsyncMock = vi.fn();
 let openOrdersState: Array<Record<string, unknown>> = [];
 
 vi.mock('react-router', () => ({
@@ -56,11 +57,7 @@ vi.mock('modules/cashier/application', () => ({
   useCashierOpenChecksQuery: (status: 'open' | 'closed' | 'fiscal_closed') => ({
     isLoading: false,
     data:
-      status === 'open'
-        ? openOrdersMock()
-        : status === 'fiscal_closed'
-          ? fiscalClosedOrdersMock()
-          : closedOrdersMock(),
+      status === 'open' ? openOrdersMock() : status === 'fiscal_closed' ? fiscalClosedOrdersMock() : closedOrdersMock(),
     refetch: status === 'closed' ? closedRefetchMock : status === 'fiscal_closed' ? fiscalClosedRefetchMock : vi.fn(),
   }),
   useCashierFiscalRetryMutation: (options?: { onSuccess?: (response: Record<string, unknown>) => void }) => ({
@@ -69,17 +66,17 @@ vi.mock('modules/cashier/application', () => ({
       retryFiscalMutateMock(paymentId);
       options?.onSuccess?.({
         results: [],
-        receipts: [{ id: 'receipt-2', payload: { receiptNumber: 'R-2' } }],
+        receipts: [{ id: 'receipt-2', printDocument: 'document-2', payload: { receiptNumber: 'R-2' } }],
       });
     },
   }),
   useCashierRefundMutation: () => ({
     isPending: false,
-    mutate: vi.fn(),
+    mutateAsync: refundMutateAsyncMock,
   }),
-  useCashierReprintMutation: () => ({
+  useCashierEnsurePaymentPrintDocumentMutation: () => ({
     isPending: false,
-    mutateAsync: reprintMutateAsyncMock,
+    mutateAsync: ensurePrintDocumentMutateAsyncMock,
   }),
   useCashierUpdateOrderDisplayNameMutation: (options?: { onSuccess?: (orderId: string) => void }) => ({
     isPending: false,
@@ -138,8 +135,8 @@ vi.mock('shared/ui/pos-primitives', () => ({
   PosSettingsMenu: () => null,
 }));
 
-vi.mock('shared/printing/browserReceipt', () => ({
-  printReceiptWithFallback: (payload?: unknown, options?: unknown) => printReceiptWithFallbackMock(payload, options),
+vi.mock('modules/edge-printing', () => ({
+  useEdgePrintMutation: () => ({ mutateAsync: edgePrintMutateAsyncMock, isPending: false }),
 }));
 
 describe('OpenChecksPageContent', () => {
@@ -153,8 +150,12 @@ describe('OpenChecksPageContent', () => {
     retryFiscalMutateMock.mockReset();
     closedRefetchMock.mockReset();
     fiscalClosedRefetchMock.mockReset();
-    reprintMutateAsyncMock.mockReset();
-    printReceiptWithFallbackMock.mockClear();
+    ensurePrintDocumentMutateAsyncMock.mockReset();
+    ensurePrintDocumentMutateAsyncMock.mockResolvedValue({
+      receipt: { id: 'receipt-materialized', printDocument: 'document-materialized' },
+    });
+    edgePrintMutateAsyncMock.mockClear();
+    refundMutateAsyncMock.mockReset();
     openOrdersState = [
       {
         id: 'order-1',
@@ -220,7 +221,7 @@ describe('OpenChecksPageContent', () => {
     expect(screen.queryByRole('button', { name: "Menyuga o'tish" })).toBeNull();
   });
 
-  it('prints a fallback receipt for a closed paid check without a saved receipt', async () => {
+  it('materializes and prints a canonical document for a historical closed check', async () => {
     openOrdersMock.mockReturnValue([]);
     closedOrdersMock.mockReturnValue([
       {
@@ -264,34 +265,9 @@ describe('OpenChecksPageContent', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Chekni qayta chiqarish' }));
 
     await waitFor(() => {
-      expect(printReceiptWithFallbackMock).toHaveBeenCalledWith(
-        expect.objectContaining({
-          snapshot: expect.objectContaining({
-            restaurant_name: 'Chek',
-            order_label: '#55',
-            orderLabel: '#55',
-            order_number: '#55',
-            orderNumber: '#55',
-            receipt_number: 'payment-6',
-            channel_label: 'Zalda',
-            total: 22000,
-            received_cash: 22000,
-            vat_enabled: false,
-            vat_percent: 0,
-            vat_amount: 0,
-            items: [
-              expect.objectContaining({
-                name: 'Shaverma',
-                quantity: 1,
-                lineTotal: 22000,
-              }),
-            ],
-          }),
-        }),
-        { preferLocalAgent: true },
-      );
+      expect(ensurePrintDocumentMutateAsyncMock).toHaveBeenCalledWith('payment-6');
+      expect(edgePrintMutateAsyncMock).toHaveBeenCalledWith({ documentId: 'document-materialized' });
     });
-    expect(reprintMutateAsyncMock).not.toHaveBeenCalled();
   });
 
   it('reprints a fiscal receipt from fiscal checks', async () => {
@@ -320,9 +296,8 @@ describe('OpenChecksPageContent', () => {
         receipts: [{ id: 'receipt-7', kind: 'fiscal', status: 'sent', payload: { receiptNumber: 'F-7' } }],
       },
     ]);
-    reprintMutateAsyncMock.mockResolvedValue({
-      result: { ok: true },
-      receipt: { id: 'receipt-7', payload: { receiptNumber: 'F-7' } },
+    ensurePrintDocumentMutateAsyncMock.mockResolvedValue({
+      receipt: { id: 'receipt-7', printDocument: 'document-7', payload: { receiptNumber: 'F-7' } },
     });
 
     render(<OpenChecksPageContent />);
@@ -330,7 +305,8 @@ describe('OpenChecksPageContent', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Chekni qayta chiqarish' }));
 
     await waitFor(() => {
-      expect(reprintMutateAsyncMock).toHaveBeenCalledWith('receipt-7');
+      expect(ensurePrintDocumentMutateAsyncMock).toHaveBeenCalledWith('payment-7');
+      expect(edgePrintMutateAsyncMock).toHaveBeenCalledWith({ documentId: 'document-7' });
     });
   });
 
@@ -385,15 +361,7 @@ describe('OpenChecksPageContent', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ha, chiqarish' }));
 
     await waitFor(() => {
-      expect(printReceiptWithFallbackMock).toHaveBeenCalledWith(
-        expect.objectContaining({
-          receiptNumber: 'R-2',
-          order_label: '#5',
-          order_number: '#5',
-          channel_label: 'Zalda',
-        }),
-        { preferLocalAgent: true, receiptId: 'receipt-2' },
-      );
+      expect(edgePrintMutateAsyncMock).toHaveBeenCalledWith({ documentId: 'document-2' });
       expect(closedRefetchMock).toHaveBeenCalled();
       expect(fiscalClosedRefetchMock).toHaveBeenCalled();
     });
@@ -428,7 +396,7 @@ describe('OpenChecksPageContent', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Yakunlash' }));
     fireEvent.click(await screen.findByRole('button', { name: "Yo'q" }));
 
-    expect(printReceiptWithFallbackMock).not.toHaveBeenCalled();
+    expect(edgePrintMutateAsyncMock).not.toHaveBeenCalled();
     expect(closedRefetchMock).toHaveBeenCalled();
     expect(fiscalClosedRefetchMock).toHaveBeenCalled();
   });

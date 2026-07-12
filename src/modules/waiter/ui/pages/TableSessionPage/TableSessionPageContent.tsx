@@ -1,7 +1,6 @@
 ﻿import { Icon } from '@iconify/react';
 import { Box, Button, Divider, Drawer, Stack, TextField, Typography, alpha, useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import axios from 'axios';
 import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
@@ -12,10 +11,10 @@ import {
   canAccessTakeawayBuilder,
   usePosSession,
 } from 'modules/auth';
+import { enqueueEdgePrintDocuments } from 'modules/edge-printing/application';
 import {
   useCurrentWaiterOrder,
   useCurrentWaiterTakeawayOrder,
-  usePrintWaiterPrebillMutation,
   useSubmitWaiterOrderMutation,
   useWaiterMenuQuery,
   useWaiterTableSessionQuery,
@@ -28,7 +27,6 @@ import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { formatPosCopy, getPosCopy } from 'shared/locale/copy';
 import { useOptimisticBuilderOrder } from 'shared/pos/useOptimisticBuilderOrder';
 import { formatCompactMoney, formatMoneyParts } from 'shared/pos/utils';
-import { printReceiptWithFallback } from 'shared/printing/browserReceipt';
 import {
   PosBuilderPageSkeleton,
   PosIconAction,
@@ -64,54 +62,6 @@ function formatOrderLabel(order: { orderNumber: number; displayName?: string | n
     return /^\d+$/.test(displayName) ? `#${displayName}` : displayName;
   }
   return `ID ${Number(order.orderNumber || 0)}`;
-}
-
-function extractErrorMessage(payload: unknown): string | null {
-  if (typeof payload === 'string' && payload.trim()) {
-    return payload;
-  }
-
-  if (Array.isArray(payload)) {
-    for (const item of payload) {
-      const message = extractErrorMessage(item);
-      if (message) {
-        return message;
-      }
-    }
-    return null;
-  }
-
-  if (payload && typeof payload === 'object') {
-    const record = payload as Record<string, unknown>;
-
-    for (const key of ['detail', 'message', 'error']) {
-      const message = extractErrorMessage(record[key]);
-      if (message) {
-        return message;
-      }
-    }
-
-    for (const value of Object.values(record)) {
-      const message = extractErrorMessage(value);
-      if (message) {
-        return message;
-      }
-    }
-  }
-
-  return null;
-}
-
-function extractThrownErrorMessage(error: unknown) {
-  if (axios.isAxiosError(error)) {
-    return extractErrorMessage(error.response?.data) || error.message;
-  }
-
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return null;
 }
 
 function formatPercent(value: number) {
@@ -171,6 +121,13 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
     defaultVatEnabled: Boolean(session?.restaurantContext?.vatEnabled),
     defaultVatPercent: session?.restaurantContext?.vatPercent ?? 0,
     removeOrderItem: (itemId) => waiterRepository.removeOrderItem(itemId),
+    onPrintDocuments: (documentIds) => {
+      void enqueueEdgePrintDocuments(documentIds).then(({ errors }) => {
+        errors.forEach((error) =>
+          toast.error(error instanceof Error ? error.message : 'Oshxona chekini chiqarib bo‘lmadi'),
+        );
+      });
+    },
     selectCurrentOrder: (orders) =>
       isTakeawayMode
         ? orders.find(
@@ -200,12 +157,12 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
   const submitOrderMutation = useSubmitWaiterOrderMutation({
     orderId: currentOrder?.id,
     sessionId,
+    onPrintError: (error) => toast.error(error instanceof Error ? error.message : 'Oshxona chekini chiqarib bo‘lmadi'),
     onSuccess: () => {
       setOrderSent(true);
       setCartOpen(false);
     },
   });
-  const printPrebillMutation = usePrintWaiterPrebillMutation({ sessionId });
 
   const categories = menuQuery.data ?? [];
   const defaultCategory = useMemo(() => getDefaultWaiterMenuCategory(categories), [categories]);
@@ -280,8 +237,6 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
   );
   const canTakePayment = canAccessCashierPayments(session?.user);
   const isSubmitDisabled = !currentOrder || submitOrderMutation.isPending || hasPendingOperations;
-  const isPrintDisabled =
-    !currentOrder || printPrebillMutation.isPending || submitOrderMutation.isPending || hasPendingOperations;
 
   const createActionKeyHandler = (onActivate: () => void) => (event: KeyboardEvent<HTMLElement>) => {
     if (event.key !== 'Enter' && event.key !== ' ') {
@@ -305,50 +260,6 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
     await submitOrderMutation.mutateAsync();
     setCartOpen(false);
     void navigate(`/cashier/payment?orderId=${currentOrder.id}`);
-  };
-
-  const handlePrintPrebill = async () => {
-    if (!currentOrder || isPrintDisabled) {
-      return;
-    }
-
-    try {
-      const response = await printPrebillMutation.mutateAsync(currentOrder.id);
-      const result = response.result ?? {};
-      const requiresClientPrint = Boolean(result.requiresClientPrint ?? result.requires_client_print);
-
-      if (requiresClientPrint) {
-        const code = String(result.code ?? '');
-        toast.info(code === 'PRINTER_NOT_CONFIGURED' ? 'Printer sozlamalari ulanmagan' : 'Printer ishlamayapti');
-        await printReceiptWithFallback(response.receipt?.payload ?? null, { receiptId: response.receipt?.id });
-
-        if (response.receipt?.id) {
-          try {
-            await waiterRepository.markReceiptPrintResult(response.receipt.id, {
-              ok: true,
-              provider: result.provider,
-              code,
-              printedAt: new Date().toISOString(),
-            });
-          } catch (error) {
-            toast.error(extractThrownErrorMessage(error) || 'Chek chiqdi, lekin print status saqlanmadi.');
-            return;
-          }
-        }
-
-        toast.success(copy.receiptPrinted);
-        return;
-      }
-
-      if (result.ok === false) {
-        toast.error(extractErrorMessage(response.result) || copy.receiptUnavailable);
-        return;
-      }
-
-      toast.success(copy.receiptPrinted);
-    } catch (error) {
-      toast.error(extractThrownErrorMessage(error) || copy.receiptUnavailable);
-    }
   };
 
   useEffect(() => {
@@ -448,7 +359,7 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
             {(selectedCategory?.items ?? []).map((menuItem) => {
               const displayPrice = Number(menuItem.price ?? 0);
               const displayPriceParts = formatMoneyParts(displayPrice, locale);
-              const menuItemImageUrl = resolveMenuItemImageUrl(menuItem.imageUrl ?? menuItem.image_url);
+              const menuItemImageUrl = resolveMenuItemImageUrl(menuItem.imageUrl);
               const selectedCountForMenuItem = menuItemMeta.countMap.get(menuItem.id) ?? 0;
               const hasSelectedCount = selectedCountForMenuItem > 0;
 
@@ -682,8 +593,7 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
                 backgroundColor: 'var(--pos-mobile-summary-bg)',
                 backdropFilter: 'blur(18px)',
                 border: `1px solid ${alpha('#ffffff', theme.palette.mode === 'dark' ? 0.08 : 0.34)}`,
-                boxShadow:
-                  'var(--pos-mobile-summary-shadow)',
+                boxShadow: 'var(--pos-mobile-summary-shadow)',
                 px: 1.4,
                 py: 1.2,
               })}>
@@ -812,7 +722,10 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
                                   ? { textDecoration: 'line-through', opacity: 0.68 }
                                   : undefined
                               }>
-                              {formatPosCopy(copy.itemQuantityLabel, { name: item.catalogItemName, quantity: item.quantity })}
+                              {formatPosCopy(copy.itemQuantityLabel, {
+                                name: item.catalogItemName,
+                                quantity: item.quantity,
+                              })}
                             </Typography>
                             {item.note ? (
                               <Typography variant="body2" color="text.secondary">
@@ -1008,27 +921,13 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
                   </Button>
                 </>
               ) : (
-                <>
-                  <Button
-                    variant="contained"
-                    sx={(theme) => ({
-                      flex: 1,
-                      backgroundImage: 'none',
-                      backgroundColor: theme.palette.mode === 'dark' ? '#464646' : '#d7cebf',
-                      color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
-                    })}
-                    disabled={isPrintDisabled}
-                    onClick={() => void handlePrintPrebill()}>
-                    {printPrebillMutation.isPending ? copy.processing : copy.printReceipt}
-                  </Button>
-                  <Button
-                    variant="contained"
-                    sx={{ flex: 1.15 }}
-                    disabled={isSubmitDisabled}
-                    onClick={() => submitOrderMutation.mutate()}>
-                    {submitOrderMutation.isPending ? copy.processing : copy.sendOrder}
-                  </Button>
-                </>
+                <Button
+                  variant="contained"
+                  sx={{ flex: 1 }}
+                  disabled={isSubmitDisabled}
+                  onClick={() => submitOrderMutation.mutate()}>
+                  {submitOrderMutation.isPending ? copy.processing : copy.sendOrder}
+                </Button>
               )}
             </Stack>
           </Stack>
@@ -1110,7 +1009,10 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
                                 ? { textDecoration: 'line-through', opacity: 0.68 }
                                 : undefined
                             }>
-                            {formatPosCopy(copy.itemQuantityLabel, { name: item.catalogItemName, quantity: item.quantity })}
+                            {formatPosCopy(copy.itemQuantityLabel, {
+                              name: item.catalogItemName,
+                              quantity: item.quantity,
+                            })}
                           </Typography>
                           {item.note ? (
                             <Typography variant="caption" color="text.secondary">
@@ -1228,27 +1130,13 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
                   </Button>
                 </>
               ) : (
-                <>
-                  <Button
-                    variant="contained"
-                    sx={(theme) => ({
-                      flex: 1,
-                      backgroundImage: 'none',
-                      backgroundColor: theme.palette.mode === 'dark' ? '#464646' : '#d7cebf',
-                      color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
-                    })}
-                    disabled={isPrintDisabled}
-                    onClick={() => void handlePrintPrebill()}>
-                    {printPrebillMutation.isPending ? copy.processing : copy.printReceipt}
-                  </Button>
-                  <Button
-                    variant="contained"
-                    sx={{ flex: 1.15 }}
-                    disabled={isSubmitDisabled}
-                    onClick={() => submitOrderMutation.mutate()}>
-                    {submitOrderMutation.isPending ? copy.processing : copy.sendOrder}
-                  </Button>
-                </>
+                <Button
+                  variant="contained"
+                  sx={{ flex: 1 }}
+                  disabled={isSubmitDisabled}
+                  onClick={() => submitOrderMutation.mutate()}>
+                  {submitOrderMutation.isPending ? copy.processing : copy.sendOrder}
+                </Button>
               )}
             </Stack>
           </Stack>

@@ -4,11 +4,10 @@ export type PaymentMethod = 'cash' | 'card' | 'mixed';
 
 export type CashierFiscalReceipt = {
   id: string;
+  printDocument?: string | null;
   payload?: {
     receiptNumber?: string;
-    receipt_number?: string;
     issuedAt?: string;
-    issued_at?: string;
   };
   createdAt?: string;
 } | null;
@@ -20,13 +19,9 @@ export type CashierPaymentResponse = {
     method: PaymentMethod;
     amount: number | string;
     cashAmount?: number | string;
-    cash_amount?: number | string;
     cardAmount?: number | string;
-    card_amount?: number | string;
     fiscalCashAmount?: number | string;
-    fiscal_cash_amount?: number | string;
     fiscalCardAmount?: number | string;
-    fiscal_card_amount?: number | string;
     fiscalAdjustmentReason?: string;
     fiscal_adjustment_reason?: string;
     externalRef?: string;

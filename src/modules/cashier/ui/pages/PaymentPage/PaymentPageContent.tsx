@@ -45,12 +45,12 @@ import {
   type CashierPaymentResponse,
   type PaymentMethod,
 } from 'modules/cashier/domain';
+import { useEdgePrintMutation } from 'modules/edge-printing';
 import { getApiErrorMessage } from 'shared/api/errorMessage';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { formatPosCopy, getPosCopy } from 'shared/locale/copy';
 import { useScannerInput } from 'shared/pos/useScannerInput';
 import { formatCompactMoney, formatTime } from 'shared/pos/utils';
-import { printReceiptWithFallback } from 'shared/printing/browserReceipt';
 import { PosIconAction, PosSettingsMenu } from 'shared/ui/pos-primitives';
 
 export type PaymentPageContentProps = {
@@ -76,51 +76,6 @@ type MutationErrorPayload = {
 function getMutationErrorDetail(error: unknown) {
   const errorResponse = (error as { response?: { data?: MutationErrorPayload } })?.response?.data;
   return errorResponse?.detail ?? '';
-}
-
-function getReceiptChannelLabel(channel?: string | null) {
-  if (channel === 'delivery') return 'Yetkazib berish';
-  if (channel === 'online') return 'Online';
-  return 'Zalda';
-}
-
-function withReceiptOrderContext(
-  payload: Record<string, unknown> | null | undefined,
-  order: CashierPaymentResponse['order'],
-) {
-  const orderNumberLabel = getCashierOrderDisplayName({
-    orderNumber: order.orderNumber,
-    displayName: order.displayName,
-  });
-  const context = {
-    order_label: orderNumberLabel,
-    orderLabel: orderNumberLabel,
-    order_number: orderNumberLabel,
-    orderNumber: orderNumberLabel,
-    channel_label: getReceiptChannelLabel(order.channel),
-    channelLabel: getReceiptChannelLabel(order.channel),
-    table_label: order.tableName || order.hallName ? [order.hallName, order.tableName].filter(Boolean).join(' / ') : '',
-    tableLabel: order.tableName || order.hallName ? [order.hallName, order.tableName].filter(Boolean).join(' / ') : '',
-    delivery_phone: order.deliveryPhone ?? '',
-    deliveryPhone: order.deliveryPhone ?? '',
-    delivery_address: order.deliveryAddress ?? '',
-    deliveryAddress: order.deliveryAddress ?? '',
-  };
-  const source = payload ?? {};
-  const snapshot = source.snapshot;
-  if (snapshot && typeof snapshot === 'object' && !Array.isArray(snapshot)) {
-    return {
-      ...source,
-      snapshot: {
-        ...context,
-        ...(snapshot as Record<string, unknown>),
-      },
-    };
-  }
-  return {
-    ...context,
-    ...source,
-  };
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -211,6 +166,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   const paymentMutation = useCashierPaymentMutation({
     orderId: normalizedOrderId,
   });
+  const edgePrintMutation = useEdgePrintMutation();
   const addPaymentOrderItemMutation = useAddCashierPaymentOrderItemMutation({
     orderId: normalizedOrderId,
     onSuccess: () => setAddingItemId(null),
@@ -234,28 +190,6 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     const activeCashDeskId = cashierContextQuery.data?.currentShift?.cashDesk;
     return cashDesks.find((cashDesk) => cashDesk.id === activeCashDeskId) ?? cashDesks[0] ?? null;
   }, [cashierContextQuery.data?.availableCashDesks, cashierContextQuery.data?.currentShift?.cashDesk]);
-  const receiptLocalAgentEnabled = true;
-  const receiptPrintOptions = useMemo(
-    () => ({
-      preferLocalAgent: receiptLocalAgentEnabled,
-      ...(selectedCashDesk?.printerIntegrationPrinterName
-        ? { printerName: selectedCashDesk.printerIntegrationPrinterName }
-        : {}),
-      ...(selectedCashDesk?.printerIntegrationConnectionType
-        ? { connectionType: selectedCashDesk.printerIntegrationConnectionType }
-        : {}),
-      ...(selectedCashDesk?.printerIntegrationHost ? { host: selectedCashDesk.printerIntegrationHost } : {}),
-      ...(selectedCashDesk?.printerIntegrationPort ? { port: selectedCashDesk.printerIntegrationPort } : {}),
-    }),
-    [
-      receiptLocalAgentEnabled,
-      selectedCashDesk?.printerIntegrationConnectionType,
-      selectedCashDesk?.printerIntegrationHost,
-      selectedCashDesk?.printerIntegrationPort,
-      selectedCashDesk?.printerIntegrationPrinterName,
-    ],
-  );
-
   const remainingTotal = useMemo(() => {
     const total = Number(orderQuery.data?.total ?? 0);
     const paidTotal = (orderQuery.data?.payments ?? [])
@@ -281,7 +215,11 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     [orderQuery.data?.displayName, orderQuery.data?.orderNumber],
   );
   const hasCustomOrderName = Boolean(orderQuery.data?.displayName?.trim());
-  const isBuilderOrder = orderQuery.data?.channel === 'takeaway' || orderQuery.data?.channel === 'delivery';
+  const isBuilderOrder =
+    !orderQuery.data?.tableSession &&
+    (orderQuery.data?.channel === 'hall' ||
+      orderQuery.data?.channel === 'takeaway' ||
+      orderQuery.data?.channel === 'delivery');
   const canAddPaymentItems = isBuilderOrder
     ? canAddCashierPaymentOrderItems(session?.user)
     : canAccessWaiterTables(session?.user);
@@ -290,8 +228,8 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   const markingMissingCount = useMemo(
     () =>
       (orderQuery.data?.items ?? []).reduce((sum, item) => {
-        const required = Number(item.markingRequiredCount ?? item.marking_required_count ?? 0);
-        const scanned = Number(item.markingScannedCount ?? item.marking_scanned_count ?? item.markings?.length ?? 0);
+        const required = Number(item.markingRequiredCount ?? 0);
+        const scanned = Number(item.markingScannedCount ?? item.markings?.length ?? 0);
         return sum + Math.max(required - scanned, 0);
       }, 0),
     [orderQuery.data?.items],
@@ -380,101 +318,6 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     [receiptData?.receipt, receiptData?.receipts],
   );
   const primaryReceipt = receiptDialogReceipts[0] ?? receiptData?.receipt ?? null;
-  const fallbackReceiptPayload = useMemo(() => {
-    if (!receiptData) {
-      return null;
-    }
-    const order = receiptData.order;
-    const payment = receiptData.payment;
-    const receiptNumber = payment.externalRef || getCashierOrderNumberLabel({ orderNumber: order.orderNumber });
-    const orderReceiptLabel = getCashierOrderDisplayName({
-      orderNumber: order.orderNumber,
-      displayName: order.displayName,
-    });
-    const activeItems = aggregateCashierOrderItems(order.items?.filter((item) => item.status !== 'cancelled'));
-    const paymentAmount = Number(payment.amount ?? 0);
-    const succeededPayments = (order.payments ?? []).filter((orderPayment) => orderPayment.status === 'succeeded');
-    const aggregateCashAmount = succeededPayments.reduce(
-      (sum, orderPayment) =>
-        sum +
-        Number(
-          orderPayment.cashAmount ??
-            orderPayment.cash_amount ??
-            (orderPayment.method === 'cash' ? orderPayment.amount : 0),
-        ),
-      0,
-    );
-    const aggregateCardAmount = succeededPayments.reduce(
-      (sum, orderPayment) =>
-        sum +
-        Number(
-          orderPayment.cardAmount ??
-            orderPayment.card_amount ??
-            (orderPayment.method === 'cash' ? 0 : orderPayment.amount),
-        ),
-      0,
-    );
-    const receivedCash = Number(
-      aggregateCashAmount ||
-        payment.cashAmount ||
-        payment.cash_amount ||
-        (payment.method === 'cash' ? paymentAmount : 0),
-    );
-    const receivedCard = Number(
-      aggregateCardAmount ||
-        payment.cardAmount ||
-        payment.card_amount ||
-        (payment.method === 'cash' ? 0 : paymentAmount),
-    );
-
-    return {
-      snapshot: {
-        restaurant_name: session?.restaurantContext?.restaurantName ?? 'Chek',
-        restaurant_legal_name: session?.restaurantContext?.restaurantName ?? 'Chek',
-        restaurant_address: session?.restaurantContext?.address ?? '',
-        restaurant_phone: session?.restaurantContext?.phone ?? '',
-        restaurant_social: session?.restaurantContext?.social ?? '',
-        order_label: orderReceiptLabel,
-        orderLabel: orderReceiptLabel,
-        order_number: orderReceiptLabel,
-        orderNumber: orderReceiptLabel,
-        receipt_number: receiptNumber,
-        channel_label: getReceiptChannelLabel(order.channel),
-        table_label:
-          order.tableName || order.hallName ? [order.hallName, order.tableName].filter(Boolean).join(' / ') : '',
-        delivery_phone: order.deliveryPhone ?? '',
-        delivery_address: order.deliveryAddress ?? '',
-        cashier_name: session?.user.fullName || session?.user.username || '',
-        cashier_id: session?.user.id || '',
-        printed_at_label: payment.paidAt || new Date().toISOString(),
-        items: activeItems.map((item) => ({
-          name: item.catalogItemName,
-          quantity: item.quantity,
-          line_total: item.lineTotal,
-          note: item.note,
-        })),
-        subtotal: order.subtotal,
-        service_fee: order.serviceFee,
-        service_fee_percent: order.serviceFeePercent,
-        vat_enabled: false,
-        vat_percent: 0,
-        vat_amount: 0,
-        total: order.status === 'closed' ? order.total : paymentAmount,
-        received_cash: receivedCash,
-        received_card: receivedCard,
-        order_note: order.note,
-      },
-    };
-  }, [
-    receiptData,
-    session?.restaurantContext?.address,
-    session?.restaurantContext?.phone,
-    session?.restaurantContext?.restaurantName,
-    session?.restaurantContext?.social,
-    session?.user.fullName,
-    session?.user.id,
-    session?.user.username,
-  ]);
 
   const finishReceiptFlow = () => {
     setReceiptPrintPromptOpen(false);
@@ -543,21 +386,17 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
 
     setIsReceiptPrintConfirming(true);
     try {
-      const receiptsToPrint = receiptDialogReceipts.length > 0 ? receiptDialogReceipts : [null];
+      const receiptsToPrint = receiptDialogReceipts.filter((receipt) => receipt?.printDocument);
+      if (receiptsToPrint.length === 0) {
+        throw new Error('Chek uchun print hujjati tayyor emas.');
+      }
       await Promise.all(
-        receiptsToPrint.map((receipt) =>
-          printReceiptWithFallback(
-            receiptData ? withReceiptOrderContext(receipt?.payload ?? fallbackReceiptPayload, receiptData.order) : null,
-            {
-              ...receiptPrintOptions,
-              receiptId: receipt?.id,
-            },
-          ),
-        ),
+        receiptsToPrint.map((receipt) => edgePrintMutation.mutateAsync({ documentId: receipt!.printDocument! })),
       );
       setPrintToastOpen(true);
-    } catch {
-      // Keep the cashier flow moving even if the browser blocks a print window.
+    } catch (error) {
+      setPaymentErrorMessage(error instanceof Error ? error.message : 'Chekni chiqarib bo‘lmadi.');
+      setPaymentErrorToastOpen(true);
     } finally {
       setIsReceiptPrintConfirming(false);
       finishReceiptFlow();
@@ -1139,23 +978,39 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
               </Typography>
             ) : null}
 
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-              <Button
-                variant="outlined"
-                size="large"
-                fullWidth
-                disabled={!canSubmitPayment || !canDisableFiscalRegistration}
-                onClick={() => void handlePayment(false)}>
-                {isPaymentProcessing ? copy.processing : copy.plainPayment}
-              </Button>
-              <Button
-                variant="contained"
-                size="large"
-                fullWidth
-                disabled={!canSubmitPayment}
-                onClick={() => void handlePayment(true)}>
-                {isPaymentProcessing ? copy.processing : copy.fiscalPayment}
-              </Button>
+            <Stack direction="row" spacing={1}>
+              <Box component="span" sx={{ display: 'inline-flex', flex: '1 1 50%', minWidth: 0 }}>
+                <Button
+                  variant="outlined"
+                  size="large"
+                  fullWidth
+                  disabled={!canSubmitPayment || !canDisableFiscalRegistration}
+                  onClick={() => void handlePayment(false)}>
+                  {isPaymentProcessing ? copy.processing : copy.plainPayment}
+                </Button>
+              </Box>
+              <Tooltip
+                arrow
+                title={
+                  <Typography variant="body2">
+                    {copy.fiscalPaymentHintPrefix}
+                    <Box component="strong" sx={{ fontWeight: 800 }}>
+                      {copy.fiscalPaymentHintStrong}
+                    </Box>
+                    .
+                  </Typography>
+                }>
+                <Box component="span" sx={{ display: 'inline-flex', flex: '1 1 50%', minWidth: 0 }}>
+                  <Button
+                    variant="contained"
+                    size="large"
+                    fullWidth
+                    disabled={!canSubmitPayment}
+                    onClick={() => void handlePayment(true)}>
+                    {isPaymentProcessing ? copy.processing : copy.fiscalPayment}
+                  </Button>
+                </Box>
+              </Tooltip>
             </Stack>
           </Stack>
         </Box>
@@ -1289,15 +1144,12 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
               <Typography>
                 {receiptDialogReceipts.length > 1
                   ? receiptDialogReceipts
-                      .map((receipt) => receipt?.payload?.receiptNumber ?? receipt?.payload?.receipt_number)
+                      .map((receipt) => receipt?.payload?.receiptNumber)
                       .filter(Boolean)
                       .join(', ') ||
                     receiptData?.payment.externalRef ||
                     '-'
-                  : (primaryReceipt?.payload?.receiptNumber ??
-                    primaryReceipt?.payload?.receipt_number ??
-                    receiptData?.payment.externalRef ??
-                    '-')}
+                  : (primaryReceipt?.payload?.receiptNumber ?? receiptData?.payment.externalRef ?? '-')}
               </Typography>
             </Stack>
             <Stack direction="row" justifyContent="space-between">
@@ -1317,12 +1169,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
             <Stack direction="row" justifyContent="space-between">
               <Typography color="text.secondary">{copy.receiptTime}</Typography>
               <Typography>
-                {formatTime(
-                  primaryReceipt?.payload?.issuedAt ??
-                    primaryReceipt?.payload?.issued_at ??
-                    receiptData?.payment.paidAt,
-                  locale,
-                )}
+                {formatTime(primaryReceipt?.payload?.issuedAt ?? receiptData?.payment.paidAt, locale)}
               </Typography>
             </Stack>
 

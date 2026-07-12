@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { PosOrderChannelSegment } from './PosOrderChannelSegment';
 
 describe('PosOrderChannelSegment', () => {
-  it('renders and switches delivery and takeaway builder channels', () => {
+  it('renders and switches hall, delivery and takeaway channels', () => {
     const onChange = vi.fn();
 
     render(
@@ -14,6 +14,7 @@ describe('PosOrderChannelSegment', () => {
         takeawayLabel="Olib ketish"
         channel="delivery"
         items={[
+          { value: 'hall', label: 'Zalda' },
           { value: 'takeaway', label: 'Olib ketish' },
           { value: 'delivery', label: 'Yetkazib berish' },
         ]}
@@ -26,5 +27,9 @@ describe('PosOrderChannelSegment', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Olib ketish' }));
 
     expect(onChange).toHaveBeenCalledWith('takeaway');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Zalda' }));
+
+    expect(onChange).toHaveBeenCalledWith('hall');
   });
 });

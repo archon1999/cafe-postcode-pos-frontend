@@ -7,7 +7,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TableSessionPageContent } from './TableSessionPageContent';
 
 const navigateMock = vi.fn();
-const printPrebillMutateAsyncMock = vi.fn();
 const submitMutateMock = vi.fn();
 const useWaiterMenuQueryMock = vi.fn();
 const useOptimisticBuilderOrderMock = vi.fn();
@@ -42,10 +41,6 @@ vi.mock('modules/auth', () => ({
 vi.mock('modules/waiter/application', () => ({
   useCurrentWaiterOrder: () => ({ currentOrder: undefined }),
   useCurrentWaiterTakeawayOrder: () => ({ currentOrder: undefined }),
-  usePrintWaiterPrebillMutation: () => ({
-    isPending: false,
-    mutateAsync: printPrebillMutateAsyncMock,
-  }),
   useSubmitWaiterOrderMutation: () => ({
     isPending: false,
     mutate: submitMutateMock,
@@ -67,7 +62,6 @@ vi.mock('modules/waiter/data-access', () => ({
     createTakeawayOrder: vi.fn(),
     removeOrderItem: vi.fn(),
     addOrderItem: vi.fn(),
-    markReceiptPrintResult: vi.fn(),
   },
 }));
 
@@ -93,10 +87,6 @@ vi.mock('shared/pos/useOptimisticBuilderOrder', () => ({
   useOptimisticBuilderOrder: (...args: unknown[]) => useOptimisticBuilderOrderMock(...args),
 }));
 
-vi.mock('shared/printing/browserReceipt', () => ({
-  printReceiptWithFallback: vi.fn(() => Promise.resolve(true)),
-}));
-
 vi.mock('shared/ui/pos-primitives', () => ({
   PosBuilderPageSkeleton: () => <div>loading</div>,
   PosIconAction: ({ icon, onClick }: { icon: string; onClick?: () => void }) => (
@@ -118,7 +108,6 @@ describe('TableSessionPageContent', () => {
 
   beforeEach(() => {
     navigateMock.mockReset();
-    printPrebillMutateAsyncMock.mockReset();
     submitMutateMock.mockReset();
     canAccessTableSessionMenuMock.mockReset();
     canAccessTableSessionMenuMock.mockReturnValue(true);
@@ -154,22 +143,17 @@ describe('TableSessionPageContent', () => {
     });
   });
 
-  it('replaces the hall close button with prebill print and triggers printing without navigation', async () => {
-    printPrebillMutateAsyncMock.mockResolvedValue({
-      result: { ok: true },
-      receipt: { id: 'receipt-1', status: 'sent', kind: 'prebill' },
-    });
-
+  it('submits hall orders without exposing a waiter receipt action', () => {
     render(<TableSessionPageContent sessionId="session-1" mode="hall" />);
 
     expect(screen.queryByRole('button', { name: 'Yopish' })).toBeNull();
-    const printButtons = screen.getAllByRole('button', { name: 'Chekni chiqarish' });
-    expect(printButtons.length).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: 'Chekni chiqarish' })).toBeNull();
+    const submitButtons = screen.getAllByRole('button', { name: 'Saqlash' });
+    expect(submitButtons.length).toBeGreaterThan(0);
 
-    fireEvent.click(printButtons[0]);
+    fireEvent.click(submitButtons[0]);
 
-    expect(printPrebillMutateAsyncMock).toHaveBeenCalledWith('order-1');
-    expect(navigateMock).not.toHaveBeenCalledWith('/waiter/halls');
+    expect(submitMutateMock).toHaveBeenCalledTimes(1);
   });
 
   it('enables the hall menu query for hall-session access', () => {
@@ -220,7 +204,7 @@ describe('TableSessionPageContent', () => {
     expect(screen.getAllByText(/33\s000 so'm/).length).toBeGreaterThan(0);
   });
 
-  it('disables the hall print button while optimistic sync is pending', () => {
+  it('disables hall submission while optimistic sync is pending', () => {
     useOptimisticBuilderOrderMock.mockReturnValue({
       currentOrder: {
         id: 'order-1',
@@ -238,9 +222,12 @@ describe('TableSessionPageContent', () => {
 
     render(<TableSessionPageContent sessionId="session-1" mode="hall" />);
 
-    const printButtons = screen.getAllByRole('button', { name: 'Chekni chiqarish' });
+    const submitButtons = screen.getAllByRole('button', { name: 'Saqlash' });
     expect(
-      printButtons.some((button) => button.hasAttribute('disabled') || button.getAttribute('aria-disabled') === 'true'),
+      submitButtons.some(
+        (button) => button.hasAttribute('disabled') || button.getAttribute('aria-disabled') === 'true',
+      ),
     ).toBe(true);
+    expect(screen.queryByRole('button', { name: 'Chekni chiqarish' })).toBeNull();
   });
 });

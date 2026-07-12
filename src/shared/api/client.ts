@@ -3,6 +3,7 @@ import axios, { type AxiosRequestConfig } from 'axios';
 import { persistSession, readStoredLocale, readStoredSession } from 'modules/auth/data-access';
 
 import { resolveApiBaseUrl } from './apiUrl';
+import { readEdgeToken } from './edgeConnection';
 
 export const apiClient = axios.create({
   baseURL: resolveApiBaseUrl(),
@@ -21,6 +22,7 @@ export const publicApiClient = axios.create({
 apiClient.interceptors.request.use((config) => {
   const session = readStoredSession();
   const locale = readStoredLocale();
+  const edgeToken = readEdgeToken();
 
   if (session?.token) {
     config.headers.Authorization = `Token ${session.token}`;
@@ -28,14 +30,20 @@ apiClient.interceptors.request.use((config) => {
 
   config.headers['Accept-Language'] = locale;
   config.headers['X-Language'] = locale;
+  if (edgeToken) config.headers['X-Edge-Token'] = edgeToken;
+  if (config.method && config.method.toLowerCase() !== 'get' && !config.headers['X-Edge-Operation-ID']) {
+    config.headers['X-Edge-Operation-ID'] = createEdgeOperationId();
+  }
   return config;
 });
 
 publicApiClient.interceptors.request.use((config) => {
   const locale = readStoredLocale();
+  const edgeToken = readEdgeToken();
 
   config.headers['Accept-Language'] = locale;
   config.headers['X-Language'] = locale;
+  if (edgeToken) config.headers['X-Edge-Token'] = edgeToken;
   return config;
 });
 
@@ -93,4 +101,11 @@ export function unwrapCollection<T>(payload: CollectionResponse<T>) {
   }
 
   return payload.data ?? [];
+}
+
+function createEdgeOperationId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `pos:${crypto.randomUUID()}`;
+  }
+  return `pos:${Date.now()}:${Math.random().toString(36).slice(2)}`;
 }

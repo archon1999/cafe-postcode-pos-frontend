@@ -64,9 +64,13 @@ export function getCashierOrderDisplayName(order: Pick<CashierOrder, 'orderNumbe
 export function getCurrentCashierBuilderOrder(
   orders: CashierOrder[] | undefined,
   userId: string | undefined,
-  channel: CashierBuilderOrderChannel = 'takeaway',
+  channel?: CashierBuilderOrderChannel,
 ) {
   return (orders ?? []).find(
-    (order) => !order.tableSession && order.channel === channel && order.status === 'open' && order.openedBy === userId,
+    (order) =>
+      !order.tableSession &&
+      (!channel || order.channel === channel) &&
+      order.status === 'open' &&
+      order.openedBy === userId,
   );
 }

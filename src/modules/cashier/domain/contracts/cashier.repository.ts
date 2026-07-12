@@ -51,7 +51,8 @@ export interface CashierRepository {
     deliveryAddress?: string;
   }): Promise<CashierCreateOrderResponse>;
   createTakeawayOrder(note: string): Promise<CashierCreateOrderResponse>;
-  addOrderItem(orderId: string, catalogItemId: string, note: string): Promise<void>;
+  updateOrderChannel(orderId: string, channel: CashierBuilderOrderChannel): Promise<CashierOrder>;
+  addOrderItem(orderId: string, catalogItemId: string, note: string): Promise<{ kitchenPrintDocuments?: string[] }>;
   scanOrderMarking(orderId: string, rawCode: string, mode: 'add' | 'attach' | 'remove'): Promise<CashierOrder>;
   removeOrderItem(itemId: string): Promise<void>;
   updateOrderDisplayName(orderId: string, displayName: string): Promise<CashierOrder>;
@@ -59,7 +60,7 @@ export interface CashierRepository {
     orderId: string,
     payload: { deliveryPhone: string; deliveryAddress: string },
   ): Promise<CashierOrder>;
-  submitOrder(orderId: string): Promise<void>;
+  submitOrder(orderId: string): Promise<CashierOrder>;
   payOrder(
     orderId: string,
     method: PaymentMethod,
@@ -82,5 +83,5 @@ export interface CashierRepository {
   openFiscalShift(payload?: { cashDeskId?: string }): Promise<Record<string, unknown>>;
   closeFiscalShift(payload?: { cashDeskId?: string }): Promise<Record<string, unknown>>;
   refundPayment(paymentId: string, reason?: string): Promise<{ refund: unknown; receipt: CashierReceipt | null }>;
-  reprintReceipt(receiptId: string): Promise<{ receipt: CashierReceipt | null; result?: Record<string, unknown> }>;
+  ensurePaymentPrintDocument(paymentId: string): Promise<{ receipt: CashierReceipt | null }>;
 }

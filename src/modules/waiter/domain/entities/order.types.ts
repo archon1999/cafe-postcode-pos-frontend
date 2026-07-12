@@ -27,33 +27,9 @@ export type WaiterOrder = {
   note: string;
   channel: string;
   items: WaiterOrderItem[];
-};
-
-export type WaiterReceipt = {
-  id: string;
-  status: string;
-  kind?: 'prebill' | 'fiscal' | 'refund';
-  reprintCount?: number;
-  lastReprintedAt?: string | null;
-  payload?: Record<string, unknown> | null;
-  createdAt?: string;
+  kitchenPrintDocuments?: string[];
 };
 
 export type WaiterCreateOrderResponse = {
   id: string;
-};
-
-export type WaiterPrintPrebillResult = {
-  ok?: boolean;
-  provider?: string;
-  code?: string;
-  detail?: string;
-  requiresClientPrint?: boolean;
-  requires_client_print?: boolean;
-  [key: string]: unknown;
-};
-
-export type WaiterPrintPrebillResponse = {
-  receipt: WaiterReceipt | null;
-  result: WaiterPrintPrebillResult;
 };

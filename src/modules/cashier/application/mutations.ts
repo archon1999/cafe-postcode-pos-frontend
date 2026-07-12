@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 
+import { enqueueEdgePrintDocuments } from 'modules/edge-printing/application';
 import { queryClient } from 'shared/api/query-client';
 
 import { cashierRepository } from '../data-access';
@@ -11,8 +12,9 @@ export function useAddCashierOrderItemMutation(options: {
   currentOrderId?: string;
   kitchenNote: string;
   onSuccess?: () => void;
+  onPrintError?: (error: unknown) => void;
 }) {
-  const { currentOrderId, kitchenNote, onSuccess } = options;
+  const { currentOrderId, kitchenNote, onSuccess, onPrintError } = options;
 
   return useMutation({
     mutationFn: async (menuItem: CashierMenuItem) => {
@@ -23,10 +25,12 @@ export function useAddCashierOrderItemMutation(options: {
         orderId = createdOrder.id;
       }
 
-      await cashierRepository.addOrderItem(orderId, menuItem.id, kitchenNote);
+      const result = await cashierRepository.addOrderItem(orderId, menuItem.id, kitchenNote);
+      return enqueueEdgePrintDocuments(result?.kitchenPrintDocuments ?? []);
     },
-    onSuccess: async () => {
+    onSuccess: async (printing) => {
       await queryClient.invalidateQueries({ queryKey: cashierKeys.builderOrders });
+      printing.errors.forEach(onPrintError ?? (() => undefined));
       onSuccess?.();
     },
   });
@@ -69,8 +73,12 @@ export function useCashierOrderScanMutation(options: {
   });
 }
 
-export function useSubmitCashierOrderMutation(options: { orderId?: string; onSuccess?: () => void }) {
-  const { orderId, onSuccess } = options;
+export function useSubmitCashierOrderMutation(options: {
+  orderId?: string;
+  onSuccess?: () => void;
+  onPrintError?: (error: unknown) => void;
+}) {
+  const { orderId, onSuccess, onPrintError } = options;
 
   return useMutation({
     mutationFn: async () => {
@@ -78,13 +86,16 @@ export function useSubmitCashierOrderMutation(options: { orderId?: string; onSuc
         throw new Error('Current order is not available');
       }
 
-      await cashierRepository.submitOrder(orderId);
+      const order = await cashierRepository.submitOrder(orderId);
+      const printing = await enqueueEdgePrintDocuments(order?.kitchenPrintDocuments ?? []);
+      return { order, printing };
     },
-    onSuccess: async () => {
+    onSuccess: async ({ printing }) => {
       await queryClient.invalidateQueries({ queryKey: cashierKeys.builderOrders });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('open') });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('closed') });
       await queryClient.invalidateQueries({ queryKey: ['kitchen', 'queue'] });
+      printing.errors.forEach(onPrintError ?? (() => undefined));
       onSuccess?.();
     },
   });
@@ -205,8 +216,7 @@ export function useCloseCashierShiftMutation(options?: {
       actualClosingCashAmount?: number;
       notesClose?: string;
       closeFiscalShift?: boolean;
-    }) =>
-      cashierRepository.closeShift(payload),
+    }) => cashierRepository.closeShift(payload),
     onSuccess: async (response) => {
       await queryClient.invalidateQueries({ queryKey: cashierKeys.context });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('open') });
@@ -235,14 +245,9 @@ export function useCashierRefundMutation(options?: { onSuccess?: () => void }) {
   });
 }
 
-export function useCashierReprintMutation(options?: { onSuccess?: () => void }) {
+export function useCashierEnsurePaymentPrintDocumentMutation() {
   return useMutation({
-    mutationFn: (receiptId: string) => cashierRepository.reprintReceipt(receiptId),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: cashierKeys.context });
-      await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('closed') });
-      options?.onSuccess?.();
-    },
+    mutationFn: (paymentId: string) => cashierRepository.ensurePaymentPrintDocument(paymentId),
   });
 }
 

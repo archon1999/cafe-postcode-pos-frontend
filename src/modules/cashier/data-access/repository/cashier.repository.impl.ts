@@ -30,9 +30,7 @@ type ChecksPayload<T> =
       count?: number;
       page?: number;
       pageSize?: number;
-      page_size?: number;
       numPages?: number;
-      num_pages?: number;
     };
 type CashierReceipt = NonNullable<CashierOrder['receipts']>[number];
 
@@ -62,7 +60,7 @@ class CashierRepositoryImpl implements CashierRepository {
       query.set('page', String(params.page));
     }
     if (params?.pageSize) {
-      query.set('page_size', String(params.pageSize));
+      query.set('pageSize', String(params.pageSize));
     }
     const payload = await apiGet<ChecksPayload<CashierOrder>>(`/pos/billing/open-checks/?${query.toString()}`);
     const orders = mapCashierOrders(unwrapCollection(payload));
@@ -73,8 +71,8 @@ class CashierRepositoryImpl implements CashierRepository {
       orders,
       count: Number(payload.count ?? orders.length),
       page: Number(payload.page ?? 1),
-      pageSize: Number(payload.pageSize ?? payload.page_size ?? orders.length),
-      numPages: Number(payload.numPages ?? payload.num_pages ?? 1),
+      pageSize: Number(payload.pageSize ?? orders.length),
+      numPages: Number(payload.numPages ?? 1),
     };
   }
 
@@ -121,8 +119,16 @@ class CashierRepositoryImpl implements CashierRepository {
     return this.createBuilderOrder({ channel: 'takeaway', note });
   }
 
+  async updateOrderChannel(orderId: string, channel: CashierBuilderOrderChannel): Promise<CashierOrder> {
+    return mapCashierOrder(
+      await apiPatch<CashierOrder>(`/pos/sales/orders/${orderId}/`, {
+        channel,
+      }),
+    );
+  }
+
   async addOrderItem(orderId: string, catalogItemId: string, note: string) {
-    await apiPost(`/pos/sales/orders/${orderId}/items/`, {
+    return apiPost<{ kitchenPrintDocuments?: string[] }>(`/pos/sales/orders/${orderId}/items/`, {
       catalogItem: catalogItemId,
       quantity: 1,
       note,
@@ -162,7 +168,7 @@ class CashierRepositoryImpl implements CashierRepository {
   }
 
   async submitOrder(orderId: string) {
-    await apiPost(`/pos/sales/orders/${orderId}/submit/`);
+    return mapCashierOrder(await apiPost<CashierOrder>(`/pos/sales/orders/${orderId}/submit/`));
   }
 
   async payOrder(
@@ -181,11 +187,11 @@ class CashierRepositoryImpl implements CashierRepository {
       await apiPost<CashierPaymentResponse>(`/pos/billing/orders/${orderId}/pay/`, {
         method,
         amount,
-        cash_amount: options?.cashAmount,
-        card_amount: options?.cardAmount,
-        register_fiscal: options?.registerFiscal ?? true,
-        manual_card_override: Boolean(options?.manualCardOverride),
-        manual_card_reason: options?.manualCardReason ?? '',
+        cashAmount: options?.cashAmount,
+        cardAmount: options?.cardAmount,
+        registerFiscal: options?.registerFiscal ?? true,
+        manualCardOverride: Boolean(options?.manualCardOverride),
+        manualCardReason: options?.manualCardReason ?? '',
       }),
     );
   }
@@ -214,10 +220,8 @@ class CashierRepositoryImpl implements CashierRepository {
     });
   }
 
-  async reprintReceipt(receiptId: string) {
-    return apiPost<{ receipt: CashierReceipt | null; result?: Record<string, unknown> }>(
-      `/pos/billing/receipts/${receiptId}/reprint/`,
-    );
+  async ensurePaymentPrintDocument(paymentId: string) {
+    return apiPost<{ receipt: CashierReceipt | null }>(`/pos/billing/payments/${paymentId}/print-document/`);
   }
 }
 

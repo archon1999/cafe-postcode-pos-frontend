@@ -9,7 +9,7 @@ export function useWaiterHallsQuery() {
   return useQuery({
     queryKey: waiterKeys.halls,
     queryFn: () => waiterRepository.getHalls(),
-    refetchInterval: 10000,
+    refetchInterval: 2000,
     refetchIntervalInBackground: false,
   });
 }
@@ -34,6 +34,8 @@ export function useWaiterOrdersQuery() {
   return useQuery({
     queryKey: waiterKeys.orders,
     queryFn: () => waiterRepository.getOrders(),
+    refetchInterval: 2000,
+    refetchIntervalInBackground: false,
   });
 }
 

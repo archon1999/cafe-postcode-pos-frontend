@@ -37,7 +37,6 @@ type CatalogMenuItemLike = {
   name: string;
   description?: string | null;
   imageUrl?: string | null;
-  image_url?: string | null;
   prepStationName?: string | null;
   price: number | string;
 };
@@ -46,7 +45,6 @@ type CatalogCategoryLike<TMenuItem extends CatalogMenuItemLike> = {
   id: string;
   name: string;
   imageUrl?: string | null;
-  image_url?: string | null;
   items: TMenuItem[];
 };
 
@@ -71,7 +69,7 @@ type CatalogSummaryItem = {
 };
 
 function resolveBuilderChannel(value: string | null): CashierBuilderOrderChannel {
-  return value === 'delivery' ? 'delivery' : 'takeaway';
+  return value === 'delivery' || value === 'takeaway' ? value : 'hall';
 }
 
 function getDefaultCategory<TMenuItem extends CatalogMenuItemLike>(categories: CatalogCategoryLike<TMenuItem>[]) {
@@ -93,11 +91,11 @@ function resolveImageUrl(imageUrl?: string | null) {
 }
 
 function resolveMenuItemImageUrl(menuItem: CatalogMenuItemLike) {
-  return resolveImageUrl(menuItem.imageUrl ?? menuItem.image_url);
+  return resolveImageUrl(menuItem.imageUrl);
 }
 
 function resolveCategoryImageUrl<TMenuItem extends CatalogMenuItemLike>(category: CatalogCategoryLike<TMenuItem>) {
-  const categoryImageUrl = resolveImageUrl(category.imageUrl ?? category.image_url);
+  const categoryImageUrl = resolveImageUrl(category.imageUrl);
 
   if (categoryImageUrl) {
     return categoryImageUrl;
@@ -837,8 +835,8 @@ function CashierMenuCatalogPage({ channel }: { channel: CashierBuilderOrderChann
   const menuQuery = useCashierMenuQuery();
   const ordersQuery = useCashierBuilderOrdersQuery();
   const serverOrder = useMemo(
-    () => getCurrentCashierBuilderOrder(ordersQuery.data, session?.user.id, channel),
-    [channel, ordersQuery.data, session?.user.id],
+    () => getCurrentCashierBuilderOrder(ordersQuery.data, session?.user.id),
+    [ordersQuery.data, session?.user.id],
   );
   const copy = getPosCopy(locale);
   const { currentOrder, addItem, removeItem, hasPendingOperations } = useOptimisticBuilderOrder({
@@ -856,7 +854,7 @@ function CashierMenuCatalogPage({ channel }: { channel: CashierBuilderOrderChann
     defaultVatPercent: session?.restaurantContext?.vatPercent ?? 0,
     removeOrderItem: (itemId) => cashierRepository.removeOrderItem(itemId),
     resetKey: channel,
-    selectCurrentOrder: (orders) => getCurrentCashierBuilderOrder(orders, session?.user.id, channel),
+    selectCurrentOrder: (orders) => getCurrentCashierBuilderOrder(orders, session?.user.id),
     addOrderItem: (orderId, menuItem, note) => cashierRepository.addOrderItem(orderId, menuItem.id, note),
     syncErrorMessage: copy.itemSyncFailed,
   });
