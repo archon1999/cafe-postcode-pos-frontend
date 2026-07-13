@@ -1,7 +1,11 @@
 import { readEdgeOrigin, readStoredEdgeOrigin } from './edgeConnection';
 
 const APP_API_PATH = 'api/v1';
-const VERSIONED_API_PATTERN = /\/api\/v\d+(?:\/|$)/;
+const VERSIONED_API_PATTERN = /\/(?:api\/)?v\d+(?:\/|$)/;
+
+export function isVersionedApiBaseUrl(value: string) {
+  return VERSIONED_API_PATTERN.test(value);
+}
 
 function normalizeConfigValue(value: string | undefined) {
   return value?.trim().replace(/^['"]|['"]$/g, '') ?? '';
@@ -23,7 +27,7 @@ export function resolveApiBaseUrl() {
   const configuredBaseUrl = stripTrailingSlashes(normalizeConfigValue(import.meta.env.VITE_API_BASE_URL));
 
   if (configuredBaseUrl) {
-    if (VERSIONED_API_PATTERN.test(configuredBaseUrl)) {
+    if (isVersionedApiBaseUrl(configuredBaseUrl)) {
       return configuredBaseUrl;
     }
 
