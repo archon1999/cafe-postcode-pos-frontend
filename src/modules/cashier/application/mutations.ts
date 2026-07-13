@@ -115,8 +115,12 @@ export function useCashierUpdateOrderDisplayNameMutation(options?: { onSuccess?:
   });
 }
 
-export function useCashierPaymentMutation(options: { orderId: string | null; onSuccess?: () => void }) {
-  const { orderId, onSuccess } = options;
+export function useCashierPaymentMutation(options: {
+  orderId: string | null;
+  onSuccess?: () => void;
+  onPrintError?: (error: unknown) => void;
+}) {
+  const { orderId, onSuccess, onPrintError } = options;
 
   return useMutation({
     mutationFn: async (payload: {
@@ -132,13 +136,18 @@ export function useCashierPaymentMutation(options: { orderId: string | null; onS
         throw new Error('Order id is missing');
       }
 
-      return cashierRepository.payOrder(orderId, payload.method, payload.amount, {
+      const response = await cashierRepository.payOrder(orderId, payload.method, payload.amount, {
         cashAmount: payload.cashAmount,
         cardAmount: payload.cardAmount,
         manualCardOverride: payload.manualCardOverride,
         manualCardReason: payload.manualCardReason,
         registerFiscal: payload.registerFiscal,
       });
+      const printing = await enqueueEdgePrintDocuments(
+        response.kitchenPrintDocuments ?? response.order.kitchenPrintDocuments ?? [],
+      );
+      printing.errors.forEach(onPrintError ?? (() => undefined));
+      return response;
     },
     onSuccess: async (_, __) => {
       await queryClient.invalidateQueries({ queryKey: cashierKeys.context });

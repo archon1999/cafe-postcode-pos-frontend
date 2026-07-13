@@ -32,4 +32,5 @@ export type CashierPaymentResponse = {
   };
   receipt: CashierFiscalReceipt;
   receipts?: CashierFiscalReceipt[];
+  kitchenPrintDocuments?: string[];
 };

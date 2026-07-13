@@ -165,6 +165,10 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   const orderQuery = useCashierPaymentOrderQuery(normalizedOrderId);
   const paymentMutation = useCashierPaymentMutation({
     orderId: normalizedOrderId,
+    onPrintError: (error) => {
+      setPaymentErrorMessage(error instanceof Error ? error.message : "Oshxona chekini chiqarib bo'lmadi.");
+      setPaymentErrorToastOpen(true);
+    },
   });
   const edgePrintMutation = useEdgePrintMutation();
   const addPaymentOrderItemMutation = useAddCashierPaymentOrderItemMutation({
