@@ -4,7 +4,9 @@ export type PaymentMethod = 'cash' | 'card' | 'mixed';
 
 export type CashierFiscalReceipt = {
   id: string;
+  status?: 'created' | 'sent' | 'failed';
   printDocument?: string | null;
+  fiscalErrorMessage?: string | null;
   payload?: {
     receiptNumber?: string;
     issuedAt?: string;

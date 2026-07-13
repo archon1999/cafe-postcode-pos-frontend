@@ -615,7 +615,7 @@ describe('PaymentPageContent', () => {
         paidAt: '2026-04-18T10:00:00Z',
         externalRef: 'R-1',
       },
-      receipt: { id: 'receipt-1', payload: { receiptNumber: 'R-1' } },
+      receipt: { id: 'receipt-1', printDocument: 'document-1', payload: { receiptNumber: 'R-1' } },
     });
 
     render(<PaymentPageContent orderId="order-1" />);
@@ -624,6 +624,42 @@ describe('PaymentPageContent', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Yakunlash' }));
     fireEvent.click(await screen.findByRole('button', { name: "Yo'q" }));
 
+    expect(edgePrintMutateAsyncMock).not.toHaveBeenCalled();
+    expect(navigateMock).toHaveBeenCalledWith('/cashier/open-checks', { replace: true });
+  });
+
+  it('shows a fiscal device error without offering a non-fiscal print fallback', async () => {
+    paymentMutateAsyncMock.mockResolvedValueOnce({
+      order: {
+        orderNumber: 102,
+        items: [],
+        subtotal: 30000,
+        serviceFee: 0,
+        total: 30000,
+        note: '',
+        status: 'closed',
+      },
+      payment: {
+        method: 'cash',
+        amount: 30000,
+        paidAt: '2026-04-18T10:00:00Z',
+      },
+      receipt: {
+        id: 'receipt-failed',
+        status: 'failed',
+        fiscalErrorMessage: 'Fiscal qurilma topilmadi.',
+        payload: {},
+      },
+    });
+
+    render(<PaymentPageContent orderId="order-1" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Chek' }));
+
+    expect(await screen.findByText('Fiskal chek chiqarilmadi')).toBeTruthy();
+    expect(screen.getByText('Fiscal qurilma topilmadi.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Yakunlash' }));
+
+    expect(screen.queryByText('Chek kerakmi?')).toBeNull();
     expect(edgePrintMutateAsyncMock).not.toHaveBeenCalled();
     expect(navigateMock).toHaveBeenCalledWith('/cashier/open-checks', { replace: true });
   });

@@ -318,6 +318,8 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     [receiptData?.receipt, receiptData?.receipts],
   );
   const primaryReceipt = receiptDialogReceipts[0] ?? receiptData?.receipt ?? null;
+  const fiscalReceiptError = receiptDialogReceipts.find((receipt) => receipt?.status === 'failed')?.fiscalErrorMessage;
+  const hasPrintableReceipt = receiptDialogReceipts.some((receipt) => Boolean(receipt?.printDocument));
 
   const finishReceiptFlow = () => {
     setReceiptPrintPromptOpen(false);
@@ -1136,9 +1138,14 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
         maxWidth="xs"
         fullWidth
         fullScreen={isMobile}>
-        <DialogTitle>{copy.receiptTitle}</DialogTitle>
+        <DialogTitle>{fiscalReceiptError ? copy.fiscalReceiptFailed : copy.receiptTitle}</DialogTitle>
         <DialogContent>
           <Stack spacing={1.5} sx={{ pt: 1 }}>
+            {fiscalReceiptError ? (
+              <Typography color="error.main" sx={{ fontWeight: 700 }}>
+                {fiscalReceiptError}
+              </Typography>
+            ) : null}
             <Stack direction="row" justifyContent="space-between">
               <Typography color="text.secondary">{copy.receiptNumber}</Typography>
               <Typography>
@@ -1147,9 +1154,11 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
                       .map((receipt) => receipt?.payload?.receiptNumber)
                       .filter(Boolean)
                       .join(', ') ||
-                    receiptData?.payment.externalRef ||
-                    '-'
-                  : (primaryReceipt?.payload?.receiptNumber ?? receiptData?.payment.externalRef ?? '-')}
+                    receiptData?.order.displayName ||
+                    `#${receiptData?.order.orderNumber ?? '-'}`
+                  : (primaryReceipt?.payload?.receiptNumber ??
+                    receiptData?.order.displayName ??
+                    `#${receiptData?.order.orderNumber ?? '-'}`)}
               </Typography>
             </Stack>
             <Stack direction="row" justifyContent="space-between">
@@ -1174,7 +1183,10 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
             </Stack>
 
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.2} sx={{ pt: 1 }}>
-              <Button variant="contained" sx={{ flex: 1 }} onClick={() => setReceiptPrintPromptOpen(true)}>
+              <Button
+                variant="contained"
+                sx={{ flex: 1 }}
+                onClick={() => (hasPrintableReceipt ? setReceiptPrintPromptOpen(true) : finishReceiptFlow())}>
                 {copy.finishReceipt}
               </Button>
             </Stack>
