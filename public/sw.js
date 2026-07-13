@@ -1,4 +1,4 @@
-const CACHE_NAME = 'restaurant-pos-shell-v6';
+const CACHE_NAME = 'restaurant-pos-shell-v7';
 const APP_SHELL = ['/', '/manifest.webmanifest', '/icons/pos-icon.svg'];
 
 function isCacheableRequest(request) {
@@ -37,6 +37,14 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(event.request.url);
   const isNavigationRequest = event.request.mode === 'navigate';
+
+  // API requests to the Local Agent are cross-origin loopback requests. Let the
+  // browser handle their CORS/PNA checks directly instead of proxying them
+  // through the service worker. The worker only owns navigation and app-shell
+  // caching; API failures must never be replaced with the cached index page.
+  if (url.origin !== self.location.origin || (!isNavigationRequest && !isCacheableRequest(event.request))) {
+    return;
+  }
 
   event.respondWith(
     fetch(event.request)
