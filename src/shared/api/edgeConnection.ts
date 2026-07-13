@@ -7,8 +7,13 @@ function configuredValue(value?: string) {
 }
 
 export function normalizeEdgeOrigin(value: string) {
-  const normalized = value.trim().replace(/\/+$/, '').replace(/\/v1$/, '');
-  const parsed = new URL(normalized);
+  const parsed = new URL(value.trim());
+  const pathname = parsed.pathname.replace(/\/+$/, '') || '/';
+  const legacyApiPaths = new Set(['/v1', '/api', '/api/v1', '/v1/api']);
+
+  if (legacyApiPaths.has(pathname)) {
+    parsed.pathname = '/';
+  }
   if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password || parsed.pathname !== '/') {
     throw new Error('Coordinator manzili http://IP:18181 ko‘rinishida bo‘lishi kerak.');
   }
@@ -23,7 +28,19 @@ export function readEdgeOrigin() {
 
 export function readStoredEdgeOrigin() {
   if (typeof window === 'undefined') return '';
-  return window.localStorage.getItem(EDGE_ORIGIN_STORAGE_KEY)?.trim().replace(/\/+$/, '') ?? '';
+  const stored = window.localStorage.getItem(EDGE_ORIGIN_STORAGE_KEY)?.trim() ?? '';
+  if (!stored) return '';
+
+  try {
+    const normalized = normalizeEdgeOrigin(stored);
+    if (normalized !== stored) {
+      window.localStorage.setItem(EDGE_ORIGIN_STORAGE_KEY, normalized);
+    }
+    return normalized;
+  } catch {
+    window.localStorage.removeItem(EDGE_ORIGIN_STORAGE_KEY);
+    return '';
+  }
 }
 
 export function readEdgeToken() {
