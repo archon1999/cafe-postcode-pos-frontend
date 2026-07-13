@@ -231,6 +231,13 @@ export function useCloseCashierShiftMutation(options?: {
   });
 }
 
+export function usePrintCashierShiftReportMutation(options?: { onError?: (error: unknown) => void }) {
+  return useMutation({
+    mutationFn: (payload: { cashShiftId?: string }) => cashierRepository.printShiftReport(payload),
+    onError: (error) => options?.onError?.(error),
+  });
+}
+
 export function useCashierRefundMutation(options?: { onSuccess?: () => void }) {
   return useMutation({
     mutationFn: (payload: { paymentId: string; reason?: string }) =>

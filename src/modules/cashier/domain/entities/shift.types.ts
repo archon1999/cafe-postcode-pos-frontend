@@ -74,4 +74,10 @@ export type CashierShiftCloseResponse = CashierContext & {
   report?: Record<string, unknown>;
   fiscalShift?: Record<string, unknown>;
   fiscal_shift?: Record<string, unknown>;
+  printDocuments?: string[];
+  printReportError?: string;
+};
+
+export type CashierShiftReportResponse = {
+  printDocuments: string[];
 };

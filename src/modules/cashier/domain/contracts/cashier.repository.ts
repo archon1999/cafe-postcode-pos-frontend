@@ -7,6 +7,7 @@ import type {
   CashierOrder,
   CashierPaymentResponse,
   CashierShiftCloseResponse,
+  CashierShiftReportResponse,
   PaymentMethod,
 } from '../entities';
 
@@ -44,6 +45,7 @@ export interface CashierRepository {
     notesClose?: string;
     closeFiscalShift?: boolean;
   }): Promise<CashierShiftCloseResponse>;
+  printShiftReport(payload: { cashShiftId?: string }): Promise<CashierShiftReportResponse>;
   createBuilderOrder(payload: {
     channel: CashierBuilderOrderChannel;
     note: string;

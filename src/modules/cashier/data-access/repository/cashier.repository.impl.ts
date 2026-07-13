@@ -10,6 +10,7 @@ import type {
   CashierPaymentResponse,
   CashierRepository,
   CashierShiftCloseResponse,
+  CashierShiftReportResponse,
   PaymentMethod,
 } from 'modules/cashier/domain';
 import { apiDelete, apiGet, apiPatch, apiPost, unwrapCollection } from 'shared/api/client';
@@ -96,6 +97,10 @@ class CashierRepositoryImpl implements CashierRepository {
     closeFiscalShift?: boolean;
   }): Promise<CashierShiftCloseResponse> {
     return apiPost<CashierShiftCloseResponse>('/pos/billing/shifts/current/close/', payload);
+  }
+
+  async printShiftReport(payload: { cashShiftId?: string }): Promise<CashierShiftReportResponse> {
+    return apiPost<CashierShiftReportResponse>('/pos/billing/shifts/current/print-report/', payload);
   }
 
   async createBuilderOrder(payload: {

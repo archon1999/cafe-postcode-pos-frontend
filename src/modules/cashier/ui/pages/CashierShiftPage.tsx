@@ -31,8 +31,10 @@ import {
   useCashierContextQuery,
   useCloseCashierShiftMutation,
   useOpenCashierShiftMutation,
+  usePrintCashierShiftReportMutation,
 } from 'modules/cashier/application';
 import type { CashierShiftCloseResponse, CashShiftSummary } from 'modules/cashier/domain';
+import { useEdgePrintMutation } from 'modules/edge-printing';
 import { getApiErrorMessage } from 'shared/api/errorMessage';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { getPosCopy } from 'shared/locale/copy';
@@ -64,8 +66,11 @@ export function CashierShiftPage() {
   const nextPath =
     searchParams.get('next') || (isCashierBuilderMode(session?.user) ? '/cashier/builder' : '/cashier/open-checks');
   const currentShift = contextQuery.data?.currentShift ?? null;
-  const activeShifts = contextQuery.data?.activeShifts ?? [];
-  const availableCashDesks = contextQuery.data?.availableCashDesks ?? [];
+  const activeShifts = useMemo(() => contextQuery.data?.activeShifts ?? [], [contextQuery.data?.activeShifts]);
+  const availableCashDesks = useMemo(
+    () => contextQuery.data?.availableCashDesks ?? [],
+    [contextQuery.data?.availableCashDesks],
+  );
   const availableCashiers = contextQuery.data?.availableCashiers ?? [];
   const fiscalShiftOpen = Boolean(contextQuery.data?.fiscalShiftOpen);
   const hasFiscalIntegration = availableCashDesks.some((cashDesk) => Boolean(cashDesk.fiscalProvider));
@@ -83,13 +88,30 @@ export function CashierShiftPage() {
       setOpeningNotes('');
       setOpenShiftDialogOpen(false);
       if (!canManageShift) {
-        navigate(nextPath, { replace: true });
+        void navigate(nextPath, { replace: true });
       }
     },
   });
+  const edgePrintMutation = useEdgePrintMutation();
+
+  const printDocuments = async (documentIds: string[]) => {
+    for (const documentId of documentIds) {
+      await edgePrintMutation.mutateAsync({ documentId });
+    }
+  };
+
+  const printShiftReportMutation = usePrintCashierShiftReportMutation();
   const closeShiftMutation = useCloseCashierShiftMutation({
     onSuccess: (response) => {
       void contextQuery.refetch();
+      if (response.printDocuments?.length) {
+        void printDocuments(response.printDocuments).catch((error) => {
+          toast.error(getApiErrorMessage(error, 'Smena yopildi, lekin hisobotni chiqarib bo‘lmadi.'));
+        });
+      }
+      if (response.printReportError) {
+        toast.error(`Smena yopildi, lekin hisobot tayyorlanmadi: ${response.printReportError}`);
+      }
       if (response.report || response.fiscalShift || response.fiscal_shift) {
         setShiftCloseReport(response);
       }
@@ -181,12 +203,30 @@ export function CashierShiftPage() {
           {renderReportMetric(copy.reportShiftOpened, stringOf(report, 'OpenTime', 'openTime') || '-')}
           {renderReportMetric(copy.reportShiftClosed, stringOf(report, 'CloseTime', 'closeTime') || '-')}
           <Divider />
-          {renderReportMetric(copy.reportOrderPayments, `${numberOf(report, 'OrdersCount', 'ordersCount')} / ${numberOf(report, 'PaymentsCount', 'paymentsCount', 'TotalSaleCount', 'totalSaleCount')}`)}
-          {renderReportMetric(copy.reportCashTurnover, formatCompactMoney(reportMoney(report, 'TotalCash', 'totalCash'), locale))}
-          {renderReportMetric(copy.reportCardTurnover, formatCompactMoney(reportMoney(report, 'TotalCard', 'totalCard'), locale))}
-          {renderReportMetric(copy.reportQrTurnover, formatCompactMoney(reportMoney(report, 'TotalQR', 'totalQR'), locale))}
-          {renderReportMetric(copy.reportRefunded, formatCompactMoney(numberOf(report, 'TotalRefundAmount', 'totalRefundAmount'), locale))}
-          {renderReportMetric(copy.reportNetTotal, formatCompactMoney(numberOf(report, 'NetTotal', 'netTotal', 'TotalSaleAmount', 'totalSaleAmount'), locale))}
+          {renderReportMetric(
+            copy.reportOrderPayments,
+            `${numberOf(report, 'OrdersCount', 'ordersCount')} / ${numberOf(report, 'PaymentsCount', 'paymentsCount', 'TotalSaleCount', 'totalSaleCount')}`,
+          )}
+          {renderReportMetric(
+            copy.reportCashTurnover,
+            formatCompactMoney(reportMoney(report, 'TotalCash', 'totalCash'), locale),
+          )}
+          {renderReportMetric(
+            copy.reportCardTurnover,
+            formatCompactMoney(reportMoney(report, 'TotalCard', 'totalCard'), locale),
+          )}
+          {renderReportMetric(
+            copy.reportQrTurnover,
+            formatCompactMoney(reportMoney(report, 'TotalQR', 'totalQR'), locale),
+          )}
+          {renderReportMetric(
+            copy.reportRefunded,
+            formatCompactMoney(numberOf(report, 'TotalRefundAmount', 'totalRefundAmount'), locale),
+          )}
+          {renderReportMetric(
+            copy.reportNetTotal,
+            formatCompactMoney(numberOf(report, 'NetTotal', 'netTotal', 'TotalSaleAmount', 'totalSaleAmount'), locale),
+          )}
           {renderReportMetric(copy.reportFiscalReceipts, numberOf(report, 'FiscalReceiptCount', 'fiscalReceiptCount'))}
         </Stack>
       </Box>
@@ -210,9 +250,18 @@ export function CashierShiftPage() {
           {renderReportMetric(copy.reportOpenedAt, stringOf(report, 'OpenTime', 'openTime') || '-')}
           {renderReportMetric(copy.reportSales, numberOf(report, 'TotalSaleCount', 'totalSaleCount'))}
           {renderReportMetric(copy.reportRefunds, numberOf(report, 'TotalRefundCount', 'totalRefundCount'))}
-          {renderReportMetric(copy.reportCash, formatCompactMoney(reportMoney(report, 'TotalCash', 'totalCash', 'Sale', 100), locale))}
-          {renderReportMetric(copy.reportCard, formatCompactMoney(reportMoney(report, 'TotalCard', 'totalCard', 'Sale', 100), locale))}
-          {renderReportMetric(copy.reportVat, formatCompactMoney(reportMoney(report, 'TotalVAT', 'totalVAT', 'Sale', 100), locale))}
+          {renderReportMetric(
+            copy.reportCash,
+            formatCompactMoney(reportMoney(report, 'TotalCash', 'totalCash', 'Sale', 100), locale),
+          )}
+          {renderReportMetric(
+            copy.reportCard,
+            formatCompactMoney(reportMoney(report, 'TotalCard', 'totalCard', 'Sale', 100), locale),
+          )}
+          {renderReportMetric(
+            copy.reportVat,
+            formatCompactMoney(reportMoney(report, 'TotalVAT', 'totalVAT', 'Sale', 100), locale),
+          )}
           {renderReportMetric(copy.reportFirstReceipt, stringOf(report, 'FirstReceiptSeq', 'firstReceiptSeq') || '-')}
           {renderReportMetric(copy.reportLastReceipt, stringOf(report, 'LastReceiptSeq', 'lastReceiptSeq') || '-')}
         </Stack>
@@ -234,7 +283,10 @@ export function CashierShiftPage() {
         <Stack spacing={0.9}>
           <Typography variant="subtitle1">{copy.unikassaFiscalMemory}</Typography>
           {renderReportMetric(copy.reportTerminalId, stringOf(report, 'TerminalID', 'terminalID', 'terminalId') || '-')}
-          {renderReportMetric(copy.reportLastOperation, stringOf(report, 'LastOperationTime', 'lastOperationTime') || '-')}
+          {renderReportMetric(
+            copy.reportLastOperation,
+            stringOf(report, 'LastOperationTime', 'lastOperationTime') || '-',
+          )}
           {renderReportMetric(copy.reportZReports, numberOf(report, 'ZReportsCount', 'zReportsCount'))}
           {renderReportMetric(copy.reportReceipts, numberOf(report, 'ReceiptsCount', 'receiptsCount'))}
         </Stack>
@@ -247,11 +299,18 @@ export function CashierShiftPage() {
     const reports = asRecord(valueOf(fiscalShift, 'reports', 'report')) ?? asRecord(shiftCloseReport?.report);
     const posReport = asRecord(valueOf(reports, 'posReport', 'pos_report'));
     const result = asRecord(valueOf(fiscalShift, 'result'));
-    const providerReport = asRecord(valueOf(fiscalShift, 'providerReport', 'provider_report')) ?? asRecord(valueOf(result, 'providerReport', 'provider_report'));
+    const providerReport =
+      asRecord(valueOf(fiscalShift, 'providerReport', 'provider_report')) ??
+      asRecord(valueOf(result, 'providerReport', 'provider_report'));
     const zInfo = asRecord(valueOf(providerReport, 'zInfo', 'z_info'));
     const fiscalMemory = asRecord(valueOf(providerReport, 'fiscalMemory', 'fiscal_memory'));
     return (
-      <Dialog open={Boolean(shiftCloseReport)} onClose={() => setShiftCloseReport(null)} fullWidth maxWidth="sm" fullScreen={isMobile}>
+      <Dialog
+        open={Boolean(shiftCloseReport)}
+        onClose={() => setShiftCloseReport(null)}
+        fullWidth
+        maxWidth="sm"
+        fullScreen={isMobile}>
         <DialogTitle>{copy.shiftReportTitle}</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={1.5}>
@@ -321,6 +380,32 @@ export function CashierShiftPage() {
             </Typography>
           </Box>
           {renderShiftTotals(shift)}
+          <Button
+            variant="contained"
+            sx={(theme) => ({
+              backgroundImage: 'none',
+              backgroundColor: 'var(--pos-secondary-action-bg)',
+              color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
+            })}
+            onClick={() => navigate(nextPath, { replace: true })}>
+            {copy.continueWork}
+          </Button>
+          <Button
+            variant="contained"
+            color="success"
+            disabled={printShiftReportMutation.isPending || edgePrintMutation.isPending}
+            onClick={async () => {
+              try {
+                const response = await printShiftReportMutation.mutateAsync({ cashShiftId: shift.id });
+                await printDocuments(response.printDocuments ?? []);
+              } catch (error) {
+                toast.error(getApiErrorMessage(error, 'Hisobotni chiqarishda xatolik bor.'));
+              }
+            }}>
+            {printShiftReportMutation.isPending || edgePrintMutation.isPending
+              ? copy.processing
+              : copy.printShiftReport}
+          </Button>
           <TextField
             label={copy.notes}
             value={closingNotesByShift[shift.id] ?? ''}
@@ -471,7 +556,11 @@ export function CashierShiftPage() {
                     </Typography>
                   </Box>
                   {renderOpenShiftFields()}
-                  <Button variant="contained" size={isMobile ? 'large' : 'medium'} disabled={!canOpenShift} onClick={openShift}>
+                  <Button
+                    variant="contained"
+                    size={isMobile ? 'large' : 'medium'}
+                    disabled={!canOpenShift}
+                    onClick={openShift}>
                     {openShiftMutation.isPending ? copy.processing : copy.openShift}
                   </Button>
                 </Stack>
@@ -564,7 +653,7 @@ export function CashierShiftPage() {
         onThemeColorChange={setThemeColor}
         onSignOut={() => {
           setSession(null);
-          navigate('/pin-login', { replace: true });
+          void navigate('/pin-login', { replace: true });
         }}
         themeColor={themeColor}
         themeMode={themeMode}
