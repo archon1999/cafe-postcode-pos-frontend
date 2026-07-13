@@ -216,7 +216,7 @@ describe('OpenChecksPageContent', () => {
 
     expect(screen.queryByRole('button', { name: "Menyuga o'tish" })).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: /Yopiq hisoblar/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Precheklar/ }));
 
     expect(screen.queryByRole('button', { name: "Menyuga o'tish" })).toBeNull();
   });
@@ -261,8 +261,8 @@ describe('OpenChecksPageContent', () => {
     ]);
 
     render(<OpenChecksPageContent />);
-    fireEvent.click(screen.getByRole('button', { name: /Yopiq hisoblar/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Chekni qayta chiqarish' }));
+    fireEvent.click(screen.getByRole('button', { name: /Precheklar/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Prechekni qayta chiqarish' }));
 
     await waitFor(() => {
       expect(ensurePrintDocumentMutateAsyncMock).toHaveBeenCalledWith('payment-6');
@@ -301,7 +301,7 @@ describe('OpenChecksPageContent', () => {
     });
 
     render(<OpenChecksPageContent />);
-    fireEvent.click(screen.getByRole('button', { name: /Fiscal hisoblar/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Cheklar/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Chekni qayta chiqarish' }));
 
     await waitFor(() => {
@@ -349,8 +349,8 @@ describe('OpenChecksPageContent', () => {
     ]);
 
     render(<OpenChecksPageContent />);
-    fireEvent.click(screen.getByRole('button', { name: /Yopiq hisoblar/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Fiscal bilan yopish' }));
+    fireEvent.click(screen.getByRole('button', { name: /Precheklar/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Chek chiqarish' }));
 
     expect(await screen.findByText('Chek tayyor')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Chekni chiqarish' })).toBeNull();
@@ -391,8 +391,8 @@ describe('OpenChecksPageContent', () => {
     ]);
 
     render(<OpenChecksPageContent />);
-    fireEvent.click(screen.getByRole('button', { name: /Yopiq hisoblar/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Fiscal bilan yopish' }));
+    fireEvent.click(screen.getByRole('button', { name: /Precheklar/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Chek chiqarish' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Yakunlash' }));
     fireEvent.click(await screen.findByRole('button', { name: "Yo'q" }));
 

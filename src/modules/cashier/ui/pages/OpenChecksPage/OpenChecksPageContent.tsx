@@ -509,7 +509,7 @@ function OpenChecksDetail({
                       color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
                     })}
                     onClick={onReprint}>
-                    {copy.reprintReceipt}
+                    {selectedTab === 'closed' ? copy.reprintPrecheck : copy.reprintReceipt}
                   </Button>
                 ) : null}
               </Stack>
