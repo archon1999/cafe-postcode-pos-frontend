@@ -190,7 +190,7 @@ describe('CashierBuilderPageContent', () => {
     render(<CashierBuilderPageContent />);
 
     expect(useOptimisticBuilderOrderMock).toHaveBeenCalledWith(expect.objectContaining({ channel: 'hall' }));
-    expect(screen.getAllByRole('button', { name: 'Zalda' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: 'Zal' }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole('button', { name: 'Soboy' }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole('button', { name: 'Dostavka' }).length).toBeGreaterThan(0);
   });
@@ -224,7 +224,7 @@ describe('CashierBuilderPageContent', () => {
     searchParamsValue = 'channel=takeaway';
     render(<CashierBuilderPageContent />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Zalda' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Zal' }));
 
     await waitFor(() => {
       expect(useOptimisticBuilderOrderMock).toHaveBeenLastCalledWith(expect.objectContaining({ channel: 'hall' }));
@@ -272,7 +272,8 @@ describe('CashierBuilderPageContent', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Saqlash' }));
     fireEvent.change(screen.getByLabelText('Telefon raqam'), { target: { value: '90123' } });
-    fireEvent.click(screen.getAllByRole('button', { name: 'Saqlash' }).at(-1)!);
+    const saveButtons = screen.getAllByRole('button', { name: 'Saqlash' });
+    fireEvent.click(saveButtons[saveButtons.length - 1]);
 
     expect(screen.getByText('Manzilni kiriting')).toBeTruthy();
     expect(updateOrderDeliveryDetailsMock).not.toHaveBeenCalled();
