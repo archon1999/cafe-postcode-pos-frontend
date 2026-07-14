@@ -19,6 +19,15 @@ type Coordinator = NonNullable<PosRestaurantContext['coordinator']>;
 type HealthResponse = { restaurantId?: string; backendOnline?: boolean };
 type StatusResponse = { status?: { backend?: { online?: boolean } } };
 
+function safeNormalizeEdgeOrigin(value: unknown) {
+  if (typeof value !== 'string' || !value.trim()) return null;
+  try {
+    return normalizeEdgeOrigin(value);
+  } catch {
+    return null;
+  }
+}
+
 function terminalIdentity() {
   let id = localStorage.getItem(TERMINAL_ID_KEY)?.trim() || '';
   if (!id) {
@@ -83,7 +92,8 @@ async function selectCoordinator(restaurantId: string, coordinator?: Coordinator
   const candidates: Array<{ origin: string; token: string }> = [];
   if (coordinator?.restaurantId === restaurantId && coordinator.edgeToken) {
     for (const origin of [...(coordinator.coordinatorUrls || []), DEFAULT_EDGE_ORIGIN]) {
-      candidates.push({ origin, token: coordinator.edgeToken });
+      const normalizedOrigin = safeNormalizeEdgeOrigin(origin);
+      if (normalizedOrigin) candidates.push({ origin: normalizedOrigin, token: coordinator.edgeToken });
     }
   }
   if (current?.restaurantId === restaurantId && current.origin && current.token) {
@@ -103,7 +113,7 @@ async function selectCoordinator(restaurantId: string, coordinator?: Coordinator
 export async function resolveRestaurantTransport(code: string): Promise<PosRestaurantContext> {
   const identity = terminalIdentity();
   const cachedBeforeRemote = readTransportConnection();
-  if (cachedBeforeRemote?.mode !== 'remote' && cachedBeforeRemote.origin && cachedBeforeRemote.token) {
+  if (cachedBeforeRemote && cachedBeforeRemote.mode !== 'remote' && cachedBeforeRemote.origin && cachedBeforeRemote.token) {
     try {
       const context = await edgeFetch<PosRestaurantContext>(
         cachedBeforeRemote.origin,
@@ -138,7 +148,7 @@ export async function resolveRestaurantTransport(code: string): Promise<PosResta
   }
 
   const cached = readTransportConnection();
-  if (cached?.mode !== 'remote' && cached.origin && cached.token) {
+  if (cached && cached.mode !== 'remote' && cached.origin && cached.token) {
     try {
       const context = await edgeFetch<PosRestaurantContext>(
         cached.origin,
