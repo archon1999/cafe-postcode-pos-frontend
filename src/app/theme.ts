@@ -713,10 +713,7 @@ export function getPosThemeColorOptions(mode: PosThemeMode) {
   return POS_THEME_COLORS.filter((option) => Boolean(option.modes[mode]));
 }
 
-export function getPosThemeColorOption(
-  color: PosThemeColor = DEFAULT_POS_THEME_COLOR,
-  mode: PosThemeMode = 'dark',
-) {
+export function getPosThemeColorOption(color: PosThemeColor = DEFAULT_POS_THEME_COLOR, mode: PosThemeMode = 'dark') {
   const modeOptions = getPosThemeColorOptions(mode);
 
   return modeOptions.find((option) => option.id === color) ?? modeOptions[0] ?? POS_THEME_COLORS[0];

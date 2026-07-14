@@ -1,11 +1,6 @@
 import { Navigate, useSearchParams } from 'react-router';
 
-import {
-  canAccessTableSessionEditor,
-  canAccessTakeawayBuilder,
-  getPosHomePath,
-  usePosSession,
-} from 'modules/auth';
+import { canAccessTableSessionEditor, canAccessTakeawayBuilder, getPosHomePath, usePosSession } from 'modules/auth';
 
 import { TableSessionPageContent } from './TableSessionPage/TableSessionPageContent';
 

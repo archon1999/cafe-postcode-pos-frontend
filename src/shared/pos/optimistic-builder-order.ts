@@ -129,7 +129,9 @@ export function deriveOptimisticBuilderOrder<
     return undefined;
   }
 
-  const serviceFeeEnabled = Boolean(baseOrder?.serviceFeeEnabled ?? defaultServiceFeeEnabled ?? defaultServiceFeePercent > 0);
+  const serviceFeeEnabled = Boolean(
+    baseOrder?.serviceFeeEnabled ?? defaultServiceFeeEnabled ?? defaultServiceFeePercent > 0,
+  );
   const serviceFeePercent = serviceFeeEnabled
     ? toMoneyNumber(baseOrder?.serviceFeePercent ?? defaultServiceFeePercent)
     : 0;

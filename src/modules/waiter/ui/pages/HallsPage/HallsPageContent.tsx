@@ -507,7 +507,13 @@ export function HallsPageContent() {
   const canReserveTables = canManageTableReservations(session?.user);
   const selectedTableAvailableSeats = selectedTable ? getAvailableSeatCount(selectedTable) : 0;
   const selectedTableGuestLimit = selectedTable
-    ? Math.max(1, Math.min(getSupportedSeatCount(selectedTable.seatCount), selectedTableAvailableSeats || selectedTable.seatCount))
+    ? Math.max(
+        1,
+        Math.min(
+          getSupportedSeatCount(selectedTable.seatCount),
+          selectedTableAvailableSeats || selectedTable.seatCount,
+        ),
+      )
     : 4;
 
   const halls = useMemo(() => hallsQuery.data ?? [], [hallsQuery.data]);
@@ -709,10 +715,7 @@ export function HallsPageContent() {
         borderRadius: { xs: '14px', md: '16px' },
         backgroundColor: theme.palette.mode === 'dark' ? alpha('#151719', 0.72) : alpha('#ffffff', 0.86),
         border: `1px solid ${alpha('#ffffff', theme.palette.mode === 'dark' ? 0.06 : 0.5)}`,
-        boxShadow:
-          theme.palette.mode === 'dark'
-            ? '0 14px 28px rgba(0,0,0,0.22)'
-            : '0 14px 28px rgba(65, 46, 24, 0.1)',
+        boxShadow: theme.palette.mode === 'dark' ? '0 14px 28px rgba(0,0,0,0.22)' : '0 14px 28px rgba(65, 46, 24, 0.1)',
         backdropFilter: 'blur(16px)',
       })}>
       <IconButton
@@ -745,7 +748,11 @@ export function HallsPageContent() {
         size="small"
         onClick={handleMapFitFillToggle}>
         <Icon
-          icon={mapScaleMode === 'fill' ? 'solar:quit-full-screen-square-bold-duotone' : 'solar:full-screen-square-bold-duotone'}
+          icon={
+            mapScaleMode === 'fill'
+              ? 'solar:quit-full-screen-square-bold-duotone'
+              : 'solar:full-screen-square-bold-duotone'
+          }
           width={22}
         />
       </IconButton>
@@ -760,10 +767,7 @@ export function HallsPageContent() {
 
       const availableSeats = getAvailableSeatCount(currentTable);
       if (availableSeats > 0) {
-        const nextGuestCount = Math.max(
-          1,
-          Math.min(getSupportedSeatCount(currentTable.seatCount), availableSeats),
-        );
+        const nextGuestCount = Math.max(1, Math.min(getSupportedSeatCount(currentTable.seatCount), availableSeats));
         setGuestCount(nextGuestCount);
         setSelectedTable(currentTable);
         return;
@@ -1065,7 +1069,9 @@ export function HallsPageContent() {
               inputProps={{ min: 1, max: selectedTableGuestLimit }}
               value={guestCount}
               onChange={(event) =>
-                setGuestCount(Math.max(1, Math.min(Math.trunc(Number(event.target.value)) || 1, selectedTableGuestLimit)))
+                setGuestCount(
+                  Math.max(1, Math.min(Math.trunc(Number(event.target.value)) || 1, selectedTableGuestLimit)),
+                )
               }
             />
             {selectedTable?.activeSessions?.length ? (
