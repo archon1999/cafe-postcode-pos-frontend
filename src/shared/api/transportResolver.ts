@@ -112,26 +112,6 @@ async function selectCoordinator(restaurantId: string, coordinator?: Coordinator
 
 export async function resolveRestaurantTransport(code: string): Promise<PosRestaurantContext> {
   const identity = terminalIdentity();
-  const cachedBeforeRemote = readTransportConnection();
-  if (cachedBeforeRemote && cachedBeforeRemote.mode !== 'remote' && cachedBeforeRemote.origin && cachedBeforeRemote.token) {
-    try {
-      const context = await edgeFetch<PosRestaurantContext>(
-        cachedBeforeRemote.origin,
-        cachedBeforeRemote.token,
-        '/v1/pos/auth/restaurant-code/',
-        { method: 'POST', body: JSON.stringify({ code }) },
-      );
-      if (context.restaurantId === cachedBeforeRemote.restaurantId) {
-        const selected = await probe(cachedBeforeRemote.origin, cachedBeforeRemote.token, context.restaurantId);
-        if (selected) {
-          persistTransportConnection(selected);
-          return context;
-        }
-      }
-    } catch {
-      // Try the backend next; the cached agent may belong to a different restaurant.
-    }
-  }
   let remoteError: unknown;
   try {
     const response = await axios.post<PosRestaurantContext>(

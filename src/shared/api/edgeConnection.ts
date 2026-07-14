@@ -36,6 +36,7 @@ export function readTransportConnection(): PosTransportConnection | null {
   if (!raw) return null;
   try {
     const connection = JSON.parse(raw) as PosTransportConnection;
+    if (!connection || typeof connection !== 'object') throw new Error();
     if (!['remote', 'router', 'local'].includes(connection.mode) || !connection.restaurantId) throw new Error();
     if (connection.mode !== 'remote') {
       connection.origin = normalizeEdgeOrigin(connection.origin || '');

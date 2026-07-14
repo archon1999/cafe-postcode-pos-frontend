@@ -3,7 +3,7 @@
 import axios from 'axios';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { readTransportConnection } from './edgeConnection';
+import { persistTransportConnection, readTransportConnection } from './edgeConnection';
 import { resolveRestaurantTransport } from './transportResolver';
 
 vi.mock('axios');
@@ -40,5 +40,35 @@ describe('restaurant transport resolver', () => {
         headers: expect.objectContaining({ 'X-Edge-Token': 'ept_terminal' }),
       }),
     );
+  });
+
+  it('checks restaurant codes against the remote backend before using a cached local agent', async () => {
+    persistTransportConnection({
+      mode: 'router',
+      restaurantId: 'qamish',
+      origin: 'http://127.0.0.1:18181',
+      token: 'ept_qamish',
+    });
+    mockedAxios.post.mockResolvedValueOnce({
+      data: {
+        restaurantId: 'new-york',
+        restaurantName: 'New York',
+        coordinator: null,
+      },
+    });
+
+    const context = await resolveRestaurantTransport('NY1111');
+
+    expect(context.restaurantId).toBe('new-york');
+    expect(mockedAxios.post).toHaveBeenCalledWith(
+      expect.stringContaining('/pos/auth/restaurant-code/'),
+      expect.objectContaining({ code: 'NY1111' }),
+      expect.any(Object),
+    );
+    expect(fetch).not.toHaveBeenCalledWith(
+      'http://127.0.0.1:18181/v1/pos/auth/restaurant-code/',
+      expect.anything(),
+    );
+    expect(readTransportConnection()).toMatchObject({ mode: 'remote', restaurantId: 'new-york' });
   });
 });
