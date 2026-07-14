@@ -30,6 +30,16 @@ export function normalizeEdgeOrigin(value: string) {
   return parsed.origin;
 }
 
+export function isLoopbackEdgeOrigin(value?: string) {
+  if (!value) return false;
+  try {
+    const parsed = new URL(normalizeEdgeOrigin(value));
+    return parsed.hostname === '127.0.0.1' || parsed.hostname === 'localhost' || parsed.hostname === '[::1]';
+  } catch {
+    return false;
+  }
+}
+
 export function readTransportConnection(): PosTransportConnection | null {
   if (typeof window === 'undefined') return null;
   const raw = window.localStorage.getItem(TRANSPORT_STORAGE_KEY);
@@ -40,7 +50,7 @@ export function readTransportConnection(): PosTransportConnection | null {
     if (!['remote', 'router', 'local'].includes(connection.mode) || !connection.restaurantId) throw new Error();
     if (connection.mode !== 'remote') {
       connection.origin = normalizeEdgeOrigin(connection.origin || '');
-      if (!connection.token) throw new Error();
+      if (!connection.token && !isLoopbackEdgeOrigin(connection.origin)) throw new Error();
     }
     return connection;
   } catch {

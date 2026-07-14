@@ -6,6 +6,7 @@ import type { PosRestaurantContext } from 'modules/auth/domain';
 import { resolveRemoteApiBaseUrl } from './apiUrl';
 import {
   DEFAULT_EDGE_ORIGIN,
+  isLoopbackEdgeOrigin,
   normalizeEdgeOrigin,
   persistTransportConnection,
   readTransportConnection,
@@ -18,6 +19,7 @@ const TERMINAL_ID_KEY = 'cafe-pos.terminal-id';
 type Coordinator = NonNullable<PosRestaurantContext['coordinator']>;
 type HealthResponse = { restaurantId?: string; backendOnline?: boolean };
 type StatusResponse = { status?: { backend?: { online?: boolean } } };
+type EdgeCandidate = { origin: string; token?: string };
 
 function safeNormalizeEdgeOrigin(value: unknown) {
   if (typeof value !== 'string' || !value.trim()) return null;
@@ -39,7 +41,7 @@ function terminalIdentity() {
 
 async function edgeFetch<T>(
   origin: string,
-  token: string,
+  token: string | undefined,
   path: string,
   init?: RequestInit,
   timeoutMs = 2_500,
@@ -53,7 +55,7 @@ async function edgeFetch<T>(
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/json',
-        'X-Edge-Token': token,
+        ...(token ? { 'X-Edge-Token': token } : {}),
         ...init?.headers,
       },
     });
@@ -64,7 +66,7 @@ async function edgeFetch<T>(
   }
 }
 
-async function probe(origin: string, token: string, restaurantId: string): Promise<PosTransportConnection | null> {
+async function probe(origin: string, token: string | undefined, restaurantId: string): Promise<PosTransportConnection | null> {
   try {
     const health = await edgeFetch<HealthResponse>(origin, token, '/health');
     if (health.restaurantId !== restaurantId) return null;
@@ -78,7 +80,7 @@ async function probe(origin: string, token: string, restaurantId: string): Promi
       mode: backendOnline ? 'router' : 'local',
       restaurantId,
       origin: normalizeEdgeOrigin(origin),
-      token,
+      ...(token ? { token } : {}),
       backendOnline,
       selectedAt: new Date().toISOString(),
     };
@@ -87,31 +89,82 @@ async function probe(origin: string, token: string, restaurantId: string): Promi
   }
 }
 
-async function selectCoordinator(restaurantId: string, coordinator?: Coordinator | null) {
+function orderedEdgeCandidates(coordinator?: Coordinator | null) {
   const current = readTransportConnection();
-  const candidates: Array<{ origin: string; token: string }> = [];
-  if (coordinator?.restaurantId === restaurantId && coordinator.edgeToken) {
-    for (const origin of [...(coordinator.coordinatorUrls || []), DEFAULT_EDGE_ORIGIN]) {
+  const candidates: EdgeCandidate[] = [{ origin: DEFAULT_EDGE_ORIGIN }];
+
+  if (current && current.mode !== 'remote' && current.origin && current.origin !== DEFAULT_EDGE_ORIGIN) {
+    candidates.push({ origin: current.origin, token: current.token });
+  }
+
+  if (coordinator?.edgeToken) {
+    for (const origin of coordinator.coordinatorUrls || []) {
       const normalizedOrigin = safeNormalizeEdgeOrigin(origin);
-      if (normalizedOrigin) candidates.push({ origin: normalizedOrigin, token: coordinator.edgeToken });
+      if (normalizedOrigin && normalizedOrigin !== DEFAULT_EDGE_ORIGIN) {
+        candidates.push({ origin: normalizedOrigin, token: coordinator.edgeToken });
+      }
     }
+    candidates.push({ origin: DEFAULT_EDGE_ORIGIN, token: coordinator.edgeToken });
   }
-  if (current?.restaurantId === restaurantId && current.origin && current.token) {
-    candidates.unshift({ origin: current.origin, token: current.token });
+
+  if (current && current.mode !== 'remote' && current.origin && current.token) {
+    candidates.push({ origin: current.origin, token: current.token });
   }
+
   const unique = new Set<string>();
-  for (const candidate of candidates) {
-    const key = `${candidate.origin}|${candidate.token}`;
-    if (unique.has(key)) continue;
+  return candidates.filter((candidate) => {
+    const origin = safeNormalizeEdgeOrigin(candidate.origin);
+    if (!origin) return false;
+    if (!candidate.token && !isLoopbackEdgeOrigin(origin)) return false;
+    const key = `${origin}|${candidate.token || ''}`;
+    if (unique.has(key)) return false;
     unique.add(key);
+    candidate.origin = origin;
+    return true;
+  });
+}
+
+async function selectCoordinator(restaurantId: string, coordinator?: Coordinator | null) {
+  if (coordinator?.restaurantId && coordinator.restaurantId !== restaurantId) return null;
+  for (const candidate of orderedEdgeCandidates(coordinator)) {
     const connection = await probe(candidate.origin, candidate.token, restaurantId);
     if (connection) return connection;
   }
   return null;
 }
 
+async function resolveRestaurantFromLocalAgent(code: string, identity: ReturnType<typeof terminalIdentity>) {
+  for (const candidate of orderedEdgeCandidates()) {
+    try {
+      const context = await edgeFetch<PosRestaurantContext>(
+        candidate.origin,
+        candidate.token,
+        '/v1/pos/auth/restaurant-code/',
+        { method: 'POST', body: JSON.stringify({ code, ...identity }) },
+      );
+      const selected = await probe(candidate.origin, candidate.token, context.restaurantId);
+      persistTransportConnection(
+        selected || {
+          mode: 'local',
+          restaurantId: context.restaurantId,
+          origin: candidate.origin,
+          ...(candidate.token ? { token: candidate.token } : {}),
+          backendOnline: false,
+        },
+      );
+      return context;
+    } catch {
+      // Try the next local candidate, then the remote backend.
+    }
+  }
+  return null;
+}
+
 export async function resolveRestaurantTransport(code: string): Promise<PosRestaurantContext> {
   const identity = terminalIdentity();
+  const localContext = await resolveRestaurantFromLocalAgent(code, identity);
+  if (localContext) return localContext;
+
   const response = await axios.post<PosRestaurantContext>(
     `${resolveRemoteApiBaseUrl()}/pos/auth/restaurant-code/`,
     { code, ...identity },

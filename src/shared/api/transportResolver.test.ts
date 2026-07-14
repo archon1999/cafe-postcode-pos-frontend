@@ -11,6 +11,8 @@ vi.mock('axios');
 const mockedAxios = vi.mocked(axios, true);
 
 describe('restaurant transport resolver', () => {
+  const fetchMock = () => vi.mocked(fetch);
+
   beforeEach(() => {
     window.localStorage.clear();
     mockedAxios.post.mockReset();
@@ -42,13 +44,73 @@ describe('restaurant transport resolver', () => {
     );
   });
 
-  it('checks restaurant codes against the remote backend before using a cached local agent', async () => {
+  it('uses the loopback local agent before the remote backend when the offline context matches', async () => {
+    fetchMock()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ restaurantId: 'qamish', restaurantName: 'Qamish' }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ restaurantId: 'qamish', backendOnline: false }),
+      } as Response);
+
+    const context = await resolveRestaurantTransport('ABC123');
+
+    expect(context.restaurantId).toBe('qamish');
+    expect(fetch).toHaveBeenNthCalledWith(
+      1,
+      'http://127.0.0.1:18181/v1/pos/auth/restaurant-code/',
+      expect.objectContaining({ body: expect.stringContaining('ABC123') }),
+    );
+    expect(mockedAxios.post).not.toHaveBeenCalled();
+    expect(readTransportConnection()).toMatchObject({
+      mode: 'local',
+      restaurantId: 'qamish',
+      origin: 'http://127.0.0.1:18181',
+    });
+  });
+
+  it('checks the cached LAN agent after loopback and before the remote backend', async () => {
     persistTransportConnection({
       mode: 'router',
       restaurantId: 'qamish',
-      origin: 'http://127.0.0.1:18181',
+      origin: 'http://192.168.1.20:18181',
       token: 'ept_qamish',
     });
+    fetchMock()
+      .mockRejectedValueOnce(new Error('loopback unavailable'))
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ restaurantId: 'qamish', restaurantName: 'Qamish' }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ restaurantId: 'qamish', backendOnline: true }),
+      } as Response);
+
+    const context = await resolveRestaurantTransport('ABC123');
+
+    expect(context.restaurantId).toBe('qamish');
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      'http://192.168.1.20:18181/v1/pos/auth/restaurant-code/',
+      expect.objectContaining({
+        headers: expect.objectContaining({ 'X-Edge-Token': 'ept_qamish' }),
+      }),
+    );
+    expect(mockedAxios.post).not.toHaveBeenCalled();
+    expect(readTransportConnection()).toMatchObject({ mode: 'router', restaurantId: 'qamish' });
+  });
+
+  it('falls back to the remote backend when loopback and LAN agents are unavailable', async () => {
+    persistTransportConnection({
+      mode: 'router',
+      restaurantId: 'qamish',
+      origin: 'http://192.168.1.20:18181',
+      token: 'ept_qamish',
+    });
+    fetchMock().mockRejectedValue(new Error('local unavailable'));
     mockedAxios.post.mockResolvedValueOnce({
       data: {
         restaurantId: 'new-york',
@@ -59,33 +121,22 @@ describe('restaurant transport resolver', () => {
 
     const context = await resolveRestaurantTransport('NY1111');
 
+    expect(fetch).toHaveBeenNthCalledWith(
+      1,
+      'http://127.0.0.1:18181/v1/pos/auth/restaurant-code/',
+      expect.anything(),
+    );
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      'http://192.168.1.20:18181/v1/pos/auth/restaurant-code/',
+      expect.anything(),
+    );
     expect(context.restaurantId).toBe('new-york');
     expect(mockedAxios.post).toHaveBeenCalledWith(
       expect.stringContaining('/pos/auth/restaurant-code/'),
       expect.objectContaining({ code: 'NY1111' }),
       expect.any(Object),
     );
-    expect(fetch).not.toHaveBeenCalledWith(
-      'http://127.0.0.1:18181/v1/pos/auth/restaurant-code/',
-      expect.anything(),
-    );
     expect(readTransportConnection()).toMatchObject({ mode: 'remote', restaurantId: 'new-york' });
-  });
-
-  it('does not fall back to the cached local agent when remote restaurant code check fails', async () => {
-    persistTransportConnection({
-      mode: 'router',
-      restaurantId: 'qamish',
-      origin: 'http://127.0.0.1:18181',
-      token: 'ept_qamish',
-    });
-    mockedAxios.post.mockRejectedValueOnce(new Error('remote unavailable'));
-
-    await expect(resolveRestaurantTransport('NY1111')).rejects.toThrow('remote unavailable');
-
-    expect(fetch).not.toHaveBeenCalledWith(
-      'http://127.0.0.1:18181/v1/pos/auth/restaurant-code/',
-      expect.anything(),
-    );
   });
 });
