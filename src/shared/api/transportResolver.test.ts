@@ -4,7 +4,7 @@ import axios from 'axios';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { persistTransportConnection, readTransportConnection } from './edgeConnection';
-import { resolveRestaurantTransport } from './transportResolver';
+import { refreshTransportMode, resolveRestaurantTransport } from './transportResolver';
 
 vi.mock('axios');
 
@@ -71,6 +71,45 @@ describe('restaurant transport resolver', () => {
     });
   });
 
+  it('labels a loopback agent as local even while its backend connection is online', async () => {
+    fetchMock()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ restaurantId: 'new-york', restaurantName: 'New York' }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ restaurantId: 'new-york', backendOnline: true }),
+      } as Response);
+
+    await resolveRestaurantTransport('NY1111');
+
+    expect(readTransportConnection()).toMatchObject({
+      mode: 'local',
+      restaurantId: 'new-york',
+      origin: 'http://127.0.0.1:18181',
+      backendOnline: true,
+    });
+  });
+
+  it('can refresh a tokenless loopback connection without falling back to remote', async () => {
+    persistTransportConnection({
+      mode: 'local',
+      restaurantId: 'new-york',
+      origin: 'http://127.0.0.1:18181',
+      backendOnline: true,
+    });
+    fetchMock().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ restaurantId: 'new-york', backendOnline: true }),
+    } as Response);
+
+    const result = await refreshTransportMode();
+
+    expect(result).toMatchObject({ mode: 'local', requiresRelogin: false });
+    expect(readTransportConnection()).toMatchObject({ mode: 'local', restaurantId: 'new-york' });
+  });
+
   it('checks the cached LAN agent after loopback and before the remote backend', async () => {
     persistTransportConnection({
       mode: 'router',
@@ -121,11 +160,7 @@ describe('restaurant transport resolver', () => {
 
     const context = await resolveRestaurantTransport('NY1111');
 
-    expect(fetch).toHaveBeenNthCalledWith(
-      1,
-      'http://127.0.0.1:18181/v1/pos/auth/restaurant-code/',
-      expect.anything(),
-    );
+    expect(fetch).toHaveBeenNthCalledWith(1, 'http://127.0.0.1:18181/v1/pos/auth/restaurant-code/', expect.anything());
     expect(fetch).toHaveBeenNthCalledWith(
       2,
       'http://192.168.1.20:18181/v1/pos/auth/restaurant-code/',

@@ -66,7 +66,11 @@ async function edgeFetch<T>(
   }
 }
 
-async function probe(origin: string, token: string | undefined, restaurantId: string): Promise<PosTransportConnection | null> {
+async function probe(
+  origin: string,
+  token: string | undefined,
+  restaurantId: string,
+): Promise<PosTransportConnection | null> {
   try {
     const health = await edgeFetch<HealthResponse>(origin, token, '/health');
     if (health.restaurantId !== restaurantId) return null;
@@ -77,7 +81,7 @@ async function probe(origin: string, token: string | undefined, restaurantId: st
       backendOnline = system.status?.backend?.online !== false;
     }
     return {
-      mode: backendOnline ? 'router' : 'local',
+      mode: isLoopbackEdgeOrigin(origin) ? 'local' : 'router',
       restaurantId,
       origin: normalizeEdgeOrigin(origin),
       ...(token ? { token } : {}),
@@ -196,7 +200,7 @@ export async function refreshTransportMode() {
         next = null;
       }
     }
-  } else if (current.origin && current.token) {
+  } else if (current.origin && (current.token || isLoopbackEdgeOrigin(current.origin))) {
     next = await probe(current.origin, current.token, current.restaurantId);
   }
   if (!next)

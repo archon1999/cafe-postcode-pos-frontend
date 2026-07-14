@@ -88,7 +88,7 @@ export function SystemHealthPanel({
     transportMode === 'router'
       ? { label: 'Bitta Host / Router', color: 'success' as ChipColor }
       : transportMode === 'local'
-        ? { label: 'Local / Offline', color: 'secondary' as ChipColor }
+        ? { label: 'Local agent', color: 'secondary' as ChipColor }
         : { label: 'Remote Server', color: 'default' as ChipColor };
 
   const syncPresentation = useMemo(() => {
