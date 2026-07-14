@@ -36,6 +36,7 @@ import {
   shouldShowAttentionDot,
   type TableVisualState,
 } from 'modules/waiter/domain';
+import { refreshTransportAndReload } from 'shared/api/transportResolver';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { getPosCopy } from 'shared/locale/copy';
 import { formatElapsedMinutes } from 'shared/pos/utils';
@@ -934,7 +935,7 @@ export function HallsPageContent() {
             sx={{ justifyContent: { xs: 'flex-end', md: 'flex-start' } }}>
             {mapZoomControls}
             {!isMobile ? (
-              <PosIconAction icon="solar:refresh-bold-duotone" onClick={() => window.location.reload()} />
+              <PosIconAction icon="solar:refresh-bold-duotone" onClick={() => void refreshTransportAndReload()} />
             ) : null}
             <PosIconAction
               icon="solar:settings-bold-duotone"

@@ -2,11 +2,16 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { persistTransportConnection } from 'shared/api/edgeConnection';
+
 import { EdgePrintError } from '../../domain';
 
 import { EdgePrintRepositoryImpl } from './edge-print.repository.impl';
 
 const fetchMock = vi.fn();
+const { apiPostMock } = vi.hoisted(() => ({ apiPostMock: vi.fn() }));
+
+vi.mock('shared/api/client', () => ({ apiPost: (...args: unknown[]) => apiPostMock(...args) }));
 
 function job(status: 'queued' | 'succeeded' | 'failed' | 'dispatch_unknown') {
   return {
@@ -35,6 +40,7 @@ describe('EdgePrintRepositoryImpl', () => {
     fetchMock.mockReset();
     vi.stubGlobal('fetch', fetchMock);
     window.localStorage.clear();
+    apiPostMock.mockReset();
   });
 
   it('submits only a document id, operation id and copies to local Edge', async () => {
@@ -97,5 +103,24 @@ describe('EdgePrintRepositoryImpl', () => {
         operationId: 'pos:operation-1',
       }),
     ).rejects.toMatchObject({ code: 'EDGE_UNAVAILABLE' });
+  });
+
+  it('routes remote mode printing through backend websocket delivery', async () => {
+    persistTransportConnection({ mode: 'remote', restaurantId: 'restaurant-1' });
+    apiPostMock.mockResolvedValueOnce({ ok: true, job: job('succeeded') });
+
+    await expect(
+      new EdgePrintRepositoryImpl().print({
+        documentId: '11111111-1111-1111-1111-111111111111',
+        operationId: 'pos:operation-1',
+      }),
+    ).resolves.toMatchObject({ status: 'succeeded' });
+
+    expect(apiPostMock).toHaveBeenCalledWith('/pos/printing/jobs/', {
+      operationId: 'pos:operation-1',
+      documentId: '11111111-1111-1111-1111-111111111111',
+      copies: 1,
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

@@ -37,6 +37,7 @@ import {
 import type { CashierCheckStatus, CashierOrder } from 'modules/cashier/domain/entities/order.types';
 import { useEdgePrintMutation } from 'modules/edge-printing';
 import { getApiErrorMessage } from 'shared/api/errorMessage';
+import { refreshTransportAndReload } from 'shared/api/transportResolver';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { type PosLocale, formatPosCopy, getPosCopy } from 'shared/locale/copy';
 import { formatCompactMoney, formatTime } from 'shared/pos/utils';
@@ -833,7 +834,7 @@ export function OpenChecksPageContent() {
 
           <Stack direction="row" spacing={1.5}>
             {!isMobile ? (
-              <PosIconAction icon="solar:refresh-bold-duotone" onClick={() => window.location.reload()} />
+              <PosIconAction icon="solar:refresh-bold-duotone" onClick={() => void refreshTransportAndReload()} />
             ) : null}
             <PosIconAction
               icon="solar:settings-bold-duotone"

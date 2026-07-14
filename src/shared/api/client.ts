@@ -24,6 +24,8 @@ apiClient.interceptors.request.use((config) => {
   const locale = readStoredLocale();
   const edgeToken = readEdgeToken();
 
+  config.baseURL = resolveApiBaseUrl();
+
   if (session?.token) {
     config.headers.Authorization = `Token ${session.token}`;
   }
@@ -40,6 +42,8 @@ apiClient.interceptors.request.use((config) => {
 publicApiClient.interceptors.request.use((config) => {
   const locale = readStoredLocale();
   const edgeToken = readEdgeToken();
+
+  config.baseURL = resolveApiBaseUrl();
 
   config.headers['Accept-Language'] = locale;
   config.headers['X-Language'] = locale;

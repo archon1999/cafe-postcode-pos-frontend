@@ -44,6 +44,7 @@ import {
 import { enqueueEdgePrintDocuments } from 'modules/edge-printing/application';
 import { resolveApiBaseUrl } from 'shared/api/apiUrl';
 import { getApiErrorMessage } from 'shared/api/errorMessage';
+import { refreshTransportAndReload } from 'shared/api/transportResolver';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { formatPosCopy, getPosCopy } from 'shared/locale/copy';
 import { isTemporaryBuilderId } from 'shared/pos/optimistic-builder-order';
@@ -515,7 +516,7 @@ export function CashierBuilderPageContent() {
               onClick={() => navigate(`/menu/catalog?source=cashier&channel=${builderChannel}`)}
             />
             {!isMobile ? (
-              <PosIconAction icon="solar:refresh-bold-duotone" onClick={() => window.location.reload()} />
+              <PosIconAction icon="solar:refresh-bold-duotone" onClick={() => void refreshTransportAndReload()} />
             ) : null}
             <PosIconAction
               icon="solar:settings-bold-duotone"

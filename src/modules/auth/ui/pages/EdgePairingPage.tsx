@@ -59,7 +59,7 @@ export function EdgePairingPage() {
       });
       const payload = (await response.json().catch(() => ({}))) as PairingClaimResponse;
       if (!response.ok || !payload.edgeToken) throw new Error(payload.detail || `Coordinator HTTP ${response.status}`);
-      persistEdgeConnection(normalizedOrigin, payload.edgeToken);
+      persistEdgeConnection(normalizedOrigin, payload.edgeToken, payload.restaurantId);
       setMessage(`${payload.terminal.name} ulandi. POS qayta ochilmoqda…`);
       window.setTimeout(() => window.location.assign('/restaurant-login'), 600);
     } catch (requestError) {

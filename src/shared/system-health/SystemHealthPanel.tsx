@@ -15,6 +15,7 @@ import {
 } from '@mui/material';
 import { useMemo, useState } from 'react';
 
+import { readTransportConnection } from '../api/edgeConnection';
 import type { PosLocale } from '../locale/copy';
 
 import { getSystemHealthCopy } from './copy';
@@ -55,7 +56,11 @@ function formatDate(value: string | undefined, locale: PosLocale, fallback: stri
 }
 
 function diagnosticsText(status: EdgeSystemStatus | undefined) {
-  return JSON.stringify({ generatedAt: new Date().toISOString(), status: status ?? null }, null, 2);
+  return JSON.stringify(
+    { generatedAt: new Date().toISOString(), transport: readTransportConnection(), status: status ?? null },
+    null,
+    2,
+  );
 }
 
 export function SystemHealthPanel({
@@ -78,6 +83,13 @@ export function SystemHealthPanel({
   const marta = agentRequestFailed ? unknownPresentation : componentPresentation(status?.marta, copy);
   const printer = agentRequestFailed ? unknownPresentation : componentPresentation(status?.printer, copy);
   const tone = deriveSystemHealthTone(status, agentRequestFailed);
+  const transportMode = readTransportConnection()?.mode ?? 'remote';
+  const connectionPresentation =
+    transportMode === 'router'
+      ? { label: 'Bitta Host / Router', color: 'success' as ChipColor }
+      : transportMode === 'local'
+        ? { label: 'Local / Offline', color: 'secondary' as ChipColor }
+        : { label: 'Remote Server', color: 'default' as ChipColor };
 
   const syncPresentation = useMemo(() => {
     if (agentRequestFailed) return { label: copy.unknown, color: 'default' as ChipColor };
@@ -125,12 +137,18 @@ export function SystemHealthPanel({
         <Stack spacing={0.35}>
           <StatusRow
             label={copy.agent}
-            value={agentRequestFailed ? copy.offline : status ? copy.online : copy.checking}
-            color={agentRequestFailed ? 'error' : status ? 'success' : 'default'}
+            value={
+              agentRequestFailed || status?.agent.online === false ? copy.offline : status ? copy.online : copy.checking
+            }
+            color={agentRequestFailed || status?.agent.online === false ? 'error' : status ? 'success' : 'default'}
           />
           <StatusRow label={copy.fiscal} value={fiscal.label} color={fiscal.color} />
           {status?.marta.configured ? <StatusRow label={copy.marta} value={marta.label} color={marta.color} /> : null}
-          <StatusRow label={copy.connectionAndSync} value={syncPresentation.label} color={syncPresentation.color} />
+          <StatusRow
+            label={copy.connectionAndSync}
+            value={connectionPresentation.label}
+            color={connectionPresentation.color}
+          />
         </Stack>
       </Box>
 
@@ -141,8 +159,14 @@ export function SystemHealthPanel({
             <Stack spacing={0.5}>
               <StatusRow
                 label={copy.agent}
-                value={agentRequestFailed ? copy.offline : status ? copy.online : copy.unknown}
-                color={agentRequestFailed ? 'error' : status ? 'success' : 'default'}
+                value={
+                  agentRequestFailed || status?.agent.online === false
+                    ? copy.offline
+                    : status
+                      ? copy.online
+                      : copy.unknown
+                }
+                color={agentRequestFailed || status?.agent.online === false ? 'error' : status ? 'success' : 'default'}
               />
               <StatusRow
                 label={copy.backend}
@@ -151,6 +175,7 @@ export function SystemHealthPanel({
                 }
                 color={agentRequestFailed || !status ? 'default' : status.backend.online ? 'success' : 'secondary'}
               />
+              <StatusRow label={copy.sync} value={syncPresentation.label} color={syncPresentation.color} />
               <StatusRow label={copy.fiscal} value={fiscal.label} color={fiscal.color} />
               {status?.marta.configured ? (
                 <StatusRow label={copy.marta} value={marta.label} color={marta.color} />

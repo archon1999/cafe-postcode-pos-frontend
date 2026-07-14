@@ -11,6 +11,7 @@ import {
   useUpdateKitchenTicketStatusMutation,
 } from 'modules/kitchen/application';
 import { type KitchenItemStatus, type KitchenTicketStatus } from 'modules/kitchen/domain';
+import { refreshTransportAndReload } from 'shared/api/transportResolver';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { formatPosCopy, getPosCopy } from 'shared/locale/copy';
 import { formatTime } from 'shared/pos/utils';
@@ -172,7 +173,7 @@ export function KitchenQueuePageContent() {
             spacing={{ xs: 1, md: 1.5 }}
             sx={{ justifyContent: { xs: 'flex-end', md: 'flex-start' } }}>
             {!isMobile ? (
-              <PosIconAction icon="solar:refresh-bold-duotone" onClick={() => window.location.reload()} />
+              <PosIconAction icon="solar:refresh-bold-duotone" onClick={() => void refreshTransportAndReload()} />
             ) : null}
             <PosIconAction
               icon="solar:settings-bold-duotone"

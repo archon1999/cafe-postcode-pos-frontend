@@ -2,7 +2,15 @@
 
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { EDGE_ORIGIN_STORAGE_KEY, normalizeEdgeOrigin, readStoredEdgeOrigin } from './edgeConnection';
+import {
+  EDGE_ORIGIN_STORAGE_KEY,
+  ignoreMismatchedAgent,
+  normalizeEdgeOrigin,
+  persistTransportConnection,
+  readEdgeToken,
+  readStoredEdgeOrigin,
+  readTransportConnection,
+} from './edgeConnection';
 
 describe('edge connection origin migration', () => {
   beforeEach(() => {
@@ -30,5 +38,20 @@ describe('edge connection origin migration', () => {
 
     expect(readStoredEdgeOrigin()).toBe('');
     expect(window.localStorage.getItem(EDGE_ORIGIN_STORAGE_KEY)).toBeNull();
+  });
+
+  it('ignores an agent that belongs to another selected restaurant', () => {
+    persistTransportConnection({
+      mode: 'router',
+      restaurantId: 'restaurant-x',
+      origin: 'http://192.168.1.20:18181',
+      token: 'ept_x',
+    });
+
+    ignoreMismatchedAgent('restaurant-y');
+
+    expect(readTransportConnection()).toMatchObject({ mode: 'remote', restaurantId: 'restaurant-y' });
+    expect(readStoredEdgeOrigin()).toBe('');
+    expect(readEdgeToken()).toBe('');
   });
 });

@@ -8,6 +8,7 @@ import type {
   PosSessionPayload,
 } from 'modules/auth/domain';
 import { apiPost } from 'shared/api/client';
+import { resolveRestaurantTransport } from 'shared/api/transportResolver';
 
 import { normalizeSessionPayload } from '../storage/session.storage';
 
@@ -50,7 +51,7 @@ function extractErrorMessage(payload: unknown): string | null {
 class PosAuthRepositoryImpl implements AuthRepository {
   async resolveRestaurant(payload: PosRestaurantCodePayload): Promise<PosRestaurantContext> {
     try {
-      return await apiPost<PosRestaurantContext>('/pos/auth/restaurant-code/', payload);
+      return await resolveRestaurantTransport(payload.code);
     } catch (error) {
       if (axios.isAxiosError(error)) {
         const message = extractErrorMessage(error.response?.data);

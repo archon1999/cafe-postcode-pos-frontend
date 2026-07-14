@@ -50,6 +50,11 @@ export type PosRestaurantContext = {
   vatEnabled?: boolean;
   vatPercent?: number | string;
   markingCheckEnabled?: boolean;
+  coordinator?: {
+    restaurantId: string;
+    edgeToken: string;
+    coordinatorUrls?: string[];
+  } | null;
 };
 
 export type PosSessionContextValue = {

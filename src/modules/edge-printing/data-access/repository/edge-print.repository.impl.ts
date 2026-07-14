@@ -1,20 +1,9 @@
-import { readEdgeOrigin, readEdgeToken } from 'shared/api/edgeConnection';
+import { apiPost } from 'shared/api/client';
+import { readEdgeOrigin, readEdgeToken, readTransportConnection } from 'shared/api/edgeConnection';
 
 import { EdgePrintError, type EdgePrintIntent, type EdgePrintJob, type EdgePrintRepository } from '../../domain';
 
-type EdgePrintResponse = {
-  ok?: boolean;
-  error?: string;
-  job?: EdgePrintJob;
-};
-
-function edgeBaseUrl() {
-  return readEdgeOrigin();
-}
-
-function edgeToken() {
-  return readEdgeToken();
-}
+type EdgePrintResponse = { ok?: boolean; error?: string; job?: EdgePrintJob };
 
 function createOperationId(documentId: string) {
   const randomId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -24,9 +13,9 @@ function createOperationId(documentId: string) {
 async function edgeRequest(path: string, init?: RequestInit): Promise<EdgePrintResponse> {
   const controller = new AbortController();
   const timeout = globalThis.setTimeout(() => controller.abort(), 15_000);
-  const token = edgeToken();
+  const token = readEdgeToken();
   try {
-    const response = await fetch(`${edgeBaseUrl()}${path}`, {
+    const response = await fetch(`${readEdgeOrigin()}${path}`, {
       ...init,
       signal: controller.signal,
       headers: {
@@ -56,35 +45,34 @@ async function edgeRequest(path: string, init?: RequestInit): Promise<EdgePrintR
 
 export class EdgePrintRepositoryImpl implements EdgePrintRepository {
   async print(intent: EdgePrintIntent) {
-    const response = await edgeRequest('/v1/print-jobs', {
-      method: 'POST',
-      body: JSON.stringify({
-        operationId: intent.operationId || createOperationId(intent.documentId),
-        documentId: intent.documentId,
-        copies: intent.copies ?? 1,
-      }),
-    });
+    const operationId = intent.operationId || createOperationId(intent.documentId);
+    const payload = { operationId, documentId: intent.documentId, copies: intent.copies ?? 1 };
+    const response =
+      readTransportConnection()?.mode === 'remote'
+        ? await apiPost<EdgePrintResponse>('/pos/printing/jobs/', payload)
+        : await edgeRequest('/v1/print-jobs', { method: 'POST', body: JSON.stringify(payload) });
     if (!response.job) {
-      throw new EdgePrintError(response.error || 'Local Edge print job qaytarmadi.', 'EDGE_REJECTED');
+      throw new EdgePrintError(response.error || 'Local Agent print job qaytarmadi.', 'EDGE_REJECTED');
     }
-    if (response.job.status === 'dispatch_unknown') {
-      throw new EdgePrintError(
-        response.job.lastError || 'Printerga yuborish natijasi noma’lum.',
-        'EDGE_DISPATCH_UNKNOWN',
-        response.job,
-      );
+    return this.validateJob(response.job);
+  }
+
+  private validateJob(job: EdgePrintJob) {
+    if (job.status === 'dispatch_unknown') {
+      throw new EdgePrintError(job.lastError || 'Printerga yuborish natijasi noma’lum.', 'EDGE_DISPATCH_UNKNOWN', job);
     }
-    if (response.job.status === 'failed') {
-      throw new EdgePrintError(response.job.lastError || 'Chekni chiqarib bo‘lmadi.', 'EDGE_REJECTED', response.job);
+    if (job.status === 'failed') {
+      throw new EdgePrintError(job.lastError || 'Chekni chiqarib bo‘lmadi.', 'EDGE_REJECTED', job);
     }
-    return response.job;
+    return job;
   }
 
   async getJob(operationId: string) {
-    const response = await edgeRequest(`/v1/print-jobs/${encodeURIComponent(operationId)}`);
-    if (!response.job) {
-      throw new EdgePrintError(response.error || 'Print job topilmadi.', 'EDGE_REJECTED');
+    if (readTransportConnection()?.mode === 'remote') {
+      throw new EdgePrintError('Remote print job shu request ichida yakunlanadi.', 'EDGE_UNAVAILABLE');
     }
+    const response = await edgeRequest(`/v1/print-jobs/${encodeURIComponent(operationId)}`);
+    if (!response.job) throw new EdgePrintError(response.error || 'Print job topilmadi.', 'EDGE_REJECTED');
     return response.job;
   }
 }

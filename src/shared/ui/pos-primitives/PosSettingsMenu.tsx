@@ -13,6 +13,9 @@ import {
 } from '@mui/material';
 
 import { getPosThemeColorOptions, type PosThemeColor } from 'app/theme';
+import { persistSession } from 'modules/auth/data-access';
+import { queryClient } from 'shared/api/query-client';
+import { refreshTransportMode } from 'shared/api/transportResolver';
 import { SystemHealthPanel } from 'shared/system-health';
 
 import type { PosLocale } from '../../locale/copy';
@@ -48,6 +51,17 @@ export function PosSettingsMenu({
   const copy = getPosCopy(locale);
   const themeOptions = getPosThemeColorOptions(themeMode);
   const selectedThemeColor = themeOptions.some((option) => option.id === themeColor) ? themeColor : themeOptions[0]?.id;
+
+  const refresh = async () => {
+    const selection = await refreshTransportMode();
+    if (selection.requiresRelogin) {
+      persistSession(null);
+      queryClient.clear();
+      window.location.assign('/pin-login');
+      return;
+    }
+    onRefresh?.();
+  };
 
   return (
     <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={onClose}>
@@ -186,7 +200,7 @@ export function PosSettingsMenu({
       {onRefresh ? (
         <MenuItem
           onClick={() => {
-            onRefresh();
+            void refresh();
             onClose();
           }}>
           <ListItemIcon>

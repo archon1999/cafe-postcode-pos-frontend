@@ -23,6 +23,7 @@ import {
 import { waiterRepository } from 'modules/waiter/data-access';
 import { getDefaultWaiterMenuCategory, groupWaiterOrderItemsByStation } from 'modules/waiter/domain';
 import { resolveApiBaseUrl } from 'shared/api/apiUrl';
+import { refreshTransportAndReload } from 'shared/api/transportResolver';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { formatPosCopy, getPosCopy } from 'shared/locale/copy';
 import { useOptimisticBuilderOrder } from 'shared/pos/useOptimisticBuilderOrder';
@@ -309,7 +310,7 @@ export function TableSessionPageContent({ sessionId, mode, source = null }: Tabl
               />
             ) : null}
             {!isMobile ? (
-              <PosIconAction icon="solar:refresh-bold-duotone" onClick={() => window.location.reload()} />
+              <PosIconAction icon="solar:refresh-bold-duotone" onClick={() => void refreshTransportAndReload()} />
             ) : null}
             <PosIconAction
               icon="solar:settings-bold-duotone"

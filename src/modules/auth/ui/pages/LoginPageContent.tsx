@@ -3,6 +3,7 @@ import { Box, Button, Stack, Typography, alpha } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 
+import { ignoreMismatchedAgent } from 'shared/api/edgeConnection';
 import { getPosCopy, localeLabels } from 'shared/locale/copy';
 import { PosLogo } from 'shared/ui/PosLogo';
 
@@ -24,6 +25,10 @@ export function LoginPageContent() {
   const [toastOpen, setToastOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const authBackgroundImage = resolvePosAuthBackgroundImage(restaurantContext);
+
+  if (restaurantContext?.restaurantId) {
+    ignoreMismatchedAgent(restaurantContext.restaurantId);
+  }
 
   const appendDigit = (digit: string) => {
     setToastOpen(false);
