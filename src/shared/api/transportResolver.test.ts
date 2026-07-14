@@ -71,4 +71,21 @@ describe('restaurant transport resolver', () => {
     );
     expect(readTransportConnection()).toMatchObject({ mode: 'remote', restaurantId: 'new-york' });
   });
+
+  it('does not fall back to the cached local agent when remote restaurant code check fails', async () => {
+    persistTransportConnection({
+      mode: 'router',
+      restaurantId: 'qamish',
+      origin: 'http://127.0.0.1:18181',
+      token: 'ept_qamish',
+    });
+    mockedAxios.post.mockRejectedValueOnce(new Error('remote unavailable'));
+
+    await expect(resolveRestaurantTransport('NY1111')).rejects.toThrow('remote unavailable');
+
+    expect(fetch).not.toHaveBeenCalledWith(
+      'http://127.0.0.1:18181/v1/pos/auth/restaurant-code/',
+      expect.anything(),
+    );
+  });
 });

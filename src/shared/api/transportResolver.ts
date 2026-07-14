@@ -112,40 +112,15 @@ async function selectCoordinator(restaurantId: string, coordinator?: Coordinator
 
 export async function resolveRestaurantTransport(code: string): Promise<PosRestaurantContext> {
   const identity = terminalIdentity();
-  let remoteError: unknown;
-  try {
-    const response = await axios.post<PosRestaurantContext>(
-      `${resolveRemoteApiBaseUrl()}/pos/auth/restaurant-code/`,
-      { code, ...identity },
-      { timeout: 8_000 },
-    );
-    const context = response.data;
-    const edge = await selectCoordinator(context.restaurantId, context.coordinator);
-    persistTransportConnection(edge || { mode: 'remote', restaurantId: context.restaurantId, backendOnline: true });
-    return context;
-  } catch (error) {
-    remoteError = error;
-  }
-
-  const cached = readTransportConnection();
-  if (cached && cached.mode !== 'remote' && cached.origin && cached.token) {
-    try {
-      const context = await edgeFetch<PosRestaurantContext>(
-        cached.origin,
-        cached.token,
-        '/v1/pos/auth/restaurant-code/',
-        { method: 'POST', body: JSON.stringify({ code }) },
-      );
-      if (context.restaurantId === cached.restaurantId) {
-        const selected = await probe(cached.origin, cached.token, context.restaurantId);
-        if (selected) persistTransportConnection(selected);
-        return context;
-      }
-    } catch {
-      // The cached agent belongs to another restaurant or has no usable offline context.
-    }
-  }
-  throw remoteError;
+  const response = await axios.post<PosRestaurantContext>(
+    `${resolveRemoteApiBaseUrl()}/pos/auth/restaurant-code/`,
+    { code, ...identity },
+    { timeout: 8_000 },
+  );
+  const context = response.data;
+  const edge = await selectCoordinator(context.restaurantId, context.coordinator);
+  persistTransportConnection(edge || { mode: 'remote', restaurantId: context.restaurantId, backendOnline: true });
+  return context;
 }
 
 export async function refreshTransportMode() {
