@@ -447,13 +447,14 @@ export function CashierBuilderPageContent() {
   }, [searchParams]);
 
   useEffect(() => {
+    const serverChannel = serverOrder?.channel;
     if (
       channelSwitchSaving ||
-      (serverOrder?.channel !== 'hall' && serverOrder?.channel !== 'takeaway' && serverOrder?.channel !== 'delivery')
+      (serverChannel !== 'hall' && serverChannel !== 'takeaway' && serverChannel !== 'delivery')
     ) {
       return;
     }
-    setBuilderChannel((current) => (current === serverOrder.channel ? current : serverOrder.channel));
+    setBuilderChannel((current) => (current === serverChannel ? current : serverChannel));
   }, [channelSwitchSaving, serverOrder?.channel]);
 
   useEffect(() => {
