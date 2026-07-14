@@ -1,10 +1,11 @@
 import { useMutation } from '@tanstack/react-query';
 
 import { edgePrintRepository } from '../data-access';
+import type { EdgePrintIntent } from '../domain';
 
 export function useEdgePrintMutation() {
   return useMutation({
-    mutationFn: edgePrintRepository.print.bind(edgePrintRepository),
+    mutationFn: (intent: EdgePrintIntent) => edgePrintRepository.print(intent),
   });
 }
 
