@@ -20,7 +20,9 @@ function joinUrl(baseUrl: string, path: string) {
 }
 
 export function resolveRemoteApiBaseUrl() {
-  const configuredBaseUrl = stripTrailingSlashes(normalizeConfigValue(import.meta.env.VITE_API_BASE_URL));
+  const configuredBaseUrl = stripTrailingSlashes(
+    normalizeConfigValue(import.meta.env.VITE_REMOTE_API_BASE_URL || import.meta.env.VITE_API_BASE_URL),
+  );
 
   if (configuredBaseUrl) {
     if (isVersionedApiBaseUrl(configuredBaseUrl)) {
