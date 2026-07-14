@@ -121,10 +121,6 @@ export function RestaurantLoginPageContent() {
             {loginMutation.isPending ? copy.signingIn : copy.enter}
           </Button>
 
-          <Button variant="text" onClick={() => navigate('/edge-pairing')}>
-            Kassani lokal coordinatorga ulash
-          </Button>
-
           <Stack direction="row" spacing={1}>
             {(['uz', 'uz-crl', 'ru'] as const).map((currentLocale) => (
               <Button

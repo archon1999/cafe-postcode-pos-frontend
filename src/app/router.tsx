@@ -7,7 +7,6 @@ import {
   PosPublicOnlyRoute,
   PosRestaurantPublicOnlyRoute,
   RestaurantLoginPage,
-  EdgePairingPage,
   canAccessTakeawayBuilder,
   canAccessCashierPayments,
   canAccessKitchen,
@@ -57,10 +56,6 @@ function PosMonitorRestaurantGuard({ children }: { children: ReactElement }) {
 }
 
 export const posRouter = createBrowserRouter([
-  {
-    path: '/edge-pairing',
-    element: <EdgePairingPage />,
-  },
   {
     path: '/restaurant-login',
     element: (
