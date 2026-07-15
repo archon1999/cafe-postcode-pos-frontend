@@ -512,13 +512,19 @@ export function CashierShiftPage() {
         sx={{
           flex: 1,
           minHeight: 0,
+          overflowY: 'auto',
+          overflowX: 'hidden',
           display: 'grid',
-          placeItems: 'center',
+          gridTemplateColumns: 'minmax(0, 1fr)',
+          justifyItems: 'center',
+          alignItems: 'start',
+          py: 1,
         }}>
         <Box
           sx={(theme) => ({
             width: '100%',
             maxWidth: 620,
+            minWidth: 0,
             borderRadius: '18px',
             p: { xs: 2, md: 2.6 },
             backgroundColor: 'var(--pos-content-panel-bg)',
