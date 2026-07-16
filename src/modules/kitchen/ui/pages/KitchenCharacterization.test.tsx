@@ -36,8 +36,11 @@ import {
 } from 'modules/kitchen/application';
 import { kitchenRepository } from 'modules/kitchen/data-access';
 
-function queryWrapper() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+function createQueryClient() {
+  return new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+}
+
+function queryWrapper(client = createQueryClient()) {
   return function Wrapper({ children }: PropsWithChildren) {
     return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
   };
@@ -95,14 +98,18 @@ describe('POS kitchen characterization', () => {
 
   it('keeps queue and monitor queries separate and disables monitor without a restaurant', async () => {
     mocks.apiGet.mockResolvedValueOnce([]);
-    const queue = renderHook(() => useKitchenQueueQuery(), { wrapper: queryWrapper() });
-    const disabledMonitor = renderHook(() => useKitchenMonitorQuery(null), { wrapper: queryWrapper() });
+    const client = createQueryClient();
+    const wrapper = queryWrapper(client);
+    const queue = renderHook(() => useKitchenQueueQuery(), { wrapper });
+    const disabledMonitor = renderHook(() => useKitchenMonitorQuery(null), { wrapper });
 
     await waitFor(() => expect(queue.result.current.isSuccess).toBe(true));
 
     expect(queue.result.current.data).toEqual([]);
     expect(disabledMonitor.result.current.fetchStatus).toBe('idle');
     expect(mocks.apiGet).toHaveBeenCalledTimes(1);
+    expect(client.getQueryCache().find({ queryKey: ['kitchen', 'queue'] })?.options.refetchInterval).toBe(4000);
+    expect(client.getQueryCache().find({ queryKey: ['kitchen', 'monitor', null] })?.options.refetchInterval).toBe(4000);
   });
 
   it('posts ticket and item status then invalidates every current kitchen consumer', async () => {
