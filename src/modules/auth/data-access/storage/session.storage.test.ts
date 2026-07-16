@@ -15,7 +15,7 @@ afterEach(() => {
 
 describe('session storage', () => {
   it('normalizes legacy snake_case session payloads to camelCase', () => {
-    sessionStorage.setItem(
+    localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
         token: 'legacy-token',
@@ -88,7 +88,7 @@ describe('session storage', () => {
       },
     });
 
-    expect(JSON.parse(sessionStorage.getItem(STORAGE_KEY) ?? '{}')).toEqual({
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}')).toEqual({
       token: 'token',
       user: {
         id: 'user-2',
@@ -110,7 +110,29 @@ describe('session storage', () => {
         restaurantName: 'Cafe Pro',
       },
     });
-    expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+    expect(sessionStorage.getItem(STORAGE_KEY)).toBeNull();
+  });
+
+  it('migrates an existing tab session to persistent local storage', () => {
+    sessionStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        token: 'legacy-tab-token',
+        user: {
+          id: 'user-legacy-tab',
+          username: 'legacy-tab',
+          full_name: 'Legacy Tab User',
+          permission_codes: [],
+        },
+      }),
+    );
+
+    expect(readStoredSession()).toMatchObject({ token: 'legacy-tab-token' });
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}')).toMatchObject({
+      token: 'legacy-tab-token',
+      user: { fullName: 'Legacy Tab User' },
+    });
+    expect(sessionStorage.getItem(STORAGE_KEY)).toBeNull();
   });
 
   it('normalizes mixed legacy and camelCase payloads in memory', () => {

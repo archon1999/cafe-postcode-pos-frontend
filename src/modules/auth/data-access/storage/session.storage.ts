@@ -142,11 +142,23 @@ function readJson<T>(key: string): T | null {
 }
 
 export function readStoredSession() {
-  const rawValue = sessionStorage.getItem(STORAGE_KEY);
+  const persistedValue = localStorage.getItem(STORAGE_KEY);
+  const legacyTabValue = sessionStorage.getItem(STORAGE_KEY);
+  const rawValue = persistedValue ?? legacyTabValue;
+
   if (!rawValue) return null;
+
   try {
-    return normalizeSessionPayload(JSON.parse(rawValue) as LegacySessionPayload);
+    const normalizedValue = normalizeSessionPayload(JSON.parse(rawValue) as LegacySessionPayload);
+
+    if (!persistedValue && normalizedValue) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizedValue));
+    }
+
+    sessionStorage.removeItem(STORAGE_KEY);
+    return normalizedValue;
   } catch {
+    localStorage.removeItem(STORAGE_KEY);
     sessionStorage.removeItem(STORAGE_KEY);
     return null;
   }
@@ -156,11 +168,11 @@ export function persistSession(value: PosSessionPayload | null) {
   const normalizedValue = normalizeSessionPayload(value);
 
   if (normalizedValue) {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(normalizedValue));
-    localStorage.removeItem(STORAGE_KEY);
-  } else {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizedValue));
     sessionStorage.removeItem(STORAGE_KEY);
+  } else {
     localStorage.removeItem(STORAGE_KEY);
+    sessionStorage.removeItem(STORAGE_KEY);
   }
 }
 
