@@ -141,7 +141,10 @@ describe('POS kitchen characterization', () => {
 
     const result = await enqueueEdgePrintDocuments(['document-1', '', 'document-1', 'document-2']);
 
-    expect(mocks.print.mock.calls).toEqual([[{ documentId: 'document-1' }], [{ documentId: 'document-2' }]]);
+    expect(mocks.print.mock.calls).toEqual([
+      [{ documentId: 'document-1', operationId: 'auto:document-1' }],
+      [{ documentId: 'document-2', operationId: 'auto:document-2' }],
+    ]);
     expect(result.jobs).toEqual([{ operationId: 'print-1' }]);
     expect(result.errors).toHaveLength(1);
   });

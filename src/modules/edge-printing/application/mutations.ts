@@ -11,7 +11,9 @@ export function useEdgePrintMutation() {
 
 export async function enqueueEdgePrintDocuments(documentIds: string[]) {
   const settled = await Promise.allSettled(
-    [...new Set(documentIds.filter(Boolean))].map((documentId) => edgePrintRepository.print({ documentId })),
+    [...new Set(documentIds.filter(Boolean))].map((documentId) =>
+      edgePrintRepository.print({ documentId, operationId: `auto:${documentId}` }),
+    ),
   );
   return {
     jobs: settled.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : [])),

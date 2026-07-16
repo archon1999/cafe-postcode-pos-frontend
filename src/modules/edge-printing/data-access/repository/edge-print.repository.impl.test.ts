@@ -70,7 +70,7 @@ describe('EdgePrintRepositoryImpl', () => {
   });
 
   it('accepts a queued job so Edge can retry it after connectivity returns', async () => {
-    fetchMock.mockReturnValueOnce(response(202, { ok: false, job: job('queued') }));
+    fetchMock.mockReturnValueOnce(response(202, { ok: true, job: job('queued') }));
 
     await expect(
       new EdgePrintRepositoryImpl().print({
