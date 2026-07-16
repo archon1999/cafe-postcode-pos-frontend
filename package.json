@@ -10,7 +10,7 @@
     "prod:build": "vite build --mode production",
     "lint:ts": "eslint \"**/*.{ts,tsx}\" --max-warnings 0",
     "lint:ts:fix": "eslint \"**/*.{ts,tsx}\" --fix --max-warnings 0",
-    "lint:css": "stylelint \"**/*.css\"",
+    "lint:css": "stylelint \"**/*.css\" --allow-empty-input",
     "lint:css:fix": "stylelint \"**/*.css\" --fix",
     "lint": "concurrently \"npm run lint:ts\" \"npm run lint:css\"",
     "test": "vitest run",
