@@ -67,8 +67,10 @@ describe('POS kitchen characterization', () => {
         ],
       })
       .mockResolvedValueOnce({
-        preparing: [{ id: 'ticket-1', orderNumber: 41, status: 'cooking', completedAt: null }],
-        recentlyDone: [{ id: 'ticket-2', orderNumber: 40, status: 'done', completedAt: '2026-07-15T10:00:00Z' }],
+        preparing: [{ id: 'ticket-1', orderNumber: 41, displayName: '7', status: 'cooking', completedAt: null }],
+        recentlyDone: [
+          { id: 'ticket-2', orderNumber: 40, displayName: '6', status: 'done', completedAt: '2026-07-15T10:00:00Z' },
+        ],
       });
 
     const queue = await kitchenRepository.getQueue();
@@ -84,8 +86,10 @@ describe('POS kitchen characterization', () => {
       items: [{ quantity: 2 }],
     });
     expect(monitor).toEqual({
-      preparing: [{ id: 'ticket-1', orderNumber: 41, status: 'cooking', completedAt: null }],
-      recentlyDone: [{ id: 'ticket-2', orderNumber: 40, status: 'done', completedAt: '2026-07-15T10:00:00Z' }],
+      preparing: [{ id: 'ticket-1', orderNumber: 41, displayName: '7', status: 'cooking', completedAt: null }],
+      recentlyDone: [
+        { id: 'ticket-2', orderNumber: 40, displayName: '6', status: 'done', completedAt: '2026-07-15T10:00:00Z' },
+      ],
     });
   });
 

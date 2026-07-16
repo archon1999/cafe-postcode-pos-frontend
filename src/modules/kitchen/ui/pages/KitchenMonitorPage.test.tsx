@@ -68,8 +68,10 @@ describe('KitchenMonitorPage', () => {
   it('renders preparing and ready order numbers', () => {
     useKitchenMonitorQueryMock.mockReturnValue({
       data: {
-        preparing: [{ id: 'prep-1', orderNumber: 214, status: 'new', completedAt: null }],
-        recentlyDone: [{ id: 'done-1', orderNumber: 1205, status: 'done', completedAt: '2026-04-09T10:00:00Z' }],
+        preparing: [{ id: 'prep-1', orderNumber: 214, displayName: '14', status: 'new', completedAt: null }],
+        recentlyDone: [
+          { id: 'done-1', orderNumber: 1205, displayName: '15', status: 'done', completedAt: '2026-04-09T10:00:00Z' },
+        ],
       },
     });
 
@@ -77,8 +79,8 @@ describe('KitchenMonitorPage', () => {
 
     expect(screen.getByText('Tayyorlanayapti')).toBeTruthy();
     expect(screen.getByText("Tayyor bo'lganlar")).toBeTruthy();
-    expect(screen.getByText('A00214')).toBeTruthy();
-    expect(screen.getByText('A01205')).toBeTruthy();
+    expect(screen.getByText('#14')).toBeTruthy();
+    expect(screen.getByText('#15')).toBeTruthy();
     expect(screen.queryByTestId('ready-order-spotlight')).toBeNull();
     expect(audioContextConstructor).not.toHaveBeenCalled();
   });
@@ -88,15 +90,17 @@ describe('KitchenMonitorPage', () => {
       .mockReturnValueOnce({
         data: {
           preparing: [],
-          recentlyDone: [{ id: 'done-1', orderNumber: 1205, status: 'done', completedAt: '2026-04-09T10:00:00Z' }],
+          recentlyDone: [
+            { id: 'done-1', orderNumber: 1205, displayName: '15', status: 'done', completedAt: '2026-04-09T10:00:00Z' },
+          ],
         },
       })
       .mockReturnValue({
         data: {
           preparing: [],
           recentlyDone: [
-            { id: 'done-2', orderNumber: 1209, status: 'done', completedAt: '2026-04-09T10:00:10Z' },
-            { id: 'done-1', orderNumber: 1205, status: 'done', completedAt: '2026-04-09T10:00:00Z' },
+            { id: 'done-2', orderNumber: 1209, displayName: '19', status: 'done', completedAt: '2026-04-09T10:00:10Z' },
+            { id: 'done-1', orderNumber: 1205, displayName: '15', status: 'done', completedAt: '2026-04-09T10:00:00Z' },
           ],
         },
       });
@@ -111,10 +115,10 @@ describe('KitchenMonitorPage', () => {
 
     expect(audioContextConstructor).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('ready-order-spotlight')).toBeTruthy();
-    expect(screen.getAllByText('A01209')).toHaveLength(2);
+    expect(screen.getAllByText('#19')).toHaveLength(2);
 
     const highlightedRow = screen
-      .getAllByText('A01209')
+      .getAllByText('#19')
       .map((node) => node.closest('[data-highlighted]'))
       .find(Boolean);
     expect(highlightedRow?.getAttribute('data-highlighted')).toBe('true');
@@ -124,7 +128,7 @@ describe('KitchenMonitorPage', () => {
     });
 
     expect(screen.queryByTestId('ready-order-spotlight')).toBeNull();
-    expect(screen.getByText('A01209').closest('[data-highlighted]')?.getAttribute('data-highlighted')).toBe('false');
+    expect(screen.getByText('#19').closest('[data-highlighted]')?.getAttribute('data-highlighted')).toBe('false');
   });
 
   it('highlights all new ready rows but spotlights only the newest ticket in one update', async () => {
@@ -132,16 +136,18 @@ describe('KitchenMonitorPage', () => {
       .mockReturnValueOnce({
         data: {
           preparing: [],
-          recentlyDone: [{ id: 'done-1', orderNumber: 1205, status: 'done', completedAt: '2026-04-09T10:00:00Z' }],
+          recentlyDone: [
+            { id: 'done-1', orderNumber: 1205, displayName: '15', status: 'done', completedAt: '2026-04-09T10:00:00Z' },
+          ],
         },
       })
       .mockReturnValue({
         data: {
           preparing: [],
           recentlyDone: [
-            { id: 'done-3', orderNumber: 1210, status: 'done', completedAt: '2026-04-09T10:00:20Z' },
-            { id: 'done-2', orderNumber: 1209, status: 'done', completedAt: '2026-04-09T10:00:10Z' },
-            { id: 'done-1', orderNumber: 1205, status: 'done', completedAt: '2026-04-09T10:00:00Z' },
+            { id: 'done-3', orderNumber: 1210, displayName: '20', status: 'done', completedAt: '2026-04-09T10:00:20Z' },
+            { id: 'done-2', orderNumber: 1209, displayName: '19', status: 'done', completedAt: '2026-04-09T10:00:10Z' },
+            { id: 'done-1', orderNumber: 1205, displayName: '15', status: 'done', completedAt: '2026-04-09T10:00:00Z' },
           ],
         },
       });
@@ -153,11 +159,11 @@ describe('KitchenMonitorPage', () => {
     await act(async () => {});
 
     expect(audioContextConstructor).toHaveBeenCalledTimes(1);
-    expect(screen.getByTestId('ready-order-spotlight').textContent).toContain('A01210');
-    expect(screen.getAllByText('A01210')).toHaveLength(2);
-    expect(screen.getAllByText('A01209')).toHaveLength(1);
+    expect(screen.getByTestId('ready-order-spotlight').textContent).toContain('#20');
+    expect(screen.getAllByText('#20')).toHaveLength(2);
+    expect(screen.getAllByText('#19')).toHaveLength(1);
 
-    const highlightedOrderNumbers = ['A01210', 'A01209'];
+    const highlightedOrderNumbers = ['#20', '#19'];
     highlightedOrderNumbers.forEach((orderNumber) => {
       const highlightedRow = screen
         .getAllByText(orderNumber)

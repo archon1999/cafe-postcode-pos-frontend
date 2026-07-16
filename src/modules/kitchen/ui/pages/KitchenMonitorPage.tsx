@@ -73,8 +73,8 @@ type BrowserWindow = typeof window & {
   webkitAudioContext?: typeof AudioContext;
 };
 
-function formatOrderNumber(orderNumber: number) {
-  return `A${String(orderNumber).padStart(5, '0')}`;
+function formatOrderNumber(ticket: KitchenMonitorTicket) {
+  return `#${ticket.displayName?.trim() || ticket.orderNumber}`;
 }
 
 function MonitorColumn({
@@ -135,7 +135,7 @@ function MonitorColumn({
                   color: rowTextColor,
                   textShadow: isHighlighted ? highlightShadow : 'none',
                 }}>
-                {formatOrderNumber(ticket.orderNumber)}
+                {formatOrderNumber(ticket)}
               </Typography>
             </Box>
           );
@@ -322,7 +322,7 @@ export function KitchenMonitorPage() {
                 lineHeight: 0.9,
                 textShadow: isDark ? '0 0 34px rgba(125, 245, 215, 0.28)' : '0 0 26px rgba(47, 177, 141, 0.24)',
               }}>
-              {formatOrderNumber(spotlightTicket.orderNumber)}
+              {formatOrderNumber(spotlightTicket)}
             </Typography>
           </Box>
         </Box>
