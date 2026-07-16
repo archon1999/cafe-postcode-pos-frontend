@@ -56,6 +56,8 @@ describe('POS kitchen characterization', () => {
           {
             id: 'ticket-1',
             orderNumber: 41,
+            displayName: '7',
+            channel: 'takeaway',
             prepStationName: 'Kitchen',
             status: 'new',
             hallName: null,
@@ -74,7 +76,13 @@ describe('POS kitchen characterization', () => {
 
     expect(mocks.apiGet).toHaveBeenNthCalledWith(1, '/pos/kitchen/queue/');
     expect(mocks.apiGet).toHaveBeenNthCalledWith(2, '/pos/monitor/kitchen-queue/?restaurant_id=restaurant-1');
-    expect(queue[0]).toMatchObject({ id: 'ticket-1', orderNumber: 41, items: [{ quantity: 2 }] });
+    expect(queue[0]).toMatchObject({
+      id: 'ticket-1',
+      orderNumber: 41,
+      displayName: '7',
+      channel: 'takeaway',
+      items: [{ quantity: 2 }],
+    });
     expect(monitor).toEqual({
       preparing: [{ id: 'ticket-1', orderNumber: 41, status: 'cooking', completedAt: null }],
       recentlyDone: [{ id: 'ticket-2', orderNumber: 40, status: 'done', completedAt: '2026-07-15T10:00:00Z' }],

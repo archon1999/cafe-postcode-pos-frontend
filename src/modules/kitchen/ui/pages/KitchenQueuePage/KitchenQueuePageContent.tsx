@@ -18,6 +18,7 @@ import { formatTime } from 'shared/pos/utils';
 import { PosKitchenQueueSkeleton, PosSettingsMenu } from 'shared/ui/pos-primitives';
 
 import { KitchenQueueHeader, type KitchenQueueTab } from './KitchenQueueHeader';
+import { getKitchenTicketContextLabel, getKitchenTicketDisplayNumber } from './kitchenTicketContext';
 import { kitchenStatusMeta, KitchenTicketItem } from './KitchenTicketItem';
 
 export function KitchenQueuePageContent() {
@@ -147,12 +148,12 @@ export function KitchenQueuePageContent() {
                             {ticket.waiterName || copy.kitchen}
                           </Typography>
                           <Typography variant="body2" sx={{ color: '#9a9fa8', fontSize: 13 }}>
-                            {ticket.hallName || copy.takeawayLabel}, {ticket.tableName || copy.takeawayLabel}
+                            {getKitchenTicketContextLabel(ticket, copy)}
                           </Typography>
                         </Stack>
                         <Stack spacing={0.18} alignItems="flex-end">
                           <Typography sx={{ fontSize: 17, fontWeight: 700, lineHeight: 1.1 }}>
-                            #{ticket.orderNumber}
+                            #{getKitchenTicketDisplayNumber(ticket)}
                           </Typography>
                           <Typography variant="body2" sx={{ color: '#9a9fa8', fontSize: 13 }}>
                             {formatTime(ticket.createdAt, locale)}

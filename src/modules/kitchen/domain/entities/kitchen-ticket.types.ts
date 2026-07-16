@@ -12,6 +12,8 @@ export type KitchenItem = {
 export type KitchenTicket = {
   id: string;
   orderNumber: number;
+  displayName?: string | null;
+  channel: 'delivery' | 'hall' | 'online' | 'takeaway';
   prepStationName: string;
   status: KitchenTicketStatus;
   hallName: string | null;
