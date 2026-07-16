@@ -4,5 +4,6 @@ export * from './PosIconAction';
 export * from './PosOverviewSkeletons';
 export * from './PosLegendPill';
 export * from './PosOrderChannelSegment';
+export * from './PosCartItemGroups';
 export * from './PosSectionTabs';
 export * from './PosSettingsMenu';

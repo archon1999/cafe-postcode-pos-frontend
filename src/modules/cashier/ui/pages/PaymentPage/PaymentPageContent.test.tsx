@@ -10,6 +10,7 @@ const navigateMock = vi.fn();
 const canAddCashierPaymentOrderItemsMock = vi.fn();
 const canAccessWaiterTablesMock = vi.fn();
 const canRemoveCashierPaymentOrderItemsMock = vi.fn();
+const canSkipFiscalReceiptsMock = vi.fn();
 const addPaymentOrderItemMutateAsyncMock = vi.fn();
 const removePaymentOrderItemMutateAsyncMock = vi.fn();
 const updateDisplayNameMutateAsyncMock = vi.fn();
@@ -40,7 +41,7 @@ vi.mock('modules/auth', () => ({
   canAccessWaiterTables: (...args: unknown[]) => canAccessWaiterTablesMock(...args),
   canManageCashierPayments: () => true,
   canRemoveCashierPaymentOrderItems: (...args: unknown[]) => canRemoveCashierPaymentOrderItemsMock(...args),
-  canSkipFiscalReceipts: () => false,
+  canSkipFiscalReceipts: (...args: unknown[]) => canSkipFiscalReceiptsMock(...args),
   usePosSession: () => ({
     session: { user: { id: 'cashier-1', fullName: 'Cashier Test', permissionCodes: ['pos_open_checks.view'] } },
     locale: 'uz',
@@ -167,6 +168,7 @@ describe('PaymentPageContent', () => {
     canAddCashierPaymentOrderItemsMock.mockReset();
     canAccessWaiterTablesMock.mockReset();
     canRemoveCashierPaymentOrderItemsMock.mockReset();
+    canSkipFiscalReceiptsMock.mockReset();
     addPaymentOrderItemMutateAsyncMock.mockReset();
     removePaymentOrderItemMutateAsyncMock.mockReset();
     updateDisplayNameMutateAsyncMock.mockReset();
@@ -189,6 +191,7 @@ describe('PaymentPageContent', () => {
     canAddCashierPaymentOrderItemsMock.mockReturnValue(true);
     canAccessWaiterTablesMock.mockReturnValue(false);
     canRemoveCashierPaymentOrderItemsMock.mockReturnValue(false);
+    canSkipFiscalReceiptsMock.mockReturnValue(false);
   });
 
   it('shows the add-one-more action only when the separate permission is present', () => {
@@ -725,5 +728,71 @@ describe('PaymentPageContent', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Copy JSON' }));
 
     expect(clipboardWriteTextMock).toHaveBeenCalledWith(expect.stringContaining('"path": "/transaction"'));
+  });
+
+  it('characterizes Prechek as a permitted non-fiscal close intent', async () => {
+    canSkipFiscalReceiptsMock.mockReturnValue(true);
+    paymentMutateAsyncMock.mockResolvedValueOnce({
+      order: {
+        orderNumber: 101,
+        status: 'closed',
+        items: [],
+        subtotal: 30000,
+        serviceFee: 0,
+        total: 30000,
+        note: '',
+      },
+      payment: {
+        method: 'cash',
+        amount: 30000,
+        registerFiscal: false,
+        paidAt: '2026-07-15T12:00:00Z',
+      },
+      receipt: { id: 'receipt-precheck', kind: 'plain', printDocument: 'document-precheck', payload: {} },
+    });
+
+    render(<PaymentPageContent orderId="order-1" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Prechek' }));
+
+    await waitFor(() => {
+      expect(paymentMutateAsyncMock).toHaveBeenCalledTimes(1);
+      expect(paymentMutateAsyncMock).toHaveBeenCalledWith({
+        method: 'cash',
+        amount: 30000,
+        registerFiscal: false,
+      });
+    });
+    expect(await screen.findByText('Chek tayyor')).toBeTruthy();
+  });
+
+  it('characterizes the submit guard as one mutation while payment is pending', async () => {
+    let resolvePayment: ((value: unknown) => void) | undefined;
+    paymentMutateAsyncMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolvePayment = resolve;
+        }),
+    );
+    render(<PaymentPageContent orderId="order-1" />);
+    const submit = screen.getByRole('button', { name: 'Chek' });
+
+    fireEvent.click(submit);
+    fireEvent.click(submit);
+
+    expect(paymentMutateAsyncMock).toHaveBeenCalledTimes(1);
+    resolvePayment?.({
+      order: {
+        orderNumber: 101,
+        status: 'closed',
+        items: [],
+        subtotal: 30000,
+        serviceFee: 0,
+        total: 30000,
+        note: '',
+      },
+      payment: { method: 'cash', amount: 30000, paidAt: '2026-07-15T12:00:00Z' },
+      receipt: { id: 'receipt-submit-guard', payload: {} },
+    });
+    expect(await screen.findByText('Chek tayyor')).toBeTruthy();
   });
 });

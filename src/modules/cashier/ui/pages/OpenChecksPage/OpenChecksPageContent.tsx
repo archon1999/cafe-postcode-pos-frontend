@@ -1,30 +1,12 @@
-import { Icon } from '@iconify/react';
-import {
-  Box,
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  Divider,
-  Drawer,
-  IconButton,
-  Pagination,
-  Stack,
-  TextField,
-  Typography,
-  alpha,
-  useMediaQuery,
-} from '@mui/material';
+import { Box, useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import { useMemo, useRef, useState, type KeyboardEvent, type TouchEvent } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 
 import { canManageCashierPayments, usePosSession } from 'modules/auth';
 import {
   useCashierEnsurePaymentPrintDocumentMutation,
-  useCashierFiscalRetryMutation,
   useCashierOpenChecksQuery,
   useCashierRefundMutation,
   useCashierUpdateOrderDisplayNameMutation,
@@ -36,21 +18,15 @@ import {
 } from 'modules/cashier/domain';
 import type { CashierCheckStatus, CashierOrder } from 'modules/cashier/domain/entities/order.types';
 import { useEdgePrintMutation } from 'modules/edge-printing';
-import { getApiErrorMessage } from 'shared/api/errorMessage';
 import { refreshTransportAndReload } from 'shared/api/transportResolver';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
-import { type PosLocale, formatPosCopy, getPosCopy } from 'shared/locale/copy';
-import { formatCompactMoney, formatTime } from 'shared/pos/utils';
-import { PosIconAction, PosOpenChecksSkeleton, PosSectionTabs, PosSettingsMenu } from 'shared/ui/pos-primitives';
+import { getPosCopy } from 'shared/locale/copy';
+import { PosOpenChecksSkeleton, PosSettingsMenu } from 'shared/ui/pos-primitives';
 
-type CashierPayment = NonNullable<CashierOrder['payments']>[number];
-type RetryFiscalReceipt = { id?: string; printDocument?: string | null; payload?: Record<string, unknown> | null };
-type RetryFiscalReceiptDialogState = {
-  receipts: RetryFiscalReceipt[];
-  receiptNumber: string;
-  methodLabel: string;
-  amount: number;
-};
+import { OpenChecksDetail } from './OpenChecksDetail';
+import { RenameOpenCheckDialog, RetryFiscalReceiptDialogs } from './OpenChecksDialogs';
+import { OpenChecksHeader, OpenChecksListPanel, OpenChecksMobileDetail } from './OpenChecksPageChrome';
+import { useRetryFiscalReceiptFlow } from './useRetryFiscalReceiptFlow';
 type ChecksQueryData = { orders?: CashierOrder[]; count?: number; numPages?: number } | CashierOrder[] | undefined;
 type MutationErrorPayload = {
   displayName?: string[];
@@ -63,468 +39,6 @@ function getChecksOrders(data: ChecksQueryData) {
 
 function getChecksCount(data: ChecksQueryData) {
   return Array.isArray(data) ? data.length : (data?.count ?? data?.orders?.length ?? 0);
-}
-
-function formatPercent(value: number) {
-  return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/\.?0+$/, '');
-}
-
-function OpenChecksList({
-  copy,
-  locale,
-  orders,
-  selectedOrderId,
-  selectedTab,
-  onRename,
-  onSelect,
-  onSwipeEdit,
-}: {
-  copy: ReturnType<typeof getPosCopy>;
-  locale: PosLocale;
-  orders: CashierOrder[];
-  selectedOrderId?: string;
-  selectedTab: CashierCheckStatus;
-  onRename: (order: CashierOrder) => void;
-  onSelect: (orderId: string) => void;
-  onSwipeEdit: (order: CashierOrder) => void;
-}) {
-  const swipeStartRef = useRef<{ orderId: string; x: number; y: number } | null>(null);
-  const [swipedOrderId, setSwipedOrderId] = useState<string | null>(null);
-
-  const handleTouchStart = (event: TouchEvent<HTMLDivElement>, order: CashierOrder) => {
-    const touch = event.touches[0];
-    swipeStartRef.current = { orderId: order.id, x: touch.clientX, y: touch.clientY };
-    setSwipedOrderId(null);
-  };
-
-  const handleTouchMove = (event: TouchEvent<HTMLDivElement>, order: CashierOrder) => {
-    const start = swipeStartRef.current;
-    const touch = event.touches[0];
-    if (!start || start.orderId !== order.id || !touch) return;
-
-    const deltaX = touch.clientX - start.x;
-    const deltaY = touch.clientY - start.y;
-    if (Math.abs(deltaY) > Math.abs(deltaX)) return;
-
-    if (deltaX < -28 && selectedTab === 'open') {
-      setSwipedOrderId(order.id);
-    }
-  };
-
-  const handleTouchEnd = (event: TouchEvent<HTMLDivElement>, order: CashierOrder) => {
-    const start = swipeStartRef.current;
-    const touch = event.changedTouches[0];
-    swipeStartRef.current = null;
-    if (!start || start.orderId !== order.id || !touch || selectedTab !== 'open') {
-      setSwipedOrderId(null);
-      return;
-    }
-
-    const deltaX = touch.clientX - start.x;
-    const deltaY = touch.clientY - start.y;
-    if (deltaX < -72 && Math.abs(deltaX) > Math.abs(deltaY) * 1.4) {
-      onSwipeEdit(order);
-      return;
-    }
-    setSwipedOrderId(null);
-  };
-
-  return (
-    <Stack
-      spacing={1.35}
-      sx={{
-        height: '100%',
-        minHeight: 0,
-        minWidth: 0,
-        overflowY: 'auto',
-        overflowX: 'hidden',
-        pr: { xs: 0.2, md: 0.6 },
-      }}>
-      {orders.length > 0 ? (
-        orders.map((order) => (
-          <Box
-            key={order.id}
-            component="div"
-            role="button"
-            tabIndex={0}
-            onTouchStart={(event) => handleTouchStart(event, order)}
-            onTouchMove={(event) => handleTouchMove(event, order)}
-            onTouchEnd={(event) => handleTouchEnd(event, order)}
-            onClick={() => onSelect(order.id)}
-            onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                onSelect(order.id);
-              }
-            }}
-            sx={(theme) => ({
-              border: 0,
-              width: '100%',
-              textAlign: 'left',
-              borderRadius: '10px',
-              px: 2,
-              py: 1.65,
-              position: 'relative',
-              cursor: 'pointer',
-              color: 'inherit',
-              outline: 0,
-              backgroundColor:
-                selectedOrderId === order.id ? 'var(--pos-check-card-selected-bg)' : 'var(--pos-check-card-bg)',
-              transform: swipedOrderId === order.id ? 'translateX(-54px)' : 'translateX(0)',
-              transition: 'transform 140ms ease',
-              touchAction: 'pan-y',
-              '&::after': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                right: -58,
-                width: 52,
-                height: '100%',
-                borderRadius: '10px',
-                backgroundColor: theme.palette.primary.main,
-                opacity: selectedTab === 'open' && swipedOrderId === order.id ? 1 : 0,
-                transition: 'opacity 140ms ease',
-              },
-            })}>
-            {selectedTab === 'open' && swipedOrderId === order.id ? (
-              <Box
-                sx={{
-                  position: 'absolute',
-                  top: '50%',
-                  right: -42,
-                  transform: 'translateY(-50%)',
-                  color: '#fff',
-                  zIndex: 1,
-                  pointerEvents: 'none',
-                }}>
-                <Icon icon="solar:pen-2-bold-duotone" width={22} />
-              </Box>
-            ) : null}
-            <Stack direction="row" justifyContent="space-between" spacing={2} alignItems="center">
-              <Stack direction="row" spacing={1.75} alignItems="center">
-                <Box
-                  sx={{
-                    minWidth: 56,
-                    height: 56,
-                    borderRadius: '9px',
-                    backgroundColor: 'var(--pos-check-card-avatar-bg)',
-                    display: 'grid',
-                    placeItems: 'center',
-                    fontSize: 22,
-                    fontWeight: 700,
-                    lineHeight: 1,
-                  }}>
-                  {order.channel === 'delivery'
-                    ? 'YD'
-                    : order.channel === 'takeaway'
-                      ? 'TG'
-                      : (order.tableName?.match(/\d+/)?.[0] ?? '0')}
-                </Box>
-                <Stack spacing={0.4}>
-                  <Stack direction="row" spacing={0.75} alignItems="center">
-                    <Typography variant="h6">{getCashierOrderDisplayName(order)}</Typography>
-                    {selectedTab === 'open' ? (
-                      <IconButton
-                        aria-label={copy.renameOrder}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          onRename(order);
-                        }}
-                        sx={{ p: 0.4 }}>
-                        <Icon icon="solar:pen-2-bold-duotone" width={18} />
-                      </IconButton>
-                    ) : null}
-                  </Stack>
-                  {order.displayName?.trim() ? (
-                    <Typography variant="body2" color="text.secondary">
-                      {copy.orders}: {getCashierOrderNumberLabel(order)}
-                    </Typography>
-                  ) : null}
-                  <Typography variant="body2" color="text.secondary">
-                    {order.channel === 'delivery'
-                      ? copy.deliveryLabel
-                      : order.channel === 'takeaway'
-                        ? copy.takeawayLabel
-                        : `${order.guestCount} ${copy.guests}`}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {selectedTab === 'closed' ? (order.cashierName ?? order.openedByName) : order.openedByName}
-                  </Typography>
-                </Stack>
-              </Stack>
-
-              <Stack spacing={0.4} alignItems="flex-end">
-                <Typography variant="h6">{formatCompactMoney(order.total, locale)}</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {formatTime(selectedTab === 'closed' ? (order.closedAt ?? order.createdAt) : order.createdAt, locale)}
-                </Typography>
-              </Stack>
-            </Stack>
-          </Box>
-        ))
-      ) : (
-        <Box
-          sx={{
-            flex: 1,
-            borderRadius: '14px',
-            minHeight: 420,
-            display: 'grid',
-            placeItems: 'center',
-            backgroundColor: 'var(--pos-check-card-empty-bg)',
-          }}>
-          <Typography variant="h6" color="text.secondary">
-            {selectedTab === 'open'
-              ? copy.noChecks
-              : selectedTab === 'closed'
-                ? copy.noClosedChecks
-                : `${copy.fiscalChecks} yo'q`}
-          </Typography>
-        </Box>
-      )}
-    </Stack>
-  );
-}
-
-function OpenChecksDetail({
-  copy,
-  groupedItems,
-  latestSucceededPayment,
-  locale,
-  onPay,
-  onRefund,
-  onReprint,
-  onRetryFiscal,
-  order,
-  refundAvailable,
-  reprintAvailable,
-  retryFiscalAvailable,
-  selectedTab,
-}: {
-  copy: ReturnType<typeof getPosCopy>;
-  groupedItems: ReturnType<typeof groupCashierOrderItemsByStation>;
-  latestSucceededPayment: CashierPayment | undefined;
-  locale: PosLocale;
-  onPay: () => void;
-  onRefund: () => void;
-  onReprint: () => void;
-  onRetryFiscal: () => void;
-  order: CashierOrder;
-  refundAvailable: boolean;
-  reprintAvailable: boolean;
-  retryFiscalAvailable: boolean;
-  selectedTab: CashierCheckStatus;
-}) {
-  const serviceFeePercent = Number(order.serviceFeePercent ?? 0);
-  const serviceFeeAmount = Number(order.serviceFee ?? 0);
-  const serviceFeeEnabled = Boolean(order.serviceFeeEnabled ?? serviceFeePercent > 0);
-  const shouldShowServiceFee = serviceFeeEnabled && (serviceFeePercent > 0 || serviceFeeAmount > 0);
-  const serviceFeeLabel = `${copy.serviceFee} (${serviceFeePercent}%)`;
-  const vatEnabled = Boolean(order.vatEnabled);
-  const vatPercent = Number(order.vatPercent ?? 0);
-  const vatAmount = Number(order.vatAmount ?? 0);
-  const shouldShowVat = vatEnabled && vatPercent > 0;
-  const vatLabel = `${copy.vat} (${formatPercent(vatPercent)}%)`;
-
-  return (
-    <Box
-      sx={(theme) => ({
-        borderRadius: '14px',
-        overflow: 'hidden',
-        height: '100%',
-        minHeight: 0,
-        backgroundColor: 'var(--pos-order-panel-bg)',
-        display: 'flex',
-        flexDirection: 'column',
-        border: `1px solid ${alpha('#ffffff', theme.palette.mode === 'dark' ? 0.04 : 0.3)}`,
-      })}>
-      <Box sx={{ p: 2.5 }}>
-        <Stack direction="row" spacing={1.5} alignItems="center">
-          <Box
-            sx={{
-              minWidth: 66,
-              height: 66,
-              borderRadius: '10px',
-              backgroundColor: 'var(--pos-order-avatar-bg)',
-              display: 'grid',
-              placeItems: 'center',
-              fontSize: 30,
-              fontWeight: 700,
-            }}>
-            {order.channel === 'delivery'
-              ? 'YD'
-              : order.channel === 'takeaway'
-                ? 'TG'
-                : (order.tableName?.match(/\d+/)?.[0] ?? '0')}
-          </Box>
-
-          <Stack spacing={0.25}>
-            <Typography variant="h5">{getCashierOrderDisplayName(order)}</Typography>
-            <Typography variant="body2" color="text.secondary">
-              {copy.orders}: {getCashierOrderNumberLabel(order)}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {order.channel === 'delivery'
-                ? copy.deliveryLabel
-                : order.channel === 'takeaway'
-                  ? copy.takeawayLabel
-                  : `${order.guestCount} ${copy.guests}`}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {selectedTab === 'closed' ? (order.cashierName ?? order.openedByName) : order.openedByName}
-            </Typography>
-          </Stack>
-        </Stack>
-      </Box>
-
-      <Box sx={{ px: 2.5, pb: 2, flex: 1, overflowY: 'auto' }}>
-        <Stack spacing={1.55}>
-          {selectedTab === 'closed' ? (
-            <Stack spacing={0.8}>
-              <Stack direction="row" justifyContent="space-between">
-                <Typography variant="body2" color="text.secondary">
-                  {copy.closedAt}
-                </Typography>
-                <Typography variant="body2">{order.closedAt ? formatTime(order.closedAt, locale) : '-'}</Typography>
-              </Stack>
-              <Stack direction="row" justifyContent="space-between">
-                <Typography variant="body2" color="text.secondary">
-                  {copy.receiptMethod}
-                </Typography>
-                <Typography variant="body2">
-                  {latestSucceededPayment?.method === 'card' ? copy.card : copy.cash}
-                </Typography>
-              </Stack>
-            </Stack>
-          ) : null}
-
-          {groupedItems.map(([stationName, items]) => (
-            <Stack key={stationName} spacing={0.9}>
-              <Typography variant="body2" color="text.secondary">
-                {stationName}
-              </Typography>
-              {items.map((item) => (
-                <Box
-                  key={item.id}
-                  sx={{
-                    borderRadius: '10px',
-                    overflow: 'hidden',
-                    backgroundColor: 'var(--pos-cart-item-bg)',
-                  }}>
-                  <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ p: 1.65 }}>
-                    <Stack spacing={0.35} sx={{ pr: 1 }}>
-                      <Typography
-                        variant="subtitle1"
-                        sx={{
-                          textDecoration: item.status === 'cancelled' ? 'line-through' : 'none',
-                          opacity: item.status === 'cancelled' ? 0.72 : 1,
-                        }}>
-                        {formatPosCopy(copy.itemQuantityLabel, { name: item.catalogItemName, quantity: item.quantity })}
-                      </Typography>
-                      {item.status === 'cancelled' ? (
-                        <Typography variant="caption" sx={{ color: 'error.main', fontWeight: 700 }}>
-                          {copy.cancelled}
-                        </Typography>
-                      ) : null}
-                      {item.note ? (
-                        <Typography variant="body2" color="text.secondary">
-                          {item.note}
-                        </Typography>
-                      ) : null}
-                    </Stack>
-                    <Typography
-                      variant="subtitle1"
-                      sx={{
-                        whiteSpace: 'nowrap',
-                        textDecoration: item.status === 'cancelled' ? 'line-through' : 'none',
-                        opacity: item.status === 'cancelled' ? 0.72 : 1,
-                      }}>
-                      {formatCompactMoney(item.lineTotal, locale)}
-                    </Typography>
-                  </Stack>
-                </Box>
-              ))}
-            </Stack>
-          ))}
-        </Stack>
-      </Box>
-
-      <Divider />
-
-      <Stack spacing={1.4} sx={{ p: 2.5 }}>
-        <Stack direction="row" justifyContent="space-between">
-          <Typography variant="body1" color="text.secondary">
-            {copy.subtotal}:
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            {formatCompactMoney(order.subtotal, locale)}
-          </Typography>
-        </Stack>
-        {shouldShowServiceFee ? (
-          <Stack direction="row" justifyContent="space-between">
-            <Typography variant="body1" color="text.secondary">
-              {serviceFeeLabel}:
-            </Typography>
-            <Typography variant="body1" color="text.secondary">
-              {formatCompactMoney(order.serviceFee, locale)}
-            </Typography>
-          </Stack>
-        ) : null}
-        {shouldShowVat ? (
-          <Stack direction="row" justifyContent="space-between">
-            <Typography variant="body1" color="text.secondary">
-              {vatLabel}:
-            </Typography>
-            <Typography variant="body1" color="text.secondary">
-              {formatCompactMoney(vatAmount, locale)}
-            </Typography>
-          </Stack>
-        ) : null}
-        <Stack direction="row" justifyContent="space-between" alignItems="flex-end">
-          <Typography variant="h5">{copy.grandTotal}:</Typography>
-          <Typography variant="h4" sx={{ lineHeight: 1.05, textAlign: 'right' }}>
-            {formatCompactMoney(order.total, locale)}
-          </Typography>
-        </Stack>
-        {selectedTab === 'open' ? (
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.1}>
-            <Button variant="contained" size="large" sx={{ flex: 1.15 }} onClick={onPay}>
-              {copy.pay}
-            </Button>
-          </Stack>
-        ) : (
-          <Stack spacing={1.1}>
-            {retryFiscalAvailable || reprintAvailable ? (
-              <Stack direction="row" spacing={1.1}>
-                {retryFiscalAvailable ? (
-                  <Button variant="contained" color="warning" sx={{ flex: 1 }} onClick={onRetryFiscal}>
-                    {copy.fiscalClose}
-                  </Button>
-                ) : null}
-                {reprintAvailable ? (
-                  <Button
-                    variant="contained"
-                    sx={(theme) => ({
-                      flex: 1,
-                      backgroundImage: 'none',
-                      backgroundColor: 'var(--pos-secondary-action-bg)',
-                      color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
-                    })}
-                    onClick={onReprint}>
-                    {selectedTab === 'closed' ? copy.reprintPrecheck : copy.reprintReceipt}
-                  </Button>
-                ) : null}
-              </Stack>
-            ) : null}
-            {refundAvailable ? (
-              <Button variant="contained" color="error" fullWidth onClick={onRefund}>
-                {copy.refund}
-              </Button>
-            ) : null}
-          </Stack>
-        )}
-      </Stack>
-    </Box>
-  );
 }
 
 export function OpenChecksPageContent() {
@@ -545,47 +59,9 @@ export function OpenChecksPageContent() {
   const [closedPage, setClosedPage] = useState(1);
   const [fiscalSearch, setFiscalSearch] = useState('');
   const [fiscalPage, setFiscalPage] = useState(1);
-  const [retryReceiptDialog, setRetryReceiptDialog] = useState<RetryFiscalReceiptDialogState | null>(null);
-  const [retryReceiptPrintPromptOpen, setRetryReceiptPrintPromptOpen] = useState(false);
-  const [isRetryReceiptPrintConfirming, setIsRetryReceiptPrintConfirming] = useState(false);
   const refundMutation = useCashierRefundMutation();
   const ensurePrintDocumentMutation = useCashierEnsurePaymentPrintDocumentMutation();
   const edgePrintMutation = useEdgePrintMutation();
-  const retryFiscalMutation = useCashierFiscalRetryMutation({
-    onSuccess: (response) => {
-      const failedResult = (response.results ?? []).find((item) => item && item.ok === false);
-      if (failedResult) {
-        toast.error(String(failedResult.detail ?? failedResult.message ?? 'Fiscal bilan yopishda xatolik bor.'));
-        return;
-      }
-      const receipts = (
-        (response.receipts?.length
-          ? response.receipts
-          : response.receipt
-            ? [response.receipt]
-            : []) as RetryFiscalReceipt[]
-      ).filter(Boolean);
-      setRetryReceiptDialog({
-        receipts,
-        receiptNumber:
-          receipts
-            .map((receipt) => receipt.payload?.receiptNumber)
-            .filter(Boolean)
-            .join(', ') ||
-          latestSucceededPayment?.id ||
-          '-',
-        methodLabel:
-          latestSucceededPayment?.method === 'card'
-            ? copy.card
-            : latestSucceededPayment?.method === 'qr'
-              ? copy.qr
-              : copy.cash,
-        amount: Number(latestSucceededPayment?.amount ?? 0),
-      });
-      toast.success('Fiscal bilan yopildi');
-    },
-    onError: (error) => toast.error(getApiErrorMessage(error, 'Fiscal bilan yopishda xatolik bor.')),
-  });
   const updateOrderDisplayNameMutation = useCashierUpdateOrderDisplayNameMutation({
     onSuccess: () => {
       setRenameOrder(null);
@@ -630,6 +106,16 @@ export function OpenChecksPageContent() {
 
     return succeededPayments[succeededPayments.length - 1];
   }, [selectedOrder?.payments]);
+  const retryReceiptFlow = useRetryFiscalReceiptFlow({
+    copy,
+    latestPayment: latestSucceededPayment,
+    onFinished: () => {
+      setSelectedOrderId('');
+      void closedOrdersQuery.refetch();
+      void fiscalClosedQuery.refetch();
+    },
+    printDocument: (documentId) => edgePrintMutation.mutateAsync({ documentId }),
+  });
   const canOperatePayments = canManageCashierPayments(session?.user);
   const canRefund = Boolean(
     selectedTab !== 'open' && latestSucceededPayment?.id && !latestSucceededPayment?.isRefunded && canOperatePayments,
@@ -640,36 +126,6 @@ export function OpenChecksPageContent() {
   const renameOrderPreview = renameOrder
     ? getCashierOrderDisplayName({ orderNumber: renameOrder.orderNumber, displayName: renameValue })
     : copy.orders;
-
-  const finishRetryReceiptFlow = () => {
-    setRetryReceiptPrintPromptOpen(false);
-    setRetryReceiptDialog(null);
-    setSelectedOrderId('');
-    void closedOrdersQuery.refetch();
-    void fiscalClosedQuery.refetch();
-  };
-
-  const handleRetryReceiptPromptPrint = async () => {
-    if (isRetryReceiptPrintConfirming) {
-      return;
-    }
-
-    setIsRetryReceiptPrintConfirming(true);
-    try {
-      const printableReceipts = (retryReceiptDialog?.receipts ?? []).filter((receipt) => receipt.printDocument);
-      if (printableReceipts.length === 0) {
-        throw new Error('Chek uchun print hujjati tayyor emas');
-      }
-      await Promise.all(
-        printableReceipts.map((receipt) => edgePrintMutation.mutateAsync({ documentId: receipt.printDocument! })),
-      );
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Chekni chiqarib bo‘lmadi');
-    } finally {
-      setIsRetryReceiptPrintConfirming(false);
-      finishRetryReceiptFlow();
-    }
-  };
 
   const handleOpenRenameDialog = (order: CashierOrder) => {
     setRenameOrder(order);
@@ -731,10 +187,10 @@ export function OpenChecksPageContent() {
           .catch((error) => toast.info(error instanceof Error ? error.message : 'Printer ishlamayapti'));
       }}
       onRetryFiscal={() => {
-        if (!latestSucceededPayment?.id || retryFiscalMutation.isPending) {
+        if (!latestSucceededPayment?.id || retryReceiptFlow.isRetrying) {
           return;
         }
-        retryFiscalMutation.mutate(latestSucceededPayment.id);
+        retryReceiptFlow.retry(latestSucceededPayment.id);
       }}
       order={selectedOrder}
       refundAvailable={canRefund}
@@ -770,42 +226,6 @@ export function OpenChecksPageContent() {
     }
     setFiscalPage(page);
   };
-  const renderChecksListPanel = (options: { selectedOrderId?: string; onSelect: (orderId: string) => void }) => (
-    <Stack spacing={1.2} sx={{ height: '100%', minHeight: 0 }}>
-      {isPagedChecksTab ? (
-        <TextField
-          size="small"
-          placeholder="Qidirish"
-          value={pagedChecksSearch}
-          onChange={(event) => handlePagedSearchChange(event.target.value)}
-          sx={{ maxWidth: { md: 360 } }}
-        />
-      ) : null}
-      <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-        <OpenChecksList
-          copy={copy}
-          locale={locale}
-          orders={visibleOrders}
-          selectedOrderId={options.selectedOrderId}
-          selectedTab={selectedTab}
-          onRename={handleOpenRenameDialog}
-          onSwipeEdit={handleSwipeEdit}
-          onSelect={options.onSelect}
-        />
-      </Box>
-      {isPagedChecksTab ? (
-        <Stack direction="row" justifyContent="center" sx={{ flexShrink: 0, pt: 0.2 }}>
-          <Pagination
-            count={pagedChecksPageCount}
-            page={pagedChecksPage}
-            onChange={(_, page) => handlePagedPageChange(page)}
-            shape="rounded"
-          />
-        </Stack>
-      ) : null}
-    </Stack>
-  );
-
   if (isInitialLoading) {
     return <PosOpenChecksSkeleton mobile={isMobile} />;
   }
@@ -813,48 +233,43 @@ export function OpenChecksPageContent() {
   return (
     <PosPageFrame
       header={
-        <Stack direction="row" spacing={1.5} justifyContent="space-between" alignItems="center">
-          <PosSectionTabs
-            value={selectedTab}
-            onChange={(value) => {
-              setSelectedTab(value as CashierCheckStatus);
-              if (isMobile) {
-                setMobileDetailOpen(false);
-              }
-            }}
-            items={[
-              { value: 'open', label: `${copy.openChecks} (${openOrders.length})` },
-              { value: 'closed', label: `${copy.closedChecks} (${getChecksCount(closedOrdersQuery.data)})` },
-              {
-                value: 'fiscal_closed',
-                label: `${copy.fiscalChecks} (${getChecksCount(fiscalClosedQuery.data)})`,
-              },
-            ]}
-          />
-
-          <Stack direction="row" spacing={1.5}>
-            {!isMobile ? (
-              <PosIconAction icon="solar:refresh-bold-duotone" onClick={() => void refreshTransportAndReload()} />
-            ) : null}
-            <PosIconAction
-              icon="solar:settings-bold-duotone"
-              onClick={(event) => setSettingsAnchor(event.currentTarget)}
-            />
-            {!isMobile ? (
-              <PosIconAction icon="solar:lock-password-bold-duotone" onClick={() => navigate('/lock-screen')} />
-            ) : null}
-          </Stack>
-        </Stack>
+        <OpenChecksHeader
+          closedCount={getChecksCount(closedOrdersQuery.data)}
+          copy={copy}
+          fiscalCount={getChecksCount(fiscalClosedQuery.data)}
+          isMobile={isMobile}
+          openCount={openOrders.length}
+          selectedTab={selectedTab}
+          onLock={() => navigate('/lock-screen')}
+          onRefresh={() => void refreshTransportAndReload()}
+          onSettings={(event) => setSettingsAnchor(event.currentTarget)}
+          onTabChange={(value) => {
+            setSelectedTab(value);
+            if (isMobile) setMobileDetailOpen(false);
+          }}
+        />
       }>
       {isMobile ? (
         <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-          {renderChecksListPanel({
-            selectedOrderId,
-            onSelect: (orderId) => {
+          <OpenChecksListPanel
+            copy={copy}
+            locale={locale}
+            orders={visibleOrders}
+            page={pagedChecksPage}
+            pageCount={pagedChecksPageCount}
+            paged={isPagedChecksTab}
+            search={pagedChecksSearch}
+            selectedOrderId={selectedOrderId}
+            selectedTab={selectedTab}
+            onPageChange={handlePagedPageChange}
+            onRename={handleOpenRenameDialog}
+            onSearchChange={handlePagedSearchChange}
+            onSwipeEdit={handleSwipeEdit}
+            onSelect={(orderId) => {
               setSelectedOrderId(orderId);
               setMobileDetailOpen(true);
-            },
-          })}
+            }}
+          />
         </Box>
       ) : (
         <Box
@@ -869,113 +284,46 @@ export function OpenChecksPageContent() {
             },
             gap: { xs: 1.5, md: 1.6, xl: 2.4 },
           }}>
-          {renderChecksListPanel({ selectedOrderId: selectedOrder?.id, onSelect: setSelectedOrderId })}
+          <OpenChecksListPanel
+            copy={copy}
+            locale={locale}
+            orders={visibleOrders}
+            page={pagedChecksPage}
+            pageCount={pagedChecksPageCount}
+            paged={isPagedChecksTab}
+            search={pagedChecksSearch}
+            selectedOrderId={selectedOrder?.id}
+            selectedTab={selectedTab}
+            onPageChange={handlePagedPageChange}
+            onRename={handleOpenRenameDialog}
+            onSearchChange={handlePagedSearchChange}
+            onSelect={setSelectedOrderId}
+            onSwipeEdit={handleSwipeEdit}
+          />
           <Box sx={{ minHeight: 0 }}>{detailPanel}</Box>
         </Box>
       )}
 
-      <Drawer
-        anchor="bottom"
-        open={isMobile && mobileDetailOpen && Boolean(detailPanel)}
+      <OpenChecksMobileDetail
+        copy={copy}
+        detail={detailPanel}
+        open={isMobile && mobileDetailOpen}
+        order={selectedOrder}
         onClose={() => setMobileDetailOpen(false)}
-        PaperProps={{
-          sx: {
-            height: 'min(82dvh, 860px)',
-            borderTopLeftRadius: 24,
-            borderTopRightRadius: 24,
-            backgroundImage: 'none',
-            overflow: 'hidden',
-          },
-        }}>
-        <Stack sx={{ height: '100%', minHeight: 0 }}>
-          <Stack
-            direction="row"
-            spacing={1.2}
-            alignItems="center"
-            justifyContent="space-between"
-            sx={{ px: 2, py: 1.5 }}>
-            <Stack spacing={0.25}>
-              <Typography variant="h6">{copy.bills}</Typography>
-              <Typography variant="body2" color="text.secondary">
-                {selectedOrder ? getCashierOrderDisplayName(selectedOrder) : copy.orders}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {selectedOrder ? getCashierOrderNumberLabel(selectedOrder) : copy.orders}
-              </Typography>
-            </Stack>
-            <PosIconAction icon="solar:close-circle-bold-duotone" onClick={() => setMobileDetailOpen(false)} />
-          </Stack>
-          <Box sx={{ flex: 1, minHeight: 0, px: 2, pb: 2 }}>{detailPanel}</Box>
-        </Stack>
-      </Drawer>
+      />
 
-      <Dialog
-        open={Boolean(retryReceiptDialog) && !retryReceiptPrintPromptOpen}
-        onClose={() => setRetryReceiptDialog(null)}
-        maxWidth="xs"
-        fullWidth
-        fullScreen={isMobile}>
-        <DialogTitle>{copy.receiptTitle}</DialogTitle>
-        <DialogContent>
-          <Stack spacing={1.5} sx={{ pt: 1 }}>
-            <Stack direction="row" justifyContent="space-between">
-              <Typography color="text.secondary">{copy.receiptNumber}</Typography>
-              <Typography>{retryReceiptDialog?.receiptNumber ?? '-'}</Typography>
-            </Stack>
-            <Stack direction="row" justifyContent="space-between">
-              <Typography color="text.secondary">{copy.receiptMethod}</Typography>
-              <Typography>{retryReceiptDialog?.methodLabel ?? '-'}</Typography>
-            </Stack>
-            <Stack direction="row" justifyContent="space-between">
-              <Typography color="text.secondary">{copy.receiptAmount}</Typography>
-              <Typography>{formatCompactMoney(retryReceiptDialog?.amount ?? 0, locale)}</Typography>
-            </Stack>
-
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.2} sx={{ pt: 1 }}>
-              <Button variant="contained" sx={{ flex: 1 }} onClick={() => setRetryReceiptPrintPromptOpen(true)}>
-                {copy.finishReceipt}
-              </Button>
-            </Stack>
-          </Stack>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={retryReceiptPrintPromptOpen && Boolean(retryReceiptDialog)}
-        onClose={() => {
-          if (!isRetryReceiptPrintConfirming) {
-            setRetryReceiptPrintPromptOpen(false);
-          }
-        }}
-        maxWidth="xs"
-        fullWidth
-        fullScreen={isMobile}>
-        <DialogTitle>{copy.receiptPrintPromptTitle}</DialogTitle>
-        <DialogContent>
-          <Typography color="text.secondary">{copy.receiptPrintPromptBody}</Typography>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3 }}>
-          <Button
-            variant="contained"
-            disabled={isRetryReceiptPrintConfirming}
-            sx={(theme) => ({
-              flex: 1,
-              backgroundImage: 'none',
-              backgroundColor: 'var(--pos-secondary-action-bg)',
-              color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
-            })}
-            onClick={finishRetryReceiptFlow}>
-            {copy.receiptPrintNo}
-          </Button>
-          <Button
-            variant="contained"
-            sx={{ flex: 1 }}
-            disabled={isRetryReceiptPrintConfirming}
-            onClick={() => void handleRetryReceiptPromptPrint()}>
-            {copy.receiptPrintYes}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <RetryFiscalReceiptDialogs
+        copy={copy}
+        dialog={retryReceiptFlow.dialog}
+        fullScreen={isMobile}
+        isPrintConfirming={retryReceiptFlow.isPrintConfirming}
+        locale={locale}
+        printPromptOpen={retryReceiptFlow.printPromptOpen}
+        onClose={retryReceiptFlow.close}
+        onFinish={retryReceiptFlow.finish}
+        onPrint={() => void retryReceiptFlow.print()}
+        onSetPrintPromptOpen={retryReceiptFlow.setPrintPromptOpen}
+      />
 
       <PosSettingsMenu
         anchorEl={settingsAnchor}
@@ -995,54 +343,24 @@ export function OpenChecksPageContent() {
         themeMode={themeMode}
       />
 
-      <Dialog
+      <RenameOpenCheckDialog
+        copy={copy}
+        error={renameError}
+        fullScreen={isMobile}
+        helperText={renameOrderNumberLabel}
+        isSaving={updateOrderDisplayNameMutation.isPending}
         open={Boolean(renameOrder)}
-        onClose={() => setRenameOrder(null)}
-        maxWidth="xs"
-        fullWidth
-        fullScreen={isMobile}>
-        <DialogTitle>{copy.renameOrder}</DialogTitle>
-        <DialogContent>
-          <Stack spacing={1.4} sx={{ pt: 1 }}>
-            <Typography variant="body2" color="text.secondary">
-              {renameOrderPreview}
-            </Typography>
-            <TextField
-              autoFocus
-              label={copy.orderName}
-              value={renameValue}
-              onChange={(event) => {
-                setRenameValue(event.target.value);
-                if (renameError) {
-                  setRenameError('');
-                }
-              }}
-              placeholder={copy.orderNamePlaceholder}
-              error={Boolean(renameError)}
-              helperText={renameError || renameOrderNumberLabel}
-              inputProps={{ maxLength: 120 }}
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3 }}>
-          <Button
-            variant="contained"
-            onClick={() => setRenameOrder(null)}
-            sx={(theme) => ({
-              backgroundImage: 'none',
-              backgroundColor: 'var(--pos-secondary-action-bg)',
-              color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
-            })}>
-            {copy.cancel}
-          </Button>
-          <Button
-            variant="contained"
-            onClick={() => void handleRenameSave()}
-            disabled={updateOrderDisplayNameMutation.isPending}>
-            {copy.save}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        preview={renameOrderPreview}
+        value={renameValue}
+        onCancel={() => setRenameOrder(null)}
+        onChange={(value) => {
+          setRenameValue(value);
+          if (renameError) {
+            setRenameError('');
+          }
+        }}
+        onSave={() => void handleRenameSave()}
+      />
     </PosPageFrame>
   );
 }

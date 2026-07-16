@@ -10,35 +10,15 @@ import {
   useUpdateKitchenItemStatusMutation,
   useUpdateKitchenTicketStatusMutation,
 } from 'modules/kitchen/application';
-import { type KitchenItemStatus, type KitchenTicketStatus } from 'modules/kitchen/domain';
+import { type KitchenTicketStatus } from 'modules/kitchen/domain';
 import { refreshTransportAndReload } from 'shared/api/transportResolver';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
-import { formatPosCopy, getPosCopy } from 'shared/locale/copy';
+import { getPosCopy } from 'shared/locale/copy';
 import { formatTime } from 'shared/pos/utils';
-import { PosIconAction, PosKitchenQueueSkeleton, PosSettingsMenu } from 'shared/ui/pos-primitives';
+import { PosKitchenQueueSkeleton, PosSettingsMenu } from 'shared/ui/pos-primitives';
 
-const statusMeta = {
-  new: {
-    icon: 'solar:clock-circle-bold',
-    color: '#f0b63b',
-    labelColor: '#e0ab39',
-  },
-  cooking: {
-    icon: 'solar:fire-square-bold',
-    color: '#f0b63b',
-    labelColor: '#e0ab39',
-  },
-  done: {
-    icon: 'solar:check-circle-bold-duotone',
-    color: '#2bc8c2',
-    labelColor: '#2bc8c2',
-  },
-  cancelled: {
-    icon: 'solar:close-circle-bold',
-    color: '#d9636b',
-    labelColor: '#d9636b',
-  },
-} as const;
+import { KitchenQueueHeader, type KitchenQueueTab } from './KitchenQueueHeader';
+import { kitchenStatusMeta, KitchenTicketItem } from './KitchenTicketItem';
 
 export function KitchenQueuePageContent() {
   const navigate = useNavigate();
@@ -49,7 +29,7 @@ export function KitchenQueuePageContent() {
 
   const copy = getPosCopy(locale);
   const [settingsAnchor, setSettingsAnchor] = useState<HTMLElement | null>(null);
-  const [selectedTab, setSelectedTab] = useState<'active' | 'done'>('active');
+  const [selectedTab, setSelectedTab] = useState<KitchenQueueTab>('active');
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const canUpdateKitchenOrders = canManageKitchenOrders(session?.user);
@@ -99,91 +79,18 @@ export function KitchenQueuePageContent() {
   return (
     <PosPageFrame
       header={
-        <Stack
-          direction="row"
-          spacing={{ xs: 1, md: 1.5 }}
-          justifyContent="space-between"
-          alignItems="center"
-          sx={{ flexWrap: 'nowrap' }}>
-          <Stack direction="row" spacing={{ xs: 1, md: 1.5 }} sx={{ flex: 1, minWidth: 0 }}>
-            {!isMobile ? (
-              <PosIconAction icon="solar:alt-arrow-left-bold" onClick={() => navigate(getPosHomePath(session))} />
-            ) : null}
-
-            <Stack direction="row" spacing={{ xs: 1, md: 1.5 }} sx={{ flex: 1, minWidth: 0, maxWidth: 1220 }}>
-              {[
-                { value: 'active', label: `${copy.activeOrders} (${activeTickets.length})` },
-                {
-                  value: 'done',
-                  label: `${isMobile ? copy.done : copy.completedOrders} (${doneTickets.length})`,
-                },
-              ].map((item) => {
-                const active = selectedTab === item.value;
-
-                return (
-                  <Button
-                    key={item.value}
-                    variant="contained"
-                    onClick={() => setSelectedTab(item.value as 'active' | 'done')}
-                    sx={(theme) => ({
-                      flex: 1,
-                      minHeight: { xs: 56, md: 70 },
-                      borderRadius: { xs: '14px', md: '16px' },
-                      backgroundImage: 'none',
-                      backgroundColor: active
-                        ? theme.palette.primary.main
-                        : theme.palette.mode === 'dark'
-                          ? '#2b2d31'
-                          : alpha('#fffaf3', 0.94),
-                      color: active ? '#ffffff' : theme.palette.mode === 'dark' ? '#a2a6ad' : '#5f6773',
-                      fontSize: { xs: 14, md: 17 },
-                      fontWeight: 600,
-                      justifyContent: 'center',
-                      position: 'relative',
-                      border: `1px solid ${
-                        active
-                          ? 'transparent'
-                          : alpha(
-                              theme.palette.mode === 'dark' ? '#ffffff' : '#6c5330',
-                              theme.palette.mode === 'dark' ? 0 : 0.1,
-                            )
-                      }`,
-                      boxShadow: active
-                        ? '0 12px 22px rgba(27,132,236,0.24)'
-                        : theme.palette.mode === 'dark'
-                          ? 'none'
-                          : '0 12px 24px rgba(78, 55, 28, 0.08)',
-                      '&:hover': {
-                        backgroundColor: active
-                          ? theme.palette.primary.dark
-                          : theme.palette.mode === 'dark'
-                            ? '#303339'
-                            : '#f4ecdf',
-                      },
-                    })}>
-                    {item.label}
-                  </Button>
-                );
-              })}
-            </Stack>
-          </Stack>
-
-          <Stack
-            direction="row"
-            spacing={{ xs: 1, md: 1.5 }}
-            sx={{ justifyContent: { xs: 'flex-end', md: 'flex-start' } }}>
-            {!isMobile ? (
-              <PosIconAction icon="solar:refresh-bold-duotone" onClick={() => void refreshTransportAndReload()} />
-            ) : null}
-            <PosIconAction
-              icon="solar:settings-bold-duotone"
-              onClick={(event) => setSettingsAnchor(event.currentTarget)}
-            />
-            {!isMobile ? (
-              <PosIconAction icon="solar:lock-password-bold-duotone" onClick={() => navigate('/lock-screen')} />
-            ) : null}
-          </Stack>
-        </Stack>
+        <KitchenQueueHeader
+          activeCount={activeTickets.length}
+          copy={copy}
+          doneCount={doneTickets.length}
+          isMobile={isMobile}
+          onBack={() => navigate(getPosHomePath(session))}
+          onLock={() => navigate('/lock-screen')}
+          onRefresh={() => void refreshTransportAndReload()}
+          onSelectTab={setSelectedTab}
+          onSettings={setSettingsAnchor}
+          selectedTab={selectedTab}
+        />
       }>
       {visibleTickets.length > 0 ? (
         <Box
@@ -202,7 +109,7 @@ export function KitchenQueuePageContent() {
               pb: 0.4,
             }}>
             {visibleTickets.map((ticket) => {
-              const meta = statusMeta[ticket.status];
+              const meta = kitchenStatusMeta[ticket.status];
 
               return (
                 <Box
@@ -255,148 +162,21 @@ export function KitchenQueuePageContent() {
                     </Box>
 
                     <Stack spacing={1.05} sx={{ px: 1.45, pb: 1.45 }}>
-                      {ticket.items.map((item) => {
-                        const itemMeta = statusMeta[item.status];
-                        const isSelected = selectedItemId === item.id;
-                        const canStart = item.status === 'new';
-                        const canReady = item.status !== 'done' && item.status !== 'cancelled';
-                        const canCancel = item.status !== 'cancelled' && item.status !== 'done';
-
-                        return (
-                          <Box
-                            key={item.id}
-                            sx={(theme) => ({
-                              borderRadius: '16px',
-                              px: 1.3,
-                              py: 1.2,
-                              backgroundColor: theme.palette.mode === 'dark' ? '#33363b' : '#e8dfd2',
-                              border: `1px solid ${isSelected ? alpha(theme.palette.primary.main, 0.65) : alpha('#ffffff', 0.03)}`,
-                              boxShadow: isSelected ? '0 10px 26px rgba(21, 120, 224, 0.14)' : 'none',
-                            })}>
-                            <Stack spacing={1}>
-                              <Stack
-                                direction="row"
-                                justifyContent="space-between"
-                                spacing={1.2}
-                                alignItems="flex-start"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  if (selectedTab !== 'active') {
-                                    return;
-                                  }
-
-                                  setSelectedItemId((currentValue) => (currentValue === item.id ? null : item.id));
-                                }}
-                                sx={{
-                                  cursor: selectedTab === 'active' ? 'pointer' : 'default',
-                                }}>
-                                <Stack spacing={0.35} sx={{ pr: 1 }}>
-                                  <Typography sx={{ fontSize: 14.5, fontWeight: 700, lineHeight: 1.2 }}>
-                                    {formatPosCopy(copy.itemQuantityLabel, {
-                                      name: item.catalogItemName,
-                                      quantity: item.quantity,
-                                    })}
-                                  </Typography>
-                                  {item.note ? (
-                                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: 12.5 }}>
-                                      {item.note}
-                                    </Typography>
-                                  ) : null}
-                                </Stack>
-
-                                <Box
-                                  sx={{
-                                    width: 28,
-                                    height: 28,
-                                    borderRadius: '50%',
-                                    display: 'grid',
-                                    placeItems: 'center',
-                                    backgroundColor: alpha(itemMeta.color, 0.14),
-                                    flexShrink: 0,
-                                  }}>
-                                  <Icon icon={itemMeta.icon} width={16} color={itemMeta.color} />
-                                </Box>
-                              </Stack>
-
-                              {selectedTab === 'active' && isSelected && canUpdateKitchenOrders ? (
-                                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={0.9}>
-                                  {canStart ? (
-                                    <Button
-                                      variant="contained"
-                                      size="small"
-                                      sx={(theme) => ({
-                                        flex: 1,
-                                        minHeight: 42,
-                                        backgroundImage: 'none',
-                                        borderRadius: '14px',
-                                        backgroundColor: theme.palette.mode === 'dark' ? '#8c5a4a' : '#c97a63',
-                                        fontSize: 13.5,
-                                        fontWeight: 700,
-                                      })}
-                                      onClick={(event) => {
-                                        event.stopPropagation();
-                                        updateItemStatusMutation.mutate({
-                                          itemId: item.id,
-                                          status: 'cooking' as KitchenItemStatus,
-                                        });
-                                      }}>
-                                      {copy.startCooking}
-                                    </Button>
-                                  ) : null}
-
-                                  {canReady ? (
-                                    <Button
-                                      variant="contained"
-                                      size="small"
-                                      sx={(theme) => ({
-                                        flex: 1,
-                                        minHeight: 42,
-                                        backgroundImage: 'none',
-                                        borderRadius: '14px',
-                                        backgroundColor: theme.palette.mode === 'dark' ? '#2f8a84' : '#31a59d',
-                                        fontSize: 13.5,
-                                        fontWeight: 700,
-                                      })}
-                                      onClick={(event) => {
-                                        event.stopPropagation();
-                                        updateItemStatusMutation.mutate({
-                                          itemId: item.id,
-                                          status: 'done' as KitchenItemStatus,
-                                        });
-                                      }}>
-                                      {copy.markReady}
-                                    </Button>
-                                  ) : null}
-
-                                  {canCancel && canCancelKitchenItems ? (
-                                    <Button
-                                      variant="contained"
-                                      size="small"
-                                      sx={(theme) => ({
-                                        flex: 1,
-                                        minHeight: 42,
-                                        backgroundImage: 'none',
-                                        borderRadius: '14px',
-                                        backgroundColor: theme.palette.mode === 'dark' ? '#8b4a53' : '#c8646d',
-                                        fontSize: 13.5,
-                                        fontWeight: 700,
-                                      })}
-                                      onClick={(event) => {
-                                        event.stopPropagation();
-                                        updateItemStatusMutation.mutate({
-                                          itemId: item.id,
-                                          status: 'cancelled' as KitchenItemStatus,
-                                        });
-                                      }}>
-                                      {copy.cancelItem}
-                                    </Button>
-                                  ) : null}
-                                </Stack>
-                              ) : null}
-                            </Stack>
-                          </Box>
-                        );
-                      })}
+                      {ticket.items.map((item) => (
+                        <KitchenTicketItem
+                          key={item.id}
+                          canCancel={canCancelKitchenItems}
+                          canUpdate={canUpdateKitchenOrders}
+                          copy={copy}
+                          isSelected={selectedItemId === item.id}
+                          item={item}
+                          onSelect={(itemId) =>
+                            setSelectedItemId((currentValue) => (currentValue === itemId ? null : itemId))
+                          }
+                          onUpdateStatus={(itemId, status) => updateItemStatusMutation.mutate({ itemId, status })}
+                          selectedTab={selectedTab}
+                        />
+                      ))}
 
                       {selectedTab === 'active' && selectedTicketId === ticket.id && canUpdateKitchenOrders ? (
                         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
@@ -486,7 +266,7 @@ export function KitchenQueuePageContent() {
         onThemeColorChange={setThemeColor}
         onSignOut={() => {
           setSession(null);
-          navigate('/pin-login', { replace: true });
+          void navigate('/pin-login', { replace: true });
         }}
         themeColor={themeColor}
         themeMode={themeMode}

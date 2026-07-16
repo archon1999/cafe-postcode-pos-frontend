@@ -123,6 +123,36 @@ describe('optimistic builder order', () => {
     expect(order?.total).toBe(12000);
   });
 
+  it('keeps all counter channels table-less and distinct', () => {
+    for (const channel of ['hall', 'takeaway', 'delivery']) {
+      const order = deriveOptimisticBuilderOrder<TestMenuItem, TestOrderItem, TestOrder>({
+        baseOrder: undefined,
+        channel,
+        defaultServiceFeePercent: 0,
+        pendingAdds: [createPendingAdd()],
+        pendingRemoves: [],
+        tempOrderId: `temp-order-${channel}`,
+      });
+
+      expect(order?.channel).toBe(channel);
+      expect(order?.tableSession).toBeUndefined();
+    }
+  });
+
+  it('preserves a real table order identity instead of applying a counter channel', () => {
+    const order = deriveOptimisticBuilderOrder<TestMenuItem, TestOrderItem, TestOrder>({
+      baseOrder: createOrder({ channel: 'hall', tableSession: 'session-1' }),
+      channel: 'takeaway',
+      defaultServiceFeePercent: 10,
+      pendingAdds: [],
+      pendingRemoves: [],
+      tempOrderId: null,
+    });
+
+    expect(order?.channel).toBe('hall');
+    expect(order?.tableSession).toBe('session-1');
+  });
+
   it('keeps totals correct with mixed pending adds and removes', () => {
     const pendingRemoves: PendingRemoveOperation[] = [{ opId: 'remove-1', itemId: 'item-1' }];
     const order = deriveOptimisticBuilderOrder<TestMenuItem, TestOrderItem, TestOrder>({

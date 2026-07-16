@@ -220,6 +220,75 @@ describe('CashierBuilderPageContent', () => {
     expect(screen.queryByText(/L-c14d6e/)).toBeNull();
   });
 
+  it('aggregates matching cart lines while preserving note and status boundaries', () => {
+    useOptimisticBuilderOrderMock.mockReturnValue({
+      currentOrder: {
+        id: 'order-1',
+        orderNumber: 7,
+        total: 60000,
+        subtotal: 60000,
+        serviceFee: 0,
+        note: '',
+        channel: 'hall',
+        status: 'open',
+        items: [
+          {
+            id: 'line-1',
+            catalogItem: 'item-1',
+            catalogItemName: 'Cola',
+            quantity: 1,
+            lineTotal: 12000,
+            status: 'active',
+            prepStationName: 'Bar',
+            markingRequiredCount: 1,
+            markingScannedCount: 1,
+          },
+          {
+            id: 'line-2',
+            catalogItem: 'item-1',
+            catalogItemName: 'Cola',
+            quantity: '2',
+            lineTotal: '24000',
+            status: 'active',
+            prepStationName: 'Bar',
+            markingRequiredCount: 2,
+            markings: [{ id: 'mark-2' }],
+          },
+          {
+            id: 'line-3',
+            catalogItem: 'item-1',
+            catalogItemName: 'Cola',
+            quantity: 1,
+            lineTotal: 12000,
+            status: 'active',
+            prepStationName: 'Bar',
+            note: 'Muzsiz',
+          },
+          {
+            id: 'line-4',
+            catalogItem: 'item-1',
+            catalogItemName: 'Cola',
+            quantity: 1,
+            lineTotal: 12000,
+            status: 'cancelled',
+            prepStationName: 'Bar',
+          },
+        ],
+      },
+      addItem: vi.fn(),
+      removeItem: vi.fn(),
+      hasPendingOperations: false,
+    });
+
+    render(<CashierBuilderPageContent />);
+
+    expect(screen.getAllByText('Cola (x3)')).toHaveLength(1);
+    expect(screen.getAllByText("36 000 so'm")).toHaveLength(1);
+    expect(screen.getAllByText('Markirovka: 2/3')).toHaveLength(1);
+    expect(screen.getAllByText('Cola (x1)')).toHaveLength(2);
+    expect(screen.getAllByText('Muzsiz')).toHaveLength(1);
+  });
+
   it('switches to a counter hall order without navigating to the halls page', async () => {
     searchParamsValue = 'channel=takeaway';
     render(<CashierBuilderPageContent />);

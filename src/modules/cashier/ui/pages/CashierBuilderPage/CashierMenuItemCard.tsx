@@ -1,0 +1,217 @@
+import { Icon } from '@iconify/react';
+import { Box, Stack, Typography, alpha } from '@mui/material';
+import type { KeyboardEvent } from 'react';
+
+import type { CashierMenuItem } from 'modules/cashier/domain';
+import { resolveApiBaseUrl } from 'shared/api/apiUrl';
+import type { PosLocale } from 'shared/locale/copy';
+import { formatMoneyParts } from 'shared/pos/utils';
+
+type CashierMenuItemCardProps = {
+  item: CashierMenuItem;
+  locale: PosLocale;
+  menuLabel: string;
+  selectedCount: number;
+  onAdd: () => void;
+  onRemove: () => void;
+};
+
+function resolveImageUrl(imageUrl?: string | null) {
+  if (!imageUrl) {
+    return null;
+  }
+
+  try {
+    return new URL(imageUrl, resolveApiBaseUrl()).toString();
+  } catch {
+    return imageUrl;
+  }
+}
+
+export function CashierMenuItemCard({
+  item,
+  locale,
+  menuLabel,
+  selectedCount,
+  onAdd,
+  onRemove,
+}: CashierMenuItemCardProps) {
+  const imageUrl = resolveImageUrl(item.imageUrl);
+  const price = formatMoneyParts(Number(item.price ?? 0), locale);
+  const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (event.key !== 'Enter' && event.key !== ' ') {
+      return;
+    }
+    event.preventDefault();
+    onAdd();
+  };
+
+  return (
+    <Box
+      role="button"
+      tabIndex={0}
+      onClick={onAdd}
+      onKeyDown={handleKeyDown}
+      sx={(theme) => ({
+        border: 0,
+        p: 0,
+        position: 'relative',
+        minHeight: { xs: 112, md: 118, xl: 126 },
+        overflow: 'hidden',
+        borderRadius: '10px',
+        cursor: 'pointer',
+        textAlign: 'left',
+        transition: 'transform 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease, border-color 0.16s ease',
+        backgroundColor: 'var(--pos-menu-product-card-bg)',
+        backgroundImage: 'none',
+        boxShadow:
+          theme.palette.mode === 'dark'
+            ? 'inset 0 0 0 1px rgba(255,255,255,0.04)'
+            : 'inset 0 0 0 1px rgba(40,51,65,0.06)',
+        '&:hover': {
+          backgroundColor: 'var(--pos-menu-product-card-hover-bg)',
+          transform: 'translateY(-2px)',
+          boxShadow:
+            theme.palette.mode === 'dark'
+              ? '0 14px 26px rgba(0,0,0,0.26), inset 0 0 0 1px rgba(255,255,255,0.06)'
+              : '0 14px 28px rgba(40,51,65,0.12), inset 0 0 0 1px rgba(40,51,65,0.08)',
+        },
+        '&:active': { transform: 'translateY(0) scale(0.985)' },
+        '&:focus-visible': { outline: `2px solid ${theme.palette.primary.main}`, outlineOffset: 2 },
+      })}>
+      {imageUrl ? (
+        <Box
+          component="img"
+          src={imageUrl}
+          alt={item.name}
+          loading="lazy"
+          sx={{
+            position: 'absolute',
+            top: 10,
+            right: 10,
+            width: { xs: 48, md: 58 },
+            height: { xs: 48, md: 58 },
+            objectFit: 'cover',
+            borderRadius: '8px',
+            boxShadow: '0 8px 18px rgba(0,0,0,0.18)',
+            backgroundColor: alpha('#ffffff', 0.3),
+          }}
+        />
+      ) : null}
+      <Stack justifyContent="space-between" sx={{ height: '100%', minHeight: 0 }}>
+        <Stack
+          spacing={0.75}
+          sx={{ p: { xs: 1.25, md: 1.45, xl: 1.85 }, pr: imageUrl ? { xs: 7.25, md: 8.4, xl: 9.5 } : undefined }}>
+          <Typography variant="body2" color="text.secondary">
+            {item.prepStationName ?? menuLabel}
+          </Typography>
+          <Typography variant="h6" sx={{ pr: 1 }}>
+            {item.name}
+          </Typography>
+          {item.description ? (
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{
+                pr: 1,
+                overflow: 'hidden',
+                display: '-webkit-box',
+                WebkitBoxOrient: 'vertical',
+                WebkitLineClamp: 2,
+              }}>
+              {item.description}
+            </Typography>
+          ) : null}
+        </Stack>
+        <Box
+          sx={(theme) => ({
+            minHeight: 40,
+            mt: 'auto',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            px: { xs: 1.2, md: 2 },
+            gap: 1.2,
+            fontSize: { xs: 14, md: 16 },
+            fontWeight: 700,
+            color: theme.palette.mode === 'dark' ? '#f0f2f5' : theme.palette.text.primary,
+            backgroundColor: 'var(--pos-menu-product-price-bg)',
+          })}>
+          {selectedCount > 0 ? (
+            <Stack direction="row" spacing={0.8} alignItems="center">
+              <Box
+                sx={(theme) => ({
+                  minWidth: 28,
+                  height: 28,
+                  px: 0.9,
+                  borderRadius: '999px',
+                  backgroundColor: theme.palette.mode === 'dark' ? '#141619' : '#252525',
+                  color: '#ffffff',
+                  display: 'grid',
+                  placeItems: 'center',
+                  fontSize: 14,
+                  fontWeight: 700,
+                  lineHeight: 1,
+                })}>
+                {selectedCount}
+              </Box>
+              <QuantityButton icon="solar:minus-circle-bold" onClick={onRemove} />
+              <QuantityButton icon="solar:add-circle-bold" onClick={onAdd} />
+            </Stack>
+          ) : null}
+          <Typography
+            component="span"
+            sx={{
+              ml: 'auto',
+              display: 'inline-flex',
+              alignItems: 'baseline',
+              gap: 0.45,
+              textAlign: 'right',
+              fontWeight: 800,
+              whiteSpace: 'nowrap',
+            }}>
+            <Box component="span" sx={{ fontSize: { xs: 20, md: 24 }, lineHeight: 1, fontWeight: 900 }}>
+              {price.amount}
+            </Box>
+            <Box component="span" sx={{ fontSize: { xs: 13.5, md: 16 }, lineHeight: 1, fontWeight: 700 }}>
+              {price.currency}
+            </Box>
+          </Typography>
+        </Box>
+      </Stack>
+    </Box>
+  );
+}
+
+function QuantityButton({ icon, onClick }: { icon: string; onClick: () => void }) {
+  return (
+    <Box
+      component="button"
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation();
+        onClick();
+      }}
+      sx={(theme) => ({
+        width: { xs: 28, md: 30 },
+        height: { xs: 28, md: 30 },
+        borderRadius: '50%',
+        border: 0,
+        display: 'grid',
+        placeItems: 'center',
+        backgroundColor: theme.palette.mode === 'dark' ? '#2a2d31' : alpha('#ffffff', 0.8),
+        color: theme.palette.mode === 'dark' ? '#ffffff' : '#23262b',
+        cursor: 'pointer',
+        transition: 'transform 0.14s ease, background-color 0.14s ease, box-shadow 0.14s ease',
+        boxShadow:
+          theme.palette.mode === 'dark'
+            ? 'inset 0 0 0 1px rgba(255,255,255,0.08)'
+            : 'inset 0 0 0 1px rgba(35,38,43,0.12)',
+        '&:hover': { backgroundColor: theme.palette.mode === 'dark' ? '#363a40' : '#ffffff' },
+        '&:active': { transform: 'scale(0.92)' },
+        '&:focus-visible': { outline: `2px solid ${theme.palette.primary.main}`, outlineOffset: 1 },
+      })}>
+      <Icon icon={icon} width={18} />
+    </Box>
+  );
+}

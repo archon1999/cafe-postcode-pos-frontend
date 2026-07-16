@@ -1,0 +1,121 @@
+import { Box, Button, Stack, Typography, alpha } from '@mui/material';
+
+import {
+  aggregateCashierCartItemsByStation,
+  type CashierMenuCategory,
+  type CashierMenuItem,
+} from 'modules/cashier/domain';
+import type { PosLocale } from 'shared/locale/copy';
+import { formatCompactMoney } from 'shared/pos/utils';
+
+import { CashierMenuItemCard } from './CashierMenuItemCard';
+
+type CashierBuilderMenuPanelProps = {
+  category?: CashierMenuCategory;
+  groups: ReturnType<typeof aggregateCashierCartItemsByStation>;
+  isMobile: boolean;
+  kitchenNote: string;
+  locale: PosLocale;
+  menuLabel: string;
+  itemCounts: Map<string, number>;
+  latestItemIds: Map<string, string>;
+  total?: number | string | null;
+  billsLabel: string;
+  onAdd: (menuItem: CashierMenuItem, note: string) => void;
+  onCartOpen: () => void;
+  onRemove: (itemId: string) => void;
+};
+
+export function CashierBuilderMenuPanel({
+  category,
+  groups,
+  isMobile,
+  kitchenNote,
+  locale,
+  menuLabel,
+  itemCounts,
+  latestItemIds,
+  total,
+  billsLabel,
+  onAdd,
+  onCartOpen,
+  onRemove,
+}: CashierBuilderMenuPanelProps) {
+  return (
+    <Stack
+      spacing={{ xs: 1.5, md: 1.6, xl: 2 }}
+      sx={{
+        minHeight: 0,
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        px: 0.45,
+        pt: 0.35,
+        pb: 2,
+        mx: -0.45,
+      }}>
+      <Typography variant="h4">{category?.name ?? menuLabel}</Typography>
+
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: {
+            xs: 'repeat(2, minmax(0, 1fr))',
+            md: 'repeat(2, minmax(0, 1fr))',
+            lg: 'repeat(3, minmax(0, 1fr))',
+            xl: 'repeat(4, minmax(0, 1fr))',
+            '@media (min-width: 1800px)': {
+              gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
+            },
+          },
+          gap: { xs: 1.1, md: 1.2, xl: 1.4 },
+        }}>
+        {(category?.items ?? []).map((menuItem) => (
+          <CashierMenuItemCard
+            key={menuItem.id}
+            item={menuItem}
+            locale={locale}
+            menuLabel={menuLabel}
+            selectedCount={itemCounts.get(menuItem.id) ?? 0}
+            onAdd={() => onAdd(menuItem, kitchenNote)}
+            onRemove={() => {
+              const latestItemId = latestItemIds.get(menuItem.id);
+              if (latestItemId) {
+                onRemove(latestItemId);
+              }
+            }}
+          />
+        ))}
+      </Box>
+
+      {isMobile ? (
+        <Box
+          sx={(theme) => ({
+            position: 'sticky',
+            bottom: 0,
+            zIndex: 6,
+            borderRadius: '18px',
+            backgroundColor: 'var(--pos-mobile-summary-bg)',
+            backdropFilter: 'blur(18px)',
+            border: `1px solid ${alpha('#ffffff', theme.palette.mode === 'dark' ? 0.08 : 0.34)}`,
+            boxShadow: 'var(--pos-mobile-summary-shadow)',
+            px: 1.4,
+            py: 1.2,
+          })}>
+          <Stack direction="row" spacing={1.1} alignItems="center">
+            <Stack sx={{ flex: 1, minWidth: 0 }} spacing={0.15}>
+              <Typography variant="body2" color="text.secondary">
+                {groups.reduce((sum, [, items]) => sum + items.length, 0)} {menuLabel}
+              </Typography>
+              <Typography variant="h6" noWrap>
+                {formatCompactMoney(total, locale)}
+              </Typography>
+            </Stack>
+            <Button variant="contained" sx={{ minWidth: 132 }} onClick={onCartOpen}>
+              {billsLabel}
+            </Button>
+          </Stack>
+        </Box>
+      ) : null}
+    </Stack>
+  );
+}

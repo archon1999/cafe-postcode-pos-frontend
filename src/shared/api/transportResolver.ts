@@ -20,6 +20,10 @@ type Coordinator = NonNullable<PosRestaurantContext['coordinator']>;
 type HealthResponse = { restaurantId?: string; backendOnline?: boolean };
 type StatusResponse = { status?: { backend?: { online?: boolean } } };
 type EdgeCandidate = { origin: string; token?: string };
+type ProbeResult =
+  | { status: 'selected'; connection: PosTransportConnection }
+  | { status: 'identity-mismatch' }
+  | { status: 'unavailable' };
 
 function safeNormalizeEdgeOrigin(value: unknown) {
   if (typeof value !== 'string' || !value.trim()) return null;
@@ -66,14 +70,10 @@ async function edgeFetch<T>(
   }
 }
 
-async function probe(
-  origin: string,
-  token: string | undefined,
-  restaurantId: string,
-): Promise<PosTransportConnection | null> {
+async function probe(origin: string, token: string | undefined, restaurantId: string): Promise<ProbeResult> {
   try {
     const health = await edgeFetch<HealthResponse>(origin, token, '/health');
-    if (health.restaurantId !== restaurantId) return null;
+    if (health.restaurantId !== restaurantId) return { status: 'identity-mismatch' };
     let backendOnline = health.backendOnline;
     if (typeof backendOnline !== 'boolean') {
       // Compatibility with agents released before the lightweight health signal.
@@ -81,15 +81,18 @@ async function probe(
       backendOnline = system.status?.backend?.online !== false;
     }
     return {
-      mode: isLoopbackEdgeOrigin(origin) ? 'local' : 'router',
-      restaurantId,
-      origin: normalizeEdgeOrigin(origin),
-      ...(token ? { token } : {}),
-      backendOnline,
-      selectedAt: new Date().toISOString(),
+      status: 'selected',
+      connection: {
+        mode: isLoopbackEdgeOrigin(origin) ? 'local' : 'router',
+        restaurantId,
+        origin: normalizeEdgeOrigin(origin),
+        ...(token ? { token } : {}),
+        backendOnline,
+        selectedAt: new Date().toISOString(),
+      },
     };
   } catch {
-    return null;
+    return { status: 'unavailable' };
   }
 }
 
@@ -131,8 +134,8 @@ function orderedEdgeCandidates(coordinator?: Coordinator | null) {
 async function selectCoordinator(restaurantId: string, coordinator?: Coordinator | null) {
   if (coordinator?.restaurantId && coordinator.restaurantId !== restaurantId) return null;
   for (const candidate of orderedEdgeCandidates(coordinator)) {
-    const connection = await probe(candidate.origin, candidate.token, restaurantId);
-    if (connection) return connection;
+    const result = await probe(candidate.origin, candidate.token, restaurantId);
+    if (result.status === 'selected') return result.connection;
   }
   return null;
 }
@@ -146,15 +149,18 @@ async function resolveRestaurantFromLocalAgent(code: string, identity: ReturnTyp
         '/v1/pos/auth/restaurant-code/',
         { method: 'POST', body: JSON.stringify({ code, ...identity }) },
       );
-      const selected = await probe(candidate.origin, candidate.token, context.restaurantId);
+      const result = await probe(candidate.origin, candidate.token, context.restaurantId);
+      if (result.status === 'identity-mismatch') continue;
       persistTransportConnection(
-        selected || {
-          mode: 'local',
-          restaurantId: context.restaurantId,
-          origin: candidate.origin,
-          ...(candidate.token ? { token: candidate.token } : {}),
-          backendOnline: false,
-        },
+        result.status === 'selected'
+          ? result.connection
+          : {
+              mode: 'local',
+              restaurantId: context.restaurantId,
+              origin: candidate.origin,
+              ...(candidate.token ? { token: candidate.token } : {}),
+              backendOnline: false,
+            },
       );
       return context;
     } catch {
@@ -201,7 +207,8 @@ export async function refreshTransportMode() {
       }
     }
   } else if (current.origin && (current.token || isLoopbackEdgeOrigin(current.origin))) {
-    next = await probe(current.origin, current.token, current.restaurantId);
+    const result = await probe(current.origin, current.token, current.restaurantId);
+    next = result.status === 'selected' ? result.connection : null;
   }
   if (!next)
     next = {

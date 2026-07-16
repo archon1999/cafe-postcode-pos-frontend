@@ -113,6 +113,56 @@ describe('useOptimisticBuilderOrder', () => {
     vi.clearAllMocks();
   });
 
+  it('creates on the first item and replaces the temporary identity with the canonical order', async () => {
+    let canonicalOrders: TestOrder[] = [];
+    const createRemoteOrder = vi.fn(async () => 'order-12');
+    const addOrderItem = vi.fn(async () => {
+      canonicalOrders = [
+        createOrder({
+          id: 'order-12',
+          orderNumber: 12,
+          tableSession: null,
+          channel: 'delivery',
+        }),
+      ];
+    });
+
+    const { result } = renderHook(() =>
+      useOptimisticBuilderOrder<TestMenuItem, TestOrderItem, TestOrder, TestOrder[]>({
+        baseOrder: undefined,
+        canonicalQueryKey: ['test', 'orders'],
+        canonicalQueryFn: async () => canonicalOrders,
+        channel: 'delivery',
+        createOrder: createRemoteOrder,
+        defaultServiceFeePercent: 0,
+        removeOrderItem: async () => undefined,
+        selectCurrentOrder: (orders) => orders[0],
+        addOrderItem,
+        syncErrorMessage: 'sync failed',
+      }),
+    );
+
+    expect(result.current.currentOrder).toBeUndefined();
+    expect(createRemoteOrder).not.toHaveBeenCalled();
+
+    act(() => {
+      result.current.addItem(createMenuItem(), 'less sugar');
+    });
+
+    expect(result.current.currentOrder?.id).toMatch(/^temp-builder-/);
+    expect(result.current.currentOrder?.orderNumber).toBe(0);
+    expect(result.current.currentOrder?.channel).toBe('delivery');
+
+    await waitFor(() => {
+      expect(result.current.hasPendingOperations).toBe(false);
+    });
+
+    expect(createRemoteOrder).toHaveBeenCalledTimes(1);
+    expect(addOrderItem).toHaveBeenCalledWith('order-12', expect.objectContaining({ id: 'menu-1' }), 'less sugar');
+    expect(result.current.currentOrder?.id).toBe('order-12');
+    expect(result.current.currentOrder?.orderNumber).toBe(12);
+  });
+
   it('cancels a temporary item locally without issuing a delete request', async () => {
     const createOrderDeferred = deferred<string>();
     const createOrder = vi.fn(() => createOrderDeferred.promise);
@@ -256,6 +306,41 @@ describe('useOptimisticBuilderOrder', () => {
     });
 
     expect(result.current.currentOrder?.items).toHaveLength(1);
+  });
+
+  it('clears the projected order after the final server-backed item is removed successfully', async () => {
+    const baseOrder = createOrder({ tableSession: null, channel: 'takeaway' });
+    let canonicalOrders = [baseOrder];
+    const removeOrderItem = vi.fn(async () => {
+      canonicalOrders = [];
+    });
+    const { result } = renderHook(() =>
+      useOptimisticBuilderOrder<TestMenuItem, TestOrderItem, TestOrder, TestOrder[]>({
+        baseOrder,
+        canonicalQueryKey: ['test', 'orders'],
+        canonicalQueryFn: async () => canonicalOrders,
+        channel: 'takeaway',
+        createOrder: async () => baseOrder.id,
+        defaultServiceFeePercent: 0,
+        removeOrderItem,
+        selectCurrentOrder: (orders) => orders[0],
+        addOrderItem: async () => undefined,
+        syncErrorMessage: 'sync failed',
+      }),
+    );
+
+    act(() => {
+      result.current.removeItem('item-1');
+    });
+
+    expect(result.current.currentOrder?.items).toHaveLength(0);
+
+    await waitFor(() => {
+      expect(result.current.hasPendingOperations).toBe(false);
+    });
+
+    expect(removeOrderItem).toHaveBeenCalledTimes(1);
+    expect(result.current.currentOrder).toBeUndefined();
   });
 
   it('issues only one delete request per remove action in strict mode', async () => {

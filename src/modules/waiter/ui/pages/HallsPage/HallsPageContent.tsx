@@ -1,470 +1,31 @@
 ﻿import { Icon } from '@iconify/react';
-import {
-  Box,
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  IconButton,
-  Menu,
-  MenuItem,
-  Stack,
-  TextField,
-  Typography,
-  alpha,
-  useMediaQuery,
-} from '@mui/material';
+import { Button, Menu, MenuItem, Stack, alpha, useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { canAccessWaiterTables, canManageTableReservations, usePosSession } from 'modules/auth';
 import { useOpenTableSessionMutation, useReserveTableMutation, useWaiterHallsQuery } from 'modules/waiter/application';
 import {
   type DiningTable,
+  type Hall,
   clampGuestCount,
   getAvailableSeatCount,
-  getHallGridColumns,
   getSupportedSeatCount,
-  getTableCoreShape,
-  getTableGridPlacement,
-  getTableMeta,
-  getTableStatus,
-  getTableVisualState,
-  getVariantMarkers,
-  shouldShowAttentionDot,
-  type TableVisualState,
 } from 'modules/waiter/domain';
 import { refreshTransportAndReload } from 'shared/api/transportResolver';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { getPosCopy } from 'shared/locale/copy';
-import { formatElapsedMinutes } from 'shared/pos/utils';
-import {
-  PosHallsPageSkeleton,
-  PosIconAction,
-  PosLegendPill,
-  PosSectionTabs,
-  PosSettingsMenu,
-} from 'shared/ui/pos-primitives';
+import { PosHallsPageSkeleton, PosIconAction, PosSectionTabs, PosSettingsMenu } from 'shared/ui/pos-primitives';
 
-const HALL_GRID_MIN_CELL_WIDTH = 126;
-const HALL_GRID_ROW_HEIGHT = 134;
-const HALL_GRID_GAP = 18;
-const HALL_MAP_MIN_SCALE = 0.45;
-const HALL_MAP_MAX_SCALE = 1.6;
-const HALL_MAP_ZOOM_STEP = 0.12;
-const HALL_MAP_STORAGE_KEY = 'pos.waiter.halls.mapScale';
+import { HallMapPanel } from './HallMapPanel';
+import { formatFloorLabel } from './hallMapScale';
+import { HallMapZoomControls } from './HallMapZoomControls';
+import { OpenTableDialog } from './OpenTableDialog';
+import { useHallMapViewport } from './useHallMapViewport';
+import { useHallsNavigation } from './useHallsNavigation';
 
-type HallMapScaleMode = 'fit' | 'fill' | 'manual';
-
-type HallMapScaleSettings = {
-  mode: HallMapScaleMode;
-  scale: number;
-};
-
-function clampMapScale(value: number) {
-  return Math.min(HALL_MAP_MAX_SCALE, Math.max(HALL_MAP_MIN_SCALE, value));
-}
-
-function isHallMapScaleMode(value: unknown): value is HallMapScaleMode {
-  return value === 'fit' || value === 'fill' || value === 'manual';
-}
-
-function readHallMapScaleSettings(): HallMapScaleSettings {
-  if (typeof window === 'undefined') {
-    return { mode: 'manual', scale: 1 };
-  }
-
-  try {
-    const rawSettings = window.localStorage.getItem(HALL_MAP_STORAGE_KEY);
-    if (!rawSettings) {
-      return { mode: 'manual', scale: 1 };
-    }
-
-    const parsedSettings = JSON.parse(rawSettings) as Partial<HallMapScaleSettings>;
-    const parsedScale = Number(parsedSettings.scale);
-
-    return {
-      mode: isHallMapScaleMode(parsedSettings.mode) ? parsedSettings.mode : 'manual',
-      scale: Number.isFinite(parsedScale) ? clampMapScale(parsedScale) : 1,
-    };
-  } catch {
-    return { mode: 'manual', scale: 1 };
-  }
-}
-
-function writeHallMapScaleSettings(settings: HallMapScaleSettings) {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
-  try {
-    window.localStorage.setItem(HALL_MAP_STORAGE_KEY, JSON.stringify(settings));
-  } catch {
-    // Ignore storage failures; zoom should still work for the current session.
-  }
-}
-
-function formatFloorLabel(locale: string, level: number) {
-  if (locale === 'uz-crl') {
-    return `${level}-Т›Р°РІР°С‚`;
-  }
-
-  if (locale === 'ru') {
-    return `${level} СЌС‚Р°Р¶`;
-  }
-
-  return `${level}-qavat`;
-}
-
-function getAllZonesLabel(locale: string) {
-  if (locale === 'uz-crl') {
-    return 'Р‘Р°СЂС‡Р°СЃРё';
-  }
-
-  if (locale === 'ru') {
-    return 'Р’СЃРµ';
-  }
-
-  return 'Barchasi';
-}
-
-const tablePalette: Record<
-  'dark' | 'light',
-  Record<
-    TableVisualState,
-    {
-      rail: string;
-      shell: string;
-      fill: string;
-      numberGlow: string;
-      outer: string;
-      ink: string;
-      meta: string;
-      attentionRing: string;
-    }
-  >
-> = {
-  dark: {
-    available: {
-      rail: '#2a2d31',
-      shell: '#2e2f33',
-      fill: '#666a70',
-      numberGlow: 'rgba(0, 0, 0, 0.26)',
-      outer: '#232529',
-      ink: '#ffffff',
-      meta: 'rgba(255, 255, 255, 0.96)',
-      attentionRing: 'rgba(34, 36, 40, 0.5)',
-    },
-    reserved: {
-      rail: '#b88a29',
-      shell: '#866824',
-      fill: '#ffc23c',
-      numberGlow: 'rgba(95, 67, 10, 0.28)',
-      outer: '#453719',
-      ink: '#ffffff',
-      meta: 'rgba(255, 255, 255, 0.96)',
-      attentionRing: 'rgba(34, 36, 40, 0.5)',
-    },
-    occupied: {
-      rail: '#1f8e89',
-      shell: '#285f5d',
-      fill: '#31c8c0',
-      numberGlow: 'rgba(12, 82, 79, 0.26)',
-      outer: '#244f4e',
-      ink: '#ffffff',
-      meta: 'rgba(255, 255, 255, 0.96)',
-      attentionRing: 'rgba(34, 36, 40, 0.5)',
-    },
-    attention: {
-      rail: '#219a95',
-      shell: '#285f5d',
-      fill: '#31c8c0',
-      numberGlow: 'rgba(12, 82, 79, 0.26)',
-      outer: '#245150',
-      ink: '#ffffff',
-      meta: 'rgba(255, 255, 255, 0.96)',
-      attentionRing: 'rgba(34, 36, 40, 0.5)',
-    },
-    cooking: {
-      rail: '#2558b3',
-      shell: '#224988',
-      fill: '#2a78ff',
-      numberGlow: 'rgba(17, 45, 93, 0.3)',
-      outer: '#203d68',
-      ink: '#ffffff',
-      meta: 'rgba(255, 255, 255, 0.96)',
-      attentionRing: 'rgba(34, 36, 40, 0.5)',
-    },
-    pending_payment: {
-      rail: '#a74448',
-      shell: '#8a3b3f',
-      fill: '#ff4f59',
-      numberGlow: 'rgba(112, 30, 37, 0.28)',
-      outer: '#5f2b2f',
-      ink: '#ffffff',
-      meta: 'rgba(255, 255, 255, 0.96)',
-      attentionRing: 'rgba(34, 36, 40, 0.5)',
-    },
-    blocked: {
-      rail: '#7d4a4d',
-      shell: '#633a3d',
-      fill: '#bf6168',
-      numberGlow: 'rgba(73, 30, 34, 0.28)',
-      outer: '#48282b',
-      ink: '#ffffff',
-      meta: 'rgba(255, 255, 255, 0.96)',
-      attentionRing: 'rgba(34, 36, 40, 0.5)',
-    },
-  },
-  light: {
-    available: {
-      rail: '#9aa2ad',
-      shell: '#f4f6f9',
-      fill: '#7a818b',
-      numberGlow: 'rgba(63, 72, 83, 0.16)',
-      outer: '#d8dde5',
-      ink: '#ffffff',
-      meta: '#5f6875',
-      attentionRing: 'rgba(255, 248, 239, 0.92)',
-    },
-    reserved: {
-      rail: '#d0a145',
-      shell: '#b88b2f',
-      fill: '#ffcf5a',
-      numberGlow: 'rgba(126, 89, 22, 0.18)',
-      outer: '#e4d7b6',
-      ink: '#fffefb',
-      meta: '#7f6320',
-      attentionRing: 'rgba(255, 248, 239, 0.92)',
-    },
-    occupied: {
-      rail: '#61b9b4',
-      shell: '#338a86',
-      fill: '#43cbc4',
-      numberGlow: 'rgba(22, 100, 95, 0.18)',
-      outer: '#b9ddda',
-      ink: '#ffffff',
-      meta: '#296865',
-      attentionRing: 'rgba(255, 248, 239, 0.92)',
-    },
-    attention: {
-      rail: '#4fc0bb',
-      shell: '#338a86',
-      fill: '#43cbc4',
-      numberGlow: 'rgba(22, 100, 95, 0.18)',
-      outer: '#b9ddda',
-      ink: '#ffffff',
-      meta: '#296865',
-      attentionRing: 'rgba(255, 248, 239, 0.92)',
-    },
-    cooking: {
-      rail: '#5d88d8',
-      shell: '#3366bd',
-      fill: '#407fff',
-      numberGlow: 'rgba(31, 74, 147, 0.18)',
-      outer: '#c8d7ef',
-      ink: '#ffffff',
-      meta: '#2d568f',
-      attentionRing: 'rgba(255, 248, 239, 0.92)',
-    },
-    pending_payment: {
-      rail: '#d37b7f',
-      shell: '#bf565d',
-      fill: '#ff5b64',
-      numberGlow: 'rgba(135, 45, 54, 0.18)',
-      outer: '#e8c3c7',
-      ink: '#ffffff',
-      meta: '#84353c',
-      attentionRing: 'rgba(255, 248, 239, 0.92)',
-    },
-    blocked: {
-      rail: '#b38b90',
-      shell: '#98666d',
-      fill: '#cc8188',
-      numberGlow: 'rgba(101, 58, 64, 0.18)',
-      outer: '#dcc8cb',
-      ink: '#ffffff',
-      meta: '#73474d',
-      attentionRing: 'rgba(255, 248, 239, 0.92)',
-    },
-  },
-};
-
-function HallTableCard({
-  copy,
-  table,
-  onSelect,
-}: {
-  copy: ReturnType<typeof getPosCopy>;
-  table: DiningTable;
-  onSelect: (table: DiningTable) => void;
-}) {
-  const theme = useTheme();
-  const visualState = getTableVisualState(table);
-  const palette = tablePalette[theme.palette.mode === 'dark' ? 'dark' : 'light'][visualState];
-  const coreShape = getTableCoreShape(table.shapeVariant);
-  const metaLabel =
-    visualState === 'reserved' || visualState === 'cooking' ? '' : getTableMeta(table, copy, formatElapsedMinutes);
-  const markers = getVariantMarkers(table.shapeVariant);
-  const isTall = coreShape === 'vertical' || Number(table.height ?? 1) > Number(table.width ?? 1);
-  const activeSessionCount = table.activeSessionCount ?? table.activeSessions?.length ?? (table.activeSession ? 1 : 0);
-
-  const numberPlateSx =
-    coreShape === 'horizontal'
-      ? { width: 92, height: 56, borderRadius: '18px' }
-      : coreShape === 'vertical'
-        ? { width: 66, height: 94, borderRadius: '20px' }
-        : { width: 66, height: 66, borderRadius: '18px' };
-
-  return (
-    <Box
-      component="button"
-      type="button"
-      data-testid={`hall-table-${table.tableNumber}`}
-      aria-label={table.name}
-      onClick={() => onSelect(table)}
-      sx={(theme) => ({
-        position: 'relative',
-        width: '100%',
-        height: '100%',
-        border: 0,
-        p: 0,
-        borderRadius: '22px',
-        cursor: 'pointer',
-        backgroundColor: theme.palette.mode === 'dark' ? alpha(palette.outer, 0.72) : palette.outer,
-        color: palette.ink,
-        overflow: 'hidden',
-        transition: 'transform 0.18s ease, filter 0.18s ease, box-shadow 0.18s ease',
-        boxShadow:
-          theme.palette.mode === 'dark'
-            ? 'inset 0 0 0 1px rgba(255,255,255,0.02)'
-            : 'inset 0 0 0 1px rgba(40,51,65,0.06)',
-        '&:hover': {
-          transform: 'translateY(-2px)',
-          filter: 'brightness(1.04)',
-          boxShadow:
-            theme.palette.mode === 'dark'
-              ? 'inset 0 0 0 1px rgba(255,255,255,0.04), 0 12px 24px rgba(0,0,0,0.22)'
-              : 'inset 0 0 0 1px rgba(40,51,65,0.08), 0 12px 24px rgba(76,55,31,0.12)',
-        },
-      })}>
-      {markers.map(({ key, width, height, ...seatMarker }) => (
-        <Box
-          key={key}
-          sx={{
-            position: 'absolute',
-            borderRadius: 999,
-            backgroundColor: palette.rail,
-            boxShadow: `0 0 18px ${alpha(palette.rail, visualState === 'available' ? 0.08 : 0.18)}`,
-            width: width ?? 10,
-            height: height ?? 72,
-            ...seatMarker,
-          }}
-        />
-      ))}
-
-      <Box
-        sx={(theme) => ({
-          position: 'absolute',
-          inset: isTall ? '12px 24px' : '16px 18px',
-          borderRadius: '20px',
-          backgroundColor: palette.shell,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          px: 1.4,
-          py: 1.4,
-          overflow: 'hidden',
-          boxShadow:
-            theme.palette.mode === 'dark'
-              ? 'inset 0 1px 0 rgba(255,255,255,0.035)'
-              : 'inset 0 1px 0 rgba(255,255,255,0.18)',
-          '&::before': {
-            content: '""',
-            position: 'absolute',
-            inset: 0,
-            background:
-              'linear-gradient(180deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0) 38%, rgba(255,255,255,0.02) 100%)',
-            pointerEvents: 'none',
-          },
-        })}>
-        <Stack
-          alignItems="center"
-          justifyContent={metaLabel ? 'space-between' : 'center'}
-          sx={{ minHeight: '100%', width: '100%', position: 'relative', zIndex: 1, py: 0.2 }}>
-          <Box
-            sx={{
-              ...numberPlateSx,
-              display: 'grid',
-              placeItems: 'center',
-              backgroundColor: palette.fill,
-              color: palette.ink,
-              fontSize: coreShape === 'horizontal' ? 20 : 22,
-              fontWeight: 700,
-              position: 'relative',
-              boxShadow: `0 14px 28px ${palette.numberGlow}`,
-            }}>
-            {table.tableNumber}
-            {shouldShowAttentionDot(table) ? (
-              <Box
-                sx={{
-                  position: 'absolute',
-                  top: -5,
-                  right: -5,
-                  width: 18,
-                  height: 18,
-                  borderRadius: '50%',
-                  backgroundColor: '#ff545a',
-                  boxShadow: `0 0 0 4px ${palette.attentionRing}`,
-                }}
-              />
-            ) : null}
-            {activeSessionCount > 1 ? (
-              <Box
-                data-testid={`hall-table-${table.tableNumber}-session-badge`}
-                sx={{
-                  position: 'absolute',
-                  top: -8,
-                  right: -8,
-                  minWidth: 28,
-                  height: 28,
-                  px: 0.6,
-                  borderRadius: 999,
-                  display: 'grid',
-                  placeItems: 'center',
-                  backgroundColor: '#28313d',
-                  color: '#ffffff',
-                  fontSize: 12,
-                  fontWeight: 900,
-                  lineHeight: 1,
-                  boxShadow: `0 0 0 4px ${palette.attentionRing}, 0 8px 16px rgba(0,0,0,0.2)`,
-                }}>
-                x{activeSessionCount}
-              </Box>
-            ) : null}
-          </Box>
-
-          {metaLabel ? (
-            <Typography
-              variant="body2"
-              sx={{
-                mt: 1,
-                fontWeight: 800,
-                fontSize: 15,
-                color: palette.meta,
-                minHeight: 22,
-                lineHeight: 1,
-              }}>
-              {metaLabel}
-            </Typography>
-          ) : null}
-        </Stack>
-      </Box>
-    </Box>
-  );
-}
+const EMPTY_HALLS: Hall[] = [];
 
 export function HallsPageContent() {
   const navigate = useNavigate();
@@ -474,19 +35,11 @@ export function HallsPageContent() {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const copy = getPosCopy(locale);
-  const [selectedLevel, setSelectedLevel] = useState<string>('');
-  const [selectedHallId, setSelectedHallId] = useState<string>('');
-  const [selectedZoneId, setSelectedZoneId] = useState<string>('all');
   const [selectedTable, setSelectedTable] = useState<DiningTable | null>(null);
   const [guestCount, setGuestCount] = useState(2);
   const [settingsAnchor, setSettingsAnchor] = useState<HTMLElement | null>(null);
   const [floorAnchor, setFloorAnchor] = useState<HTMLElement | null>(null);
   const [hallAnchor, setHallAnchor] = useState<HTMLElement | null>(null);
-  const [initialMapScaleSettings] = useState(readHallMapScaleSettings);
-  const [mapScale, setMapScale] = useState(initialMapScaleSettings.scale);
-  const [mapScaleMode, setMapScaleMode] = useState<HallMapScaleMode>(initialMapScaleSettings.mode);
-  const [mapViewportSize, setMapViewportSize] = useState({ width: 0, height: 0 });
-  const mapViewportRef = useRef<HTMLDivElement | null>(null);
 
   const hallsQuery = useWaiterHallsQuery();
   const openSessionMutation = useOpenTableSessionMutation({
@@ -516,247 +69,50 @@ export function HallsPageContent() {
       )
     : 4;
 
-  const halls = useMemo(() => hallsQuery.data ?? [], [hallsQuery.data]);
+  const halls = hallsQuery.data ?? EMPTY_HALLS;
   const isInitialLoading = hallsQuery.isLoading && !hallsQuery.data;
-  const availableLevels = useMemo(() => (halls.length ? [1] : []), [halls.length]);
-  const activeLevel = selectedLevel || String(availableLevels[0] ?? 1);
-  const floorTabs = useMemo(
-    () => availableLevels.map((level) => ({ value: String(level), label: formatFloorLabel(locale, level) })),
-    [availableLevels, locale],
-  );
-  const levelScopedHalls = useMemo(() => halls, [halls]);
-  const selectedHall = useMemo(() => {
-    const defaultHall = levelScopedHalls[0];
-    const hallId = selectedHallId || defaultHall?.id;
-    return levelScopedHalls.find((hall) => hall.id === hallId) ?? defaultHall;
-  }, [levelScopedHalls, selectedHallId]);
-  const hallTabs = levelScopedHalls.map((hall) => ({ value: hall.id, label: hall.name }));
-  const zoneTabs = useMemo(() => {
-    const zones = (selectedHall?.zones ?? []).filter((zone) => zone.isActive !== false);
-    if (!zones.length) {
-      return [];
-    }
-
-    return [
-      { value: 'all', label: getAllZonesLabel(locale) },
-      ...zones.map((zone) => ({ value: zone.id, label: zone.name })),
-    ];
-  }, [locale, selectedHall?.zones]);
-  const visibleTables = useMemo(() => {
-    const tables = selectedHall?.tables ?? [];
-    if (!selectedZoneId || selectedZoneId === 'all') {
-      return tables;
-    }
-    return tables.filter((table) => table.zone === selectedZoneId);
-  }, [selectedHall?.tables, selectedZoneId]);
-
-  useEffect(() => {
-    if (!zoneTabs.length) {
-      if (selectedZoneId !== 'all') {
-        setSelectedZoneId('all');
-      }
-      return;
-    }
-
-    const zoneExists = zoneTabs.some((zone) => zone.value === selectedZoneId);
-    if (!zoneExists) {
-      setSelectedZoneId('all');
-    }
-  }, [selectedZoneId, zoneTabs]);
-
-  const hallStats = useMemo(() => {
-    const stats = {
-      available: 0,
-      reserved: 0,
-      occupied: 0,
-      blocked: 0,
-    };
-
-    for (const table of visibleTables) {
-      const status = getTableStatus(table);
-      stats[status] += 1;
-    }
-
-    return stats;
-  }, [visibleTables]);
-
-  const legendItems = [
-    { key: 'available', label: copy.available, count: hallStats.available, color: '#666a70' },
-    { key: 'reserved', label: copy.reserved, count: hallStats.reserved, color: '#ffc23c' },
-    { key: 'occupied', label: copy.occupied, count: hallStats.occupied, color: '#31c8c0' },
-    ...(hallStats.blocked > 0
-      ? [{ key: 'blocked', label: copy.blocked, count: hallStats.blocked, color: '#bf6168' }]
-      : []),
-  ];
-  const gridColumns = getHallGridColumns(selectedHall);
-  const gridRows = useMemo(
-    () =>
-      visibleTables.reduce((maxRows, table) => {
-        const placement = getTableGridPlacement(table, gridColumns);
-        return Math.max(maxRows, placement.positionY + placement.height);
-      }, 1),
-    [gridColumns, visibleTables],
-  );
-  const tableLayoutBounds = useMemo(() => {
-    if (!visibleTables.length) {
-      return {
-        minX: 0,
-        minY: 0,
-        columns: gridColumns,
-        rows: gridRows,
-      };
-    }
-
-    let minX = Number.POSITIVE_INFINITY;
-    let minY = Number.POSITIVE_INFINITY;
-    let maxX = 0;
-    let maxY = 0;
-
-    for (const table of visibleTables) {
-      const placement = getTableGridPlacement(table, gridColumns);
-      minX = Math.min(minX, placement.positionX);
-      minY = Math.min(minY, placement.positionY);
-      maxX = Math.max(maxX, placement.positionX + placement.width);
-      maxY = Math.max(maxY, placement.positionY + placement.height);
-    }
-
-    return {
-      minX,
-      minY,
-      columns: Math.max(1, maxX - minX),
-      rows: Math.max(1, maxY - minY),
-    };
-  }, [gridColumns, gridRows, visibleTables]);
-  const mapContentWidth =
-    tableLayoutBounds.columns * HALL_GRID_MIN_CELL_WIDTH + Math.max(0, tableLayoutBounds.columns - 1) * HALL_GRID_GAP;
-  const mapContentHeight =
-    tableLayoutBounds.rows * HALL_GRID_ROW_HEIGHT + Math.max(0, tableLayoutBounds.rows - 1) * HALL_GRID_GAP;
-  const fitScale = useMemo(() => {
-    if (!mapViewportSize.width || !mapViewportSize.height || !mapContentWidth || !mapContentHeight) {
-      return 1;
-    }
-
-    const availableWidth = Math.max(1, mapViewportSize.width - 28);
-    const availableHeight = Math.max(1, mapViewportSize.height - 28);
-    return clampMapScale(Math.min(1, availableWidth / mapContentWidth, availableHeight / mapContentHeight));
-  }, [mapContentHeight, mapContentWidth, mapViewportSize.height, mapViewportSize.width]);
-  const fillScale = useMemo(() => {
-    if (!mapViewportSize.width || !mapContentWidth) {
-      return 1;
-    }
-
-    const availableWidth = Math.max(1, mapViewportSize.width - 28);
-    return clampMapScale(availableWidth / mapContentWidth);
-  }, [mapContentWidth, mapViewportSize.width]);
-  const scaledMapWidth = mapContentWidth * mapScale;
-  const scaledMapHeight = mapContentHeight * mapScale;
-
-  useEffect(() => {
-    const viewport = mapViewportRef.current;
-    if (!viewport) {
-      return;
-    }
-
-    const updateViewportSize = () => {
-      setMapViewportSize({
-        width: viewport.clientWidth,
-        height: viewport.clientHeight,
-      });
-    };
-
-    updateViewportSize();
-    if (typeof ResizeObserver === 'undefined') {
-      window.addEventListener('resize', updateViewportSize);
-      return () => window.removeEventListener('resize', updateViewportSize);
-    }
-
-    const resizeObserver = new ResizeObserver(updateViewportSize);
-    resizeObserver.observe(viewport);
-
-    return () => resizeObserver.disconnect();
-  }, [isInitialLoading, selectedHall?.id, selectedZoneId]);
-
-  useEffect(() => {
-    if (mapScaleMode === 'fit') {
-      setMapScale(fitScale);
-    } else if (mapScaleMode === 'fill') {
-      setMapScale(fillScale);
-    }
-  }, [fillScale, fitScale, mapScaleMode]);
-
-  const handleMapFitFillToggle = useCallback(() => {
-    setMapScaleMode((currentMode) => {
-      const nextMode = currentMode === 'fill' ? 'fit' : 'fill';
-      setMapScale(nextMode === 'fit' ? fitScale : fillScale);
-      return nextMode;
-    });
-  }, [fillScale, fitScale]);
-
-  const handleMapZoom = useCallback((direction: 1 | -1) => {
-    setMapScaleMode('manual');
-    setMapScale((currentScale) => clampMapScale(Number((currentScale + direction * HALL_MAP_ZOOM_STEP).toFixed(2))));
-  }, []);
-
-  useEffect(() => {
-    writeHallMapScaleSettings({
-      mode: mapScaleMode,
-      scale: mapScale,
-    });
-  }, [mapScale, mapScaleMode]);
+  const navigation = useHallsNavigation(halls, locale, copy);
+  const {
+    activeLevel,
+    availableLevels,
+    floorTabs,
+    gridColumns,
+    hallTabs,
+    legendItems,
+    selectedHall,
+    selectedZoneId,
+    setSelectedHallId,
+    setSelectedLevel,
+    setSelectedZoneId,
+    visibleTables,
+    zoneTabs,
+  } = navigation;
+  const {
+    contentHeight: mapContentHeight,
+    contentWidth: mapContentWidth,
+    layoutBounds: tableLayoutBounds,
+    mapScale,
+    mapScaleMode,
+    scaledHeight: scaledMapHeight,
+    scaledWidth: scaledMapWidth,
+    toggleFitFill: handleMapFitFillToggle,
+    viewportRef: mapViewportRef,
+    zoom: handleMapZoom,
+  } = useHallMapViewport({
+    gridColumns,
+    isLoading: isInitialLoading,
+    selectedHallKey: selectedHall?.id,
+    selectedZoneId,
+    tables: visibleTables,
+  });
 
   const mapZoomControls = (
-    <Stack
-      direction="row"
-      spacing={0.45}
-      sx={(theme) => ({
-        flexShrink: 0,
-        alignItems: 'center',
-        p: 0.35,
-        borderRadius: { xs: '14px', md: '16px' },
-        backgroundColor: theme.palette.mode === 'dark' ? alpha('#151719', 0.72) : alpha('#ffffff', 0.86),
-        border: `1px solid ${alpha('#ffffff', theme.palette.mode === 'dark' ? 0.06 : 0.5)}`,
-        boxShadow: theme.palette.mode === 'dark' ? '0 14px 28px rgba(0,0,0,0.22)' : '0 14px 28px rgba(65, 46, 24, 0.1)',
-        backdropFilter: 'blur(16px)',
-      })}>
-      <IconButton
-        aria-label="Xaritani kichraytirish"
-        size="small"
-        disabled={mapScale <= HALL_MAP_MIN_SCALE + 0.01}
-        onClick={() => handleMapZoom(-1)}>
-        <Icon icon="solar:minus-circle-bold-duotone" width={22} />
-      </IconButton>
-      <Box
-        sx={{
-          minWidth: { xs: 42, md: 48 },
-          display: 'grid',
-          placeItems: 'center',
-          fontSize: { xs: 12, md: 13 },
-          fontWeight: 800,
-          color: 'text.secondary',
-        }}>
-        {Math.round(mapScale * 100)}%
-      </Box>
-      <IconButton
-        aria-label="Xaritani kattalashtirish"
-        size="small"
-        disabled={mapScale >= HALL_MAP_MAX_SCALE - 0.01}
-        onClick={() => handleMapZoom(1)}>
-        <Icon icon="solar:add-circle-bold-duotone" width={22} />
-      </IconButton>
-      <IconButton
-        aria-label={mapScaleMode === 'fill' ? "Xaritani sig'dirish" : "Xaritani kenglikka to'ldirish"}
-        size="small"
-        onClick={handleMapFitFillToggle}>
-        <Icon
-          icon={
-            mapScaleMode === 'fill'
-              ? 'solar:quit-full-screen-square-bold-duotone'
-              : 'solar:full-screen-square-bold-duotone'
-          }
-          width={22}
-        />
-      </IconButton>
-    </Stack>
+    <HallMapZoomControls
+      scale={mapScale}
+      scaleMode={mapScaleMode}
+      onFitFillToggle={handleMapFitFillToggle}
+      onZoom={handleMapZoom}
+    />
   );
 
   const handleTableSelect = (currentTable: DiningTable) => {
@@ -951,182 +307,45 @@ export function HallsPageContent() {
           </Stack>
         </Stack>
       }>
-      <Box
-        sx={(theme) => ({
-          flex: 1,
-          minHeight: 0,
-          display: 'flex',
-          flexDirection: 'column',
-          borderRadius: '28px',
-          backgroundColor: theme.palette.mode === 'dark' ? '#1f2124' : alpha('#ffffff', 0.78),
-          border: `1px solid ${alpha('#ffffff', theme.palette.mode === 'dark' ? 0.03 : 0.34)}`,
-          px: { xs: 1.9, md: 2.6 },
-          py: { xs: 1.9, md: 2.45 },
-          mb: 2,
-          boxShadow:
-            theme.palette.mode === 'dark'
-              ? 'inset 0 1px 0 rgba(255,255,255,0.02)'
-              : '0 18px 40px rgba(65, 46, 24, 0.08)',
-        })}>
-        <Stack
-          direction={{ xs: 'column', lg: 'row' }}
-          spacing={1.8}
-          justifyContent="space-between"
-          alignItems={{ xs: 'flex-start', lg: 'center' }}
-          sx={{ mb: 3, flexShrink: 0 }}>
-          <Typography variant="h4">{selectedHall?.name ?? copy.halls}</Typography>
+      <HallMapPanel
+        title={selectedHall?.name ?? copy.halls}
+        copy={copy}
+        isMobile={isMobile}
+        legendItems={legendItems}
+        zoneTabs={zoneTabs}
+        selectedZoneId={selectedZoneId}
+        onZoneChange={setSelectedZoneId}
+        viewportRef={mapViewportRef}
+        viewportSize={mapViewportSize}
+        scaledWidth={scaledMapWidth}
+        scaledHeight={scaledMapHeight}
+        layoutBounds={tableLayoutBounds}
+        contentWidth={mapContentWidth}
+        contentHeight={mapContentHeight}
+        mapScale={mapScale}
+        tables={visibleTables}
+        gridColumns={gridColumns}
+        onTableSelect={handleTableSelect}
+      />
 
-          <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" justifyContent="flex-end">
-            {legendItems.map((item) => (
-              <PosLegendPill
-                key={item.key}
-                label={isMobile ? item.label : `${item.label} (${item.count})`}
-                color={item.color}
-              />
-            ))}
-          </Stack>
-        </Stack>
-
-        {zoneTabs.length ? (
-          <Box sx={{ mb: 2.5, flexShrink: 0 }}>
-            <PosSectionTabs value={selectedZoneId} items={zoneTabs} onChange={setSelectedZoneId} scrollable />
-          </Box>
-        ) : null}
-
-        <Box
-          ref={mapViewportRef}
-          sx={(theme) => ({
-            flex: 1,
-            minHeight: 0,
-            overflow: 'auto',
-            pb: 1,
-            position: 'relative',
-            borderRadius: '20px',
-            backgroundColor: theme.palette.mode === 'dark' ? alpha('#ffffff', 0.015) : alpha('#fffdf8', 0.42),
-            scrollbarWidth: 'thin',
-          })}>
-          <Box
-            sx={{
-              minWidth: '100%',
-              minHeight: '100%',
-              display: 'flex',
-              justifyContent: scaledMapWidth <= mapViewportSize.width ? 'center' : 'flex-start',
-              alignItems: scaledMapHeight <= mapViewportSize.height ? 'center' : 'flex-start',
-              p: 1.25,
-            }}>
-            <Box
-              sx={{
-                width: scaledMapWidth,
-                height: scaledMapHeight,
-                flex: '0 0 auto',
-              }}>
-              <Box
-                data-testid="hall-layout-grid"
-                sx={{
-                  display: 'grid',
-                  gridTemplateColumns: `repeat(${tableLayoutBounds.columns}, ${HALL_GRID_MIN_CELL_WIDTH}px)`,
-                  gridAutoRows: `${HALL_GRID_ROW_HEIGHT}px`,
-                  gap: `${HALL_GRID_GAP}px`,
-                  width: mapContentWidth,
-                  height: mapContentHeight,
-                  alignItems: 'stretch',
-                  transform: `scale(${mapScale})`,
-                  transformOrigin: 'top left',
-                  transition: 'transform 160ms ease',
-                }}>
-                {visibleTables
-                  .slice()
-                  .sort((leftTable, rightTable) => leftTable.tableNumber - rightTable.tableNumber)
-                  .map((table) => {
-                    const placement = getTableGridPlacement(table, gridColumns);
-                    return (
-                      <Box
-                        key={table.id}
-                        sx={{
-                          gridColumn: `${placement.positionX - tableLayoutBounds.minX + 1} / span ${placement.width}`,
-                          gridRow: `${placement.positionY - tableLayoutBounds.minY + 1} / span ${placement.height}`,
-                        }}>
-                        <HallTableCard copy={copy} table={table} onSelect={handleTableSelect} />
-                      </Box>
-                    );
-                  })}
-              </Box>
-            </Box>
-          </Box>
-        </Box>
-      </Box>
-
-      <Dialog open={Boolean(selectedTable)} onClose={() => setSelectedTable(null)} maxWidth="xs" fullWidth>
-        <DialogTitle>{copy.openTable}</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ pt: 1 }}>
-            <Typography variant="body1" color="text.secondary">
-              {selectedTable?.name}
-            </Typography>
-            <TextField
-              label={copy.guestCount}
-              type="number"
-              inputProps={{ min: 1, max: selectedTableGuestLimit }}
-              value={guestCount}
-              onChange={(event) =>
-                setGuestCount(
-                  Math.max(1, Math.min(Math.trunc(Number(event.target.value)) || 1, selectedTableGuestLimit)),
-                )
-              }
-            />
-            {selectedTable?.activeSessions?.length ? (
-              <Stack spacing={1}>
-                {selectedTable.activeSessions.map((activeSession, index) => (
-                  <Button
-                    key={activeSession.id}
-                    variant="outlined"
-                    onClick={() => {
-                      setSelectedTable(null);
-                      void navigate(`/waiter/table-session?sessionId=${activeSession.id}`);
-                    }}>
-                    {copy.openTable} #{index + 1}
-                  </Button>
-                ))}
-              </Stack>
-            ) : null}
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            variant="contained"
-            onClick={() => setSelectedTable(null)}
-            sx={(theme) => ({
-              backgroundImage: 'none',
-              backgroundColor: theme.palette.mode === 'dark' ? '#454545' : '#d6cebf',
-              color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
-            })}>
-            {copy.close}
-          </Button>
-          {canReserveTables && !selectedTable?.activeSession && selectedTable?.status !== 'reserved' ? (
-            <Button
-              variant="contained"
-              onClick={() => reserveTableMutation.mutate()}
-              disabled={reserveTableMutation.isPending || openSessionMutation.isPending}
-              sx={(theme) => ({
-                backgroundImage: 'none',
-                backgroundColor: theme.palette.mode === 'dark' ? '#7a6126' : '#d5a53d',
-                color: '#ffffff',
-              })}>
-              {copy.reserveTable}
-            </Button>
-          ) : null}
-          {selectedTable &&
-          selectedTableGuestLimit > 0 &&
-          (selectedTable.status === 'reserved' ? canReserveTables : canManageTables) ? (
-            <Button
-              variant="contained"
-              onClick={() => openSessionMutation.mutate()}
-              disabled={openSessionMutation.isPending || reserveTableMutation.isPending}>
-              {copy.openTable}
-            </Button>
-          ) : null}
-        </DialogActions>
-      </Dialog>
+      <OpenTableDialog
+        table={selectedTable}
+        guestCount={guestCount}
+        guestLimit={selectedTableGuestLimit}
+        canManageTables={canManageTables}
+        canReserveTables={canReserveTables}
+        opening={openSessionMutation.isPending}
+        reserving={reserveTableMutation.isPending}
+        copy={copy}
+        onGuestCountChange={setGuestCount}
+        onClose={() => setSelectedTable(null)}
+        onOpen={() => openSessionMutation.mutate()}
+        onReserve={() => reserveTableMutation.mutate()}
+        onOpenSession={(sessionId) => {
+          setSelectedTable(null);
+          void navigate(`/waiter/table-session?sessionId=${sessionId}`);
+        }}
+      />
 
       <PosSettingsMenu
         anchorEl={settingsAnchor}

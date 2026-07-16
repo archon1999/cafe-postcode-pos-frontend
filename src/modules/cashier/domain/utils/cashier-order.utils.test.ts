@@ -1,12 +1,93 @@
 import { describe, expect, it } from 'vitest';
 
-import type { CashierOrder } from '../entities';
+import type { CashierOrder, CashierOrderItem } from '../entities';
 
 import {
+  aggregateCashierCartItemsByStation,
   getCashierOrderDisplayName,
+  getCashierOrderItemsTotalQuantity,
+  getCashierOrderMissingMarkingCount,
   getCashierOrderNumberLabel,
   getCurrentCashierBuilderOrder,
 } from './cashier-order.utils';
+
+describe('cashier cart aggregation', () => {
+  const items: CashierOrderItem[] = [
+    {
+      id: 'line-1',
+      catalogItem: 'item-1',
+      catalogItemName: 'Cola',
+      quantity: 1,
+      lineTotal: 12000,
+      status: 'active',
+      prepStationName: 'Bar',
+      markingRequiredCount: 1,
+      markingScannedCount: 1,
+    },
+    {
+      id: 'line-2',
+      catalogItem: 'item-1',
+      catalogItemName: 'Cola',
+      quantity: '2',
+      lineTotal: '24000',
+      status: 'active',
+      prepStationName: 'Bar',
+      markingRequiredCount: 2,
+      markings: [{ id: 'mark-2' }],
+    },
+    {
+      id: 'line-3',
+      catalogItem: 'item-1',
+      catalogItemName: 'Cola',
+      quantity: 1,
+      lineTotal: 12000,
+      status: 'active',
+      prepStationName: 'Bar',
+      note: 'Muzsiz',
+    },
+    {
+      id: 'line-4',
+      catalogItem: 'item-1',
+      catalogItemName: 'Cola',
+      quantity: 1,
+      lineTotal: 12000,
+      status: 'cancelled',
+      prepStationName: 'Bar',
+    },
+  ];
+
+  it('preserves station order and aggregates only exact cart-line matches', () => {
+    const groups = aggregateCashierCartItemsByStation(items, 'Menyu');
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0][0]).toBe('Bar');
+    expect(groups[0][1]).toHaveLength(3);
+    expect(groups[0][1][0]).toEqual({
+      key: 'item-1::::active::Bar',
+      id: 'line-2',
+      catalogItem: 'item-1',
+      catalogItemName: 'Cola',
+      note: undefined,
+      quantity: 3,
+      lineTotal: 36000,
+      status: 'active',
+      itemIds: ['line-1', 'line-2'],
+      markingRequiredCount: 3,
+      markingScannedCount: 2,
+      markingMissingCount: 1,
+    });
+    expect(groups[0][1].map((item) => [item.note, item.status])).toEqual([
+      [undefined, 'active'],
+      ['Muzsiz', 'active'],
+      [undefined, 'cancelled'],
+    ]);
+  });
+
+  it('derives scanner quantity and missing markings from the same source lines', () => {
+    expect(getCashierOrderItemsTotalQuantity(items)).toBe(5);
+    expect(getCashierOrderMissingMarkingCount(items)).toBe(1);
+  });
+});
 
 describe('cashier order display helpers', () => {
   it('uses the custom display name when provided', () => {

@@ -1,22 +1,6 @@
-﻿import { Icon } from '@iconify/react';
-import {
-  Box,
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  Divider,
-  Drawer,
-  Snackbar,
-  Stack,
-  TextField,
-  Typography,
-  alpha,
-  useMediaQuery,
-} from '@mui/material';
+import { Box, Snackbar, useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 
@@ -30,80 +14,35 @@ import {
 } from 'modules/cashier/application';
 import { cashierRepository } from 'modules/cashier/data-access';
 import {
+  aggregateCashierCartItemsByStation,
   getCashierOrderDisplayName,
+  getCashierOrderItemsTotalQuantity,
+  getCashierOrderMissingMarkingCount,
   getCurrentCashierBuilderOrder,
   getDefaultCashierMenuCategory,
-  groupCashierOrderItemsByStation,
-  formatDeliveryPhoneInput,
-  isValidDeliveryPhone,
-  normalizeDeliveryAddress,
   type CashierBuilderOrderChannel,
   type CashierMenuCategory,
-  type CashierOrderItem,
 } from 'modules/cashier/domain';
 import { enqueueEdgePrintDocuments } from 'modules/edge-printing/application';
-import { resolveApiBaseUrl } from 'shared/api/apiUrl';
 import { getApiErrorMessage } from 'shared/api/errorMessage';
 import { refreshTransportAndReload } from 'shared/api/transportResolver';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
-import { formatPosCopy, getPosCopy } from 'shared/locale/copy';
+import { getPosCopy } from 'shared/locale/copy';
 import { isTemporaryBuilderId } from 'shared/pos/optimistic-builder-order';
 import { useOptimisticBuilderOrder } from 'shared/pos/useOptimisticBuilderOrder';
 import { useScannerInput } from 'shared/pos/useScannerInput';
-import { formatCompactMoney, formatMoneyParts } from 'shared/pos/utils';
-import {
-  PosBuilderPageSkeleton,
-  PosIconAction,
-  PosOrderChannelSegment,
-  PosSectionTabs,
-  PosSettingsMenu,
-} from 'shared/ui/pos-primitives';
+import { PosBuilderPageSkeleton, PosSettingsMenu } from 'shared/ui/pos-primitives';
 
-type AggregatedCashierCartItem = {
-  key: string;
-  id: string;
-  catalogItem: string;
-  catalogItemName: string;
-  note?: string | null;
-  quantity: number;
-  lineTotal: number;
-  status: string;
-  itemIds: string[];
-  markingRequiredCount: number;
-  markingScannedCount: number;
-  markingMissingCount: number;
-};
-
-type PendingDeliveryAction = 'submit' | 'checkout';
+import { CashierBuilderDesktopCart, CashierBuilderMobileCart } from './CashierBuilderCart';
+import { CashierBuilderHeader } from './CashierBuilderHeader';
+import { CashierBuilderMenuPanel } from './CashierBuilderMenuPanel';
+import { CashierDeliveryDetailsDialog } from './CashierDeliveryDetailsDialog';
+import { useCashierBuilderActions } from './useCashierBuilderActions';
 
 const EMPTY_CATEGORIES: CashierMenuCategory[] = [];
 
-function resolveMenuItemImageUrl(imageUrl?: string | null) {
-  if (!imageUrl) {
-    return null;
-  }
-
-  try {
-    return new URL(imageUrl, resolveApiBaseUrl()).toString();
-  } catch {
-    return imageUrl;
-  }
-}
-
 function formatPercent(value: number) {
   return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/\.?0+$/, '');
-}
-
-function getOrderItemMarkingRequiredCount(item: CashierOrderItem) {
-  return Number(item.markingRequiredCount ?? 0);
-}
-
-function getOrderItemMarkingScannedCount(item: CashierOrderItem) {
-  return Number(item.markingScannedCount ?? item.markings?.length ?? 0);
-}
-
-function getOrderItemsTotalQuantity(items: CashierOrderItem[] | undefined) {
-  return (items ?? []).reduce((sum, item) => sum + Number(item.quantity ?? 0), 0);
 }
 
 function resolveBuilderChannel(value: string | null): CashierBuilderOrderChannel {
@@ -129,13 +68,6 @@ export function CashierBuilderPageContent() {
   const [selectedCartItemKey, setSelectedCartItemKey] = useState<string | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
   const [scanToast, setScanToast] = useState('');
-  const [deliveryDialogOpen, setDeliveryDialogOpen] = useState(false);
-  const [pendingDeliveryAction, setPendingDeliveryAction] = useState<PendingDeliveryAction | null>(null);
-  const [deliveryPhone, setDeliveryPhone] = useState('');
-  const [deliveryAddress, setDeliveryAddress] = useState('');
-  const [deliveryDetailsAttempted, setDeliveryDetailsAttempted] = useState(false);
-  const [deliveryDetailsSaving, setDeliveryDetailsSaving] = useState(false);
-  const [channelSwitchSaving, setChannelSwitchSaving] = useState(false);
 
   const menuQuery = useCashierMenuQuery();
   const ordersQuery = useCashierBuilderOrdersQuery();
@@ -187,13 +119,13 @@ export function CashierBuilderPageContent() {
     enabled: true,
     onScan: async (rawCode) => {
       try {
-        const quantityBeforeScan = getOrderItemsTotalQuantity(currentOrder?.items);
+        const quantityBeforeScan = getCashierOrderItemsTotalQuantity(currentOrder?.items);
         const orderId =
           currentOrder?.id ??
           (await cashierRepository.createBuilderOrder({ channel: builderChannel, note: kitchenNote })).id;
         const updatedOrder = await cashierRepository.scanOrderMarking(orderId, rawCode, 'add');
         await ordersQuery.refetch();
-        const quantityAfterScan = getOrderItemsTotalQuantity(updatedOrder.items);
+        const quantityAfterScan = getCashierOrderItemsTotalQuantity(updatedOrder.items);
         setScanToast(
           quantityAfterScan > quantityBeforeScan ? 'Mahsulot skaner orqali qo‘shildi.' : 'Markirovka biriktirildi.',
         );
@@ -206,54 +138,10 @@ export function CashierBuilderPageContent() {
   const categories = menuQuery.data ?? EMPTY_CATEGORIES;
   const defaultCategory = useMemo(() => getDefaultCashierMenuCategory(categories), [categories]);
   const selectedCategory = categories.find((category) => category.id === selectedCategoryId) ?? defaultCategory;
-  const groupedOrderItems = useMemo(() => {
-    const stationGroups = groupCashierOrderItemsByStation(currentOrder?.items, copy.menu);
-
-    return stationGroups.map(([stationName, items]) => {
-      const aggregatedMap = new Map<string, AggregatedCashierCartItem>();
-
-      for (const item of items) {
-        const markingRequiredCount = getOrderItemMarkingRequiredCount(item);
-        const markingScannedCount = getOrderItemMarkingScannedCount(item);
-        const markingMissingCount = Math.max(markingRequiredCount - markingScannedCount, 0);
-        const aggregationKey = [
-          item.catalogItem,
-          item.note ?? '',
-          item.status,
-          item.prepStationName ?? stationName,
-        ].join('::');
-        const existing = aggregatedMap.get(aggregationKey);
-
-        if (existing) {
-          existing.quantity += Number(item.quantity ?? 0);
-          existing.lineTotal += Number(item.lineTotal ?? 0);
-          existing.itemIds.push(item.id);
-          existing.id = item.id;
-          existing.markingRequiredCount += markingRequiredCount;
-          existing.markingScannedCount += markingScannedCount;
-          existing.markingMissingCount += markingMissingCount;
-          continue;
-        }
-
-        aggregatedMap.set(aggregationKey, {
-          key: aggregationKey,
-          id: item.id,
-          catalogItem: item.catalogItem,
-          catalogItemName: item.catalogItemName,
-          note: item.note,
-          quantity: Number(item.quantity ?? 0),
-          lineTotal: Number(item.lineTotal ?? 0),
-          status: item.status,
-          itemIds: [item.id],
-          markingRequiredCount,
-          markingScannedCount,
-          markingMissingCount,
-        });
-      }
-
-      return [stationName, Array.from(aggregatedMap.values())] as const;
-    });
-  }, [copy.menu, currentOrder?.items]);
+  const groupedOrderItems = useMemo(
+    () => aggregateCashierCartItemsByStation(currentOrder?.items, copy.menu),
+    [copy.menu, currentOrder?.items],
+  );
   const menuItemById = useMemo(
     () => new Map(categories.flatMap((category) => category.items.map((menuItem) => [menuItem.id, menuItem] as const))),
     [categories],
@@ -295,176 +183,46 @@ export function CashierBuilderPageContent() {
   const vatLabel = `${copy.vat} (${formatPercent(vatPercent)}%)`;
   const markingCheckEnabled = Boolean(session?.restaurantContext?.markingCheckEnabled);
   const missingMarkingCount = useMemo(
-    () =>
-      (currentOrder?.items ?? []).reduce((sum, item) => {
-        const required = getOrderItemMarkingRequiredCount(item);
-        const scanned = getOrderItemMarkingScannedCount(item);
-        return sum + Math.max(required - scanned, 0);
-      }, 0),
+    () => getCashierOrderMissingMarkingCount(currentOrder?.items),
     [currentOrder?.items],
   );
   const hasMissingMarkings = markingCheckEnabled && missingMarkingCount > 0;
   const missingMarkingMessage = `${missingMarkingCount} ta markirovka skanerlanmagan`;
+  const builderActions = useCashierBuilderActions({
+    builderChannel,
+    currentOrder,
+    editOrderId,
+    errorFallback: copy.itemSyncFailed,
+    hasMissingMarkings,
+    hasPendingOperations,
+    missingMarkingMessage,
+    serverOrder,
+    submitOrder: () => submitOrderMutation.mutateAsync(),
+    submitPending: submitOrderMutation.isPending,
+    closeCart: () => setCartOpen(false),
+    navigateToPayment: (orderId) => void navigate(`/cashier/payment?orderId=${orderId}`),
+    refetchEditOrder: () => editOrderQuery.refetch(),
+    refetchOrders: () => ordersQuery.refetch(),
+    reportMessage: setScanToast,
+    setBuilderChannel,
+    clearSelectedCartItem: () => setSelectedCartItemKey(null),
+  });
   const isSubmitDisabled =
     !currentOrder ||
     submitOrderMutation.isPending ||
     hasPendingOperations ||
     hasMissingMarkings ||
-    deliveryDetailsSaving;
-  const isDeliveryChannel = builderChannel === 'delivery';
-  const isTakeawayChannel = builderChannel === 'takeaway';
-  const normalizedDeliveryAddress = normalizeDeliveryAddress(deliveryAddress);
-  const isDeliveryPhoneValid = isValidDeliveryPhone(deliveryPhone);
-  const isDeliveryAddressValid = normalizedDeliveryAddress.length > 0;
+    builderActions.deliveryDetailsSaving;
   const channelSwitchDisabled =
-    hasPendingOperations || submitOrderMutation.isPending || deliveryDetailsSaving || channelSwitchSaving;
-  const currentDeliveryOrderId = currentOrder?.id;
-  const currentDeliveryOrderChannel = currentOrder?.channel;
-  const currentDeliveryPhone = currentOrder?.deliveryPhone;
-  const currentDeliveryAddress = currentOrder?.deliveryAddress;
-
-  const createActionKeyHandler = (onActivate: () => void) => (event: KeyboardEvent<HTMLElement>) => {
-    if (event.key !== 'Enter' && event.key !== ' ') {
-      return;
-    }
-
-    event.preventDefault();
-    onActivate();
-  };
-
-  const runDeliveryAction = async (action: PendingDeliveryAction) => {
-    if (!currentOrder) {
-      return;
-    }
-
-    await submitOrderMutation.mutateAsync();
-    if (action === 'checkout') {
-      setCartOpen(false);
-      void navigate(`/cashier/payment?orderId=${currentOrder.id}`);
-    }
-  };
-
-  const openDeliveryDetailsDialog = (action: PendingDeliveryAction) => {
-    setPendingDeliveryAction(action);
-    setDeliveryPhone(currentOrder?.deliveryPhone ?? deliveryPhone);
-    setDeliveryAddress(currentOrder?.deliveryAddress ?? deliveryAddress);
-    setDeliveryDetailsAttempted(false);
-    setDeliveryDialogOpen(true);
-  };
-
-  const handleSendOrder = async () => {
-    if (!currentOrder || submitOrderMutation.isPending || hasPendingOperations) {
-      return;
-    }
-    if (hasMissingMarkings) {
-      setScanToast(missingMarkingMessage);
-      return;
-    }
-
-    if (isDeliveryChannel) {
-      openDeliveryDetailsDialog('submit');
-      return;
-    }
-
-    await submitOrderMutation.mutateAsync();
-  };
-
-  const handleCheckout = async () => {
-    if (!currentOrder || submitOrderMutation.isPending || hasPendingOperations) {
-      return;
-    }
-    if (hasMissingMarkings) {
-      setScanToast(missingMarkingMessage);
-      return;
-    }
-
-    if (isDeliveryChannel) {
-      openDeliveryDetailsDialog('checkout');
-      return;
-    }
-
-    setCartOpen(false);
-    void navigate(`/cashier/payment?orderId=${currentOrder.id}`);
-  };
-
-  const handleConfirmDeliveryDetails = async () => {
-    if (!currentOrder || !pendingDeliveryAction) {
-      return;
-    }
-
-    if (!isDeliveryPhoneValid || !isDeliveryAddressValid) {
-      setDeliveryDetailsAttempted(true);
-      return;
-    }
-
-    setDeliveryDetailsSaving(true);
-    try {
-      await cashierRepository.updateOrderDeliveryDetails(currentOrder.id, {
-        deliveryPhone,
-        deliveryAddress: normalizedDeliveryAddress,
-      });
-      await ordersQuery.refetch();
-      const action = pendingDeliveryAction;
-      setDeliveryDialogOpen(false);
-      setPendingDeliveryAction(null);
-      await runDeliveryAction(action);
-    } catch (error) {
-      setScanToast(getApiErrorMessage(error, copy.itemSyncFailed));
-    } finally {
-      setDeliveryDetailsSaving(false);
-    }
-  };
-
-  const handleBuilderChannelChange = async (channel: 'hall' | 'delivery' | 'takeaway') => {
-    if (channel === builderChannel || channelSwitchSaving) {
-      return;
-    }
-    if (!currentOrder || isTemporaryBuilderId(currentOrder.id)) {
-      setBuilderChannel(channel);
-      setSelectedCartItemKey(null);
-      return;
-    }
-
-    setChannelSwitchSaving(true);
-    try {
-      await cashierRepository.updateOrderChannel(currentOrder.id, channel);
-      await ordersQuery.refetch();
-      if (editOrderId) {
-        await editOrderQuery.refetch();
-      }
-      setBuilderChannel(channel);
-      setSelectedCartItemKey(null);
-    } catch (error) {
-      setScanToast(getApiErrorMessage(error, copy.itemSyncFailed));
-    } finally {
-      setChannelSwitchSaving(false);
-    }
-  };
+    hasPendingOperations ||
+    submitOrderMutation.isPending ||
+    builderActions.deliveryDetailsSaving ||
+    builderActions.channelSwitchSaving;
 
   useEffect(() => {
     const channelFromQuery = resolveBuilderChannel(searchParams.get('channel'));
     setBuilderChannel((current) => (current === channelFromQuery ? current : channelFromQuery));
   }, [searchParams]);
-
-  useEffect(() => {
-    const serverChannel = serverOrder?.channel;
-    if (
-      channelSwitchSaving ||
-      (serverChannel !== 'hall' && serverChannel !== 'takeaway' && serverChannel !== 'delivery')
-    ) {
-      return;
-    }
-    setBuilderChannel((current) => (current === serverChannel ? current : serverChannel));
-  }, [channelSwitchSaving, serverOrder?.channel]);
-
-  useEffect(() => {
-    if (!currentDeliveryOrderId || currentDeliveryOrderChannel !== 'delivery') {
-      return;
-    }
-
-    setDeliveryPhone(currentDeliveryPhone ?? '');
-    setDeliveryAddress(currentDeliveryAddress ?? '');
-  }, [currentDeliveryOrderId, currentDeliveryOrderChannel, currentDeliveryPhone, currentDeliveryAddress]);
 
   useEffect(() => {
     if (!selectedCartItemKey) {
@@ -494,40 +252,16 @@ export function CashierBuilderPageContent() {
   return (
     <PosPageFrame
       header={
-        <Stack
-          direction={{ xs: 'column', md: 'row' }}
-          spacing={{ xs: 1.1, md: 1.5 }}
-          justifyContent="space-between"
-          alignItems={{ xs: 'stretch', md: 'flex-start' }}>
-          <Stack sx={{ flex: 1, minWidth: 0 }}>
-            <PosSectionTabs
-              value={selectedCategory?.id ?? ''}
-              items={categoryTabs}
-              onChange={setSelectedCategoryId}
-              scrollable
-            />
-          </Stack>
-
-          <Stack
-            direction="row"
-            spacing={{ xs: 1, md: 1.5 }}
-            sx={{ justifyContent: { xs: 'flex-end', md: 'flex-start' } }}>
-            <PosIconAction
-              icon="solar:chef-hat-bold-duotone"
-              onClick={() => navigate(`/menu/catalog?source=cashier&channel=${builderChannel}`)}
-            />
-            {!isMobile ? (
-              <PosIconAction icon="solar:refresh-bold-duotone" onClick={() => void refreshTransportAndReload()} />
-            ) : null}
-            <PosIconAction
-              icon="solar:settings-bold-duotone"
-              onClick={(event) => setSettingsAnchor(event.currentTarget)}
-            />
-            {!isMobile ? (
-              <PosIconAction icon="solar:lock-password-bold-duotone" onClick={() => navigate('/lock-screen')} />
-            ) : null}
-          </Stack>
-        </Stack>
+        <CashierBuilderHeader
+          categoryId={selectedCategory?.id ?? ''}
+          categoryTabs={categoryTabs}
+          isMobile={isMobile}
+          onCategoryChange={setSelectedCategoryId}
+          onMenuOpen={() => navigate(`/menu/catalog?source=cashier&channel=${builderChannel}`)}
+          onRefresh={() => void refreshTransportAndReload()}
+          onSettingsOpen={(event) => setSettingsAnchor(event.currentTarget)}
+          onLock={() => navigate('/lock-screen')}
+        />
       }>
       <Box
         sx={{
@@ -541,864 +275,104 @@ export function CashierBuilderPageContent() {
           },
           gap: { xs: 1.5, md: 1.6, xl: 2.4 },
         }}>
-        <Stack
-          spacing={{ xs: 1.5, md: 1.6, xl: 2 }}
-          sx={{
-            minHeight: 0,
-            overflowY: 'auto',
-            overflowX: 'hidden',
-            px: 0.45,
-            pt: 0.35,
-            pb: 2,
-            mx: -0.45,
-          }}>
-          <Typography variant="h4">{selectedCategory?.name ?? copy.menu}</Typography>
+        <CashierBuilderMenuPanel
+          category={selectedCategory}
+          groups={groupedOrderItems}
+          isMobile={isMobile}
+          kitchenNote={kitchenNote}
+          locale={locale}
+          menuLabel={copy.menu}
+          itemCounts={menuItemMeta.countMap}
+          latestItemIds={menuItemMeta.latestItemMap}
+          total={currentOrder?.total}
+          billsLabel={copy.bills}
+          onAdd={addItem}
+          onCartOpen={() => setCartOpen(true)}
+          onRemove={removeItem}
+        />
 
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: {
-                xs: 'repeat(2, minmax(0, 1fr))',
-                md: 'repeat(2, minmax(0, 1fr))',
-                lg: 'repeat(3, minmax(0, 1fr))',
-                xl: 'repeat(4, minmax(0, 1fr))',
-                '@media (min-width: 1800px)': {
-                  gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
-                },
-              },
-              gap: { xs: 1.1, md: 1.2, xl: 1.4 },
-            }}>
-            {(selectedCategory?.items ?? []).map((menuItem) => {
-              const displayPrice = Number(menuItem.price ?? 0);
-              const displayPriceParts = formatMoneyParts(displayPrice, locale);
-              const menuItemImageUrl = resolveMenuItemImageUrl(menuItem.imageUrl);
-              const selectedCountForMenuItem = menuItemMeta.countMap.get(menuItem.id) ?? 0;
-              const hasSelectedCount = selectedCountForMenuItem > 0;
-
-              return (
-                <Box
-                  key={menuItem.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => addItem(menuItem, kitchenNote)}
-                  onKeyDown={createActionKeyHandler(() => addItem(menuItem, kitchenNote))}
-                  sx={(theme) => ({
-                    border: 0,
-                    p: 0,
-                    position: 'relative',
-                    minHeight: { xs: 112, md: 118, xl: 126 },
-                    overflow: 'hidden',
-                    borderRadius: '10px',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    transition:
-                      'transform 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease, border-color 0.16s ease',
-                    backgroundColor: 'var(--pos-menu-product-card-bg)',
-                    backgroundImage: 'none',
-                    boxShadow:
-                      theme.palette.mode === 'dark'
-                        ? 'inset 0 0 0 1px rgba(255,255,255,0.04)'
-                        : 'inset 0 0 0 1px rgba(40,51,65,0.06)',
-                    '&:hover': {
-                      backgroundColor: 'var(--pos-menu-product-card-hover-bg)',
-                      transform: 'translateY(-2px)',
-                      boxShadow:
-                        theme.palette.mode === 'dark'
-                          ? '0 14px 26px rgba(0,0,0,0.26), inset 0 0 0 1px rgba(255,255,255,0.06)'
-                          : '0 14px 28px rgba(40,51,65,0.12), inset 0 0 0 1px rgba(40,51,65,0.08)',
-                    },
-                    '&:active': {
-                      transform: 'translateY(0) scale(0.985)',
-                    },
-                    '&:focus-visible': {
-                      outline: `2px solid ${theme.palette.primary.main}`,
-                      outlineOffset: 2,
-                    },
-                  })}>
-                  {menuItemImageUrl ? (
-                    <Box
-                      component="img"
-                      src={menuItemImageUrl}
-                      alt={menuItem.name}
-                      loading="lazy"
-                      sx={{
-                        position: 'absolute',
-                        top: 10,
-                        right: 10,
-                        width: { xs: 48, md: 58 },
-                        height: { xs: 48, md: 58 },
-                        objectFit: 'cover',
-                        borderRadius: '8px',
-                        boxShadow: '0 8px 18px rgba(0,0,0,0.18)',
-                        backgroundColor: alpha('#ffffff', 0.3),
-                      }}
-                    />
-                  ) : null}
-                  <Stack justifyContent="space-between" sx={{ height: '100%', minHeight: 0 }}>
-                    <Stack
-                      spacing={0.75}
-                      sx={{
-                        p: { xs: 1.25, md: 1.45, xl: 1.85 },
-                        pr: menuItemImageUrl ? { xs: 7.25, md: 8.4, xl: 9.5 } : undefined,
-                      }}>
-                      <Typography variant="body2" color="text.secondary">
-                        {menuItem.prepStationName ?? copy.menu}
-                      </Typography>
-                      <Typography variant="h6" sx={{ pr: 1 }}>
-                        {menuItem.name}
-                      </Typography>
-                      {menuItem.description ? (
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          sx={{
-                            pr: 1,
-                            overflow: 'hidden',
-                            display: '-webkit-box',
-                            WebkitBoxOrient: 'vertical',
-                            WebkitLineClamp: 2,
-                          }}>
-                          {menuItem.description}
-                        </Typography>
-                      ) : null}
-                    </Stack>
-                    <Box
-                      sx={(theme) => ({
-                        minHeight: 40,
-                        mt: 'auto',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        px: { xs: 1.2, md: 2 },
-                        gap: 1.2,
-                        fontSize: { xs: 14, md: 16 },
-                        fontWeight: 700,
-                        color: theme.palette.mode === 'dark' ? '#f0f2f5' : theme.palette.text.primary,
-                        backgroundColor: 'var(--pos-menu-product-price-bg)',
-                      })}>
-                      {hasSelectedCount ? (
-                        <Stack direction="row" spacing={0.8} alignItems="center">
-                          <Box
-                            sx={(theme) => ({
-                              minWidth: 28,
-                              height: 28,
-                              px: 0.9,
-                              borderRadius: '999px',
-                              backgroundColor: theme.palette.mode === 'dark' ? '#141619' : '#252525',
-                              color: '#ffffff',
-                              display: 'grid',
-                              placeItems: 'center',
-                              fontSize: 14,
-                              fontWeight: 700,
-                              lineHeight: 1,
-                            })}>
-                            {selectedCountForMenuItem}
-                          </Box>
-                          <Box
-                            component="button"
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              const latestItemId = menuItemMeta.latestItemMap.get(menuItem.id);
-                              if (!latestItemId) {
-                                return;
-                              }
-                              removeItem(latestItemId);
-                            }}
-                            sx={(theme) => ({
-                              width: { xs: 28, md: 30 },
-                              height: { xs: 28, md: 30 },
-                              borderRadius: '50%',
-                              border: 0,
-                              display: 'grid',
-                              placeItems: 'center',
-                              backgroundColor: theme.palette.mode === 'dark' ? '#2a2d31' : alpha('#ffffff', 0.8),
-                              color: theme.palette.mode === 'dark' ? '#ffffff' : '#23262b',
-                              cursor: 'pointer',
-                              transition: 'transform 0.14s ease, background-color 0.14s ease, box-shadow 0.14s ease',
-                              boxShadow:
-                                theme.palette.mode === 'dark'
-                                  ? 'inset 0 0 0 1px rgba(255,255,255,0.08)'
-                                  : 'inset 0 0 0 1px rgba(35,38,43,0.12)',
-                              '&:hover': {
-                                backgroundColor: theme.palette.mode === 'dark' ? '#363a40' : '#ffffff',
-                              },
-                              '&:active': {
-                                transform: 'scale(0.92)',
-                              },
-                              '&:focus-visible': {
-                                outline: `2px solid ${theme.palette.primary.main}`,
-                                outlineOffset: 1,
-                              },
-                            })}>
-                            <Icon icon="solar:minus-circle-bold" width={18} />
-                          </Box>
-                          <Box
-                            component="button"
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              addItem(menuItem, kitchenNote);
-                            }}
-                            sx={(theme) => ({
-                              width: { xs: 28, md: 30 },
-                              height: { xs: 28, md: 30 },
-                              borderRadius: '50%',
-                              border: 0,
-                              display: 'grid',
-                              placeItems: 'center',
-                              backgroundColor: theme.palette.mode === 'dark' ? '#2a2d31' : alpha('#ffffff', 0.8),
-                              color: theme.palette.mode === 'dark' ? '#ffffff' : '#23262b',
-                              cursor: 'pointer',
-                              transition: 'transform 0.14s ease, background-color 0.14s ease, box-shadow 0.14s ease',
-                              boxShadow:
-                                theme.palette.mode === 'dark'
-                                  ? 'inset 0 0 0 1px rgba(255,255,255,0.08)'
-                                  : 'inset 0 0 0 1px rgba(35,38,43,0.12)',
-                              '&:hover': {
-                                backgroundColor: theme.palette.mode === 'dark' ? '#363a40' : '#ffffff',
-                              },
-                              '&:active': {
-                                transform: 'scale(0.92)',
-                              },
-                              '&:focus-visible': {
-                                outline: `2px solid ${theme.palette.primary.main}`,
-                                outlineOffset: 1,
-                              },
-                            })}>
-                            <Icon icon="solar:add-circle-bold" width={18} />
-                          </Box>
-                        </Stack>
-                      ) : null}
-                      <Typography
-                        component="span"
-                        sx={{
-                          ml: 'auto',
-                          display: 'inline-flex',
-                          alignItems: 'baseline',
-                          gap: 0.45,
-                          textAlign: 'right',
-                          fontWeight: 800,
-                          whiteSpace: 'nowrap',
-                        }}>
-                        <Box component="span" sx={{ fontSize: { xs: 20, md: 24 }, lineHeight: 1, fontWeight: 900 }}>
-                          {displayPriceParts.amount}
-                        </Box>
-                        <Box component="span" sx={{ fontSize: { xs: 13.5, md: 16 }, lineHeight: 1, fontWeight: 700 }}>
-                          {displayPriceParts.currency}
-                        </Box>
-                      </Typography>
-                    </Box>
-                  </Stack>
-                </Box>
-              );
-            })}
-          </Box>
-
-          {isMobile ? (
-            <Box
-              sx={(theme) => ({
-                position: 'sticky',
-                bottom: 0,
-                zIndex: 6,
-                borderRadius: '18px',
-                backgroundColor: 'var(--pos-mobile-summary-bg)',
-                backdropFilter: 'blur(18px)',
-                border: `1px solid ${alpha('#ffffff', theme.palette.mode === 'dark' ? 0.08 : 0.34)}`,
-                boxShadow: 'var(--pos-mobile-summary-shadow)',
-                px: 1.4,
-                py: 1.2,
-              })}>
-              <Stack direction="row" spacing={1.1} alignItems="center">
-                <Stack sx={{ flex: 1, minWidth: 0 }} spacing={0.15}>
-                  <Typography variant="body2" color="text.secondary">
-                    {groupedOrderItems.reduce((sum, [, items]) => sum + items.length, 0)} {copy.menu}
-                  </Typography>
-                  <Typography variant="h6" noWrap>
-                    {formatCompactMoney(currentOrder?.total, locale)}
-                  </Typography>
-                </Stack>
-                <Button variant="contained" sx={{ minWidth: 132 }} onClick={() => setCartOpen(true)}>
-                  {copy.bills}
-                </Button>
-              </Stack>
-            </Box>
-          ) : null}
-        </Stack>
-
-        <Box
-          sx={(theme) => ({
-            display: { xs: 'none', md: 'flex' },
-            borderRadius: '14px',
-            overflow: 'hidden',
-            height: '100%',
-            minHeight: 0,
-            backgroundColor: 'var(--pos-order-panel-bg)',
-            flexDirection: 'column',
-            border: `1px solid ${alpha('#ffffff', theme.palette.mode === 'dark' ? 0.04 : 0.3)}`,
-          })}>
-          <Box sx={{ p: 2.25 }}>
-            <Stack spacing={1.7}>
-              <Stack direction="row" spacing={1.5} alignItems="center">
-                <Box
-                  sx={{
-                    minWidth: 64,
-                    height: 64,
-                    borderRadius: '10px',
-                    backgroundColor: 'var(--pos-order-avatar-bg)',
-                    display: 'grid',
-                    placeItems: 'center',
-                    fontSize: 28,
-                    fontWeight: 700,
-                  }}>
-                  TG
-                </Box>
-
-                <Stack spacing={0.45}>
-                  <Typography variant="body1" color="text.secondary">
-                    {copy.orders}: {currentOrderLabel}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {session?.user.fullName}
-                  </Typography>
-                </Stack>
-              </Stack>
-
-              <PosOrderChannelSegment
-                takeawayLabel={copy.takeaway}
-                channel={builderChannel}
-                disabled={channelSwitchDisabled}
-                items={[
-                  { value: 'hall', label: copy.hall },
-                  { value: 'takeaway', label: copy.takeawaySwitch },
-                  { value: 'delivery', label: copy.deliverySwitch },
-                ]}
-                onChange={(channel) => void handleBuilderChannelChange(channel)}
-              />
-            </Stack>
-          </Box>
-
-          <Box sx={{ px: 2.25, pb: 2, flex: 1, overflowY: groupedOrderItems.length > 0 ? 'auto' : 'hidden' }}>
-            <Stack
-              spacing={1.45}
-              sx={groupedOrderItems.length === 0 ? { height: '100%', justifyContent: 'center' } : undefined}>
-              {groupedOrderItems.length > 0 ? (
-                groupedOrderItems.map(([stationName, items]) => (
-                  <Stack key={stationName} spacing={0.85}>
-                    <Typography variant="body2" color="text.secondary">
-                      {stationName}
-                    </Typography>
-                    {items.map((item) => (
-                      <Box
-                        key={item.key}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => setSelectedCartItemKey((current) => (current === item.key ? null : item.key))}
-                        onKeyDown={createActionKeyHandler(() =>
-                          setSelectedCartItemKey((current) => (current === item.key ? null : item.key)),
-                        )}
-                        sx={(theme) => ({
-                          width: '100%',
-                          border: 0,
-                          p: 0,
-                          textAlign: 'left',
-                          borderRadius: '10px',
-                          overflow: 'hidden',
-                          backgroundColor: 'var(--pos-cart-item-bg)',
-                          transition:
-                            'background-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease, border-color 0.16s ease',
-                          boxShadow:
-                            selectedCartItemKey === item.key
-                              ? `inset 0 0 0 1px ${alpha(theme.palette.primary.main, 0.44)}`
-                              : 'none',
-                          '&:hover': {
-                            backgroundColor: 'var(--pos-cart-item-hover-bg)',
-                            transform: 'translateY(-1px)',
-                          },
-                          '&:active': {
-                            transform: 'translateY(0) scale(0.992)',
-                          },
-                        })}>
-                        <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ p: 1.55 }}>
-                          <Stack spacing={0.35} sx={{ pr: 1 }}>
-                            <Typography
-                              variant="subtitle1"
-                              sx={
-                                item.status === 'cancelled'
-                                  ? { textDecoration: 'line-through', opacity: 0.68 }
-                                  : undefined
-                              }>
-                              {formatPosCopy(copy.itemQuantityLabel, {
-                                name: item.catalogItemName,
-                                quantity: item.quantity,
-                              })}
-                            </Typography>
-                            {item.note ? (
-                              <Typography variant="body2" color="text.secondary">
-                                {item.note}
-                              </Typography>
-                            ) : null}
-                            {item.markingRequiredCount > 0 ? (
-                              item.markingMissingCount > 0 ? (
-                                <Typography variant="body2" color="error.main">
-                                  {formatPosCopy(copy.markingProgress, {
-                                    scanned: item.markingScannedCount,
-                                    required: item.markingRequiredCount,
-                                  })}
-                                </Typography>
-                              ) : null
-                            ) : null}
-                          </Stack>
-                          <Typography variant="subtitle1" sx={{ whiteSpace: 'nowrap' }}>
-                            {formatCompactMoney(item.lineTotal, locale)}
-                          </Typography>
-                        </Stack>
-                        {selectedCartItemKey === item.key &&
-                        item.status !== 'cancelled' &&
-                        menuItemById.has(item.catalogItem) ? (
-                          <Stack
-                            direction="row"
-                            alignItems="center"
-                            justifyContent="space-between"
-                            spacing={1.2}
-                            sx={(theme) => ({
-                              borderTop: `1px solid ${alpha('#ffffff', theme.palette.mode === 'dark' ? 0.06 : 0.45)}`,
-                              backgroundColor: 'var(--pos-menu-item-price-bg)',
-                              px: 1.35,
-                              py: 1.1,
-                            })}>
-                            <Box
-                              component="button"
-                              type="button"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                const latestItemId = item.itemIds[item.itemIds.length - 1];
-                                removeItem(latestItemId);
-                              }}
-                              sx={(theme) => ({
-                                width: 42,
-                                height: 42,
-                                border: 0,
-                                display: 'grid',
-                                placeItems: 'center',
-                                cursor: 'pointer',
-                                borderRadius: '14px',
-                                color: theme.palette.mode === 'dark' ? '#f6f7f9' : '#262a30',
-                                backgroundColor: 'var(--pos-cart-action-bg)',
-                                transition: 'background-color 0.14s ease, transform 0.14s ease, box-shadow 0.14s ease',
-                                boxShadow:
-                                  theme.palette.mode === 'dark'
-                                    ? 'inset 0 0 0 1px rgba(255,255,255,0.08)'
-                                    : 'inset 0 0 0 1px rgba(38,42,48,0.08)',
-                                '&:hover': {
-                                  backgroundColor: 'var(--pos-cart-action-hover-bg)',
-                                },
-                                '&:active': {
-                                  transform: 'scale(0.94)',
-                                },
-                              })}>
-                              <Icon icon="solar:minus-circle-bold" width={22} />
-                            </Box>
-                            <Box
-                              component="button"
-                              type="button"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                const menuItem = menuItemById.get(item.catalogItem);
-                                if (!menuItem) {
-                                  return;
-                                }
-                                addItem(menuItem, kitchenNote);
-                              }}
-                              sx={(theme) => ({
-                                width: 42,
-                                height: 42,
-                                border: 0,
-                                display: 'grid',
-                                placeItems: 'center',
-                                cursor: 'pointer',
-                                borderRadius: '14px',
-                                color: theme.palette.mode === 'dark' ? '#f6f7f9' : '#262a30',
-                                backgroundColor: 'var(--pos-cart-action-bg)',
-                                transition: 'background-color 0.14s ease, transform 0.14s ease, box-shadow 0.14s ease',
-                                boxShadow:
-                                  theme.palette.mode === 'dark'
-                                    ? 'inset 0 0 0 1px rgba(255,255,255,0.08)'
-                                    : 'inset 0 0 0 1px rgba(38,42,48,0.08)',
-                                '&:hover': {
-                                  backgroundColor: 'var(--pos-cart-action-hover-bg)',
-                                },
-                                '&:active': {
-                                  transform: 'scale(0.94)',
-                                },
-                              })}>
-                              <Icon icon="solar:add-circle-bold" width={22} />
-                            </Box>
-                          </Stack>
-                        ) : null}
-                      </Box>
-                    ))}
-                  </Stack>
-                ))
-              ) : (
-                <Stack sx={{ textAlign: 'center' }} spacing={1}>
-                  <Typography variant="h6">{copy.emptyOrder}</Typography>
-                  <Typography variant="body1" color="text.secondary">
-                    {copy.builderEmpty}
-                  </Typography>
-                </Stack>
-              )}
-            </Stack>
-          </Box>
-
-          <Divider />
-
-          <Stack spacing={1.4} sx={{ p: 2.25 }}>
-            <TextField
-              label={copy.kitchenNote}
-              value={kitchenNote}
-              onChange={(event) => setKitchenNote(event.target.value)}
-              multiline
-              minRows={1}
-            />
-
-            <Stack direction="row" justifyContent="space-between">
-              <Typography variant="body1" color="text.secondary">
-                {copy.subtotal}:
-              </Typography>
-              <Typography variant="body1" color="text.secondary">
-                {formatCompactMoney(currentOrder?.subtotal, locale)}
-              </Typography>
-            </Stack>
-            {shouldShowServiceFee ? (
-              <Stack direction="row" justifyContent="space-between">
-                <Typography variant="body1" color="text.secondary">
-                  {serviceFeeLabel}:
-                </Typography>
-                <Typography variant="body1" color="text.secondary">
-                  {formatCompactMoney(currentOrder?.serviceFee, locale)}
-                </Typography>
-              </Stack>
-            ) : null}
-            {shouldShowVat ? (
-              <Stack direction="row" justifyContent="space-between">
-                <Typography variant="body1" color="text.secondary">
-                  {vatLabel}:
-                </Typography>
-                <Typography variant="body1" color="text.secondary">
-                  {formatCompactMoney(vatAmount, locale)}
-                </Typography>
-              </Stack>
-            ) : null}
-            <Stack direction="row" justifyContent="space-between" alignItems="flex-end">
-              <Typography variant="h5">{copy.grandTotal}:</Typography>
-              <Typography variant="h4" sx={{ lineHeight: 1.05, textAlign: 'right' }}>
-                {formatCompactMoney(currentOrder?.total, locale)}
-              </Typography>
-            </Stack>
-            {hasMissingMarkings ? (
-              <Typography variant="body2" color="error.main">
-                {missingMarkingMessage}
-              </Typography>
-            ) : null}
-
-            <Stack direction="row" spacing={1.1}>
-              {!isTakeawayChannel ? (
-                <Button
-                  variant="contained"
-                  sx={(theme) => ({
-                    flex: 1,
-                    backgroundImage: 'none',
-                    backgroundColor: 'var(--pos-secondary-action-bg)',
-                    color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
-                  })}
-                  disabled={isSubmitDisabled}
-                  onClick={() => void handleSendOrder()}>
-                  {submitOrderMutation.isPending ? copy.processing : copy.sendOrder}
-                </Button>
-              ) : null}
-              <Button
-                variant="contained"
-                sx={{ flex: isTakeawayChannel ? 1 : 1.1 }}
-                disabled={isSubmitDisabled}
-                onClick={() => void handleCheckout()}>
-                {copy.goToPayment}
-              </Button>
-            </Stack>
-          </Stack>
-        </Box>
+        <CashierBuilderDesktopCart
+          channel={builderChannel}
+          channelSwitchDisabled={channelSwitchDisabled}
+          copy={copy}
+          currentOrderLabel={currentOrderLabel}
+          groups={groupedOrderItems}
+          isSubmitDisabled={isSubmitDisabled}
+          isSubmitting={submitOrderMutation.isPending}
+          kitchenNote={kitchenNote}
+          locale={locale}
+          menuItems={menuItemById}
+          missingMarkingMessage={missingMarkingMessage}
+          selectedItemKey={selectedCartItemKey}
+          serviceFee={currentOrder?.serviceFee}
+          serviceFeeLabel={serviceFeeLabel}
+          showMissingMarkings={hasMissingMarkings}
+          showServiceFee={shouldShowServiceFee}
+          showVat={shouldShowVat}
+          subtotal={currentOrder?.subtotal}
+          total={currentOrder?.total}
+          userName={session?.user.fullName}
+          vatAmount={vatAmount}
+          vatLabel={vatLabel}
+          onAdd={(menuItem) => addItem(menuItem, kitchenNote)}
+          onChannelChange={(channel) => void builderActions.changeChannel(channel)}
+          onCheckout={() => void builderActions.runOrderAction('checkout')}
+          onKitchenNoteChange={setKitchenNote}
+          onRemove={removeItem}
+          onSelect={(key) => setSelectedCartItemKey((current) => (current === key ? null : key))}
+          onSendOrder={() => void builderActions.runOrderAction('submit')}
+        />
       </Box>
 
-      <Drawer
-        anchor="bottom"
+      <CashierBuilderMobileCart
         open={isMobile && cartOpen}
+        channel={builderChannel}
+        channelSwitchDisabled={channelSwitchDisabled}
+        copy={copy}
+        currentOrderLabel={currentOrderLabel}
+        groups={groupedOrderItems}
+        isSubmitDisabled={isSubmitDisabled}
+        isSubmitting={submitOrderMutation.isPending}
+        kitchenNote={kitchenNote}
+        locale={locale}
+        menuItems={menuItemById}
+        missingMarkingMessage={missingMarkingMessage}
+        selectedItemKey={selectedCartItemKey}
+        serviceFee={currentOrder?.serviceFee}
+        serviceFeeLabel={serviceFeeLabel}
+        showMissingMarkings={hasMissingMarkings}
+        showServiceFee={shouldShowServiceFee}
+        showVat={shouldShowVat}
+        subtotal={currentOrder?.subtotal}
+        total={currentOrder?.total}
+        userName={session?.user.fullName}
+        vatAmount={vatAmount}
+        vatLabel={vatLabel}
+        onAdd={(menuItem) => addItem(menuItem, kitchenNote)}
+        onChannelChange={(channel) => void builderActions.changeChannel(channel)}
+        onCheckout={() => void builderActions.runOrderAction('checkout')}
         onClose={() => setCartOpen(false)}
-        PaperProps={{
-          sx: {
-            height: 'min(82dvh, 860px)',
-            borderTopLeftRadius: 24,
-            borderTopRightRadius: 24,
-            backgroundImage: 'none',
-            overflow: 'hidden',
-          },
-        }}>
-        <Stack sx={{ height: '100%' }}>
-          <Stack
-            direction="row"
-            spacing={1.2}
-            alignItems="center"
-            justifyContent="space-between"
-            sx={{ px: 2, py: 1.5 }}>
-            <Stack spacing={0.25}>
-              <Typography variant="h6">{copy.bills}</Typography>
-              <Typography variant="body2" color="text.secondary">
-                {copy.orders}: {currentOrderLabel}
-              </Typography>
-            </Stack>
-            <PosIconAction icon="solar:close-circle-bold-duotone" onClick={() => setCartOpen(false)} />
-          </Stack>
-          <Box sx={{ px: 2, pb: 1.35 }}>
-            <PosOrderChannelSegment
-              takeawayLabel={copy.takeaway}
-              channel={builderChannel}
-              compact
-              disabled={channelSwitchDisabled}
-              items={[
-                { value: 'takeaway', label: copy.takeaway },
-                { value: 'delivery', label: copy.delivery },
-              ]}
-              onChange={(channel) => void handleBuilderChannelChange(channel)}
-            />
-          </Box>
-          <Divider />
-          <Box sx={{ px: 2, py: 1.5, flex: 1, overflowY: 'auto' }}>
-            <Stack spacing={1.25}>
-              {groupedOrderItems.map(([stationName, items]) => (
-                <Stack key={stationName} spacing={0.85}>
-                  <Typography variant="body2" color="text.secondary">
-                    {stationName}
-                  </Typography>
-                  {items.map((item) => (
-                    <Box
-                      key={item.key}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => setSelectedCartItemKey((current) => (current === item.key ? null : item.key))}
-                      onKeyDown={createActionKeyHandler(() =>
-                        setSelectedCartItemKey((current) => (current === item.key ? null : item.key)),
-                      )}
-                      sx={(theme) => ({
-                        width: '100%',
-                        border: 0,
-                        p: 0,
-                        textAlign: 'left',
-                        borderRadius: '12px',
-                        overflow: 'hidden',
-                        backgroundColor: 'var(--pos-cart-item-bg)',
-                        boxShadow:
-                          selectedCartItemKey === item.key
-                            ? `inset 0 0 0 1px ${alpha(theme.palette.primary.main, 0.44)}`
-                            : 'none',
-                      })}>
-                      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ p: 1.5 }}>
-                        <Stack spacing={0.25} sx={{ pr: 1, minWidth: 0 }}>
-                          <Typography
-                            variant="subtitle2"
-                            sx={
-                              item.status === 'cancelled'
-                                ? { textDecoration: 'line-through', opacity: 0.68 }
-                                : undefined
-                            }>
-                            {formatPosCopy(copy.itemQuantityLabel, {
-                              name: item.catalogItemName,
-                              quantity: item.quantity,
-                            })}
-                          </Typography>
-                          {item.note ? (
-                            <Typography variant="caption" color="text.secondary">
-                              {item.note}
-                            </Typography>
-                          ) : null}
-                          {item.markingRequiredCount > 0 ? (
-                            item.markingMissingCount > 0 ? (
-                              <Typography variant="caption" color="error.main">
-                                {formatPosCopy(copy.markingProgress, {
-                                  scanned: item.markingScannedCount,
-                                  required: item.markingRequiredCount,
-                                })}
-                              </Typography>
-                            ) : null
-                          ) : null}
-                        </Stack>
-                        <Typography variant="subtitle2">{formatCompactMoney(item.lineTotal, locale)}</Typography>
-                      </Stack>
-                      {selectedCartItemKey === item.key &&
-                      item.status !== 'cancelled' &&
-                      menuItemById.has(item.catalogItem) ? (
-                        <Stack
-                          direction="row"
-                          spacing={1}
-                          alignItems="center"
-                          justifyContent="space-between"
-                          sx={(theme) => ({
-                            px: 1.1,
-                            py: 1,
-                            borderTop: `1px solid ${alpha('#ffffff', theme.palette.mode === 'dark' ? 0.06 : 0.45)}`,
-                            backgroundColor: 'var(--pos-menu-item-price-bg)',
-                          })}>
-                          <Button
-                            variant="contained"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              const latestItemId = item.itemIds[item.itemIds.length - 1];
-                              removeItem(latestItemId);
-                            }}
-                            sx={{ minWidth: 54, px: 0 }}>
-                            <Icon icon="solar:minus-circle-bold" width={18} />
-                          </Button>
-                          <Button
-                            variant="contained"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              const menuItem = menuItemById.get(item.catalogItem);
-                              if (menuItem) {
-                                addItem(menuItem, kitchenNote);
-                              }
-                            }}
-                            sx={{ minWidth: 54, px: 0 }}>
-                            <Icon icon="solar:add-circle-bold" width={18} />
-                          </Button>
-                        </Stack>
-                      ) : null}
-                    </Box>
-                  ))}
-                </Stack>
-              ))}
-            </Stack>
-          </Box>
-          <Divider />
-          <Stack spacing={1.25} sx={{ px: 2, py: 1.6 }}>
-            <TextField
-              label={copy.kitchenNote}
-              value={kitchenNote}
-              onChange={(event) => setKitchenNote(event.target.value)}
-              multiline
-              minRows={2}
-            />
-            <Stack direction="row" justifyContent="space-between">
-              <Typography variant="body2" color="text.secondary">
-                {copy.subtotal}
-              </Typography>
-              <Typography variant="body2">{formatCompactMoney(currentOrder?.subtotal, locale)}</Typography>
-            </Stack>
-            {shouldShowServiceFee ? (
-              <Stack direction="row" justifyContent="space-between">
-                <Typography variant="body2" color="text.secondary">
-                  {serviceFeeLabel}
-                </Typography>
-                <Typography variant="body2">{formatCompactMoney(currentOrder?.serviceFee, locale)}</Typography>
-              </Stack>
-            ) : null}
-            {shouldShowVat ? (
-              <Stack direction="row" justifyContent="space-between">
-                <Typography variant="body2" color="text.secondary">
-                  {vatLabel}
-                </Typography>
-                <Typography variant="body2">{formatCompactMoney(vatAmount, locale)}</Typography>
-              </Stack>
-            ) : null}
-            <Stack direction="row" justifyContent="space-between">
-              <Typography variant="body2" color="text.secondary">
-                {copy.grandTotal}
-              </Typography>
-              <Typography variant="h6">{formatCompactMoney(currentOrder?.total, locale)}</Typography>
-            </Stack>
-            {hasMissingMarkings ? (
-              <Typography variant="body2" color="error.main">
-                {missingMarkingMessage}
-              </Typography>
-            ) : null}
-            <Stack direction="row" spacing={1}>
-              {!isTakeawayChannel ? (
-                <Button
-                  variant="contained"
-                  sx={(theme) => ({
-                    flex: 1,
-                    backgroundImage: 'none',
-                    backgroundColor: 'var(--pos-secondary-action-bg)',
-                    color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
-                  })}
-                  disabled={isSubmitDisabled}
-                  onClick={() => void handleSendOrder()}>
-                  {submitOrderMutation.isPending ? copy.processing : copy.sendOrder}
-                </Button>
-              ) : null}
-              <Button
-                variant="contained"
-                sx={{ flex: isTakeawayChannel ? 1 : 1.1 }}
-                disabled={isSubmitDisabled}
-                onClick={() => void handleCheckout()}>
-                {copy.goToPayment}
-              </Button>
-            </Stack>
-          </Stack>
-        </Stack>
-      </Drawer>
+        onKitchenNoteChange={setKitchenNote}
+        onRemove={removeItem}
+        onSelect={(key) => setSelectedCartItemKey((current) => (current === key ? null : key))}
+        onSendOrder={() => void builderActions.runOrderAction('submit')}
+      />
 
-      <Dialog
-        open={deliveryDialogOpen}
-        onClose={() => {
-          if (!deliveryDetailsSaving) {
-            setDeliveryDialogOpen(false);
-            setPendingDeliveryAction(null);
-          }
-        }}
-        fullWidth
-        maxWidth="xs">
-        <DialogTitle>{copy.deliveryDetails}</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ pt: 0.5 }}>
-            <TextField
-              label={copy.deliveryPhone}
-              value={deliveryPhone}
-              onChange={(event) => setDeliveryPhone(formatDeliveryPhoneInput(event.target.value))}
-              inputProps={{ inputMode: 'numeric' }}
-              error={deliveryDetailsAttempted && !isDeliveryPhoneValid}
-              helperText={copy.deliveryPhoneHelper}
-              autoFocus
-            />
-            <TextField
-              label={copy.deliveryAddress}
-              value={deliveryAddress}
-              onChange={(event) => setDeliveryAddress(event.target.value)}
-              multiline
-              minRows={3}
-              error={deliveryDetailsAttempted && !isDeliveryAddressValid}
-              helperText={deliveryDetailsAttempted && !isDeliveryAddressValid ? copy.deliveryAddressRequired : ' '}
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button
-            onClick={() => {
-              setDeliveryDialogOpen(false);
-              setPendingDeliveryAction(null);
-            }}
-            disabled={deliveryDetailsSaving}>
-            {copy.close}
-          </Button>
-          <Button
-            variant="contained"
-            onClick={() => void handleConfirmDeliveryDetails()}
-            disabled={deliveryDetailsSaving}>
-            {deliveryDetailsSaving
-              ? copy.processing
-              : pendingDeliveryAction === 'checkout'
-                ? copy.goToPayment
-                : copy.sendOrder}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <CashierDeliveryDetailsDialog
+        open={builderActions.deliveryDialogOpen}
+        saving={builderActions.deliveryDetailsSaving}
+        attempted={builderActions.deliveryDetailsAttempted}
+        phone={builderActions.deliveryPhone}
+        address={builderActions.deliveryAddress}
+        isPhoneValid={builderActions.isDeliveryPhoneValid}
+        isAddressValid={builderActions.isDeliveryAddressValid}
+        pendingAction={builderActions.pendingDeliveryAction}
+        copy={copy}
+        onPhoneChange={builderActions.setDeliveryPhone}
+        onAddressChange={builderActions.setDeliveryAddress}
+        onClose={builderActions.closeDeliveryDialog}
+        onConfirm={() => void builderActions.confirmDeliveryDetails()}
+      />
 
       <PosSettingsMenu
         anchorEl={settingsAnchor}
