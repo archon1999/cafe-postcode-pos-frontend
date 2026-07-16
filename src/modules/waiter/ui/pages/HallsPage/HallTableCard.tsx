@@ -193,6 +193,7 @@ export function HallTableCard({
   const markers = getVariantMarkers(table.shapeVariant);
   const isTall = coreShape === 'vertical' || Number(table.height ?? 1) > Number(table.width ?? 1);
   const activeSessionCount = table.activeSessionCount ?? table.activeSessions?.length ?? (table.activeSession ? 1 : 0);
+  const activeSessionCountLabel = `x${activeSessionCount}`;
 
   const numberPlateSx =
     coreShape === 'horizontal'
@@ -324,7 +325,7 @@ export function HallTableCard({
                   lineHeight: 1,
                   boxShadow: `0 0 0 4px ${palette.attentionRing}, 0 8px 16px rgba(0,0,0,0.2)`,
                 }}>
-                x{activeSessionCount}
+                {activeSessionCountLabel}
               </Box>
             ) : null}
           </Box>

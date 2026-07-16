@@ -24,7 +24,7 @@ export function RestaurantLoginPageContent() {
     onSuccess: (response) => {
       setErrorMessage('');
       setRestaurantContext(response);
-      navigate(resolveAuthNextPath(location.search), { replace: true });
+      void navigate(resolveAuthNextPath(location.search), { replace: true });
     },
     onError: (error) => {
       setErrorMessage(error.message || copy.invalidPin);

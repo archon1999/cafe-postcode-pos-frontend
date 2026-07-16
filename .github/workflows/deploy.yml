@@ -3,7 +3,13 @@ name: POS Frontend CI/CD
 on:
   push:
     branches:
+      - develop
       - production
+  pull_request:
+    branches:
+      - develop
+      - production
+  workflow_dispatch:
 
 jobs:
   verify:
@@ -21,6 +27,12 @@ jobs:
 
       - name: Install dependencies
         run: npm ci --force
+
+      - name: Run lint
+        run: npm run lint
+
+      - name: Run unit tests
+        run: npm test
 
       - name: Build production bundle
         run: npm run prod:build

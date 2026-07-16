@@ -87,5 +87,11 @@ export default tseslint.config(
         },
       },
     },
+    {
+      files: ['**/*.{test,spec}.{ts,tsx}'],
+      rules: {
+        'i18next/no-literal-string': 'off',
+      },
+    },
   ],
 );

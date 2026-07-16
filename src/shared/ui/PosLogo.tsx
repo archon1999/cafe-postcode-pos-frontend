@@ -15,7 +15,6 @@ export function PosLogo({ sx, isSingle = true, ...other }: PosLogoProps) {
   const uniqueId = useId();
 
   const TEXT_PRIMARY = theme.palette.text.primary;
-  const PRIMARY_LIGHT = theme.palette.primary.light;
   const PRIMARY_MAIN = theme.palette.primary.main;
   const PRIMARY_DARK = theme.palette.primary.dark;
   const SECONDARY_MAIN = theme.palette.secondary.main;

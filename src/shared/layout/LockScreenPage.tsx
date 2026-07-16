@@ -54,7 +54,7 @@ export function LockScreenPage() {
             onClick={(event) => {
               event.stopPropagation();
               setSession(null);
-              navigate('/pin-login', { replace: true });
+              void navigate('/pin-login', { replace: true });
             }}
             sx={{
               backgroundColor: 'rgba(255,255,255,0.18)',

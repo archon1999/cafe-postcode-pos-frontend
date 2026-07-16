@@ -181,11 +181,11 @@ function PosOpenChecksDetailSkeleton() {
           {Array.from({ length: 5 }).map((_, index) => (
             <Box
               key={index}
-              sx={(theme) => ({
+              sx={{
                 borderRadius: '10px',
                 p: 1.65,
                 backgroundColor: 'var(--pos-cart-item-bg)',
-              })}>
+              }}>
               <Stack direction="row" justifyContent="space-between" spacing={2}>
                 <Stack spacing={0.45} sx={{ flex: 1 }}>
                   <Skeleton variant="rounded" width="68%" height={20} />
@@ -270,11 +270,11 @@ function PosBuilderCartSkeleton() {
           {Array.from({ length: 5 }).map((_, index) => (
             <Box
               key={index}
-              sx={(theme) => ({
+              sx={{
                 borderRadius: '12px',
                 p: 1.5,
                 backgroundColor: 'var(--pos-cart-item-bg)',
-              })}>
+              }}>
               <Stack direction="row" justifyContent="space-between" spacing={1.5}>
                 <Stack spacing={0.5} sx={{ flex: 1 }}>
                   <Skeleton variant="rounded" width="72%" height={20} />
