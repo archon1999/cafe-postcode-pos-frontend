@@ -10,6 +10,7 @@ import { PosLogo } from 'shared/ui/PosLogo';
 import { usePinLoginMutation } from '../../application';
 import { getPosHomePath } from '../../domain';
 import { resolvePosAuthBackgroundImage } from '../auth-background';
+import { resolveAuthNextPath } from '../next-path';
 import { usePosSession } from '../session-context';
 
 const keypad = ['1', '2', '3', 'backspace', '4', '5', '6', '', '7', '8', '9', '', '', '0', '', ''];
@@ -47,7 +48,7 @@ export function LoginPageContent() {
       setToastOpen(false);
       setErrorMessage('');
       setSession(response);
-      void navigate(getPosHomePath(response), { replace: true });
+      void navigate(resolveAuthNextPath(location.search, getPosHomePath(response)), { replace: true });
     },
     onError: (error) => {
       setPin('');

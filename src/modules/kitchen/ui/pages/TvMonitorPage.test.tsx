@@ -1,0 +1,48 @@
+// @vitest-environment jsdom
+
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { kitchenRepository, readTvMonitorDevice } from 'modules/kitchen/data-access';
+
+import { TvMonitorPage } from './TvMonitorPage';
+
+vi.mock('qrcode', () => ({ default: { toDataURL: vi.fn().mockResolvedValue('data:image/png;base64,qr') } }));
+vi.mock('./KitchenMonitorPage', () => ({
+  KitchenMonitorDisplay: () => <div data-testid="paired-monitor" />,
+}));
+
+describe('TvMonitorPage', () => {
+  beforeEach(() => window.localStorage.clear());
+
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
+
+  it('stores the device permanently after the manager claims the QR pairing', async () => {
+    vi.spyOn(kitchenRepository, 'createTvMonitorPairing').mockResolvedValue({
+      id: 'pairing-1',
+      pollToken: 'device-token',
+      claimToken: 'claim-token',
+      expiresAt: '2099-01-01T00:00:00Z',
+    });
+    vi.spyOn(kitchenRepository, 'getTvMonitorPairingStatus').mockResolvedValue({
+      status: 'paired',
+      restaurantContext: { restaurantId: 'restaurant-1', restaurantName: 'Qamish' },
+    });
+    vi.spyOn(kitchenRepository, 'getTvMonitorQueue').mockResolvedValue({ preparing: [], recentlyDone: [] });
+
+    render(<TvMonitorPage />);
+
+    expect(await screen.findByTestId('paired-monitor')).toBeTruthy();
+    await waitFor(() =>
+      expect(readTvMonitorDevice()).toEqual({
+        token: 'device-token',
+        restaurantId: 'restaurant-1',
+        restaurantName: 'Qamish',
+      }),
+    );
+    expect(kitchenRepository.getTvMonitorQueue).toHaveBeenCalledWith('device-token');
+  });
+});

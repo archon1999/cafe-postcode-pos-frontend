@@ -2,7 +2,7 @@ import axios, { type AxiosRequestConfig } from 'axios';
 
 import { persistSession, readStoredLocale, readStoredSession } from 'modules/auth/data-access';
 
-import { resolveApiBaseUrl } from './apiUrl';
+import { resolveApiBaseUrl, resolveRemoteApiBaseUrl } from './apiUrl';
 import { readEdgeToken } from './edgeConnection';
 
 export const apiClient = axios.create({
@@ -14,6 +14,20 @@ export const apiClient = axios.create({
 
 export const publicApiClient = axios.create({
   baseURL: resolveApiBaseUrl(),
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+export const remotePublicApiClient = axios.create({
+  baseURL: resolveRemoteApiBaseUrl(),
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+export const remoteApiClient = axios.create({
+  baseURL: resolveRemoteApiBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
   },
@@ -51,6 +65,26 @@ publicApiClient.interceptors.request.use((config) => {
   return config;
 });
 
+remotePublicApiClient.interceptors.request.use((config) => {
+  const locale = readStoredLocale();
+
+  config.baseURL = resolveRemoteApiBaseUrl();
+  config.headers['Accept-Language'] = locale;
+  config.headers['X-Language'] = locale;
+  return config;
+});
+
+remoteApiClient.interceptors.request.use((config) => {
+  const session = readStoredSession();
+  const locale = readStoredLocale();
+
+  config.baseURL = resolveRemoteApiBaseUrl();
+  if (session?.token) config.headers.Authorization = `Token ${session.token}`;
+  config.headers['Accept-Language'] = locale;
+  config.headers['X-Language'] = locale;
+  return config;
+});
+
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -75,6 +109,21 @@ export async function apiGet<T>(url: string) {
 
 export async function apiGetPublic<T>(url: string, config?: AxiosRequestConfig) {
   const response = await publicApiClient.get<T>(url, config);
+  return response.data;
+}
+
+export async function apiGetRemotePublic<T>(url: string, config?: AxiosRequestConfig) {
+  const response = await remotePublicApiClient.get<T>(url, config);
+  return response.data;
+}
+
+export async function apiPostRemotePublic<T>(url: string, payload?: unknown, config?: AxiosRequestConfig) {
+  const response = await remotePublicApiClient.post<T>(url, payload, config);
+  return response.data;
+}
+
+export async function apiPostRemote<T>(url: string, payload?: unknown, config?: AxiosRequestConfig) {
+  const response = await remoteApiClient.post<T>(url, payload, config);
   return response.data;
 }
 

@@ -108,8 +108,8 @@ describe('POS kitchen characterization', () => {
     expect(queue.result.current.data).toEqual([]);
     expect(disabledMonitor.result.current.fetchStatus).toBe('idle');
     expect(mocks.apiGet).toHaveBeenCalledTimes(1);
-    expect(client.getQueryCache().find({ queryKey: ['kitchen', 'queue'] })?.options.refetchInterval).toBe(4000);
-    expect(client.getQueryCache().find({ queryKey: ['kitchen', 'monitor', null] })?.options.refetchInterval).toBe(4000);
+    expect(client.getQueryCache().find({ queryKey: ['kitchen', 'queue'] })?.options.refetchInterval).toBe(5000);
+    expect(client.getQueryCache().find({ queryKey: ['kitchen', 'monitor', null] })?.options.refetchInterval).toBe(5000);
   });
 
   it('posts ticket and item status then invalidates every current kitchen consumer', async () => {

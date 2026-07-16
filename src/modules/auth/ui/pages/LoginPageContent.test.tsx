@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { LoginPageContent } from './LoginPageContent';
@@ -73,5 +73,21 @@ describe('LoginPageContent', () => {
     expect(setSessionMock).toHaveBeenCalledWith(null);
     expect(setRestaurantContextMock).toHaveBeenCalledWith(null);
     expect(navigateMock).toHaveBeenCalledWith('/restaurant-login?next=%2Fmonitor%2Fqueue', { replace: true });
+  });
+
+  it('returns to the requested page after PIN login', async () => {
+    render(<LoginPageContent />);
+    const options = usePinLoginMutationMock.mock.calls[0][0] as {
+      onSuccess: (response: unknown) => void;
+    };
+    const response = {
+      token: 'employee-token',
+      user: { id: 'user-1', username: 'manager', fullName: 'Manager', permissionCodes: [] },
+    };
+
+    await act(async () => options.onSuccess(response));
+
+    expect(setSessionMock).toHaveBeenCalledWith(response);
+    expect(navigateMock).toHaveBeenCalledWith('/monitor/queue', { replace: true });
   });
 });

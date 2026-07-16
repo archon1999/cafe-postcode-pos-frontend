@@ -9,7 +9,7 @@ const useKitchenMonitorQueryMock = vi.fn();
 
 vi.mock('modules/auth', () => ({
   usePosSession: () => ({
-    restaurantContext: { restaurantId: 'restaurant-1' },
+    restaurantContext: { restaurantId: 'restaurant-1', restaurantName: 'Test Restaurant' },
   }),
 }));
 
@@ -79,10 +79,42 @@ describe('KitchenMonitorPage', () => {
 
     expect(screen.getByText('Tayyorlanayapti')).toBeTruthy();
     expect(screen.getByText("Tayyor bo'lganlar")).toBeTruthy();
+    expect(screen.getByTestId('monitor-clock')).toBeTruthy();
     expect(screen.getByText('#14')).toBeTruthy();
     expect(screen.getByText('#15')).toBeTruthy();
     expect(screen.queryByTestId('ready-order-spotlight')).toBeNull();
     expect(audioContextConstructor).not.toHaveBeenCalled();
+  });
+
+  it('shows six orders per page, rotates overflow, and renders an empty ready state', async () => {
+    useKitchenMonitorQueryMock.mockReturnValue({
+      data: {
+        preparing: Array.from({ length: 7 }, (_, index) => ({
+          id: `prep-${index + 1}`,
+          orderNumber: index + 1,
+          displayName: String(index + 1),
+          status: 'new',
+          completedAt: null,
+        })),
+        recentlyDone: [],
+      },
+    });
+
+    render(<KitchenMonitorPage />);
+
+    expect(screen.getByText('#1')).toBeTruthy();
+    expect(screen.getByText('#6')).toBeTruthy();
+    expect(screen.queryByText('#7')).toBeNull();
+    expect(screen.getByText('1 / 2')).toBeTruthy();
+    expect(screen.getByText('Hozircha tayyor buyurtmalar yo‘q')).toBeTruthy();
+
+    await act(async () => {
+      vi.advanceTimersByTime(8000);
+    });
+
+    expect(screen.queryByText('#1')).toBeNull();
+    expect(screen.getByText('#7')).toBeTruthy();
+    expect(screen.getByText('2 / 2')).toBeTruthy();
   });
 
   it('shows a centered spotlight and plays a single sound when a new ready order appears', async () => {

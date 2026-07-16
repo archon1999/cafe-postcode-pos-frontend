@@ -16,7 +16,7 @@ import {
   usePosSession,
 } from 'modules/auth';
 import { CashierBuilderPage, CashierShiftPage, OpenChecksPage, PaymentPage } from 'modules/cashier';
-import { KitchenMonitorPage, KitchenQueuePage } from 'modules/kitchen';
+import { KitchenMonitorPage, KitchenQueuePage, TvMonitorPage, TvMonitorPairingClaimPage } from 'modules/kitchen';
 import { MenuCatalogPage } from 'modules/menu-catalog';
 import { HallsPage, TableSessionPage } from 'modules/waiter';
 
@@ -55,6 +55,16 @@ function PosMonitorRestaurantGuard({ children }: { children: ReactElement }) {
   return children;
 }
 
+function PosEmployeeGuard({ children }: { children: ReactElement }) {
+  const location = useLocation();
+  const { isAuthenticated, restaurantContext } = usePosSession();
+  const next = encodeURIComponent(`${location.pathname}${location.search}`);
+
+  if (!restaurantContext) return <Navigate to={`/restaurant-login?next=${next}`} replace />;
+  if (!isAuthenticated) return <Navigate to={`/pin-login?next=${next}`} replace />;
+  return children;
+}
+
 export const posRouter = createBrowserRouter([
   {
     path: '/restaurant-login',
@@ -78,6 +88,23 @@ export const posRouter = createBrowserRouter([
       <PosMonitorRestaurantGuard>
         <KitchenMonitorPage />
       </PosMonitorRestaurantGuard>
+    ),
+  },
+  {
+    path: '/monitoring/queue',
+    element: (
+      <PosMonitorRestaurantGuard>
+        <KitchenMonitorPage />
+      </PosMonitorRestaurantGuard>
+    ),
+  },
+  { path: '/tv', element: <TvMonitorPage /> },
+  {
+    path: '/tv/pair/:pairingId',
+    element: (
+      <PosEmployeeGuard>
+        <TvMonitorPairingClaimPage />
+      </PosEmployeeGuard>
     ),
   },
   {
