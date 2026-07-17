@@ -79,6 +79,7 @@ describe('KitchenMonitorPage', () => {
 
     expect(screen.getByText('Tayyorlanayapti')).toBeTruthy();
     expect(screen.getByText("Tayyor bo'lganlar")).toBeTruthy();
+    expect(screen.getByTestId('monitor-restaurant-name').textContent).toBe('Test Restaurant');
     expect(screen.getByTestId('monitor-clock')).toBeTruthy();
     expect(screen.getByText('#14')).toBeTruthy();
     expect(screen.getByText('#15')).toBeTruthy();
@@ -86,7 +87,7 @@ describe('KitchenMonitorPage', () => {
     expect(audioContextConstructor).not.toHaveBeenCalled();
   });
 
-  it('shows six orders per page, rotates overflow, and renders an empty ready state', async () => {
+  it('shows six orders per page, rotates overflow, and leaves an empty ready column clean', async () => {
     useKitchenMonitorQueryMock.mockReturnValue({
       data: {
         preparing: Array.from({ length: 7 }, (_, index) => ({
@@ -106,7 +107,9 @@ describe('KitchenMonitorPage', () => {
     expect(screen.getByText('#6')).toBeTruthy();
     expect(screen.queryByText('#7')).toBeNull();
     expect(screen.getByText('1 / 2')).toBeTruthy();
-    expect(screen.getByText('Hozircha tayyor buyurtmalar yo‘q')).toBeTruthy();
+    expect(screen.queryByText('Hozircha tayyor buyurtmalar yo‘q')).toBeNull();
+    expect(screen.queryByText('Yangi buyurtmalar kutilmoqda')).toBeNull();
+    expect(screen.queryByTestId('monitor-empty-state')).toBeNull();
 
     await act(async () => {
       vi.advanceTimersByTime(8000);

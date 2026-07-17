@@ -141,7 +141,6 @@ function MonitorColumn({
   highlightShadow,
   columnBackground,
   rowBackgroundColor,
-  emptyLabel,
 }: {
   title: string;
   items: KitchenMonitorTicket[];
@@ -153,7 +152,6 @@ function MonitorColumn({
   highlightShadow: string;
   columnBackground: string;
   rowBackgroundColor: string;
-  emptyLabel: string;
 }) {
   const { pageCount, pageIndex, visibleItems } = useRotatingPage(items);
 
@@ -219,33 +217,6 @@ function MonitorColumn({
             </Box>
           );
         })}
-
-        {!items.length ? (
-          <Box
-            data-testid="monitor-empty-state"
-            sx={{
-              flex: 1,
-              minHeight: 180,
-              display: 'grid',
-              placeItems: 'center',
-              px: 3,
-              borderRadius: 'clamp(16px, 1.8vw, 28px)',
-              border: `1px dashed ${dividerColor}`,
-              backgroundColor: rowBackgroundColor,
-            }}>
-            <Typography
-              sx={{
-                maxWidth: 520,
-                textAlign: 'center',
-                color: alpha(rowTextColor, 0.52),
-                fontSize: 'clamp(24px, 2.4vw, 46px)',
-                fontWeight: 650,
-                lineHeight: 1.2,
-              }}>
-              {emptyLabel}
-            </Typography>
-          </Box>
-        ) : null}
       </Stack>
 
       {pageCount > 1 ? (
@@ -266,7 +237,13 @@ function MonitorColumn({
   );
 }
 
-export function KitchenMonitorDisplay({ monitorData }: { monitorData: KitchenMonitorQueue }) {
+export function KitchenMonitorDisplay({
+  monitorData,
+  restaurantName,
+}: {
+  monitorData: KitchenMonitorQueue;
+  restaurantName?: string;
+}) {
   const theme = useTheme();
   const currentTime = useMonitorClock();
   const [highlightedDoneIds, setHighlightedDoneIds] = useState<string[]>([]);
@@ -428,13 +405,46 @@ export function KitchenMonitorDisplay({ monitorData }: { monitorData: KitchenMon
       <Stack
         direction="row"
         alignItems="center"
-        justifyContent="flex-end"
+        justifyContent="space-between"
         sx={{
           flex: '0 0 auto',
           minHeight: 'clamp(36px, 5.2vh, 62px)',
           mb: 'clamp(8px, 1.2vh, 16px)',
           px: 'clamp(4px, 0.6vw, 12px)',
         }}>
+        {restaurantName ? (
+          <Stack direction="row" alignItems="center" spacing="clamp(10px, 1vw, 18px)" sx={{ minWidth: 0 }}>
+            <Box
+              aria-hidden="true"
+              sx={{
+                flex: '0 0 auto',
+                width: 'clamp(5px, 0.45vw, 9px)',
+                height: 'clamp(30px, 4.2vh, 52px)',
+                borderRadius: 999,
+                background: `linear-gradient(180deg, ${preparingTitleColor}, ${readyTitleColor})`,
+                boxShadow: `0 0 22px ${alpha(preparingTitleColor, 0.3)}`,
+              }}
+            />
+            <Typography
+              data-testid="monitor-restaurant-name"
+              sx={{
+                minWidth: 0,
+                maxWidth: '55vw',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                color: rowTextColor,
+                fontSize: 'clamp(22px, 2.4vw, 44px)',
+                fontWeight: 850,
+                lineHeight: 1,
+                letterSpacing: '-0.025em',
+                textShadow: isDark ? '0 4px 24px rgba(0, 0, 0, 0.28)' : '0 4px 20px rgba(69, 47, 20, 0.12)',
+              }}>
+              {restaurantName}
+            </Typography>
+          </Stack>
+        ) : null}
+
         <Stack direction="row" alignItems="center" spacing="clamp(8px, 1vw, 16px)">
           <Box sx={{ textAlign: 'right' }}>
             <Typography
@@ -571,7 +581,6 @@ export function KitchenMonitorDisplay({ monitorData }: { monitorData: KitchenMon
           highlightShadow={highlightShadow}
           columnBackground={preparingColumnBackground}
           rowBackgroundColor={preparingRowBackground}
-          emptyLabel="Yangi buyurtmalar kutilmoqda"
         />
 
         <MonitorColumn
@@ -585,7 +594,6 @@ export function KitchenMonitorDisplay({ monitorData }: { monitorData: KitchenMon
           highlightShadow={highlightShadow}
           columnBackground={readyColumnBackground}
           rowBackgroundColor={readyRowBackground}
-          emptyLabel="Hozircha tayyor buyurtmalar yo‘q"
         />
       </Box>
     </Box>
@@ -596,5 +604,10 @@ export function KitchenMonitorPage() {
   const { restaurantContext } = usePosSession();
   const monitorQuery = useKitchenMonitorQuery(restaurantContext?.restaurantId ?? null);
 
-  return <KitchenMonitorDisplay monitorData={monitorQuery.data ?? { preparing: [], recentlyDone: [] }} />;
+  return (
+    <KitchenMonitorDisplay
+      monitorData={monitorQuery.data ?? { preparing: [], recentlyDone: [] }}
+      restaurantName={restaurantContext?.restaurantName}
+    />
+  );
 }

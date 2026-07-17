@@ -9,7 +9,9 @@ import { TvMonitorPage } from './TvMonitorPage';
 
 vi.mock('qrcode', () => ({ default: { toDataURL: vi.fn().mockResolvedValue('data:image/png;base64,qr') } }));
 vi.mock('./KitchenMonitorPage', () => ({
-  KitchenMonitorDisplay: () => <div data-testid="paired-monitor" />,
+  KitchenMonitorDisplay: ({ restaurantName }: { restaurantName?: string }) => (
+    <div data-testid="paired-monitor">{restaurantName}</div>
+  ),
 }));
 
 describe('TvMonitorPage', () => {
@@ -35,7 +37,7 @@ describe('TvMonitorPage', () => {
 
     render(<TvMonitorPage />);
 
-    expect(await screen.findByTestId('paired-monitor')).toBeTruthy();
+    expect((await screen.findByTestId('paired-monitor')).textContent).toBe('Qamish');
     await waitFor(() =>
       expect(readTvMonitorDevice()).toEqual({
         token: 'device-token',

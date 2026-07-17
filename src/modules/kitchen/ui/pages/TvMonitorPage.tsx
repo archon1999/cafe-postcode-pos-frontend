@@ -110,7 +110,7 @@ export function TvMonitorPage() {
     };
   }, [device, forgetDevice]);
 
-  if (device) return <KitchenMonitorDisplay monitorData={monitorData} />;
+  if (device) return <KitchenMonitorDisplay monitorData={monitorData} restaurantName={device.restaurantName} />;
 
   return (
     <Box
