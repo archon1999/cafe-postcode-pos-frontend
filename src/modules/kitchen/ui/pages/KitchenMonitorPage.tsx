@@ -141,6 +141,8 @@ function MonitorColumn({
   highlightShadow,
   columnBackground,
   rowBackgroundColor,
+  rowAccentColor,
+  emptyVariant,
 }: {
   title: string;
   items: KitchenMonitorTicket[];
@@ -152,8 +154,11 @@ function MonitorColumn({
   highlightShadow: string;
   columnBackground: string;
   rowBackgroundColor: string;
+  rowAccentColor: string;
+  emptyVariant: 'preparing' | 'ready';
 }) {
   const { pageCount, pageIndex, visibleItems } = useRotatingPage(items);
+  const fillsPage = visibleItems.length === TV_ITEMS_PER_PAGE;
 
   return (
     <Stack
@@ -162,28 +167,41 @@ function MonitorColumn({
         minHeight: 0,
         height: '100%',
         overflow: 'hidden',
-        borderRadius: 'clamp(20px, 2.2vw, 36px)',
+        borderRadius: 'clamp(22px, 2.2vw, 36px)',
         border: `1px solid ${dividerColor}`,
         background: columnBackground,
-        boxShadow: '0 18px 48px rgba(0, 0, 0, 0.12)',
-        p: 'clamp(14px, 1.6vw, 28px)',
+        boxShadow: '0 22px 54px rgba(0, 0, 0, 0.1)',
+        px: 'clamp(16px, 1.7vw, 30px)',
+        pt: 'clamp(18px, 2.2vh, 30px)',
+        pb: 'clamp(14px, 1.7vh, 24px)',
       }}>
       <Typography
         component="h2"
         sx={{
           textAlign: 'center',
-          fontSize: 'clamp(28px, 3.2vw, 62px)',
-          fontWeight: 800,
+          fontSize: 'clamp(27px, 2.75vw, 54px)',
+          fontWeight: 820,
           letterSpacing: '-0.03em',
           lineHeight: 1,
           color: titleColor,
-          mb: 'clamp(12px, 2vh, 26px)',
+          mb: 'clamp(14px, 2.2vh, 28px)',
           textShadow: `0 0 26px ${alpha(titleColor, 0.14)}`,
+          '&::after': {
+            content: '""',
+            display: 'block',
+            width: 'clamp(44px, 4vw, 72px)',
+            height: 'clamp(3px, 0.3vw, 5px)',
+            mx: 'auto',
+            mt: 'clamp(9px, 1.2vh, 14px)',
+            borderRadius: 999,
+            backgroundColor: alpha(titleColor, 0.62),
+            boxShadow: `0 0 18px ${alpha(titleColor, 0.2)}`,
+          },
         }}>
         {title}
       </Typography>
 
-      <Stack spacing="clamp(6px, 0.8vh, 12px)" sx={{ flex: 1, minHeight: 0 }}>
+      <Stack spacing="clamp(8px, 0.9vh, 13px)" sx={{ flex: 1, minHeight: 0 }}>
         {visibleItems.map((ticket) => {
           const isHighlighted = highlightedIds.has(ticket.id);
 
@@ -192,43 +210,118 @@ function MonitorColumn({
               key={ticket.id}
               data-highlighted={isHighlighted ? 'true' : 'false'}
               sx={{
-                minHeight: 'clamp(52px, 8.2vh, 112px)',
-                px: 'clamp(16px, 2vw, 34px)',
+                flex: fillsPage ? '1 1 0' : '0 0 auto',
+                minHeight: 'clamp(68px, 8.8vh, 104px)',
+                px: 'clamp(20px, 2.2vw, 40px)',
+                py: 'clamp(6px, 0.8vh, 10px)',
                 display: 'flex',
                 alignItems: 'center',
+                position: 'relative',
+                overflow: 'hidden',
                 borderRadius: 'clamp(14px, 1.4vw, 24px)',
-                border: `1px solid ${dividerColor}`,
+                border: `1px solid ${alpha(rowAccentColor, 0.15)}`,
                 backgroundColor: isHighlighted ? highlightBackgroundColor : rowBackgroundColor,
                 animation: isHighlighted ? `${readyRowEntrance} 1.2s ease-out` : 'none',
                 transformOrigin: 'center right',
-                boxShadow: isHighlighted ? highlightShadow : '0 8px 22px rgba(0, 0, 0, 0.08)',
+                boxShadow: isHighlighted ? highlightShadow : '0 8px 22px rgba(0, 0, 0, 0.055)',
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  inset: '18% auto 18% 0',
+                  width: 'clamp(3px, 0.28vw, 5px)',
+                  borderRadius: '0 999px 999px 0',
+                  backgroundColor: alpha(rowAccentColor, 0.72),
+                  boxShadow: `0 0 16px ${alpha(rowAccentColor, 0.24)}`,
+                },
               }}>
               <Typography
                 sx={{
-                  fontSize: 'clamp(44px, 5.2vw, 96px)',
-                  lineHeight: 0.92,
-                  fontWeight: 800,
+                  fontSize: 'clamp(40px, 4.35vw, 82px)',
+                  lineHeight: 1,
+                  fontWeight: 820,
                   letterSpacing: '-0.04em',
                   color: rowTextColor,
                   textShadow: isHighlighted ? highlightShadow : 'none',
+                  fontVariantNumeric: 'tabular-nums',
                 }}>
                 {formatOrderNumber(ticket)}
               </Typography>
             </Box>
           );
         })}
+
+        {!items.length ? (
+          <Box
+            aria-hidden="true"
+            data-testid="monitor-empty-visual"
+            sx={{ flex: 1, minHeight: 160, display: 'grid', placeItems: 'center' }}>
+            <Box
+              sx={{
+                width: 'clamp(92px, 10vw, 164px)',
+                aspectRatio: '1 / 1',
+                display: 'grid',
+                placeItems: 'center',
+                position: 'relative',
+                borderRadius: '50%',
+                border: `clamp(2px, 0.18vw, 3px) solid ${alpha(titleColor, 0.1)}`,
+                background: `radial-gradient(circle, ${alpha(titleColor, 0.045)}, transparent 68%)`,
+                boxShadow: `0 0 70px ${alpha(titleColor, 0.055)}`,
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  inset: '14%',
+                  borderRadius: '50%',
+                  border: `1px solid ${alpha(titleColor, 0.07)}`,
+                },
+              }}>
+              {emptyVariant === 'ready' ? (
+                <Box
+                  sx={{
+                    width: '25%',
+                    height: '42%',
+                    borderRight: `clamp(4px, 0.36vw, 7px) solid ${alpha(titleColor, 0.18)}`,
+                    borderBottom: `clamp(4px, 0.36vw, 7px) solid ${alpha(titleColor, 0.18)}`,
+                    transform: 'translateY(-8%) rotate(45deg)',
+                    borderRadius: '0 0 4px 0',
+                  }}
+                />
+              ) : (
+                <Stack direction="row" spacing="clamp(7px, 0.7vw, 12px)">
+                  {[0, 1, 2].map((dot) => (
+                    <Box
+                      key={dot}
+                      sx={{
+                        width: 'clamp(9px, 0.8vw, 14px)',
+                        aspectRatio: '1 / 1',
+                        borderRadius: '50%',
+                        backgroundColor: alpha(titleColor, 0.16 + dot * 0.025),
+                      }}
+                    />
+                  ))}
+                </Stack>
+              )}
+            </Box>
+          </Box>
+        ) : null}
       </Stack>
 
       {pageCount > 1 ? (
         <Typography
           data-testid="monitor-page-indicator"
           sx={{
-            mt: 'clamp(8px, 1vh, 14px)',
+            alignSelf: 'center',
+            mt: 'clamp(10px, 1.2vh, 16px)',
+            px: 'clamp(10px, 0.9vw, 16px)',
+            py: 'clamp(3px, 0.35vh, 6px)',
             textAlign: 'center',
-            color: alpha(rowTextColor, 0.55),
-            fontSize: 'clamp(14px, 1.2vw, 22px)',
-            fontWeight: 700,
+            color: alpha(rowTextColor, 0.64),
+            fontSize: 'clamp(13px, 1vw, 18px)',
+            fontWeight: 750,
             fontVariantNumeric: 'tabular-nums',
+            lineHeight: 1,
+            borderRadius: 999,
+            border: `1px solid ${alpha(rowAccentColor, 0.12)}`,
+            backgroundColor: alpha(rowAccentColor, 0.055),
           }}>
           {pageIndex + 1} / {pageCount}
         </Typography>
@@ -581,6 +674,8 @@ export function KitchenMonitorDisplay({
           highlightShadow={highlightShadow}
           columnBackground={preparingColumnBackground}
           rowBackgroundColor={preparingRowBackground}
+          rowAccentColor={preparingTitleColor}
+          emptyVariant="preparing"
         />
 
         <MonitorColumn
@@ -594,6 +689,8 @@ export function KitchenMonitorDisplay({
           highlightShadow={highlightShadow}
           columnBackground={readyColumnBackground}
           rowBackgroundColor={readyRowBackground}
+          rowAccentColor={readyTitleColor}
+          emptyVariant="ready"
         />
       </Box>
     </Box>

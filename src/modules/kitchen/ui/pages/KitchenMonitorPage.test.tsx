@@ -109,7 +109,7 @@ describe('KitchenMonitorPage', () => {
     expect(screen.getByText('1 / 2')).toBeTruthy();
     expect(screen.queryByText('Hozircha tayyor buyurtmalar yo‘q')).toBeNull();
     expect(screen.queryByText('Yangi buyurtmalar kutilmoqda')).toBeNull();
-    expect(screen.queryByTestId('monitor-empty-state')).toBeNull();
+    expect(screen.getByTestId('monitor-empty-visual')).toBeTruthy();
 
     await act(async () => {
       vi.advanceTimersByTime(8000);
