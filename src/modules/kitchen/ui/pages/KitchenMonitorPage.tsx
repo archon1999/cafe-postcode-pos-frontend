@@ -89,7 +89,7 @@ type BrowserWindow = typeof window & {
 };
 
 function formatOrderNumber(ticket: KitchenMonitorTicket) {
-  return `#${ticket.displayName?.trim() || ticket.orderNumber}`;
+  return ticket.displayName?.trim() || String(ticket.orderNumber);
 }
 
 function useMonitorClock() {

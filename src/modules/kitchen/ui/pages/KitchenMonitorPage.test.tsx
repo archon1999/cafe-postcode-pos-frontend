@@ -81,8 +81,8 @@ describe('KitchenMonitorPage', () => {
     expect(screen.getByText("Tayyor bo'lganlar")).toBeTruthy();
     expect(screen.getByTestId('monitor-restaurant-name').textContent).toBe('Test Restaurant');
     expect(screen.getByTestId('monitor-clock')).toBeTruthy();
-    expect(screen.getByText('#14')).toBeTruthy();
-    expect(screen.getByText('#15')).toBeTruthy();
+    expect(screen.getByText('14')).toBeTruthy();
+    expect(screen.getByText('15')).toBeTruthy();
     expect(screen.queryByTestId('ready-order-spotlight')).toBeNull();
     expect(audioContextConstructor).not.toHaveBeenCalled();
   });
@@ -103,9 +103,9 @@ describe('KitchenMonitorPage', () => {
 
     render(<KitchenMonitorPage />);
 
-    expect(screen.getByText('#1')).toBeTruthy();
-    expect(screen.getByText('#6')).toBeTruthy();
-    expect(screen.queryByText('#7')).toBeNull();
+    expect(screen.getByText('1')).toBeTruthy();
+    expect(screen.getByText('6')).toBeTruthy();
+    expect(screen.queryByText('7')).toBeNull();
     expect(screen.getByText('1 / 2')).toBeTruthy();
     expect(screen.queryByText('Hozircha tayyor buyurtmalar yo‘q')).toBeNull();
     expect(screen.queryByText('Yangi buyurtmalar kutilmoqda')).toBeNull();
@@ -115,8 +115,8 @@ describe('KitchenMonitorPage', () => {
       vi.advanceTimersByTime(8000);
     });
 
-    expect(screen.queryByText('#1')).toBeNull();
-    expect(screen.getByText('#7')).toBeTruthy();
+    expect(screen.queryByText('1')).toBeNull();
+    expect(screen.getByText('7')).toBeTruthy();
     expect(screen.getByText('2 / 2')).toBeTruthy();
   });
 
@@ -150,10 +150,10 @@ describe('KitchenMonitorPage', () => {
 
     expect(audioContextConstructor).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('ready-order-spotlight')).toBeTruthy();
-    expect(screen.getAllByText('#19')).toHaveLength(2);
+    expect(screen.getAllByText('19')).toHaveLength(2);
 
     const highlightedRow = screen
-      .getAllByText('#19')
+      .getAllByText('19')
       .map((node) => node.closest('[data-highlighted]'))
       .find(Boolean);
     expect(highlightedRow?.getAttribute('data-highlighted')).toBe('true');
@@ -163,7 +163,7 @@ describe('KitchenMonitorPage', () => {
     });
 
     expect(screen.queryByTestId('ready-order-spotlight')).toBeNull();
-    expect(screen.getByText('#19').closest('[data-highlighted]')?.getAttribute('data-highlighted')).toBe('false');
+    expect(screen.getByText('19').closest('[data-highlighted]')?.getAttribute('data-highlighted')).toBe('false');
   });
 
   it('highlights all new ready rows but spotlights only the newest ticket in one update', async () => {
@@ -194,11 +194,11 @@ describe('KitchenMonitorPage', () => {
     await act(async () => {});
 
     expect(audioContextConstructor).toHaveBeenCalledTimes(1);
-    expect(screen.getByTestId('ready-order-spotlight').textContent).toContain('#20');
-    expect(screen.getAllByText('#20')).toHaveLength(2);
-    expect(screen.getAllByText('#19')).toHaveLength(1);
+    expect(screen.getByTestId('ready-order-spotlight').textContent).toContain('20');
+    expect(screen.getAllByText('20')).toHaveLength(2);
+    expect(screen.getAllByText('19')).toHaveLength(1);
 
-    const highlightedOrderNumbers = ['#20', '#19'];
+    const highlightedOrderNumbers = ['20', '19'];
     highlightedOrderNumbers.forEach((orderNumber) => {
       const highlightedRow = screen
         .getAllByText(orderNumber)
