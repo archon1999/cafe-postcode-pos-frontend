@@ -45,6 +45,16 @@ export type CashShiftSummary = {
   cardTotal: number;
   qrTotal: number;
   refundTotal: number;
+  saleCount?: number;
+  refundCount?: number;
+  totalSaleAmount?: number;
+  cashRefundTotal?: number;
+  cardRefundTotal?: number;
+  qrRefundTotal?: number;
+  vatSaleTotal?: number;
+  vatRefundTotal?: number;
+  firstReceipt?: string;
+  lastReceipt?: string;
   receiptCount: number;
   reprintCount: number;
   cashDeskName?: string | null;

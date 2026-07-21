@@ -43,6 +43,21 @@ export function formatTime(value: string | null | undefined, locale: PosLocale) 
   }).format(date);
 }
 
+export function formatDateTime(value: string | null | undefined, locale: PosLocale) {
+  if (!value) {
+    return '-';
+  }
+
+  return new Intl.DateTimeFormat(localeMap[locale], {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: TASHKENT_TIMEZONE,
+  }).format(new Date(value));
+}
+
 export function formatDateLabel(value: Date, locale: PosLocale) {
   return new Intl.DateTimeFormat(localeMap[locale], {
     weekday: 'long',

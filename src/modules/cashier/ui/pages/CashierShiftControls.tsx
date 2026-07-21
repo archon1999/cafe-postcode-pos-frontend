@@ -1,8 +1,19 @@
-import { Box, Button, Checkbox, FormControlLabel, MenuItem, Stack, TextField, Typography, alpha } from '@mui/material';
+import {
+  Box,
+  Button,
+  Checkbox,
+  Divider,
+  FormControlLabel,
+  MenuItem,
+  Stack,
+  TextField,
+  Typography,
+  alpha,
+} from '@mui/material';
 
 import type { CashierContextCashDesk, CashierContextCashier, CashShiftSummary } from 'modules/cashier/domain';
 import { getPosCopy, type PosLocale } from 'shared/locale/copy';
-import { formatCompactMoney } from 'shared/pos/utils';
+import { formatCompactMoney, formatDateTime } from 'shared/pos/utils';
 
 type ShiftTotalsProps = {
   locale: PosLocale;
@@ -11,23 +22,63 @@ type ShiftTotalsProps = {
 
 export function CashierShiftTotals({ locale, shift }: ShiftTotalsProps) {
   const copy = getPosCopy(locale);
-  const totals = [
-    [copy.openingCash, shift.openingCashAmount],
-    [copy.expectedCash, Number(shift.expectedClosingCashAmount ?? 0)],
-    [copy.shiftCashTotal, shift.cashTotal],
-    [copy.shiftCardTotal, shift.cardTotal],
-    [copy.shiftQrTotal, shift.qrTotal],
-    [copy.shiftRefundTotal, shift.refundTotal],
+  const saleTotal = Number(shift.totalSaleAmount ?? shift.cashTotal + shift.cardTotal + shift.qrTotal);
+  const refundTotal = Number(shift.refundTotal ?? 0);
+  const saleRows = [
+    [copy.reportSales, Number(shift.saleCount ?? shift.receiptCount ?? 0), false],
+    [copy.reportCash, Number(shift.cashTotal ?? 0), true],
+    [copy.reportCard, Number(shift.cardTotal ?? 0), true],
+    ...(Number(shift.qrTotal ?? 0) > 0 ? ([[copy.qr, Number(shift.qrTotal), true]] as const) : []),
+    ...(Number(shift.vatSaleTotal ?? 0) > 0 ? ([[copy.reportVat, Number(shift.vatSaleTotal), true]] as const) : []),
+    [copy.shiftReportTotal, saleTotal, true],
+  ] as const;
+  const refundRows = [
+    [copy.reportRefunds, Number(shift.refundCount ?? 0), false],
+    [copy.reportCash, Number(shift.cashRefundTotal ?? 0), true],
+    [copy.reportCard, Number(shift.cardRefundTotal ?? 0), true],
+    ...(Number(shift.qrRefundTotal ?? 0) > 0 ? ([[copy.qr, Number(shift.qrRefundTotal), true]] as const) : []),
+    ...(Number(shift.vatRefundTotal ?? 0) > 0 ? ([[copy.reportVat, Number(shift.vatRefundTotal), true]] as const) : []),
+    [copy.shiftReportTotal, refundTotal, true],
   ] as const;
 
+  const renderRows = (rows: typeof saleRows | typeof refundRows) =>
+    rows.map(([label, value, money], index) => (
+      <Stack key={`${label}-${index}`} direction="row" justifyContent="space-between">
+        <Typography color="text.secondary">{label}</Typography>
+        <Typography fontWeight={index === rows.length - 1 ? 700 : undefined}>
+          {money ? formatCompactMoney(value, locale) : value}
+        </Typography>
+      </Stack>
+    ));
+
   return (
-    <Stack spacing={1}>
-      {totals.map(([label, value]) => (
-        <Stack key={label} direction="row" justifyContent="space-between">
-          <Typography color="text.secondary">{label}</Typography>
-          <Typography>{formatCompactMoney(value, locale)}</Typography>
+    <Stack spacing={1.1}>
+      <Stack direction="row" justifyContent="space-between">
+        <Typography color="text.secondary">{copy.reportShiftOpened}</Typography>
+        <Typography>{formatDateTime(shift.openedAt, locale)}</Typography>
+      </Stack>
+      {shift.firstReceipt ? (
+        <Stack direction="row" justifyContent="space-between">
+          <Typography color="text.secondary">{copy.reportFirstReceipt}</Typography>
+          <Typography>{shift.firstReceipt}</Typography>
         </Stack>
-      ))}
+      ) : null}
+      {shift.lastReceipt ? (
+        <Stack direction="row" justifyContent="space-between">
+          <Typography color="text.secondary">{copy.reportLastReceipt}</Typography>
+          <Typography>{shift.lastReceipt}</Typography>
+        </Stack>
+      ) : null}
+      <Divider />
+      <Typography variant="subtitle2" textAlign="center">
+        {copy.shiftSalesSection}
+      </Typography>
+      {renderRows(saleRows)}
+      <Divider />
+      <Typography variant="subtitle2" textAlign="center">
+        {copy.shiftRefundSection}
+      </Typography>
+      {renderRows(refundRows)}
     </Stack>
   );
 }
@@ -36,12 +87,9 @@ type ManagerShiftCardProps = {
   canCloseFiscalShift: boolean;
   closeFiscalShift: boolean;
   closing: boolean;
-  closingNotes: string;
   locale: PosLocale;
   onClose: () => void;
   onCloseFiscalChange: (value: boolean) => void;
-  onClosingNotesChange: (value: string) => void;
-  onContinue: () => void;
   onPrint: () => Promise<void>;
   printing: boolean;
   shift: CashShiftSummary;
@@ -51,12 +99,9 @@ export function ManagerShiftCard({
   canCloseFiscalShift,
   closeFiscalShift,
   closing,
-  closingNotes,
   locale,
   onClose,
   onCloseFiscalChange,
-  onClosingNotesChange,
-  onContinue,
   onPrint,
   printing,
   shift,
@@ -78,26 +123,9 @@ export function ManagerShiftCard({
           </Typography>
         </Box>
         <CashierShiftTotals locale={locale} shift={shift} />
-        <Button
-          variant="contained"
-          sx={(theme) => ({
-            backgroundImage: 'none',
-            backgroundColor: 'var(--pos-secondary-action-bg)',
-            color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
-          })}
-          onClick={onContinue}>
-          {copy.continueWork}
-        </Button>
         <Button variant="contained" color="success" disabled={printing} onClick={() => void onPrint()}>
           {printing ? copy.processing : copy.printShiftReport}
         </Button>
-        <TextField
-          label={copy.notes}
-          value={closingNotes}
-          onChange={(event) => onClosingNotesChange(event.target.value)}
-          multiline
-          minRows={2}
-        />
         {canCloseFiscalShift ? (
           <FormControlLabel
             control={

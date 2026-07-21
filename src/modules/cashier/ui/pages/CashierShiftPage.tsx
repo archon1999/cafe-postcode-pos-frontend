@@ -44,7 +44,6 @@ export function CashierShiftPage() {
   const [openingNotes, setOpeningNotes] = useState('');
   const [openShiftDialogOpen, setOpenShiftDialogOpen] = useState(false);
   const [shiftCloseReport, setShiftCloseReport] = useState<CashierShiftCloseResponse | null>(null);
-  const [closingNotesByShift, setClosingNotesByShift] = useState<Record<string, string>>({});
   const [closeFiscalByShift, setCloseFiscalByShift] = useState<Record<string, boolean>>({});
 
   const hasCashierAccess = canAccessCashier(session?.user);
@@ -122,10 +121,6 @@ export function CashierShiftPage() {
     return <Navigate to={getPosHomePath(session)} replace />;
   }
 
-  const updateClosingNotes = (shiftId: string, value: string) => {
-    setClosingNotesByShift((prev) => ({ ...prev, [shiftId]: value }));
-  };
-
   const updateCloseFiscal = (shiftId: string, value: boolean) => {
     setCloseFiscalByShift((prev) => ({ ...prev, [shiftId]: value }));
   };
@@ -140,18 +135,15 @@ export function CashierShiftPage() {
         canCloseFiscalShift={canCloseFiscalShift}
         closeFiscalShift={shouldCloseFiscalShift}
         closing={closeShiftMutation.isPending}
-        closingNotes={closingNotesByShift[shift.id] ?? ''}
         locale={locale}
         onClose={() =>
           closeShiftMutation.mutate({
             cashShiftId: shift.id,
-            notesClose: closingNotesByShift[shift.id] ?? '',
+            notesClose: '',
             closeFiscalShift: canCloseFiscalShift ? shouldCloseFiscalShift : false,
           })
         }
         onCloseFiscalChange={(value) => updateCloseFiscal(shift.id, value)}
-        onClosingNotesChange={(value) => updateClosingNotes(shift.id, value)}
-        onContinue={() => navigate(nextPath, { replace: true })}
         onPrint={async () => {
           try {
             const response = await printShiftReportMutation.mutateAsync({ cashShiftId: shift.id });
