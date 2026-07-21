@@ -85,7 +85,7 @@ const TV_PAGE_ROTATION_MS = 8000;
 const TV_CLOCK_TICK_MS = 30_000;
 const TV_CANVAS_WIDTH = 1920;
 const TV_CANVAS_HEIGHT = 1080;
-const TV_COMPACT_BREAKPOINT = 900;
+const TV_COMPACT_BREAKPOINT = 640;
 
 type BrowserWindow = typeof window & {
   webkitAudioContext?: typeof AudioContext;
