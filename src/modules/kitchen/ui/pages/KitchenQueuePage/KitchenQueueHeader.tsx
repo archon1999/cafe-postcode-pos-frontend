@@ -10,7 +10,6 @@ type KitchenQueueHeaderProps = {
   copy: ReturnType<typeof getPosCopy>;
   doneCount: number;
   isMobile: boolean;
-  onBack: () => void;
   onLock: () => void;
   onRefresh: () => void;
   onSelectTab: (tab: KitchenQueueTab) => void;
@@ -23,7 +22,6 @@ export function KitchenQueueHeader({
   copy,
   doneCount,
   isMobile,
-  onBack,
   onLock,
   onRefresh,
   onSelectTab,
@@ -43,8 +41,6 @@ export function KitchenQueueHeader({
       alignItems="center"
       sx={{ flexWrap: 'nowrap' }}>
       <Stack direction="row" spacing={{ xs: 1, md: 1.5 }} sx={{ flex: 1, minWidth: 0 }}>
-        {!isMobile ? <PosIconAction icon="solar:alt-arrow-left-bold" onClick={onBack} /> : null}
-
         <Stack direction="row" spacing={{ xs: 1, md: 1.5 }} sx={{ flex: 1, minWidth: 0, maxWidth: 1220 }}>
           {tabs.map((item) => {
             const active = selectedTab === item.value;

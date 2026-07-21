@@ -4,7 +4,7 @@ import { useTheme } from '@mui/material/styles';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 
-import { canCancelKitchenOrders, canManageKitchenOrders, getPosHomePath, usePosSession } from 'modules/auth';
+import { canCancelKitchenOrders, canManageKitchenOrders, usePosSession } from 'modules/auth';
 import {
   useKitchenQueueQuery,
   useUpdateKitchenItemStatusMutation,
@@ -85,7 +85,6 @@ export function KitchenQueuePageContent() {
           copy={copy}
           doneCount={doneTickets.length}
           isMobile={isMobile}
-          onBack={() => navigate(getPosHomePath(session))}
           onLock={() => navigate('/lock-screen')}
           onRefresh={() => void refreshTransportAndReload()}
           onSelectTab={setSelectedTab}
