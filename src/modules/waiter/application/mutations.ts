@@ -109,10 +109,11 @@ export function useRemoveWaiterOrderItemMutation(options: { sessionId: string | 
 export function useSubmitWaiterOrderMutation(options: {
   orderId?: string;
   sessionId: string | null;
+  orderNote: string;
   onSuccess?: () => void;
   onPrintError?: (error: unknown) => void;
 }) {
-  const { orderId, sessionId, onSuccess, onPrintError } = options;
+  const { orderId, sessionId, orderNote, onSuccess, onPrintError } = options;
 
   return useMutation({
     mutationFn: async () => {
@@ -120,6 +121,7 @@ export function useSubmitWaiterOrderMutation(options: {
         throw new Error('Current order is not available');
       }
 
+      await waiterRepository.updateOrderNote(orderId, orderNote);
       const order = await waiterRepository.submitOrder(orderId);
       const printing = await enqueueEdgePrintDocuments(order?.kitchenPrintDocuments ?? []);
       return { order, printing };

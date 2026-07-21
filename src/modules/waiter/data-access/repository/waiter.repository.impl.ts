@@ -7,7 +7,7 @@ import type {
   WaiterRepository,
   WaiterSessionResponse,
 } from 'modules/waiter/domain';
-import { apiDelete, apiGet, apiPost, unwrapCollection } from 'shared/api/client';
+import { apiDelete, apiGet, apiPatch, apiPost, unwrapCollection } from 'shared/api/client';
 
 import {
   mapHalls,
@@ -82,6 +82,10 @@ class WaiterRepositoryImpl implements WaiterRepository {
 
   async removeOrderItem(itemId: string) {
     await apiDelete(`/pos/sales/orders/items/${itemId}/`);
+  }
+
+  async updateOrderNote(orderId: string, note: string) {
+    return apiPatch<WaiterOrder>(`/pos/sales/orders/${orderId}/`, { note });
   }
 
   async submitOrder(orderId: string) {

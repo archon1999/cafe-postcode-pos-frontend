@@ -18,5 +18,6 @@ export interface WaiterRepository {
   createTakeawayOrder(note: string): Promise<WaiterCreateOrderResponse>;
   addOrderItem(orderId: string, catalogItemId: string, note: string): Promise<{ kitchenPrintDocuments?: string[] }>;
   removeOrderItem(itemId: string): Promise<void>;
+  updateOrderNote(orderId: string, note: string): Promise<WaiterOrder>;
   submitOrder(orderId: string): Promise<WaiterOrder>;
 }

@@ -20,6 +20,7 @@ type Options = {
   hasMissingMarkings: boolean;
   hasPendingOperations: boolean;
   missingMarkingMessage: string;
+  orderNote: string;
   serverOrder?: CashierOrder | null;
   submitOrder: () => Promise<unknown>;
   submitPending: boolean;
@@ -40,6 +41,7 @@ export function useCashierBuilderActions({
   hasMissingMarkings,
   hasPendingOperations,
   missingMarkingMessage,
+  orderNote,
   serverOrder,
   submitOrder,
   submitPending,
@@ -66,6 +68,9 @@ export function useCashierBuilderActions({
 
   const runDeliveryAction = async (action: PendingDeliveryAction) => {
     if (!currentOrder) return;
+    if ((currentOrder.note ?? '') !== orderNote) {
+      await cashierRepository.updateOrderNote(currentOrder.id, orderNote);
+    }
     await submitOrder();
     if (action === 'checkout') {
       closeCart();
@@ -90,6 +95,9 @@ export function useCashierBuilderActions({
     if (builderChannel === 'delivery') {
       openDeliveryDetailsDialog(action);
       return;
+    }
+    if ((currentOrder.note ?? '') !== orderNote) {
+      await cashierRepository.updateOrderNote(currentOrder.id, orderNote);
     }
     if (action === 'submit') {
       await submitOrder();

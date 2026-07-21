@@ -1,6 +1,6 @@
 ﻿import { Box, useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 
@@ -61,6 +61,7 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
   const [orderSent, setOrderSent] = useState(false);
   const [selectedCartItemKey, setSelectedCartItemKey] = useState<string | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
+  const noteOrderIdRef = useRef<string | null>(null);
   const canViewMenu = isTakeawayMode
     ? canAccessTakeawayBuilder(session?.user)
     : canAccessTableSessionMenu(session?.user);
@@ -107,6 +108,16 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
     addOrderItem: (orderId, menuItem, note) => waiterRepository.addOrderItem(orderId, menuItem.id, note),
     syncErrorMessage: copy.itemSyncFailed,
   });
+
+  useEffect(() => {
+    const orderId = currentOrder?.id ?? null;
+    if (!orderId || noteOrderIdRef.current === orderId) {
+      return;
+    }
+    noteOrderIdRef.current = orderId;
+    setKitchenNote(currentOrder?.note ?? '');
+  }, [currentOrder?.id, currentOrder?.note]);
+
   const serviceFeePercent = Number(
     currentOrder?.serviceFeePercent ?? session?.restaurantContext?.serviceFeePercent ?? 0,
   );
@@ -123,6 +134,7 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
   const submitOrderMutation = useSubmitWaiterOrderMutation({
     orderId: currentOrder?.id,
     sessionId,
+    orderNote: kitchenNote,
     onPrintError: (error) => toast.error(error instanceof Error ? error.message : 'Oshxona chekini chiqarib bo‘lmadi'),
     onSuccess: () => {
       setOrderSent(true);

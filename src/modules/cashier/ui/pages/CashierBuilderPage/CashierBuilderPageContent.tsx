@@ -1,6 +1,6 @@
 import { Box, Snackbar, useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 
@@ -68,6 +68,7 @@ export function CashierBuilderPageContent() {
   const [selectedCartItemKey, setSelectedCartItemKey] = useState<string | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
   const [scanToast, setScanToast] = useState('');
+  const noteOrderIdRef = useRef<string | null>(null);
 
   const menuQuery = useCashierMenuQuery();
   const ordersQuery = useCashierBuilderOrdersQuery();
@@ -106,6 +107,16 @@ export function CashierBuilderPageContent() {
     addOrderItem: (orderId, menuItem, note) => cashierRepository.addOrderItem(orderId, menuItem.id, note),
     syncErrorMessage: copy.itemSyncFailed,
   });
+
+  useEffect(() => {
+    const orderId = currentOrder?.id ?? null;
+    if (!orderId || noteOrderIdRef.current === orderId) {
+      return;
+    }
+    noteOrderIdRef.current = orderId;
+    setKitchenNote(currentOrder?.note ?? '');
+  }, [currentOrder?.id, currentOrder?.note]);
+
   const submitOrderMutation = useSubmitCashierOrderMutation({
     orderId: currentOrder?.id,
     onPrintError: (error) => toast.error(error instanceof Error ? error.message : 'Oshxona chekini chiqarib bo‘lmadi'),
@@ -196,6 +207,7 @@ export function CashierBuilderPageContent() {
     hasMissingMarkings,
     hasPendingOperations,
     missingMarkingMessage,
+    orderNote: kitchenNote,
     serverOrder,
     submitOrder: () => submitOrderMutation.mutateAsync(),
     submitPending: submitOrderMutation.isPending,

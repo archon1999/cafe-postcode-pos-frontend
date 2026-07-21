@@ -47,6 +47,7 @@ describe('cashier order mutation transport contract', () => {
     expect(cashierRepository.addOrderItem).toBe(cashierOrderGateway.addOrderItem);
     expect(cashierRepository.scanOrderMarking).toBe(cashierOrderGateway.scanOrderMarking);
     expect(cashierRepository.removeOrderItem).toBe(cashierOrderGateway.removeOrderItem);
+    expect(cashierRepository.updateOrderNote).toBe(cashierOrderGateway.updateOrderNote);
     expect(cashierRepository.updateOrderDisplayName).toBe(cashierOrderGateway.updateOrderDisplayName);
     expect(cashierRepository.updateOrderDeliveryDetails).toBe(cashierOrderGateway.updateOrderDeliveryDetails);
     expect(cashierRepository.submitOrder).toBe(cashierOrderGateway.submitOrder);
@@ -121,6 +122,15 @@ describe('cashier order mutation transport contract', () => {
 
     await expect(cashierRepository.removeOrderItem('item-1')).resolves.toBeUndefined();
     expect(apiDeleteMock).toHaveBeenCalledWith('/pos/sales/orders/items/item-1/');
+  });
+
+  it('persists the order note before a printable document is created', async () => {
+    apiPatchMock.mockResolvedValueOnce(orderResponse(83));
+
+    const result = await cashierRepository.updateOrderNote('order-1', 'Piyozsiz');
+
+    expect(apiPatchMock).toHaveBeenCalledWith('/pos/sales/orders/order-1/', { note: 'Piyozsiz' });
+    expect(result.orderNumber).toBe(83);
   });
 
   it('updates the display name and maps the returned order', async () => {

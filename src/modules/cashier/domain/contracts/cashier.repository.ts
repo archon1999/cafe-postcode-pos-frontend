@@ -57,6 +57,7 @@ export interface CashierRepository {
   addOrderItem(orderId: string, catalogItemId: string, note: string): Promise<{ kitchenPrintDocuments?: string[] }>;
   scanOrderMarking(orderId: string, rawCode: string, mode: 'add' | 'attach' | 'remove'): Promise<CashierOrder>;
   removeOrderItem(itemId: string): Promise<void>;
+  updateOrderNote(orderId: string, note: string): Promise<CashierOrder>;
   updateOrderDisplayName(orderId: string, displayName: string): Promise<CashierOrder>;
   updateOrderDeliveryDetails(
     orderId: string,

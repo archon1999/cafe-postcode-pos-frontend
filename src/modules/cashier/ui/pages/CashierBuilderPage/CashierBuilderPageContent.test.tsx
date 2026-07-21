@@ -12,6 +12,7 @@ const useCashierMenuQueryMock = vi.fn();
 const useCashierPaymentOrderQueryMock = vi.fn();
 const useOptimisticBuilderOrderMock = vi.fn();
 const submitOrderMutateAsyncMock = vi.fn();
+const updateOrderNoteMock = vi.fn();
 const updateOrderDeliveryDetailsMock = vi.fn();
 const updateOrderChannelMock = vi.fn();
 let searchParamsValue = '';
@@ -67,6 +68,7 @@ vi.mock('modules/cashier/data-access', () => ({
     addOrderItem: vi.fn(),
     removeOrderItem: vi.fn(),
     scanOrderMarking: vi.fn(),
+    updateOrderNote: (...args: unknown[]) => updateOrderNoteMock(...args),
     updateOrderChannel: (...args: unknown[]) => updateOrderChannelMock(...args),
     updateOrderDeliveryDetails: (...args: unknown[]) => updateOrderDeliveryDetailsMock(...args),
   },
@@ -128,6 +130,8 @@ describe('CashierBuilderPageContent', () => {
   beforeEach(() => {
     navigateMock.mockReset();
     submitOrderMutateAsyncMock.mockReset();
+    updateOrderNoteMock.mockReset();
+    updateOrderNoteMock.mockResolvedValue({ id: 'order-1', note: 'Piyozsiz' });
     updateOrderDeliveryDetailsMock.mockReset();
     updateOrderDeliveryDetailsMock.mockResolvedValue({});
     updateOrderChannelMock.mockReset();
@@ -312,6 +316,19 @@ describe('CashierBuilderPageContent', () => {
     expect(submitOrderMutateAsyncMock).not.toHaveBeenCalled();
     expect(updateOrderDeliveryDetailsMock).not.toHaveBeenCalled();
     expect(navigateMock).toHaveBeenCalledWith('/cashier/payment?orderId=order-1');
+  });
+
+  it('persists the latest note before opening payment', async () => {
+    searchParamsValue = 'channel=takeaway';
+    render(<CashierBuilderPageContent />);
+
+    fireEvent.change(screen.getByLabelText('Oshxona uchun izoh'), { target: { value: 'Piyozsiz' } });
+    fireEvent.click(screen.getByRole('button', { name: "To'lov oynasiga o'tish" }));
+
+    await waitFor(() => {
+      expect(updateOrderNoteMock).toHaveBeenCalledWith('order-1', 'Piyozsiz');
+      expect(navigateMock).toHaveBeenCalledWith('/cashier/payment?orderId=order-1');
+    });
   });
 
   it('requires valid delivery details before delivery checkout submit', async () => {
