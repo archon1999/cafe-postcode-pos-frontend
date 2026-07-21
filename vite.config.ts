@@ -1,10 +1,21 @@
 import path from 'path';
 
+import legacy from '@vitejs/plugin-legacy';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    legacy({
+      targets: ['chrome >= 61'],
+      // Chrome 61 is the first Chrome release with native ES modules. Target
+      // it for both bundles so module-capable TV browsers cannot fall into a
+      // compatibility gap before Chrome 75.
+      modernTargets: ['chrome >= 61'],
+      modernPolyfills: true,
+    }),
+  ],
   server: {
     port: 4300,
     proxy: {
