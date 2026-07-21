@@ -97,6 +97,7 @@ export function HallsPageContent() {
     scaledWidth: scaledMapWidth,
     toggleFitFill: handleMapFitFillToggle,
     viewportRef: mapViewportRef,
+    viewportSize: mapViewportSize,
     zoom: handleMapZoom,
   } = useHallMapViewport({
     gridColumns,
