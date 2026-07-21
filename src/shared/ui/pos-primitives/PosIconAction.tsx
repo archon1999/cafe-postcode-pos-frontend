@@ -19,6 +19,7 @@ export function PosIconAction({
   const badgeTone = deriveSystemHealthTone(
     systemHealthQuery.data?.status,
     systemHealthQuery.isError || systemHealthQuery.isRefetchError,
+    { ignoreSync: true },
   );
   const badgeColor = systemHealthToneColors[badgeTone];
 

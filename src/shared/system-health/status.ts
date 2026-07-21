@@ -3,6 +3,7 @@ import type { EdgeSystemStatus, SystemHealthTone } from './types';
 export function deriveSystemHealthTone(
   status: EdgeSystemStatus | undefined,
   agentRequestFailed = false,
+  options?: { ignoreSync?: boolean },
 ): SystemHealthTone {
   if (agentRequestFailed || (status && !status.agent.online)) {
     return 'error';
@@ -10,7 +11,7 @@ export function deriveSystemHealthTone(
   if (!status) {
     return 'checking';
   }
-  if (status.sync.failedOutbox > 0) {
+  if (!options?.ignoreSync && status.sync.failedOutbox > 0) {
     return 'error';
   }
   if ((status.fiscal.configured && !status.fiscal.online) || (status.marta.configured && !status.marta.online)) {
@@ -19,7 +20,7 @@ export function deriveSystemHealthTone(
   if (status.backend.offlineMode) {
     return 'offline';
   }
-  if (status.sync.pendingOutbox > 0 || !status.sync.ready) {
+  if (!options?.ignoreSync && (status.sync.pendingOutbox > 0 || !status.sync.ready)) {
     return 'warning';
   }
   return 'success';

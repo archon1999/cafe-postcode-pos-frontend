@@ -37,7 +37,7 @@ describe('POS diagnostics characterization', () => {
       'failed outbox',
       snapshot({ sync: { ready: true, pendingOutbox: 0, failedOutbox: 1, schemaVersion: 1 } }),
       false,
-      'error',
+      'success',
     ],
     [
       'configured integration offline',
@@ -55,17 +55,17 @@ describe('POS diagnostics characterization', () => {
       'pending outbox',
       snapshot({ sync: { ready: true, pendingOutbox: 1, failedOutbox: 0, schemaVersion: 1 } }),
       false,
-      'warning',
+      'success',
     ],
     [
       'bootstrap not ready',
       snapshot({ sync: { ready: false, pendingOutbox: 0, failedOutbox: 0, schemaVersion: 1 } }),
       false,
-      'warning',
+      'success',
     ],
     ['healthy', snapshot(), false, 'success'],
   ] as const)('%s has the current badge priority', (_name, status, requestFailed, expected) => {
-    expect(deriveSystemHealthTone(status, requestFailed)).toBe(expected);
+    expect(deriveSystemHealthTone(status, requestFailed, { ignoreSync: true })).toBe(expected);
   });
 
   it('polls the transport-selected system status only while the page is foregrounded', async () => {

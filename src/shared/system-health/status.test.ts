@@ -46,4 +46,14 @@ describe('deriveSystemHealthTone', () => {
       deriveSystemHealthTone(status({ sync: { ready: true, pendingOutbox: 0, failedOutbox: 1, schemaVersion: 1 } })),
     ).toBe('error');
   });
+
+  it('ignores sync failures, pending operations, and readiness for badge tone', () => {
+    expect(
+      deriveSystemHealthTone(
+        status({ sync: { ready: false, pendingOutbox: 2, failedOutbox: 1, schemaVersion: 1 } }),
+        false,
+        { ignoreSync: true },
+      ),
+    ).toBe('success');
+  });
 });
