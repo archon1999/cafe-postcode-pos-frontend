@@ -1,4 +1,4 @@
-const CACHE_NAME = 'restaurant-pos-shell-v8';
+const CACHE_NAME = 'restaurant-pos-shell-v9';
 const APP_SHELL = ['/', '/manifest.webmanifest', '/icons/pos-icon.svg'];
 
 function isCacheableRequest(request) {
