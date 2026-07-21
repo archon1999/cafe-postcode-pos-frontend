@@ -8,6 +8,7 @@ type PaymentCheckoutSummaryProps = {
   canSubmitPayment: boolean;
   copy: ReturnType<typeof getPosCopy>;
   currentShiftOpen: boolean;
+  fiscalIntegrationReady: boolean;
   grandTotal: number | string | undefined;
   isPaymentProcessing: boolean;
   locale: PosLocale;
@@ -30,6 +31,7 @@ export function PaymentCheckoutSummary({
   canSubmitPayment,
   copy,
   currentShiftOpen,
+  fiscalIntegrationReady,
   grandTotal,
   isPaymentProcessing,
   locale,
@@ -131,16 +133,25 @@ export function PaymentCheckoutSummary({
         <Tooltip
           arrow
           title={
-            <Typography variant="body2">
-              {copy.fiscalPaymentHintPrefix}
-              <Box component="strong" sx={{ fontWeight: 800 }}>
-                {copy.fiscalPaymentHintStrong}
-              </Box>
-              .
-            </Typography>
+            fiscalIntegrationReady ? (
+              <Typography variant="body2">
+                {copy.fiscalPaymentHintPrefix}
+                <Box component="strong" sx={{ fontWeight: 800 }}>
+                  {copy.fiscalPaymentHintStrong}
+                </Box>
+                .
+              </Typography>
+            ) : (
+              copy.fiscalIntegrationUnavailable
+            )
           }>
           <Box component="span" sx={{ display: 'inline-flex', flex: '1 1 50%', minWidth: 0 }}>
-            <Button variant="contained" size="large" fullWidth disabled={!canSubmitPayment} onClick={() => onPay(true)}>
+            <Button
+              variant="contained"
+              size="large"
+              fullWidth
+              disabled={!canSubmitPayment || !fiscalIntegrationReady}
+              onClick={() => onPay(true)}>
               {isPaymentProcessing ? copy.processing : copy.fiscalPayment}
             </Button>
           </Box>

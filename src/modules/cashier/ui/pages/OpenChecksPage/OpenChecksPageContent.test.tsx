@@ -18,6 +18,7 @@ const ensurePrintDocumentMutateAsyncMock = vi.fn();
 const edgePrintMutateAsyncMock = vi.fn(() => Promise.resolve({ status: 'succeeded' }));
 const refundMutateAsyncMock = vi.fn();
 let openOrdersState: Array<Record<string, unknown>> = [];
+let fiscalDeviceOnlineMock = true;
 
 vi.mock('react-router', () => ({
   useNavigate: () => navigateMock,
@@ -48,10 +49,12 @@ vi.mock('modules/cashier/application', () => ({
           id: 'desk-1',
           name: 'Main cash desk',
           enabledPaymentMethods: ['cash'],
+          fiscalProvider: 'fiscal-drive-service',
           printerIntegration: 'printer-1',
         },
       ],
       currentShift: { cashDesk: 'desk-1' },
+      fiscalDeviceStatus: { online: fiscalDeviceOnlineMock },
     },
   }),
   useCashierOpenChecksQuery: (status: 'open' | 'closed' | 'fiscal_closed') => ({
@@ -100,6 +103,10 @@ vi.mock('modules/cashier/domain', () => ({
     if (!displayName) return `ID ${order.orderNumber}`;
     return /^\d+$/.test(displayName) ? `#${displayName}` : displayName;
   },
+  isCashierFiscalIntegrationReady: (context: {
+    availableCashDesks?: Array<{ fiscalProvider?: string }>;
+    fiscalDeviceStatus?: { online?: boolean };
+  }) => Boolean(context.availableCashDesks?.[0]?.fiscalProvider && context.fiscalDeviceStatus?.online),
 }));
 
 vi.mock('shared/layout/PosPageFrame', () => ({
@@ -156,6 +163,7 @@ describe('OpenChecksPageContent', () => {
     });
     edgePrintMutateAsyncMock.mockClear();
     refundMutateAsyncMock.mockReset();
+    fiscalDeviceOnlineMock = true;
     openOrdersState = [
       {
         id: 'order-1',
@@ -308,6 +316,55 @@ describe('OpenChecksPageContent', () => {
       expect(ensurePrintDocumentMutateAsyncMock).toHaveBeenCalledWith('payment-7');
       expect(edgePrintMutateAsyncMock).toHaveBeenCalledWith({ documentId: 'document-7' });
     });
+  });
+
+  it('disables fiscal actions in prechecks and checks when the fiscal integration is unavailable', async () => {
+    fiscalDeviceOnlineMock = false;
+    openOrdersMock.mockReturnValue([]);
+    closedOrdersMock.mockReturnValue([
+      {
+        id: 'order-offline-precheck',
+        orderNumber: 108,
+        status: 'closed',
+        subtotal: 20000,
+        serviceFee: 0,
+        total: 20000,
+        channel: 'hall',
+        items: [],
+        guestCount: 1,
+        openedByName: 'Ali',
+        payments: [{ id: 'payment-offline-precheck', amount: 20000, status: 'succeeded', method: 'cash' }],
+      },
+    ]);
+    fiscalClosedOrdersMock.mockReturnValue([
+      {
+        id: 'order-offline-fiscal',
+        orderNumber: 109,
+        status: 'closed',
+        subtotal: 30000,
+        serviceFee: 0,
+        total: 30000,
+        channel: 'hall',
+        items: [],
+        guestCount: 1,
+        openedByName: 'Ali',
+        payments: [{ id: 'payment-offline-fiscal', amount: 30000, status: 'succeeded', method: 'cash' }],
+      },
+    ]);
+
+    render(<OpenChecksPageContent />);
+    fireEvent.click(screen.getByRole('button', { name: /Precheklar/ }));
+
+    const issueFiscalButton = screen.getByRole('button', { name: 'Chek chiqarish' }) as HTMLButtonElement;
+    expect(issueFiscalButton.disabled).toBe(true);
+    fireEvent.mouseOver(issueFiscalButton.parentElement as HTMLElement);
+    expect(
+      await screen.findByText('Fiscal integratsiya ishlamayapti. Chek chiqarish uchun ulanishni tekshiring.'),
+    ).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: /Cheklar/ }));
+    const reprintFiscalButton = screen.getByRole('button', { name: 'Chekni qayta chiqarish' }) as HTMLButtonElement;
+    expect(reprintFiscalButton.disabled).toBe(true);
   });
 
   it('renames an open check from the dialog and renders the new title', async () => {

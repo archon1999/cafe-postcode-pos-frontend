@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { canManageCashierPayments, usePosSession } from 'modules/auth';
 import {
   useCashierEnsurePaymentPrintDocumentMutation,
+  useCashierContextQuery,
   useCashierOpenChecksQuery,
   useCashierRefundMutation,
   useCashierUpdateOrderDisplayNameMutation,
@@ -15,6 +16,7 @@ import {
   getCashierOrderDisplayName,
   getCashierOrderNumberLabel,
   groupCashierOrderItemsByStation,
+  isCashierFiscalIntegrationReady,
 } from 'modules/cashier/domain';
 import type { CashierCheckStatus, CashierOrder } from 'modules/cashier/domain/entities/order.types';
 import { useEdgePrintMutation } from 'modules/edge-printing';
@@ -48,6 +50,7 @@ export function OpenChecksPageContent() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const copy = getPosCopy(locale);
+  const canOperatePayments = canManageCashierPayments(session?.user);
   const [settingsAnchor, setSettingsAnchor] = useState<HTMLElement | null>(null);
   const [selectedTab, setSelectedTab] = useState<CashierCheckStatus>('open');
   const [selectedOrderId, setSelectedOrderId] = useState<string>('');
@@ -62,6 +65,10 @@ export function OpenChecksPageContent() {
   const refundMutation = useCashierRefundMutation();
   const ensurePrintDocumentMutation = useCashierEnsurePaymentPrintDocumentMutation();
   const edgePrintMutation = useEdgePrintMutation();
+  const cashierContextQuery = useCashierContextQuery({
+    enabled: canOperatePayments,
+    refetchInterval: canOperatePayments ? 15_000 : false,
+  });
   const updateOrderDisplayNameMutation = useCashierUpdateOrderDisplayNameMutation({
     onSuccess: () => {
       setRenameOrder(null);
@@ -116,7 +123,7 @@ export function OpenChecksPageContent() {
     },
     printDocument: (documentId) => edgePrintMutation.mutateAsync({ documentId }),
   });
-  const canOperatePayments = canManageCashierPayments(session?.user);
+  const fiscalIntegrationReady = isCashierFiscalIntegrationReady(cashierContextQuery.data);
   const canRefund = Boolean(
     selectedTab !== 'open' && latestSucceededPayment?.id && !latestSucceededPayment?.isRefunded && canOperatePayments,
   );
@@ -152,6 +159,7 @@ export function OpenChecksPageContent() {
   const detailPanel = selectedOrder ? (
     <OpenChecksDetail
       copy={copy}
+      fiscalIntegrationReady={fiscalIntegrationReady}
       groupedItems={groupedItems}
       latestSucceededPayment={latestSucceededPayment}
       locale={locale}

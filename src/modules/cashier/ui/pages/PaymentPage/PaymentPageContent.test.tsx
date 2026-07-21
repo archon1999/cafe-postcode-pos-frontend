@@ -20,6 +20,7 @@ const clipboardWriteTextMock = vi.fn();
 let orderChannelMock = 'takeaway';
 let orderTableSessionMock: string | null = null;
 let enabledPaymentMethodsMock: Array<'cash' | 'card' | 'mixed'> = ['cash'];
+let fiscalDeviceOnlineMock = true;
 let paymentMutationStateMock = {
   isPending: false,
   isError: false,
@@ -68,10 +69,12 @@ vi.mock('modules/cashier/application', () => ({
           id: 'desk-1',
           name: 'Main cash desk',
           enabledPaymentMethods: enabledPaymentMethodsMock,
+          fiscalProvider: 'fiscal-drive-service',
           printerIntegration: 'printer-1',
         },
       ],
       currentShift: { cashDesk: 'desk-1' },
+      fiscalDeviceStatus: { online: fiscalDeviceOnlineMock },
     },
   }),
   useCashierPaymentMutation: () => ({
@@ -140,6 +143,10 @@ vi.mock('modules/cashier/domain', () => ({
     if (!displayName) return `ID ${order.orderNumber}`;
     return /^\d+$/.test(displayName) ? `#${displayName}` : displayName;
   },
+  isCashierFiscalIntegrationReady: (context: {
+    availableCashDesks?: Array<{ fiscalProvider?: string }>;
+    fiscalDeviceStatus?: { online?: boolean };
+  }) => Boolean(context.availableCashDesks?.[0]?.fiscalProvider && context.fiscalDeviceStatus?.online),
 }));
 
 vi.mock('shared/layout/PosPageFrame', () => ({
@@ -188,6 +195,7 @@ describe('PaymentPageContent', () => {
     orderChannelMock = 'takeaway';
     orderTableSessionMock = null;
     enabledPaymentMethodsMock = ['cash'];
+    fiscalDeviceOnlineMock = true;
     canAddCashierPaymentOrderItemsMock.mockReturnValue(true);
     canAccessWaiterTablesMock.mockReturnValue(false);
     canRemoveCashierPaymentOrderItemsMock.mockReturnValue(false);
@@ -527,6 +535,21 @@ describe('PaymentPageContent', () => {
     expect((screen.getByRole('button', { name: 'Chek' }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(screen.getByRole('button', { name: 'Chek' }));
 
+    expect(paymentMutateAsyncMock).not.toHaveBeenCalled();
+  });
+
+  it('disables fiscal payment and explains when the fiscal integration is unavailable', async () => {
+    fiscalDeviceOnlineMock = false;
+
+    render(<PaymentPageContent orderId="order-1" />);
+
+    const fiscalButton = screen.getByRole('button', { name: 'Chek' }) as HTMLButtonElement;
+    expect(fiscalButton.disabled).toBe(true);
+    fireEvent.mouseOver(fiscalButton.parentElement as HTMLElement);
+    expect(
+      await screen.findByText('Fiscal integratsiya ishlamayapti. Chek chiqarish uchun ulanishni tekshiring.'),
+    ).toBeTruthy();
+    fireEvent.click(fiscalButton);
     expect(paymentMutateAsyncMock).not.toHaveBeenCalled();
   });
 
