@@ -10,7 +10,7 @@ import {
   canAccessTakeawayBuilder,
   usePosSession,
 } from 'modules/auth';
-import { enqueueEdgePrintDocuments } from 'modules/edge-printing/application';
+import { requestEdgePrintDocuments } from 'modules/edge-printing/application';
 import {
   useCurrentWaiterOrder,
   useCurrentWaiterTakeawayOrder,
@@ -89,11 +89,9 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
     defaultVatPercent: session?.restaurantContext?.vatPercent ?? 0,
     removeOrderItem: (itemId) => waiterRepository.removeOrderItem(itemId),
     onPrintDocuments: (documentIds) => {
-      void enqueueEdgePrintDocuments(documentIds).then(({ errors }) => {
-        errors.forEach((error) =>
-          toast.error(error instanceof Error ? error.message : 'Oshxona chekini chiqarib bo‘lmadi'),
-        );
-      });
+      requestEdgePrintDocuments(documentIds, (error) =>
+        toast.error(error instanceof Error ? error.message : 'Oshxona chekini chiqarib bo‘lmadi'),
+      );
     },
     selectCurrentOrder: (orders) =>
       isTakeawayMode

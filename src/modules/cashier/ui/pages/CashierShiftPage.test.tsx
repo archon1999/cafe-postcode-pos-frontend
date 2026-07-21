@@ -8,7 +8,7 @@ import { CashierShiftPage } from './CashierShiftPage';
 
 const navigateMock = vi.fn();
 const reportMutateAsyncMock = vi.fn();
-const edgePrintMutateAsyncMock = vi.fn();
+const requestEdgePrintDocumentsMock = vi.hoisted(() => vi.fn());
 
 vi.mock('react-router', () => ({
   Navigate: () => null,
@@ -82,8 +82,8 @@ vi.mock('modules/cashier/application', () => ({
   }),
 }));
 
-vi.mock('modules/edge-printing', () => ({
-  useEdgePrintMutation: () => ({ isPending: false, mutateAsync: edgePrintMutateAsyncMock }),
+vi.mock('modules/edge-printing/application', () => ({
+  requestEdgePrintDocuments: requestEdgePrintDocumentsMock,
 }));
 
 vi.mock('shared/layout/PosPageFrame', () => ({
@@ -106,9 +106,8 @@ describe('CashierShiftPage report printing', () => {
   beforeEach(() => {
     cleanup();
     reportMutateAsyncMock.mockReset();
-    edgePrintMutateAsyncMock.mockReset();
+    requestEdgePrintDocumentsMock.mockReset();
     reportMutateAsyncMock.mockResolvedValue({ printDocuments: ['general-1', 'fiscal-1'] });
-    edgePrintMutateAsyncMock.mockResolvedValue({ status: 'succeeded' });
   });
 
   it('prints general and fiscal reports in backend order', async () => {
@@ -127,8 +126,8 @@ describe('CashierShiftPage report printing', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Chek chiqarish' }));
 
-    await waitFor(() => expect(edgePrintMutateAsyncMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(requestEdgePrintDocumentsMock).toHaveBeenCalledTimes(1));
     expect(reportMutateAsyncMock).toHaveBeenCalledWith({ cashShiftId: 'shift-1' });
-    expect(edgePrintMutateAsyncMock.mock.calls).toEqual([[{ documentId: 'general-1' }], [{ documentId: 'fiscal-1' }]]);
+    expect(requestEdgePrintDocumentsMock).toHaveBeenCalledWith(['general-1', 'fiscal-1']);
   });
 });

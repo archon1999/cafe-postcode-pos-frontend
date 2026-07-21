@@ -15,7 +15,7 @@ const retryFiscalMutateMock = vi.fn();
 const closedRefetchMock = vi.fn();
 const fiscalClosedRefetchMock = vi.fn();
 const ensurePrintDocumentMutateAsyncMock = vi.fn();
-const edgePrintMutateAsyncMock = vi.fn(() => Promise.resolve({ status: 'succeeded' }));
+const requestEdgePrintDocumentsMock = vi.hoisted(() => vi.fn());
 const refundMutateAsyncMock = vi.fn();
 let openOrdersState: Array<Record<string, unknown>> = [];
 let fiscalDeviceOnlineMock = true;
@@ -168,8 +168,8 @@ vi.mock('shared/ui/pos-primitives', () => ({
   PosSettingsMenu: () => null,
 }));
 
-vi.mock('modules/edge-printing', () => ({
-  useEdgePrintMutation: () => ({ mutateAsync: edgePrintMutateAsyncMock, isPending: false }),
+vi.mock('modules/edge-printing/application', () => ({
+  requestEdgePrintDocuments: requestEdgePrintDocumentsMock,
 }));
 
 describe('OpenChecksPageContent', () => {
@@ -187,7 +187,7 @@ describe('OpenChecksPageContent', () => {
     ensurePrintDocumentMutateAsyncMock.mockResolvedValue({
       receipt: { id: 'receipt-materialized', printDocument: 'document-materialized' },
     });
-    edgePrintMutateAsyncMock.mockClear();
+    requestEdgePrintDocumentsMock.mockClear();
     refundMutateAsyncMock.mockReset();
     fiscalDeviceOnlineMock = true;
     openOrdersState = [
@@ -348,7 +348,7 @@ describe('OpenChecksPageContent', () => {
 
     await waitFor(() => {
       expect(ensurePrintDocumentMutateAsyncMock).toHaveBeenCalledWith('payment-6');
-      expect(edgePrintMutateAsyncMock).toHaveBeenCalledWith({ documentId: 'document-materialized' });
+      expect(requestEdgePrintDocumentsMock).toHaveBeenCalledWith(['document-materialized'], expect.any(Function));
     });
   });
 
@@ -388,7 +388,7 @@ describe('OpenChecksPageContent', () => {
 
     await waitFor(() => {
       expect(ensurePrintDocumentMutateAsyncMock).toHaveBeenCalledWith('payment-7');
-      expect(edgePrintMutateAsyncMock).toHaveBeenCalledWith({ documentId: 'document-7' });
+      expect(requestEdgePrintDocumentsMock).toHaveBeenCalledWith(['document-7'], expect.any(Function));
     });
   });
 
@@ -492,7 +492,7 @@ describe('OpenChecksPageContent', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ha, chiqarish' }));
 
     await waitFor(() => {
-      expect(edgePrintMutateAsyncMock).toHaveBeenCalledWith({ documentId: 'document-2' });
+      expect(requestEdgePrintDocumentsMock).toHaveBeenCalledWith(['document-2']);
       expect(closedRefetchMock).toHaveBeenCalled();
       expect(fiscalClosedRefetchMock).toHaveBeenCalled();
     });
@@ -527,7 +527,7 @@ describe('OpenChecksPageContent', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Yakunlash' }));
     fireEvent.click(await screen.findByRole('button', { name: "Yo'q" }));
 
-    expect(edgePrintMutateAsyncMock).not.toHaveBeenCalled();
+    expect(requestEdgePrintDocumentsMock).not.toHaveBeenCalled();
     expect(closedRefetchMock).toHaveBeenCalled();
     expect(fiscalClosedRefetchMock).toHaveBeenCalled();
   });

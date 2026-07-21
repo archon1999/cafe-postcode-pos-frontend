@@ -18,7 +18,7 @@ import {
   usePrintCashierShiftReportMutation,
 } from 'modules/cashier/application';
 import type { CashierShiftCloseResponse } from 'modules/cashier/domain';
-import { useEdgePrintMutation } from 'modules/edge-printing';
+import { requestEdgePrintDocuments } from 'modules/edge-printing/application';
 import { getApiErrorMessage } from 'shared/api/errorMessage';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { getPosCopy } from 'shared/locale/copy';
@@ -78,22 +78,12 @@ export function CashierShiftPage() {
       }
     },
   });
-  const edgePrintMutation = useEdgePrintMutation();
-
-  const printDocuments = async (documentIds: string[]) => {
-    for (const documentId of documentIds) {
-      await edgePrintMutation.mutateAsync({ documentId });
-    }
-  };
-
   const printShiftReportMutation = usePrintCashierShiftReportMutation();
   const closeShiftMutation = useCloseCashierShiftMutation({
     onSuccess: (response) => {
       void contextQuery.refetch();
       if (response.printDocuments?.length) {
-        void printDocuments(response.printDocuments).catch((error) => {
-          toast.error(getApiErrorMessage(error, 'Smena yopildi, lekin hisobotni chiqarib bo‘lmadi.'));
-        });
+        requestEdgePrintDocuments(response.printDocuments);
       }
       if (response.printReportError) {
         toast.error(`Smena yopildi, lekin hisobot tayyorlanmadi: ${response.printReportError}`);
@@ -147,12 +137,12 @@ export function CashierShiftPage() {
         onPrint={async () => {
           try {
             const response = await printShiftReportMutation.mutateAsync({ cashShiftId: shift.id });
-            await printDocuments(response.printDocuments ?? []);
+            requestEdgePrintDocuments(response.printDocuments ?? []);
           } catch (error) {
             toast.error(getApiErrorMessage(error, 'Hisobotni chiqarishda xatolik bor.'));
           }
         }}
-        printing={printShiftReportMutation.isPending || edgePrintMutation.isPending}
+        printing={printShiftReportMutation.isPending}
         shift={shift}
       />
     );

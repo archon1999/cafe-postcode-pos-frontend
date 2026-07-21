@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 
-import { enqueueEdgePrintDocuments } from 'modules/edge-printing/application';
+import { requestEdgePrintDocuments } from 'modules/edge-printing/application';
 import { queryClient } from 'shared/api/query-client';
 
 import { waiterRepository } from '../data-access';
@@ -76,14 +76,14 @@ export function useAddWaiterOrderItemMutation(options: {
       }
 
       const result = await waiterRepository.addOrderItem(orderId, menuItem.id, kitchenNote);
-      return enqueueEdgePrintDocuments(result?.kitchenPrintDocuments ?? []);
+      requestEdgePrintDocuments(result?.kitchenPrintDocuments ?? [], onPrintError);
+      return result;
     },
-    onSuccess: async (printing) => {
+    onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: waiterKeys.orders });
       if (sessionId) {
         await queryClient.invalidateQueries({ queryKey: waiterKeys.sessionOrders(sessionId) });
       }
-      printing.errors.forEach(onPrintError ?? (() => undefined));
       onSuccess?.();
     },
   });
@@ -123,17 +123,16 @@ export function useSubmitWaiterOrderMutation(options: {
 
       await waiterRepository.updateOrderNote(orderId, orderNote);
       const order = await waiterRepository.submitOrder(orderId);
-      const printing = await enqueueEdgePrintDocuments(order?.kitchenPrintDocuments ?? []);
-      return { order, printing };
+      requestEdgePrintDocuments(order?.kitchenPrintDocuments ?? [], onPrintError);
+      return order;
     },
-    onSuccess: async ({ printing }) => {
+    onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: waiterKeys.orders });
       if (sessionId) {
         await queryClient.invalidateQueries({ queryKey: waiterKeys.sessionOrders(sessionId) });
       }
       await queryClient.invalidateQueries({ queryKey: ['cashier', 'checks', 'open'] });
       await queryClient.invalidateQueries({ queryKey: ['kitchen', 'queue'] });
-      printing.errors.forEach(onPrintError ?? (() => undefined));
       onSuccess?.();
     },
   });

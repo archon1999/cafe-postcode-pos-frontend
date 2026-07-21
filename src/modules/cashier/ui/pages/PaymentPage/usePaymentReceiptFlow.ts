@@ -7,14 +7,14 @@ export function usePaymentReceiptFlow({
   afterPaymentPath,
   remainingTotal,
   clearSplitParts,
-  onPrintDocument,
+  onPrintDocuments,
   onPrintError,
   setAmount,
 }: {
   afterPaymentPath: string;
   remainingTotal: number;
   clearSplitParts: () => void;
-  onPrintDocument: (documentId: string) => Promise<unknown>;
+  onPrintDocuments: (documentIds: string[]) => void;
   onPrintError: (message: string) => void;
   setAmount: (amount: string) => void;
 }) {
@@ -22,7 +22,6 @@ export function usePaymentReceiptFlow({
   const [receiptData, setReceiptData] = useState<CashierPaymentResponse | null>(null);
   const [printToastOpen, setPrintToastOpen] = useState(false);
   const [receiptPrintPromptOpen, setReceiptPrintPromptOpen] = useState(false);
-  const [isReceiptPrintConfirming, setIsReceiptPrintConfirming] = useState(false);
   const receipts = useMemo(
     () => receiptData?.receipts?.filter(Boolean) ?? (receiptData?.receipt ? [receiptData.receipt] : []),
     [receiptData?.receipt, receiptData?.receipts],
@@ -44,25 +43,16 @@ export function usePaymentReceiptFlow({
     clearSplitParts();
   };
 
-  const printAndFinish = async () => {
-    if (isReceiptPrintConfirming) {
+  const printAndFinish = () => {
+    const documents = receipts.flatMap((receipt) => (receipt?.printDocument ? [receipt.printDocument] : []));
+    if (documents.length === 0) {
+      onPrintError('Chek uchun print hujjati tayyor emas.');
+      finish();
       return;
     }
-
-    setIsReceiptPrintConfirming(true);
-    try {
-      const documents = receipts.flatMap((receipt) => (receipt?.printDocument ? [receipt.printDocument] : []));
-      if (documents.length === 0) {
-        throw new Error('Chek uchun print hujjati tayyor emas.');
-      }
-      await Promise.all(documents.map(onPrintDocument));
-      setPrintToastOpen(true);
-    } catch (error) {
-      onPrintError(error instanceof Error ? error.message : "Chekni chiqarib bo'lmadi.");
-    } finally {
-      setIsReceiptPrintConfirming(false);
-      finish();
-    }
+    onPrintDocuments(documents);
+    setPrintToastOpen(true);
+    finish();
   };
 
   return {
@@ -72,7 +62,7 @@ export function usePaymentReceiptFlow({
     setPrintToastOpen,
     receiptPrintPromptOpen,
     setReceiptPrintPromptOpen,
-    isReceiptPrintConfirming,
+    isReceiptPrintConfirming: false,
     finishReceiptFlow: finish,
     handleSuccessfulPaymentResponse: handleSuccessfulPayment,
     handleReceiptPromptPrint: printAndFinish,

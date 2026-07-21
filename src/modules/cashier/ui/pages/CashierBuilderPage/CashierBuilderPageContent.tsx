@@ -23,7 +23,7 @@ import {
   type CashierBuilderOrderChannel,
   type CashierMenuCategory,
 } from 'modules/cashier/domain';
-import { enqueueEdgePrintDocuments } from 'modules/edge-printing/application';
+import { requestEdgePrintDocuments } from 'modules/edge-printing/application';
 import { getApiErrorMessage } from 'shared/api/errorMessage';
 import { refreshTransportAndReload } from 'shared/api/transportResolver';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
@@ -93,11 +93,9 @@ export function CashierBuilderPageContent() {
     defaultVatPercent: session?.restaurantContext?.vatPercent ?? 0,
     removeOrderItem: (itemId) => cashierRepository.removeOrderItem(itemId),
     onPrintDocuments: (documentIds) => {
-      void enqueueEdgePrintDocuments(documentIds).then(({ errors }) => {
-        errors.forEach((error) =>
-          toast.error(error instanceof Error ? error.message : 'Oshxona chekini chiqarib bo‘lmadi'),
-        );
-      });
+      requestEdgePrintDocuments(documentIds, (error) =>
+        toast.error(error instanceof Error ? error.message : 'Oshxona chekini chiqarib bo‘lmadi'),
+      );
     },
     resetKey: editOrderId ?? '',
     selectCurrentOrder: (orders) =>

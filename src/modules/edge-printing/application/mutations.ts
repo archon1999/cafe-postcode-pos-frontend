@@ -20,3 +20,9 @@ export async function enqueueEdgePrintDocuments(documentIds: string[]) {
     errors: settled.flatMap((result) => (result.status === 'rejected' ? [result.reason] : [])),
   };
 }
+
+export function requestEdgePrintDocuments(documentIds: string[], onError?: (error: unknown) => void) {
+  void enqueueEdgePrintDocuments(documentIds).then(({ errors }) => {
+    errors.forEach(onError ?? (() => undefined));
+  });
+}

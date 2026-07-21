@@ -27,7 +27,7 @@ vi.mock('modules/edge-printing/data-access', () => ({
   edgePrintRepository: { print: mocks.print },
 }));
 
-import { enqueueEdgePrintDocuments } from 'modules/edge-printing/application';
+import { enqueueEdgePrintDocuments, requestEdgePrintDocuments } from 'modules/edge-printing/application';
 import {
   useKitchenMonitorQuery,
   useKitchenQueueQuery,
@@ -108,8 +108,20 @@ describe('POS kitchen characterization', () => {
     expect(queue.result.current.data).toEqual([]);
     expect(disabledMonitor.result.current.fetchStatus).toBe('idle');
     expect(mocks.apiGet).toHaveBeenCalledTimes(1);
-    expect(client.getQueryCache().find({ queryKey: ['kitchen', 'queue'] })?.options.refetchInterval).toBe(5000);
-    expect(client.getQueryCache().find({ queryKey: ['kitchen', 'monitor', null] })?.options.refetchInterval).toBe(5000);
+    expect(
+      (
+        client.getQueryCache().find({ queryKey: ['kitchen', 'queue'] })?.options as
+          | { refetchInterval?: unknown }
+          | undefined
+      )?.refetchInterval,
+    ).toBe(5000);
+    expect(
+      (
+        client.getQueryCache().find({ queryKey: ['kitchen', 'monitor', null] })?.options as
+          | { refetchInterval?: unknown }
+          | undefined
+      )?.refetchInterval,
+    ).toBe(5000);
   });
 
   it('posts ticket and item status then invalidates every current kitchen consumer', async () => {
@@ -147,5 +159,23 @@ describe('POS kitchen characterization', () => {
     ]);
     expect(result.jobs).toEqual([{ operationId: 'print-1' }]);
     expect(result.errors).toHaveLength(1);
+  });
+
+  it('starts print enqueueing without making the caller wait for Local Agent', async () => {
+    let resolvePrint: ((value: { operationId: string }) => void) | undefined;
+    mocks.print.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolvePrint = resolve;
+        }),
+    );
+    const onError = vi.fn();
+
+    requestEdgePrintDocuments(['document-1'], onError);
+
+    expect(mocks.print).toHaveBeenCalledWith({ documentId: 'document-1', operationId: 'auto:document-1' });
+    expect(onError).not.toHaveBeenCalled();
+    resolvePrint?.({ operationId: 'print-1' });
+    await Promise.resolve();
   });
 });

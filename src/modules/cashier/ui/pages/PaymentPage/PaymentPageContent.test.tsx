@@ -15,7 +15,7 @@ const addPaymentOrderItemMutateAsyncMock = vi.fn();
 const removePaymentOrderItemMutateAsyncMock = vi.fn();
 const updateDisplayNameMutateAsyncMock = vi.fn();
 const paymentMutateAsyncMock = vi.fn();
-const edgePrintMutateAsyncMock = vi.fn(() => Promise.resolve({ status: 'succeeded' }));
+const requestEdgePrintDocumentsMock = vi.hoisted(() => vi.fn());
 const clipboardWriteTextMock = vi.fn();
 let orderChannelMock = 'takeaway';
 let orderTableSessionMock: string | null = null;
@@ -164,8 +164,8 @@ vi.mock('shared/ui/pos-primitives', () => ({
   PosSettingsMenu: () => null,
 }));
 
-vi.mock('modules/edge-printing', () => ({
-  useEdgePrintMutation: () => ({ mutateAsync: edgePrintMutateAsyncMock, isPending: false }),
+vi.mock('modules/edge-printing/application', () => ({
+  requestEdgePrintDocuments: requestEdgePrintDocumentsMock,
 }));
 
 describe('PaymentPageContent', () => {
@@ -180,7 +180,7 @@ describe('PaymentPageContent', () => {
     removePaymentOrderItemMutateAsyncMock.mockReset();
     updateDisplayNameMutateAsyncMock.mockReset();
     paymentMutateAsyncMock.mockReset();
-    edgePrintMutateAsyncMock.mockClear();
+    requestEdgePrintDocumentsMock.mockClear();
     clipboardWriteTextMock.mockReset();
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
@@ -585,7 +585,7 @@ describe('PaymentPageContent', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ha, chiqarish' }));
 
     await waitFor(() => {
-      expect(edgePrintMutateAsyncMock).toHaveBeenCalledWith({ documentId: 'document-1' });
+      expect(requestEdgePrintDocumentsMock).toHaveBeenCalledWith(['document-1']);
       expect(navigateMock).toHaveBeenCalledWith('/cashier/open-checks', { replace: true });
     });
   });
@@ -621,7 +621,7 @@ describe('PaymentPageContent', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Ha, chiqarish' }));
 
     await waitFor(() => {
-      expect(edgePrintMutateAsyncMock).toHaveBeenCalledWith({ documentId: 'document-plain' });
+      expect(requestEdgePrintDocumentsMock).toHaveBeenCalledWith(['document-plain']);
     });
   });
 
@@ -650,7 +650,7 @@ describe('PaymentPageContent', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Yakunlash' }));
     fireEvent.click(await screen.findByRole('button', { name: "Yo'q" }));
 
-    expect(edgePrintMutateAsyncMock).not.toHaveBeenCalled();
+    expect(requestEdgePrintDocumentsMock).not.toHaveBeenCalled();
     expect(navigateMock).toHaveBeenCalledWith('/cashier/open-checks', { replace: true });
   });
 
@@ -686,7 +686,7 @@ describe('PaymentPageContent', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Yakunlash' }));
 
     expect(screen.queryByText('Chek kerakmi?')).toBeNull();
-    expect(edgePrintMutateAsyncMock).not.toHaveBeenCalled();
+    expect(requestEdgePrintDocumentsMock).not.toHaveBeenCalled();
     expect(navigateMock).toHaveBeenCalledWith('/cashier/open-checks', { replace: true });
   });
 

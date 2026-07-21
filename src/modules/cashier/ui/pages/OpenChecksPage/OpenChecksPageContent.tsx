@@ -20,7 +20,7 @@ import {
   isCashierFiscalIntegrationReady,
 } from 'modules/cashier/domain';
 import type { CashierCheckStatus, CashierOrder } from 'modules/cashier/domain/entities/order.types';
-import { useEdgePrintMutation } from 'modules/edge-printing';
+import { requestEdgePrintDocuments } from 'modules/edge-printing/application';
 import { refreshTransportAndReload } from 'shared/api/transportResolver';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { getPosCopy } from 'shared/locale/copy';
@@ -65,7 +65,6 @@ export function OpenChecksPageContent() {
   const [fiscalPage, setFiscalPage] = useState(1);
   const refundMutation = useCashierRefundMutation();
   const ensurePrintDocumentMutation = useCashierEnsurePaymentPrintDocumentMutation();
-  const edgePrintMutation = useEdgePrintMutation();
   const cashierContextQuery = useCashierContextQuery({
     enabled: canOperatePayments,
     refetchInterval: canOperatePayments ? 15_000 : false,
@@ -122,7 +121,7 @@ export function OpenChecksPageContent() {
       void closedOrdersQuery.refetch();
       void fiscalClosedQuery.refetch();
     },
-    printDocument: (documentId) => edgePrintMutation.mutateAsync({ documentId }),
+    printDocuments: (documentIds) => requestEdgePrintDocuments(documentIds),
   });
   const fiscalIntegrationReady = isCashierFiscalIntegrationReady(cashierContextQuery.data);
   const canRefund = Boolean(
@@ -173,9 +172,8 @@ export function OpenChecksPageContent() {
           .mutateAsync({ paymentId: latestSucceededPayment.id })
           .then((response) => {
             if (response.receipt?.printDocument) {
-              return edgePrintMutation.mutateAsync({ documentId: response.receipt.printDocument });
+              requestEdgePrintDocuments([response.receipt.printDocument]);
             }
-            return undefined;
           })
           .catch((error) =>
             toast.error(error instanceof Error ? error.message : 'Qaytarish chekini chiqarib bo‘lmadi'),
@@ -191,7 +189,9 @@ export function OpenChecksPageContent() {
             if (!response.receipt?.printDocument) {
               throw new Error('Chek uchun print hujjati tayyor emas');
             }
-            return edgePrintMutation.mutateAsync({ documentId: response.receipt.printDocument });
+            requestEdgePrintDocuments([response.receipt.printDocument], (error) =>
+              toast.info(error instanceof Error ? error.message : 'Printer so‘rovini yuborib bo‘lmadi'),
+            );
           })
           .catch((error) => toast.info(error instanceof Error ? error.message : 'Printer ishlamayapti'));
       }}

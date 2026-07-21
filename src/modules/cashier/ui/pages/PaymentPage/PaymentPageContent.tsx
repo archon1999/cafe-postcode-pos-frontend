@@ -2,6 +2,7 @@ import { Box, Stack, alpha, useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { toast } from 'sonner';
 
 import { canAccessTakeawayBuilder, canManageCashierPayments, canSkipFiscalReceipts, usePosSession } from 'modules/auth';
 import {
@@ -15,7 +16,7 @@ import {
   getCashierOrderNumberLabel,
   isCashierFiscalIntegrationReady,
 } from 'modules/cashier/domain';
-import { useEdgePrintMutation } from 'modules/edge-printing';
+import { requestEdgePrintDocuments } from 'modules/edge-printing/application';
 import { getApiErrorMessage } from 'shared/api/errorMessage';
 import { refreshTransportAndReload } from 'shared/api/transportResolver';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
@@ -58,7 +59,6 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     refetchInterval: canProcessPayments ? 15000 : false,
   });
   const orderQuery = useCashierPaymentOrderQuery(normalizedOrderId);
-  const edgePrintMutation = useEdgePrintMutation();
   const scanMarkingMutation = useCashierOrderScanMutation({
     orderId: normalizedOrderId,
     mode: 'remove',
@@ -160,11 +160,8 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     afterPaymentPath,
     remainingTotal,
     clearSplitParts: () => setSplitParts(null),
-    onPrintDocument: (documentId) => edgePrintMutation.mutateAsync({ documentId }),
-    onPrintError: (message) => {
-      setPaymentErrorMessage(message);
-      setPaymentErrorToastOpen(true);
-    },
+    onPrintDocuments: (documentIds) => requestEdgePrintDocuments(documentIds),
+    onPrintError: (message) => toast.error(message),
     setAmount,
   });
   const paymentSubmission = usePaymentSubmission({

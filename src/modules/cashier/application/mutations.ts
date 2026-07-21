@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 
-import { enqueueEdgePrintDocuments } from 'modules/edge-printing/application';
+import { requestEdgePrintDocuments } from 'modules/edge-printing/application';
 import { queryClient } from 'shared/api/query-client';
 
 import { cashierRepository } from '../data-access';
@@ -26,11 +26,11 @@ export function useAddCashierOrderItemMutation(options: {
       }
 
       const result = await cashierRepository.addOrderItem(orderId, menuItem.id, kitchenNote);
-      return enqueueEdgePrintDocuments(result?.kitchenPrintDocuments ?? []);
+      requestEdgePrintDocuments(result?.kitchenPrintDocuments ?? [], onPrintError);
+      return result;
     },
-    onSuccess: async (printing) => {
+    onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: cashierKeys.builderOrders });
-      printing.errors.forEach(onPrintError ?? (() => undefined));
       onSuccess?.();
     },
   });
@@ -87,15 +87,14 @@ export function useSubmitCashierOrderMutation(options: {
       }
 
       const order = await cashierRepository.submitOrder(orderId);
-      const printing = await enqueueEdgePrintDocuments(order?.kitchenPrintDocuments ?? []);
-      return { order, printing };
+      requestEdgePrintDocuments(order?.kitchenPrintDocuments ?? [], onPrintError);
+      return order;
     },
-    onSuccess: async ({ printing }) => {
+    onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: cashierKeys.builderOrders });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('open') });
       await queryClient.invalidateQueries({ queryKey: cashierKeys.checks('closed') });
       await queryClient.invalidateQueries({ queryKey: ['kitchen', 'queue'] });
-      printing.errors.forEach(onPrintError ?? (() => undefined));
       onSuccess?.();
     },
   });
@@ -143,10 +142,10 @@ export function useCashierPaymentMutation(options: {
         manualCardReason: payload.manualCardReason,
         registerFiscal: payload.registerFiscal,
       });
-      const printing = await enqueueEdgePrintDocuments(
+      requestEdgePrintDocuments(
         response.kitchenPrintDocuments ?? response.order.kitchenPrintDocuments ?? [],
+        onPrintError,
       );
-      printing.errors.forEach(onPrintError ?? (() => undefined));
       return response;
     },
     onSuccess: async (_, __) => {

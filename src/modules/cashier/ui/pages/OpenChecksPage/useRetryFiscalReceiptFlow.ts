@@ -14,13 +14,12 @@ type Options = {
   copy: ReturnType<typeof getPosCopy>;
   latestPayment?: Payment;
   onFinished: () => void;
-  printDocument: (documentId: string) => Promise<unknown>;
+  printDocuments: (documentIds: string[]) => void;
 };
 
-export function useRetryFiscalReceiptFlow({ copy, latestPayment, onFinished, printDocument }: Options) {
+export function useRetryFiscalReceiptFlow({ copy, latestPayment, onFinished, printDocuments }: Options) {
   const [dialog, setDialog] = useState<RetryFiscalReceiptDialogState | null>(null);
   const [printPromptOpen, setPrintPromptOpen] = useState(false);
-  const [isPrintConfirming, setIsPrintConfirming] = useState(false);
 
   const retryMutation = useCashierFiscalRetryMutation({
     onSuccess: (response) => {
@@ -60,28 +59,24 @@ export function useRetryFiscalReceiptFlow({ copy, latestPayment, onFinished, pri
     onFinished();
   };
 
-  const print = async () => {
-    if (isPrintConfirming) return;
-    setIsPrintConfirming(true);
-    try {
-      const printableReceipts = (dialog?.receipts ?? []).filter((receipt) => receipt.printDocument);
-      if (printableReceipts.length === 0) {
-        throw new Error('Chek uchun print hujjati tayyor emas');
-      }
-      await Promise.all(printableReceipts.map((receipt) => printDocument(receipt.printDocument!)));
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Chekni chiqarib bo‘lmadi');
-    } finally {
-      setIsPrintConfirming(false);
+  const print = () => {
+    const documentIds = (dialog?.receipts ?? []).flatMap((receipt) =>
+      receipt.printDocument ? [receipt.printDocument] : [],
+    );
+    if (documentIds.length === 0) {
+      toast.error('Chek uchun print hujjati tayyor emas');
       finish();
+      return;
     }
+    printDocuments(documentIds);
+    finish();
   };
 
   return {
     close: () => setDialog(null),
     dialog,
     finish,
-    isPrintConfirming,
+    isPrintConfirming: false,
     isRetrying: retryMutation.isPending,
     print,
     printPromptOpen,
