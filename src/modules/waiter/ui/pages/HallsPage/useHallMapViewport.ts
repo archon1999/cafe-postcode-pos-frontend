@@ -128,6 +128,7 @@ export function useHallMapViewport({
     scaledWidth: contentWidth * mapScale,
     toggleFitFill,
     viewportRef,
+    viewportSize,
     zoom,
   };
 }
