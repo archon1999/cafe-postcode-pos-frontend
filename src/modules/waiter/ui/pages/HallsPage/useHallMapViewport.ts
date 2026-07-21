@@ -6,7 +6,9 @@ import {
   HALL_GRID_GAP,
   HALL_GRID_MIN_CELL_WIDTH,
   HALL_GRID_ROW_HEIGHT,
+  HALL_MAP_MIN_SCALE,
   HALL_MAP_ZOOM_STEP,
+  calculateHallMapFillScale,
   clampMapScale,
   readHallMapScaleSettings,
   writeHallMapScaleSettings,
@@ -72,10 +74,7 @@ export function useHallMapViewport({
     );
   }, [contentHeight, contentWidth, viewportSize.height, viewportSize.width]);
   const fillScale = useMemo(() => {
-    if (!viewportSize.width || !contentWidth) {
-      return 1;
-    }
-    return clampMapScale(Math.max(1, viewportSize.width - 28) / contentWidth);
+    return calculateHallMapFillScale(viewportSize.width, contentWidth);
   }, [contentWidth, viewportSize.width]);
 
   useEffect(() => {
@@ -115,7 +114,10 @@ export function useHallMapViewport({
   }, [fillScale, fitScale]);
   const zoom = useCallback((direction: 1 | -1) => {
     setMapScaleMode('manual');
-    setMapScale((currentScale) => clampMapScale(Number((currentScale + direction * HALL_MAP_ZOOM_STEP).toFixed(2))));
+    setMapScale((currentScale) => {
+      const nextScale = Number((currentScale + direction * HALL_MAP_ZOOM_STEP).toFixed(2));
+      return direction === 1 ? clampMapScale(nextScale) : Math.max(HALL_MAP_MIN_SCALE, nextScale);
+    });
   }, []);
 
   return {

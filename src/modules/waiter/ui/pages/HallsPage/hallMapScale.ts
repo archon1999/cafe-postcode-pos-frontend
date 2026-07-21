@@ -17,6 +17,18 @@ export function clampMapScale(value: number) {
   return Math.min(HALL_MAP_MAX_SCALE, Math.max(HALL_MAP_MIN_SCALE, value));
 }
 
+export function clampAutomaticMapScale(value: number) {
+  return Number.isFinite(value) ? Math.max(HALL_MAP_MIN_SCALE, value) : 1;
+}
+
+export function calculateHallMapFillScale(viewportWidth: number, contentWidth: number) {
+  if (!viewportWidth || !contentWidth) {
+    return 1;
+  }
+
+  return clampAutomaticMapScale(Math.max(1, viewportWidth - 28) / contentWidth);
+}
+
 export function isHallMapScaleMode(value: unknown): value is HallMapScaleMode {
   return value === 'fit' || value === 'fill' || value === 'manual';
 }
@@ -35,9 +47,15 @@ export function readHallMapScaleSettings(): HallMapScaleSettings {
     const parsedSettings = JSON.parse(rawSettings) as Partial<HallMapScaleSettings>;
     const parsedScale = Number(parsedSettings.scale);
 
+    const mode = isHallMapScaleMode(parsedSettings.mode) ? parsedSettings.mode : 'manual';
+
     return {
-      mode: isHallMapScaleMode(parsedSettings.mode) ? parsedSettings.mode : 'manual',
-      scale: Number.isFinite(parsedScale) ? clampMapScale(parsedScale) : 1,
+      mode,
+      scale: Number.isFinite(parsedScale)
+        ? mode === 'manual'
+          ? clampMapScale(parsedScale)
+          : clampAutomaticMapScale(parsedScale)
+        : 1,
     };
   } catch {
     return { mode: 'manual', scale: 1 };
