@@ -148,6 +148,7 @@ function useRotatingPage(items: KitchenMonitorTicket[]) {
 function MonitorColumn({
   title,
   items,
+  compactLayout,
   highlightedIds,
   titleColor,
   dividerColor,
@@ -161,6 +162,7 @@ function MonitorColumn({
 }: {
   title: string;
   items: KitchenMonitorTicket[];
+  compactLayout: boolean;
   highlightedIds: Set<string>;
   titleColor: string;
   dividerColor: string;
@@ -182,32 +184,32 @@ function MonitorColumn({
         minHeight: 0,
         height: '100%',
         overflow: 'hidden',
-        borderRadius: { xs: 2.75, md: 4.5 },
+        borderRadius: compactLayout ? 2.75 : 4.5,
         border: `1px solid ${dividerColor}`,
         background: columnBackground,
         boxShadow: '0 22px 54px rgba(0, 0, 0, 0.1)',
-        px: { xs: 2, md: 3.75 },
-        pt: { xs: 2.25, md: 3.75 },
-        pb: { xs: 1.75, md: 3 },
+        px: compactLayout ? 2 : 3.75,
+        pt: compactLayout ? 2.25 : 3.75,
+        pb: compactLayout ? 1.75 : 3,
       }}>
       <Typography
         component="h2"
         sx={{
           textAlign: 'center',
-          fontSize: { xs: 27, md: 54 },
+          fontSize: compactLayout ? 27 : 54,
           fontWeight: 820,
           letterSpacing: '-0.03em',
           lineHeight: 1,
           color: titleColor,
-          mb: { xs: 1.75, md: 3.5 },
+          mb: compactLayout ? 1.75 : 3.5,
           textShadow: `0 0 26px ${alpha(titleColor, 0.14)}`,
           '&::after': {
             content: '""',
             display: 'block',
-            width: { xs: 44, md: 72 },
-            height: { xs: 3, md: 5 },
+            width: compactLayout ? 44 : 72,
+            height: compactLayout ? 3 : 5,
             mx: 'auto',
-            mt: { xs: 1.125, md: 1.75 },
+            mt: compactLayout ? 1.125 : 1.75,
             borderRadius: 999,
             backgroundColor: alpha(titleColor, 0.62),
             boxShadow: `0 0 18px ${alpha(titleColor, 0.2)}`,
@@ -226,14 +228,14 @@ function MonitorColumn({
               data-highlighted={isHighlighted ? 'true' : 'false'}
               sx={{
                 flex: fillsPage ? '1 1 0' : '0 0 auto',
-                minHeight: { xs: 68, md: 104 },
-                px: { xs: 2.5, md: 5 },
-                py: { xs: 0.75, md: 1.25 },
+                minHeight: compactLayout ? 68 : 104,
+                px: compactLayout ? 2.5 : 5,
+                py: compactLayout ? 0.75 : 1.25,
                 display: 'flex',
                 alignItems: 'center',
                 position: 'relative',
                 overflow: 'hidden',
-                borderRadius: { xs: 1.75, md: 3 },
+                borderRadius: compactLayout ? 1.75 : 3,
                 border: `1px solid ${alpha(rowAccentColor, 0.15)}`,
                 backgroundColor: isHighlighted ? highlightBackgroundColor : rowBackgroundColor,
                 animation: isHighlighted ? `${readyRowEntrance} 1.2s ease-out` : 'none',
@@ -243,7 +245,7 @@ function MonitorColumn({
                   content: '""',
                   position: 'absolute',
                   inset: '18% auto 18% 0',
-                  width: { xs: 3, md: 5 },
+                  width: compactLayout ? 3 : 5,
                   borderRadius: '0 999px 999px 0',
                   backgroundColor: alpha(rowAccentColor, 0.72),
                   boxShadow: `0 0 16px ${alpha(rowAccentColor, 0.24)}`,
@@ -251,7 +253,7 @@ function MonitorColumn({
               }}>
               <Typography
                 sx={{
-                  fontSize: { xs: 40, md: 82 },
+                  fontSize: compactLayout ? 40 : 82,
                   lineHeight: 1,
                   fontWeight: 820,
                   letterSpacing: '-0.04em',
@@ -272,8 +274,8 @@ function MonitorColumn({
             sx={{ flex: 1, minHeight: 160, display: 'grid', placeItems: 'center' }}>
             <Box
               sx={{
-                width: { xs: 92, md: 164 },
-                height: { xs: 92, md: 164 },
+                width: compactLayout ? 92 : 164,
+                height: compactLayout ? 92 : 164,
                 display: 'grid',
                 placeItems: 'center',
                 position: 'relative',
@@ -306,8 +308,8 @@ function MonitorColumn({
                     <Box
                       key={dot}
                       sx={{
-                        width: { xs: 9, md: 14 },
-                        height: { xs: 9, md: 14 },
+                        width: compactLayout ? 9 : 14,
+                        height: compactLayout ? 9 : 14,
                         borderRadius: '50%',
                         backgroundColor: alpha(titleColor, 0.16 + dot * 0.025),
                       }}
@@ -325,12 +327,12 @@ function MonitorColumn({
           data-testid="monitor-page-indicator"
           sx={{
             alignSelf: 'center',
-            mt: { xs: 1.25, md: 2 },
-            px: { xs: 1.25, md: 2 },
-            py: { xs: 0.375, md: 0.75 },
+            mt: compactLayout ? 1.25 : 2,
+            px: compactLayout ? 1.25 : 2,
+            py: compactLayout ? 0.375 : 0.75,
             textAlign: 'center',
             color: alpha(rowTextColor, 0.64),
-            fontSize: { xs: 13, md: 18 },
+            fontSize: compactLayout ? 13 : 18,
             fontWeight: 750,
             fontVariantNumeric: 'tabular-nums',
             lineHeight: 1,
@@ -517,8 +519,8 @@ export function KitchenMonitorDisplay({
           minHeight: isCompactLayout ? '100vh' : TV_CANVAS_HEIGHT,
           display: 'flex',
           flexDirection: 'column',
-          px: { xs: 2.5, md: 8 },
-          py: { xs: 1.75, md: 4.5 },
+          px: isCompactLayout ? 2.5 : 8,
+          py: isCompactLayout ? 1.75 : 4.5,
           background: monitorBackground,
           backgroundSize: '140% 140%',
           animation: `${monitorBackgroundDrift} 52s ease-in-out infinite alternate`,
@@ -535,9 +537,9 @@ export function KitchenMonitorDisplay({
           justifyContent="space-between"
           sx={{
             flex: '0 0 auto',
-            minHeight: { xs: 36, md: 62 },
-            mb: { xs: 1, md: 2 },
-            px: { xs: 0.5, md: 1.5 },
+            minHeight: isCompactLayout ? 36 : 62,
+            mb: isCompactLayout ? 1 : 2,
+            px: isCompactLayout ? 0.5 : 1.5,
           }}>
           {restaurantName ? (
             <Stack direction="row" alignItems="center" spacing={1.5} sx={{ minWidth: 0 }}>
@@ -545,8 +547,8 @@ export function KitchenMonitorDisplay({
                 aria-hidden="true"
                 sx={{
                   flex: '0 0 auto',
-                  width: { xs: 5, md: 9 },
-                  height: { xs: 30, md: 52 },
+                  width: isCompactLayout ? 5 : 9,
+                  height: isCompactLayout ? 30 : 52,
                   borderRadius: 999,
                   background: `linear-gradient(180deg, ${preparingTitleColor}, ${readyTitleColor})`,
                   boxShadow: `0 0 22px ${alpha(preparingTitleColor, 0.3)}`,
@@ -556,12 +558,12 @@ export function KitchenMonitorDisplay({
                 data-testid="monitor-restaurant-name"
                 sx={{
                   minWidth: 0,
-                  maxWidth: { xs: '55vw', md: 1056 },
+                  maxWidth: isCompactLayout ? '55vw' : 1056,
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
                   color: rowTextColor,
-                  fontSize: { xs: 22, md: 44 },
+                  fontSize: isCompactLayout ? 22 : 44,
                   fontWeight: 850,
                   lineHeight: 1,
                   letterSpacing: '-0.025em',
@@ -578,7 +580,7 @@ export function KitchenMonitorDisplay({
                 data-testid="monitor-clock"
                 sx={{
                   color: rowTextColor,
-                  fontSize: { xs: 20, md: 38 },
+                  fontSize: isCompactLayout ? 20 : 38,
                   fontWeight: 800,
                   lineHeight: 1,
                   fontVariantNumeric: 'tabular-nums',
@@ -588,7 +590,7 @@ export function KitchenMonitorDisplay({
               <Typography
                 sx={{
                   color: alpha(rowTextColor, 0.46),
-                  fontSize: { xs: 10, md: 16 },
+                  fontSize: isCompactLayout ? 10 : 16,
                   fontWeight: 650,
                   lineHeight: 1.1,
                   mt: 0.35,
@@ -601,9 +603,9 @@ export function KitchenMonitorDisplay({
               aria-label={isFullscreen ? 'To‘liq ekrandan chiqish' : 'To‘liq ekranga o‘tish'}
               onClick={() => void toggleFullscreen()}
               sx={{
-                width: { xs: 38, md: 62 },
-                height: { xs: 38, md: 62 },
-                borderRadius: { xs: 1.5, md: 2.5 },
+                width: isCompactLayout ? 38 : 62,
+                height: isCompactLayout ? 38 : 62,
+                borderRadius: isCompactLayout ? 1.5 : 2.5,
                 color: rowTextColor,
                 border: `1px solid ${dividerColor}`,
                 backgroundColor: isDark ? alpha('#ffffff', 0.035) : alpha('#ffffff', 0.42),
@@ -611,7 +613,7 @@ export function KitchenMonitorDisplay({
                   backgroundColor: isDark ? alpha('#ffffff', 0.08) : alpha('#ffffff', 0.72),
                 },
               }}>
-              <Typography component="span" sx={{ fontSize: { xs: 22, md: 34 }, lineHeight: 1 }}>
+              <Typography component="span" sx={{ fontSize: isCompactLayout ? 22 : 34, lineHeight: 1 }}>
                 {isFullscreen ? '×' : '⛶'}
               </Typography>
             </IconButton>
@@ -633,8 +635,8 @@ export function KitchenMonitorDisplay({
             <Box
               sx={{
                 position: 'absolute',
-                width: { xs: '42vw', md: 620 },
-                height: { xs: '42vw', md: 620 },
+                width: isCompactLayout ? '42vw' : 620,
+                height: isCompactLayout ? '42vw' : 620,
                 minWidth: 260,
                 minHeight: 260,
                 maxWidth: 620,
@@ -650,12 +652,12 @@ export function KitchenMonitorDisplay({
             <Box
               sx={{
                 position: 'relative',
-                width: { xs: '84vw', md: 580 },
+                width: isCompactLayout ? '84vw' : 580,
                 minWidth: 260,
                 maxWidth: 680,
-                px: { xs: 3.5, md: 9 },
-                py: { xs: 3, md: 6.75 },
-                borderRadius: { xs: 3.25, md: 5.25 },
+                px: isCompactLayout ? 3.5 : 9,
+                py: isCompactLayout ? 3 : 6.75,
+                borderRadius: isCompactLayout ? 3.25 : 5.25,
                 textAlign: 'center',
                 backgroundColor: isDark ? alpha('#111820', 0.92) : alpha('#fffaf1', 0.94),
                 border: `1px solid ${isDark ? alpha('#7df5d7', 0.36) : alpha('#168a73', 0.28)}`,
@@ -667,10 +669,10 @@ export function KitchenMonitorDisplay({
               <Typography
                 sx={{
                   color: readyTitleColor,
-                  fontSize: { xs: 18, md: 30 },
+                  fontSize: isCompactLayout ? 18 : 30,
                   fontWeight: 800,
                   lineHeight: 1,
-                  mb: { xs: 1.1, md: 1.6 },
+                  mb: isCompactLayout ? 1.1 : 1.6,
                   textTransform: 'uppercase',
                 }}>
                 {READY_SPOTLIGHT_LABEL}
@@ -678,7 +680,7 @@ export function KitchenMonitorDisplay({
               <Typography
                 sx={{
                   color: rowTextColor,
-                  fontSize: { xs: 72, md: 168 },
+                  fontSize: isCompactLayout ? 72 : 168,
                   fontWeight: 800,
                   letterSpacing: '-0.04em',
                   lineHeight: 0.9,
@@ -693,18 +695,16 @@ export function KitchenMonitorDisplay({
         <Box
           sx={{
             display: 'grid',
-            gridTemplateColumns: '1fr',
-            gap: { xs: 1.5, md: 4.25 },
+            gridTemplateColumns: isCompactLayout ? '1fr' : 'repeat(2, minmax(0, 1fr))',
+            gap: isCompactLayout ? 1.5 : 4.25,
             flex: 1,
             minHeight: 0,
             alignItems: 'stretch',
-            '@media (orientation: landscape) and (min-width: 900px)': {
-              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-            },
           }}>
           <MonitorColumn
             title="Tayyorlanayapti"
             items={monitorData.preparing}
+            compactLayout={isCompactLayout}
             highlightedIds={new Set<string>()}
             titleColor={preparingTitleColor}
             dividerColor={dividerColor}
@@ -720,6 +720,7 @@ export function KitchenMonitorDisplay({
           <MonitorColumn
             title="Tayyor bo'lganlar"
             items={monitorData.recentlyDone}
+            compactLayout={isCompactLayout}
             highlightedIds={new Set(highlightedDoneIds)}
             titleColor={readyTitleColor}
             dividerColor={dividerColor}

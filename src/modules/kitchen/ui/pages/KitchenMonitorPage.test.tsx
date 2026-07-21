@@ -105,6 +105,10 @@ describe('KitchenMonitorPage', () => {
     act(() => resizeViewport(1280, 720));
     expect(screen.getByTestId('monitor-canvas').getAttribute('data-scale')).toBe('0.6667');
 
+    act(() => resizeViewport(800, 600));
+    expect(screen.getByTestId('monitor-canvas').getAttribute('data-layout')).toBe('scaled');
+    expect(screen.getByTestId('monitor-canvas').getAttribute('data-scale')).toBe('0.4167');
+
     act(() => resizeViewport(600, 320));
     expect(screen.getByTestId('monitor-canvas').getAttribute('data-layout')).toBe('compact');
     expect(screen.getByTestId('monitor-canvas').getAttribute('data-scale')).toBe('1.0000');
