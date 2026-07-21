@@ -48,7 +48,7 @@ vi.mock('modules/waiter/application', () => ({
   }),
   useWaiterMenuQuery: (...args: unknown[]) => useWaiterMenuQueryMock(...args),
   useWaiterTableSessionQuery: () => ({
-    data: { guestCount: 2 },
+    data: { guestCount: 2, tableName: 'VIP stol', tableNumber: 7 },
   }),
   waiterKeys: {
     orders: ['waiter', 'orders'],
@@ -94,7 +94,21 @@ vi.mock('shared/ui/pos-primitives', () => ({
       {icon}
     </button>
   ),
-  PosOrderChannelSegment: () => <div>segment</div>,
+  PosOrderChannelSegment: ({
+    channel,
+    items = [],
+  }: {
+    channel: string;
+    items?: Array<{ value: string; label: string }>;
+  }) => (
+    <div>
+      {items.map((item) => (
+        <span key={item.value} aria-current={item.value === channel ? 'true' : undefined}>
+          {item.label}
+        </span>
+      ))}
+    </div>
+  ),
   PosSectionTabs: ({ items }: { items: Array<{ label: string }> }) => (
     <div>{items.map((item) => item.label).join(', ')}</div>
   ),
@@ -161,6 +175,15 @@ describe('TableSessionPageContent', () => {
 
     expect(canAccessTableSessionMenuMock).toHaveBeenCalledWith(expect.objectContaining({ id: 'user-1' }));
     expect(useWaiterMenuQueryMock).toHaveBeenCalledWith({ enabled: true });
+  });
+
+  it('shows the table number and the three-channel segment with hall active', () => {
+    render(<TableSessionPageContent sessionId="session-1" mode="hall" />);
+
+    expect(screen.getByText('7')).toBeTruthy();
+    expect(screen.getByText('Zal').getAttribute('aria-current')).toBe('true');
+    expect(screen.getByText('Soboy')).toBeTruthy();
+    expect(screen.getByText('Dostavka')).toBeTruthy();
   });
 
   it('opens the price-hidden catalog for the current table session', () => {

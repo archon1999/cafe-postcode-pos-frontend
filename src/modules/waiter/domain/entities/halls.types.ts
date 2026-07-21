@@ -63,6 +63,7 @@ export type Hall = {
 export type TableSession = {
   id: string;
   tableName: string;
+  tableNumber?: number;
   hallName: string;
   guestCount: number;
   status: string;

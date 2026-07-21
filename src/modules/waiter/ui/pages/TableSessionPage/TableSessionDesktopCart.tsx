@@ -122,9 +122,13 @@ export function TableSessionDesktopCart(props: TableSessionDesktopCartProps) {
             </Stack>
           </Stack>
           <PosOrderChannelSegment
-            hallLabel={props.copy.hall}
             takeawayLabel={props.copy.takeaway}
             channel={props.channel}
+            items={[
+              { value: 'hall', label: props.copy.hall },
+              { value: 'takeaway', label: props.copy.takeawaySwitch },
+              { value: 'delivery', label: props.copy.deliverySwitch },
+            ]}
           />
         </Stack>
       </Box>

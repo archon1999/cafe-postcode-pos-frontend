@@ -131,6 +131,9 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
   const shouldShowVat = vatEnabled && vatPercent > 0;
   const vatLabel = `${copy.vat} (${formatPercent(vatPercent)}%)`;
   const orderModeMeta = isTakeawayMode ? `${1} ${copy.guests}` : `${sessionQuery.data?.guestCount ?? 0} ${copy.guests}`;
+  const tableNumberLabel = sessionQuery.data?.tableNumber
+    ? String(sessionQuery.data.tableNumber)
+    : (sessionQuery.data?.tableName?.match(/\d+/)?.[0] ?? '0');
   const submitOrderMutation = useSubmitWaiterOrderMutation({
     orderId: currentOrder?.id,
     sessionId,
@@ -239,7 +242,7 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
         />
 
         <TableSessionDesktopCart
-          avatarLabel={isTakeawayMode ? 'TG' : (sessionQuery.data?.tableName?.match(/\\d+/)?.[0] ?? '0')}
+          avatarLabel={isTakeawayMode ? 'TG' : tableNumberLabel}
           canTakePayment={canTakePayment}
           channel={currentOrder?.channel ?? mode}
           copy={copy}

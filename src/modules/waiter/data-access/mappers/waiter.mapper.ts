@@ -37,7 +37,10 @@ type DiningTableDto = Omit<
   available_seat_count?: number;
 };
 type HallDto = Omit<Hall, 'tables'> & { tables: DiningTableDto[] };
-type TableSessionDto = TableSession;
+type TableSessionDto = Omit<TableSession, 'tableNumber'> & {
+  tableNumber?: number;
+  table_number?: number;
+};
 type WaiterOrderItemDto = WaiterOrderItem;
 type WaiterOrderDto = Omit<WaiterOrder, 'items' | 'displayName'> & {
   items: WaiterOrderItemDto[];
@@ -91,7 +94,10 @@ export function mapHalls(dtos: HallDto[]) {
 }
 
 export function mapTableSession(dto: TableSessionDto): TableSession {
-  return { ...dto };
+  return {
+    ...dto,
+    tableNumber: dto.tableNumber ?? dto.table_number,
+  };
 }
 
 export function mapWaiterOrder(dto: WaiterOrderDto): WaiterOrder {

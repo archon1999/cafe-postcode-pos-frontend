@@ -37,10 +37,14 @@ export function TableSessionMobileCart({
         </Stack>
         <Box sx={{ px: 2, pb: 1.35 }}>
           <PosOrderChannelSegment
-            hallLabel={props.copy.hall}
             takeawayLabel={props.copy.takeaway}
             channel={props.channel}
             compact
+            items={[
+              { value: 'hall', label: props.copy.hall },
+              { value: 'takeaway', label: props.copy.takeawaySwitch },
+              { value: 'delivery', label: props.copy.deliverySwitch },
+            ]}
           />
         </Box>
         <Divider />
