@@ -28,6 +28,18 @@ vi.mock('@iconify/react', () => ({
   Icon: () => <span />,
 }));
 
+vi.mock('@mui/material', async () => {
+  const actual = await vi.importActual<typeof import('@mui/material')>('@mui/material');
+  const StaticOverlay = ({ open, children }: { open: boolean; children?: ReactNode }) =>
+    open ? <div>{children}</div> : null;
+
+  return {
+    ...actual,
+    Dialog: StaticOverlay,
+    Drawer: StaticOverlay,
+  };
+});
+
 vi.mock('modules/auth', () => ({
   canAccessTakeawayBuilder: () => false,
   canManageCashierPayments: () => true,

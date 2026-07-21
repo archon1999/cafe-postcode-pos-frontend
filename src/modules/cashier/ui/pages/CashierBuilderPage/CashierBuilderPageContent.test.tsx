@@ -27,6 +27,10 @@ function getSearchParamsMock() {
   return cachedSearchParams;
 }
 
+vi.mock('@iconify/react', () => ({
+  Icon: ({ icon }: { icon: string }) => <span data-icon={icon} />,
+}));
+
 vi.mock('react-router', () => ({
   useNavigate: () => navigateMock,
   useSearchParams: () => [getSearchParamsMock()],
