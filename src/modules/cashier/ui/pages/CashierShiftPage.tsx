@@ -20,6 +20,7 @@ import {
 import type { CashierShiftCloseResponse } from 'modules/cashier/domain';
 import { requestEdgePrintDocuments } from 'modules/edge-printing/application';
 import { getApiErrorMessage } from 'shared/api/errorMessage';
+import { POS_CONTEXT_POLL_INTERVAL_MS } from 'shared/api/polling';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { getPosCopy } from 'shared/locale/copy';
 import { PosIconAction, PosSettingsMenu } from 'shared/ui/pos-primitives';
@@ -48,7 +49,10 @@ export function CashierShiftPage() {
 
   const hasCashierAccess = canAccessCashier(session?.user);
   const canManageShift = canManageCashShift(session?.user);
-  const contextQuery = useCashierContextQuery({ enabled: hasCashierAccess, refetchInterval: 15000 });
+  const contextQuery = useCashierContextQuery({
+    enabled: hasCashierAccess,
+    refetchInterval: POS_CONTEXT_POLL_INTERVAL_MS,
+  });
   const nextPath =
     searchParams.get('next') || (isCashierBuilderMode(session?.user) ? '/cashier/builder' : '/cashier/open-checks');
   const currentShift = contextQuery.data?.currentShift ?? null;

@@ -9,3 +9,7 @@ export const queryClient = new QueryClient({
     },
   },
 });
+
+export function invalidateQueriesInBackground(queryKeys: ReadonlyArray<readonly unknown[]>) {
+  void Promise.allSettled(queryKeys.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
+}

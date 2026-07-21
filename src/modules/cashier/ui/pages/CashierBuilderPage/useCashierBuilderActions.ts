@@ -119,7 +119,6 @@ export function useCashierBuilderActions({
         deliveryPhone,
         deliveryAddress: normalizedDeliveryAddress,
       });
-      await refetchOrders();
       const action = pendingDeliveryAction;
       setDeliveryDialogOpen(false);
       setPendingDeliveryAction(null);
@@ -146,10 +145,9 @@ export function useCashierBuilderActions({
     setChannelSwitchSaving(true);
     try {
       await cashierRepository.updateOrderChannel(currentOrder.id, channel);
-      await refetchOrders();
-      if (editOrderId) await refetchEditOrder();
       setBuilderChannel(channel);
       clearSelectedCartItem();
+      void Promise.allSettled([refetchOrders(), ...(editOrderId ? [refetchEditOrder()] : [])]);
     } catch (error) {
       reportMessage(getApiErrorMessage(error, errorFallback));
     } finally {

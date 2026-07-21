@@ -82,7 +82,7 @@ describe('POS diagnostics characterization', () => {
     expect(options.queryKey).toBe(systemHealthQueryKey);
     expect(options.enabled).toBe(true);
     expect(options.retry).toBe(false);
-    expect(options.refetchInterval).toBe(10_000);
+    expect(options.refetchInterval).toBe(60_000);
     expect(options.refetchIntervalInBackground).toBe(false);
     await options.queryFn();
     expect(apiGetMock).toHaveBeenCalledWith('/system/status');

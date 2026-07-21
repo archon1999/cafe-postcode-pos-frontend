@@ -8,10 +8,12 @@ import type { KitchenItemStatus, KitchenTicketStatus } from '../domain';
 import { kitchenKeys } from './keys';
 
 async function invalidateKitchenRelatedQueries() {
-  await queryClient.invalidateQueries({ queryKey: kitchenKeys.queue });
-  await queryClient.invalidateQueries({ queryKey: ['waiter', 'session-orders'] });
-  await queryClient.invalidateQueries({ queryKey: ['cashier', 'open-checks'] });
-  await queryClient.invalidateQueries({ queryKey: ['cashier', 'payment-order'] });
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: kitchenKeys.queue }),
+    queryClient.invalidateQueries({ queryKey: ['waiter', 'session-orders'] }),
+    queryClient.invalidateQueries({ queryKey: ['cashier', 'open-checks'] }),
+    queryClient.invalidateQueries({ queryKey: ['cashier', 'payment-order'] }),
+  ]);
 }
 
 export function useUpdateKitchenTicketStatusMutation() {

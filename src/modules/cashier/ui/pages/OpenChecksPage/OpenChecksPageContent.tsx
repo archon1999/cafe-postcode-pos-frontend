@@ -21,6 +21,7 @@ import {
 } from 'modules/cashier/domain';
 import type { CashierCheckStatus, CashierOrder } from 'modules/cashier/domain/entities/order.types';
 import { requestEdgePrintDocuments } from 'modules/edge-printing/application';
+import { POS_CONTEXT_POLL_INTERVAL_MS } from 'shared/api/polling';
 import { refreshTransportAndReload } from 'shared/api/transportResolver';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { getPosCopy } from 'shared/locale/copy';
@@ -67,7 +68,7 @@ export function OpenChecksPageContent() {
   const ensurePrintDocumentMutation = useCashierEnsurePaymentPrintDocumentMutation();
   const cashierContextQuery = useCashierContextQuery({
     enabled: canOperatePayments,
-    refetchInterval: canOperatePayments ? 15_000 : false,
+    refetchInterval: canOperatePayments ? POS_CONTEXT_POLL_INTERVAL_MS : false,
   });
   const updateOrderDisplayNameMutation = useCashierUpdateOrderDisplayNameMutation({
     onSuccess: () => {

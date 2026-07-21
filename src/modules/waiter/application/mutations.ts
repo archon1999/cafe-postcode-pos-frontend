@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 
 import { requestEdgePrintDocuments } from 'modules/edge-printing/application';
-import { queryClient } from 'shared/api/query-client';
+import { invalidateQueriesInBackground } from 'shared/api/query-client';
 
 import { waiterRepository } from '../data-access';
 import type { DiningTable, WaiterMenuItem } from '../domain';
@@ -24,8 +24,8 @@ export function useOpenTableSessionMutation(options: {
 
       return waiterRepository.openTableSession(selectedTable.id, clampGuestCount(guestCount, selectedTable.seatCount));
     },
-    onSuccess: async (response) => {
-      await queryClient.invalidateQueries({ queryKey: waiterKeys.halls });
+    onSuccess: (response) => {
+      invalidateQueriesInBackground([waiterKeys.halls]);
       onSuccess?.(response.id);
     },
   });
@@ -42,8 +42,8 @@ export function useReserveTableMutation(options: { selectedTable: DiningTable | 
 
       await waiterRepository.reserveTable(selectedTable.id);
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: waiterKeys.halls });
+    onSuccess: () => {
+      invalidateQueriesInBackground([waiterKeys.halls]);
       onSuccess?.();
     },
   });
@@ -79,11 +79,8 @@ export function useAddWaiterOrderItemMutation(options: {
       requestEdgePrintDocuments(result?.kitchenPrintDocuments ?? [], onPrintError);
       return result;
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: waiterKeys.orders });
-      if (sessionId) {
-        await queryClient.invalidateQueries({ queryKey: waiterKeys.sessionOrders(sessionId) });
-      }
+    onSuccess: () => {
+      invalidateQueriesInBackground([waiterKeys.orders, ...(sessionId ? [waiterKeys.sessionOrders(sessionId)] : [])]);
       onSuccess?.();
     },
   });
@@ -96,11 +93,8 @@ export function useRemoveWaiterOrderItemMutation(options: { sessionId: string | 
     mutationFn: async (itemId: string) => {
       await waiterRepository.removeOrderItem(itemId);
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: waiterKeys.orders });
-      if (sessionId) {
-        await queryClient.invalidateQueries({ queryKey: waiterKeys.sessionOrders(sessionId) });
-      }
+    onSuccess: () => {
+      invalidateQueriesInBackground([waiterKeys.orders, ...(sessionId ? [waiterKeys.sessionOrders(sessionId)] : [])]);
       onSuccess?.();
     },
   });
@@ -126,13 +120,13 @@ export function useSubmitWaiterOrderMutation(options: {
       requestEdgePrintDocuments(order?.kitchenPrintDocuments ?? [], onPrintError);
       return order;
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: waiterKeys.orders });
-      if (sessionId) {
-        await queryClient.invalidateQueries({ queryKey: waiterKeys.sessionOrders(sessionId) });
-      }
-      await queryClient.invalidateQueries({ queryKey: ['cashier', 'checks', 'open'] });
-      await queryClient.invalidateQueries({ queryKey: ['kitchen', 'queue'] });
+    onSuccess: () => {
+      invalidateQueriesInBackground([
+        waiterKeys.orders,
+        ...(sessionId ? [waiterKeys.sessionOrders(sessionId)] : []),
+        ['cashier', 'checks', 'open'],
+        ['kitchen', 'queue'],
+      ]);
       onSuccess?.();
     },
   });

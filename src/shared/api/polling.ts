@@ -1,0 +1,1 @@
+export const POS_CONTEXT_POLL_INTERVAL_MS = 60_000;

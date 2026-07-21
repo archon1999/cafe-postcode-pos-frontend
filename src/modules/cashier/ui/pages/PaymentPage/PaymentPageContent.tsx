@@ -18,6 +18,7 @@ import {
 } from 'modules/cashier/domain';
 import { requestEdgePrintDocuments } from 'modules/edge-printing/application';
 import { getApiErrorMessage } from 'shared/api/errorMessage';
+import { POS_CONTEXT_POLL_INTERVAL_MS } from 'shared/api/polling';
 import { refreshTransportAndReload } from 'shared/api/transportResolver';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { getPosCopy } from 'shared/locale/copy';
@@ -56,7 +57,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
 
   const cashierContextQuery = useCashierContextQuery({
     enabled: Boolean(session?.token) && canProcessPayments,
-    refetchInterval: canProcessPayments ? 15000 : false,
+    refetchInterval: canProcessPayments ? POS_CONTEXT_POLL_INTERVAL_MS : false,
   });
   const orderQuery = useCashierPaymentOrderQuery(normalizedOrderId);
   const scanMarkingMutation = useCashierOrderScanMutation({
