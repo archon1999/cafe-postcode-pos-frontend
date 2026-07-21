@@ -107,8 +107,22 @@ vi.mock('modules/cashier/application', () => ({
 }));
 
 vi.mock('modules/cashier/domain', () => ({
-  aggregateCashierOrderItems: (items: unknown[]) => items,
-  groupCashierOrderItemsByStation: () => [['Issiq oshxona', []]],
+  aggregateCashierOrderItems: (items: Array<Record<string, unknown>> = []) => {
+    const aggregated = new Map<string, Record<string, unknown>>();
+    items.forEach((item) => {
+      const statusGroup = item.status === 'cancelled' ? 'cancelled' : 'active';
+      const key = [item.catalogItem, item.note ?? '', statusGroup, item.prepStationName ?? ''].join('::');
+      const existing = aggregated.get(key);
+      if (existing) {
+        existing.quantity = Number(existing.quantity ?? 0) + Number(item.quantity ?? 0);
+        existing.lineTotal = Number(existing.lineTotal ?? 0) + Number(item.lineTotal ?? 0);
+      } else {
+        aggregated.set(key, { ...item });
+      }
+    });
+    return Array.from(aggregated.values());
+  },
+  groupCashierOrderItemsByStation: (items: Array<Record<string, unknown>> = []) => [['Issiq oshxona', items]],
   getCashierOrderNumberLabel: (order: { orderNumber: number }) => `ID ${order.orderNumber}`,
   getCashierOrderDisplayName: (order: { orderNumber: number; displayName?: string | null }) => {
     const displayName = order.displayName?.trim();
@@ -206,6 +220,54 @@ describe('OpenChecksPageContent', () => {
     render(<OpenChecksPageContent />);
 
     expect(screen.queryByRole('button', { name: "Menyuga o'tish" })).toBeNull();
+  });
+
+  it('shows duplicate products as one quantity row in all three tabs', () => {
+    const duplicateItems = [
+      {
+        id: 'item-1',
+        catalogItem: 'cola',
+        catalogItemName: 'Cola',
+        quantity: 1,
+        lineTotal: 12000,
+        status: 'new',
+        prepStationName: 'Bar',
+      },
+      {
+        id: 'item-2',
+        catalogItem: 'cola',
+        catalogItemName: 'Cola',
+        quantity: 1,
+        lineTotal: 12000,
+        status: 'cooking',
+        prepStationName: 'Bar',
+      },
+    ];
+    const order = {
+      id: 'order-duplicates',
+      orderNumber: 110,
+      status: 'open',
+      subtotal: 24000,
+      serviceFee: 0,
+      total: 24000,
+      channel: 'hall',
+      items: duplicateItems,
+      guestCount: 1,
+      openedByName: 'Ali',
+      payments: [{ id: 'payment-duplicates', amount: 24000, status: 'succeeded', method: 'cash' }],
+    };
+    openOrdersState = [order];
+    closedOrdersMock.mockReturnValue([{ ...order, status: 'closed' }]);
+    fiscalClosedOrdersMock.mockReturnValue([{ ...order, status: 'closed' }]);
+
+    render(<OpenChecksPageContent />);
+    expect(screen.getAllByText('Cola (x2)')).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole('button', { name: /Precheklar/ }));
+    expect(screen.getAllByText('Cola (x2)')).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole('button', { name: /Cheklar/ }));
+    expect(screen.getAllByText('Cola (x2)')).toHaveLength(1);
   });
 
   it('hides the go-to-menu action for closed checks', () => {

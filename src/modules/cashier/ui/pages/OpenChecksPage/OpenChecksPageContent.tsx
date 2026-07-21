@@ -13,6 +13,7 @@ import {
   useCashierUpdateOrderDisplayNameMutation,
 } from 'modules/cashier/application';
 import {
+  aggregateCashierOrderItems,
   getCashierOrderDisplayName,
   getCashierOrderNumberLabel,
   groupCashierOrderItemsByStation,
@@ -105,7 +106,7 @@ export function OpenChecksPageContent() {
   const selectedOrder =
     visibleOrders.find((order) => order.id === selectedOrderId) ?? (isMobile ? undefined : visibleOrders[0]);
   const groupedItems = useMemo(
-    () => groupCashierOrderItemsByStation(selectedOrder?.items, copy.menu),
+    () => groupCashierOrderItemsByStation(aggregateCashierOrderItems(selectedOrder?.items), copy.menu),
     [copy.menu, selectedOrder?.items],
   );
   const latestSucceededPayment = useMemo(() => {

@@ -4,6 +4,7 @@ import type { CashierOrder, CashierOrderItem } from '../entities';
 
 import {
   aggregateCashierCartItemsByStation,
+  aggregateCashierOrderItems,
   getCashierOrderDisplayName,
   getCashierOrderItemsTotalQuantity,
   getCashierOrderMissingMarkingCount,
@@ -86,6 +87,29 @@ describe('cashier cart aggregation', () => {
   it('derives scanner quantity and missing markings from the same source lines', () => {
     expect(getCashierOrderItemsTotalQuantity(items)).toBe(5);
     expect(getCashierOrderMissingMarkingCount(items)).toBe(1);
+  });
+
+  it('aggregates duplicate order rows across active statuses and keeps cancelled rows separate', () => {
+    const aggregatedItems = aggregateCashierOrderItems([
+      { ...items[0]!, status: 'new' },
+      { ...items[1]!, status: 'cooking' },
+      items[2]!,
+      items[3]!,
+    ]);
+
+    expect(aggregatedItems).toHaveLength(3);
+    expect(aggregatedItems[0]).toEqual(
+      expect.objectContaining({
+        catalogItemName: 'Cola',
+        quantity: 3,
+        lineTotal: 36000,
+      }),
+    );
+    expect(aggregatedItems.map((item) => [item.note, item.status, item.quantity])).toEqual([
+      [undefined, 'new', 3],
+      ['Muzsiz', 'active', 1],
+      [undefined, 'cancelled', 1],
+    ]);
   });
 });
 
