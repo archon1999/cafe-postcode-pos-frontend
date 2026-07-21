@@ -49,11 +49,18 @@ class MockAudioContext {
   }
 }
 
+function resizeViewport(width: number, height: number) {
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+  Object.defineProperty(window, 'innerHeight', { configurable: true, value: height });
+  window.dispatchEvent(new Event('resize'));
+}
+
 describe('KitchenMonitorPage', () => {
   const audioContextConstructor = vi.fn(() => new MockAudioContext());
 
   beforeEach(() => {
     vi.useFakeTimers();
+    resizeViewport(1920, 1080);
     useKitchenMonitorQueryMock.mockReset();
     audioContextConstructor.mockClear();
     vi.stubGlobal('AudioContext', audioContextConstructor);
@@ -85,6 +92,22 @@ describe('KitchenMonitorPage', () => {
     expect(screen.getByText('15')).toBeTruthy();
     expect(screen.queryByTestId('ready-order-spotlight')).toBeNull();
     expect(audioContextConstructor).not.toHaveBeenCalled();
+  });
+
+  it('fits the same 1920x1080 canvas to TV resolutions and keeps compact screens native', () => {
+    useKitchenMonitorQueryMock.mockReturnValue({ data: { preparing: [], recentlyDone: [] } });
+
+    render(<KitchenMonitorPage />);
+
+    expect(screen.getByTestId('monitor-canvas').getAttribute('data-layout')).toBe('scaled');
+    expect(screen.getByTestId('monitor-canvas').getAttribute('data-scale')).toBe('1.0000');
+
+    act(() => resizeViewport(1280, 720));
+    expect(screen.getByTestId('monitor-canvas').getAttribute('data-scale')).toBe('0.6667');
+
+    act(() => resizeViewport(800, 600));
+    expect(screen.getByTestId('monitor-canvas').getAttribute('data-layout')).toBe('compact');
+    expect(screen.getByTestId('monitor-canvas').getAttribute('data-scale')).toBe('1.0000');
   });
 
   it('shows six orders per page, rotates overflow, and leaves an empty ready column clean', async () => {

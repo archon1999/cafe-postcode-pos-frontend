@@ -83,6 +83,9 @@ const READY_SPOTLIGHT_LABEL = 'Tayyor';
 const TV_ITEMS_PER_PAGE = 6;
 const TV_PAGE_ROTATION_MS = 8000;
 const TV_CLOCK_TICK_MS = 30_000;
+const TV_CANVAS_WIDTH = 1920;
+const TV_CANVAS_HEIGHT = 1080;
+const TV_COMPACT_BREAKPOINT = 900;
 
 type BrowserWindow = typeof window & {
   webkitAudioContext?: typeof AudioContext;
@@ -101,6 +104,18 @@ function useMonitorClock() {
   }, []);
 
   return currentTime;
+}
+
+function useTvViewport() {
+  const [viewport, setViewport] = useState(() => ({ width: window.innerWidth, height: window.innerHeight }));
+
+  useEffect(() => {
+    const updateViewport = () => setViewport({ width: window.innerWidth, height: window.innerHeight });
+    window.addEventListener('resize', updateViewport);
+    return () => window.removeEventListener('resize', updateViewport);
+  }, []);
+
+  return viewport;
 }
 
 function useRotatingPage(items: KitchenMonitorTicket[]) {
@@ -179,7 +194,7 @@ function MonitorColumn({
         component="h2"
         sx={{
           textAlign: 'center',
-          fontSize: { xs: 27, md: 40, xl: 54 },
+          fontSize: { xs: 27, md: 54 },
           fontWeight: 820,
           letterSpacing: '-0.03em',
           lineHeight: 1,
@@ -211,7 +226,7 @@ function MonitorColumn({
               data-highlighted={isHighlighted ? 'true' : 'false'}
               sx={{
                 flex: fillsPage ? '1 1 0' : '0 0 auto',
-                minHeight: { xs: 68, md: 84, xl: 104 },
+                minHeight: { xs: 68, md: 104 },
                 px: { xs: 2.5, md: 5 },
                 py: { xs: 0.75, md: 1.25 },
                 display: 'flex',
@@ -236,7 +251,7 @@ function MonitorColumn({
               }}>
               <Typography
                 sx={{
-                  fontSize: { xs: 40, md: 60, xl: 82 },
+                  fontSize: { xs: 40, md: 82 },
                   lineHeight: 1,
                   fontWeight: 820,
                   letterSpacing: '-0.04em',
@@ -257,8 +272,8 @@ function MonitorColumn({
             sx={{ flex: 1, minHeight: 160, display: 'grid', placeItems: 'center' }}>
             <Box
               sx={{
-                width: { xs: 92, md: 128, xl: 164 },
-                height: { xs: 92, md: 128, xl: 164 },
+                width: { xs: 92, md: 164 },
+                height: { xs: 92, md: 164 },
                 display: 'grid',
                 placeItems: 'center',
                 position: 'relative',
@@ -339,6 +354,7 @@ export function KitchenMonitorDisplay({
 }) {
   const theme = useTheme();
   const currentTime = useMonitorClock();
+  const viewport = useTvViewport();
   const [highlightedDoneIds, setHighlightedDoneIds] = useState<string[]>([]);
   const [spotlightTicket, setSpotlightTicket] = useState<KitchenMonitorTicket | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(() => Boolean(document.fullscreenElement));
@@ -476,227 +492,246 @@ export function KitchenMonitorDisplay({
     String(currentTime.getMonth() + 1).padStart(2, '0'),
     currentTime.getFullYear(),
   ].join('.');
+  const isCompactLayout = viewport.width < TV_COMPACT_BREAKPOINT;
+  const canvasScale = isCompactLayout
+    ? 1
+    : Math.min(viewport.width / TV_CANVAS_WIDTH, viewport.height / TV_CANVAS_HEIGHT);
 
   return (
     <Box
       sx={{
+        width: '100vw',
+        height: isCompactLayout ? 'auto' : '100vh',
         minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        px: { xs: 2.5, md: 5, xl: 8 },
-        py: { xs: 1.75, md: 3, xl: 4.5 },
-        background: monitorBackground,
-        backgroundSize: '140% 140%',
-        animation: `${monitorBackgroundDrift} 52s ease-in-out infinite alternate`,
-        overflowY: 'auto',
+        overflow: isCompactLayout ? 'auto' : 'hidden',
         position: 'relative',
-        '@media (orientation: landscape) and (min-width: 700px)': {
-          height: '100vh',
-          overflow: 'hidden',
-        },
+        background: monitorBackground,
       }}>
-      <Stack
-        direction="row"
-        alignItems="center"
-        justifyContent="space-between"
+      <Box
+        data-testid="monitor-canvas"
+        data-layout={isCompactLayout ? 'compact' : 'scaled'}
+        data-scale={canvasScale.toFixed(4)}
         sx={{
-          flex: '0 0 auto',
-          minHeight: { xs: 36, md: 50, xl: 62 },
-          mb: { xs: 1, md: 2 },
-          px: { xs: 0.5, md: 1.5 },
+          width: isCompactLayout ? '100%' : TV_CANVAS_WIDTH,
+          height: isCompactLayout ? 'auto' : TV_CANVAS_HEIGHT,
+          minHeight: isCompactLayout ? '100vh' : TV_CANVAS_HEIGHT,
+          display: 'flex',
+          flexDirection: 'column',
+          px: { xs: 2.5, md: 8 },
+          py: { xs: 1.75, md: 4.5 },
+          background: monitorBackground,
+          backgroundSize: '140% 140%',
+          animation: `${monitorBackgroundDrift} 52s ease-in-out infinite alternate`,
+          overflow: 'hidden',
+          position: isCompactLayout ? 'relative' : 'absolute',
+          top: isCompactLayout ? 0 : '50%',
+          left: isCompactLayout ? 0 : '50%',
+          transform: isCompactLayout ? 'none' : `translate(-50%, -50%) scale(${canvasScale})`,
+          transformOrigin: 'center center',
         }}>
-        {restaurantName ? (
-          <Stack direction="row" alignItems="center" spacing={1.5} sx={{ minWidth: 0 }}>
-            <Box
-              aria-hidden="true"
-              sx={{
-                flex: '0 0 auto',
-                width: { xs: 5, md: 9 },
-                height: { xs: 30, md: 52 },
-                borderRadius: 999,
-                background: `linear-gradient(180deg, ${preparingTitleColor}, ${readyTitleColor})`,
-                boxShadow: `0 0 22px ${alpha(preparingTitleColor, 0.3)}`,
-              }}
-            />
-            <Typography
-              data-testid="monitor-restaurant-name"
-              sx={{
-                minWidth: 0,
-                maxWidth: '55vw',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                color: rowTextColor,
-                fontSize: { xs: 22, md: 32, xl: 44 },
-                fontWeight: 850,
-                lineHeight: 1,
-                letterSpacing: '-0.025em',
-                textShadow: isDark ? '0 4px 24px rgba(0, 0, 0, 0.28)' : '0 4px 20px rgba(69, 47, 20, 0.12)',
-              }}>
-              {restaurantName}
-            </Typography>
-          </Stack>
-        ) : null}
-
-        <Stack direction="row" alignItems="center" spacing={1.5}>
-          <Box sx={{ textAlign: 'right' }}>
-            <Typography
-              data-testid="monitor-clock"
-              sx={{
-                color: rowTextColor,
-                fontSize: { xs: 20, md: 29, xl: 38 },
-                fontWeight: 800,
-                lineHeight: 1,
-                fontVariantNumeric: 'tabular-nums',
-              }}>
-              {formattedTime}
-            </Typography>
-            <Typography
-              sx={{
-                color: alpha(rowTextColor, 0.46),
-                fontSize: { xs: 10, md: 13, xl: 16 },
-                fontWeight: 650,
-                lineHeight: 1.1,
-                mt: 0.35,
-              }}>
-              {formattedDate}
-            </Typography>
-          </Box>
-
-          <IconButton
-            aria-label={isFullscreen ? 'To‘liq ekrandan chiqish' : 'To‘liq ekranga o‘tish'}
-            onClick={() => void toggleFullscreen()}
-            sx={{
-              width: { xs: 38, md: 50, xl: 62 },
-              height: { xs: 38, md: 50, xl: 62 },
-              borderRadius: { xs: 1.5, md: 2.5 },
-              color: rowTextColor,
-              border: `1px solid ${dividerColor}`,
-              backgroundColor: isDark ? alpha('#ffffff', 0.035) : alpha('#ffffff', 0.42),
-              '&:hover': {
-                backgroundColor: isDark ? alpha('#ffffff', 0.08) : alpha('#ffffff', 0.72),
-              },
-            }}>
-            <Typography component="span" sx={{ fontSize: { xs: 22, md: 28, xl: 34 }, lineHeight: 1 }}>
-              {isFullscreen ? '×' : '⛶'}
-            </Typography>
-          </IconButton>
-        </Stack>
-      </Stack>
-
-      {spotlightTicket ? (
-        <Box
-          aria-live="polite"
-          data-testid="ready-order-spotlight"
+        <Stack
+          direction="row"
+          alignItems="center"
+          justifyContent="space-between"
           sx={{
-            position: 'absolute',
-            inset: 0,
-            zIndex: 3,
-            pointerEvents: 'none',
-            display: 'grid',
-            placeItems: 'center',
+            flex: '0 0 auto',
+            minHeight: { xs: 36, md: 62 },
+            mb: { xs: 1, md: 2 },
+            px: { xs: 0.5, md: 1.5 },
           }}>
+          {restaurantName ? (
+            <Stack direction="row" alignItems="center" spacing={1.5} sx={{ minWidth: 0 }}>
+              <Box
+                aria-hidden="true"
+                sx={{
+                  flex: '0 0 auto',
+                  width: { xs: 5, md: 9 },
+                  height: { xs: 30, md: 52 },
+                  borderRadius: 999,
+                  background: `linear-gradient(180deg, ${preparingTitleColor}, ${readyTitleColor})`,
+                  boxShadow: `0 0 22px ${alpha(preparingTitleColor, 0.3)}`,
+                }}
+              />
+              <Typography
+                data-testid="monitor-restaurant-name"
+                sx={{
+                  minWidth: 0,
+                  maxWidth: { xs: '55vw', md: 1056 },
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  color: rowTextColor,
+                  fontSize: { xs: 22, md: 44 },
+                  fontWeight: 850,
+                  lineHeight: 1,
+                  letterSpacing: '-0.025em',
+                  textShadow: isDark ? '0 4px 24px rgba(0, 0, 0, 0.28)' : '0 4px 20px rgba(69, 47, 20, 0.12)',
+                }}>
+                {restaurantName}
+              </Typography>
+            </Stack>
+          ) : null}
+
+          <Stack direction="row" alignItems="center" spacing={1.5}>
+            <Box sx={{ textAlign: 'right' }}>
+              <Typography
+                data-testid="monitor-clock"
+                sx={{
+                  color: rowTextColor,
+                  fontSize: { xs: 20, md: 38 },
+                  fontWeight: 800,
+                  lineHeight: 1,
+                  fontVariantNumeric: 'tabular-nums',
+                }}>
+                {formattedTime}
+              </Typography>
+              <Typography
+                sx={{
+                  color: alpha(rowTextColor, 0.46),
+                  fontSize: { xs: 10, md: 16 },
+                  fontWeight: 650,
+                  lineHeight: 1.1,
+                  mt: 0.35,
+                }}>
+                {formattedDate}
+              </Typography>
+            </Box>
+
+            <IconButton
+              aria-label={isFullscreen ? 'To‘liq ekrandan chiqish' : 'To‘liq ekranga o‘tish'}
+              onClick={() => void toggleFullscreen()}
+              sx={{
+                width: { xs: 38, md: 62 },
+                height: { xs: 38, md: 62 },
+                borderRadius: { xs: 1.5, md: 2.5 },
+                color: rowTextColor,
+                border: `1px solid ${dividerColor}`,
+                backgroundColor: isDark ? alpha('#ffffff', 0.035) : alpha('#ffffff', 0.42),
+                '&:hover': {
+                  backgroundColor: isDark ? alpha('#ffffff', 0.08) : alpha('#ffffff', 0.72),
+                },
+              }}>
+              <Typography component="span" sx={{ fontSize: { xs: 22, md: 34 }, lineHeight: 1 }}>
+                {isFullscreen ? '×' : '⛶'}
+              </Typography>
+            </IconButton>
+          </Stack>
+        </Stack>
+
+        {spotlightTicket ? (
           <Box
+            aria-live="polite"
+            data-testid="ready-order-spotlight"
             sx={{
               position: 'absolute',
-              width: '42vw',
-              height: '42vw',
-              minWidth: 260,
-              minHeight: 260,
-              maxWidth: 620,
-              maxHeight: 620,
-              borderRadius: '50%',
-              background: isDark
-                ? 'radial-gradient(circle, rgba(77, 235, 194, 0.34), rgba(77, 235, 194, 0.08) 48%, transparent 72%)'
-                : 'radial-gradient(circle, rgba(22, 138, 115, 0.28), rgba(22, 138, 115, 0.08) 50%, transparent 74%)',
-              animation: `${readySpotlightGlow} ${READY_SPOTLIGHT_DURATION_MS}ms ease-out forwards`,
-            }}
+              inset: 0,
+              zIndex: 3,
+              pointerEvents: 'none',
+              display: 'grid',
+              placeItems: 'center',
+            }}>
+            <Box
+              sx={{
+                position: 'absolute',
+                width: { xs: '42vw', md: 620 },
+                height: { xs: '42vw', md: 620 },
+                minWidth: 260,
+                minHeight: 260,
+                maxWidth: 620,
+                maxHeight: 620,
+                borderRadius: '50%',
+                background: isDark
+                  ? 'radial-gradient(circle, rgba(77, 235, 194, 0.34), rgba(77, 235, 194, 0.08) 48%, transparent 72%)'
+                  : 'radial-gradient(circle, rgba(22, 138, 115, 0.28), rgba(22, 138, 115, 0.08) 50%, transparent 74%)',
+                animation: `${readySpotlightGlow} ${READY_SPOTLIGHT_DURATION_MS}ms ease-out forwards`,
+              }}
+            />
+
+            <Box
+              sx={{
+                position: 'relative',
+                width: { xs: '84vw', md: 580 },
+                minWidth: 260,
+                maxWidth: 680,
+                px: { xs: 3.5, md: 9 },
+                py: { xs: 3, md: 6.75 },
+                borderRadius: { xs: 3.25, md: 5.25 },
+                textAlign: 'center',
+                backgroundColor: isDark ? alpha('#111820', 0.92) : alpha('#fffaf1', 0.94),
+                border: `1px solid ${isDark ? alpha('#7df5d7', 0.36) : alpha('#168a73', 0.28)}`,
+                boxShadow: isDark
+                  ? '0 0 86px rgba(77, 235, 194, 0.34), 0 26px 90px rgba(0, 0, 0, 0.42)'
+                  : '0 0 72px rgba(47, 177, 141, 0.24), 0 26px 90px rgba(69, 47, 20, 0.2)',
+                animation: `${readySpotlightEntrance} ${READY_SPOTLIGHT_DURATION_MS}ms cubic-bezier(0.16, 1, 0.3, 1) forwards`,
+              }}>
+              <Typography
+                sx={{
+                  color: readyTitleColor,
+                  fontSize: { xs: 18, md: 30 },
+                  fontWeight: 800,
+                  lineHeight: 1,
+                  mb: { xs: 1.1, md: 1.6 },
+                  textTransform: 'uppercase',
+                }}>
+                {READY_SPOTLIGHT_LABEL}
+              </Typography>
+              <Typography
+                sx={{
+                  color: rowTextColor,
+                  fontSize: { xs: 72, md: 168 },
+                  fontWeight: 800,
+                  letterSpacing: '-0.04em',
+                  lineHeight: 0.9,
+                  textShadow: isDark ? '0 0 34px rgba(125, 245, 215, 0.28)' : '0 0 26px rgba(47, 177, 141, 0.24)',
+                }}>
+                {formatOrderNumber(spotlightTicket)}
+              </Typography>
+            </Box>
+          </Box>
+        ) : null}
+
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: '1fr',
+            gap: { xs: 1.5, md: 4.25 },
+            flex: 1,
+            minHeight: 0,
+            alignItems: 'stretch',
+            '@media (orientation: landscape) and (min-width: 900px)': {
+              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+            },
+          }}>
+          <MonitorColumn
+            title="Tayyorlanayapti"
+            items={monitorData.preparing}
+            highlightedIds={new Set<string>()}
+            titleColor={preparingTitleColor}
+            dividerColor={dividerColor}
+            rowTextColor={rowTextColor}
+            highlightBackgroundColor={highlightBackgroundColor}
+            highlightShadow={highlightShadow}
+            columnBackground={preparingColumnBackground}
+            rowBackgroundColor={preparingRowBackground}
+            rowAccentColor={preparingTitleColor}
+            emptyVariant="preparing"
           />
 
-          <Box
-            sx={{
-              position: 'relative',
-              width: '40vw',
-              minWidth: 260,
-              maxWidth: 680,
-              px: { xs: 3.5, md: 6, xl: 9 },
-              py: { xs: 3, md: 4.5, xl: 6.75 },
-              borderRadius: { xs: 3.25, md: 5.25 },
-              textAlign: 'center',
-              backgroundColor: isDark ? alpha('#111820', 0.92) : alpha('#fffaf1', 0.94),
-              border: `1px solid ${isDark ? alpha('#7df5d7', 0.36) : alpha('#168a73', 0.28)}`,
-              boxShadow: isDark
-                ? '0 0 86px rgba(77, 235, 194, 0.34), 0 26px 90px rgba(0, 0, 0, 0.42)'
-                : '0 0 72px rgba(47, 177, 141, 0.24), 0 26px 90px rgba(69, 47, 20, 0.2)',
-              animation: `${readySpotlightEntrance} ${READY_SPOTLIGHT_DURATION_MS}ms cubic-bezier(0.16, 1, 0.3, 1) forwards`,
-            }}>
-            <Typography
-              sx={{
-                color: readyTitleColor,
-                fontSize: { xs: 18, md: 24, xl: 30 },
-                fontWeight: 800,
-                lineHeight: 1,
-                mb: { xs: 1.1, md: 1.6 },
-                textTransform: 'uppercase',
-              }}>
-              {READY_SPOTLIGHT_LABEL}
-            </Typography>
-            <Typography
-              sx={{
-                color: rowTextColor,
-                fontSize: { xs: 72, md: 120, xl: 168 },
-                fontWeight: 800,
-                letterSpacing: '-0.04em',
-                lineHeight: 0.9,
-                textShadow: isDark ? '0 0 34px rgba(125, 245, 215, 0.28)' : '0 0 26px rgba(47, 177, 141, 0.24)',
-              }}>
-              {formatOrderNumber(spotlightTicket)}
-            </Typography>
-          </Box>
+          <MonitorColumn
+            title="Tayyor bo'lganlar"
+            items={monitorData.recentlyDone}
+            highlightedIds={new Set(highlightedDoneIds)}
+            titleColor={readyTitleColor}
+            dividerColor={dividerColor}
+            rowTextColor={rowTextColor}
+            highlightBackgroundColor={highlightBackgroundColor}
+            highlightShadow={highlightShadow}
+            columnBackground={readyColumnBackground}
+            rowBackgroundColor={readyRowBackground}
+            rowAccentColor={readyTitleColor}
+            emptyVariant="ready"
+          />
         </Box>
-      ) : null}
-
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: '1fr',
-          gap: { xs: 1.5, md: 3, xl: 4.25 },
-          flex: 1,
-          minHeight: 0,
-          alignItems: 'stretch',
-          '@media (orientation: landscape) and (min-width: 700px)': {
-            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-          },
-        }}>
-        <MonitorColumn
-          title="Tayyorlanayapti"
-          items={monitorData.preparing}
-          highlightedIds={new Set<string>()}
-          titleColor={preparingTitleColor}
-          dividerColor={dividerColor}
-          rowTextColor={rowTextColor}
-          highlightBackgroundColor={highlightBackgroundColor}
-          highlightShadow={highlightShadow}
-          columnBackground={preparingColumnBackground}
-          rowBackgroundColor={preparingRowBackground}
-          rowAccentColor={preparingTitleColor}
-          emptyVariant="preparing"
-        />
-
-        <MonitorColumn
-          title="Tayyor bo'lganlar"
-          items={monitorData.recentlyDone}
-          highlightedIds={new Set(highlightedDoneIds)}
-          titleColor={readyTitleColor}
-          dividerColor={dividerColor}
-          rowTextColor={rowTextColor}
-          highlightBackgroundColor={highlightBackgroundColor}
-          highlightShadow={highlightShadow}
-          columnBackground={readyColumnBackground}
-          rowBackgroundColor={readyRowBackground}
-          rowAccentColor={readyTitleColor}
-          emptyVariant="ready"
-        />
       </Box>
     </Box>
   );
