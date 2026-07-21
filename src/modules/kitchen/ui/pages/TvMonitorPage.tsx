@@ -117,12 +117,13 @@ export function TvMonitorPage() {
       sx={{
         minHeight: '100vh',
         display: 'grid',
-        placeItems: 'center',
-        p: { xs: 3, md: 6, xl: 9 },
+        placeItems: 'start center',
+        px: { xs: 3, md: 6, xl: 9 },
+        py: { xs: 2, md: 2.5, xl: 3 },
         color: '#f5f7fb',
         background: 'radial-gradient(circle at 50% 0%, #253d63 0%, #171b24 48%, #101319 100%)',
       }}>
-      <Stack alignItems="center" spacing={3} sx={{ width: '90vw', maxWidth: 980, textAlign: 'center' }}>
+      <Stack alignItems="center" spacing={2} sx={{ width: '90vw', maxWidth: 980, textAlign: 'center' }}>
         <Box>
           <Typography sx={{ fontSize: { xs: 34, md: 52, xl: 68 }, fontWeight: 850, lineHeight: 1.05 }}>
             TV’ni restoranga ulang
@@ -134,12 +135,12 @@ export function TvMonitorPage() {
 
         <Box
           sx={{
-            width: { xs: '72vw', sm: '54vw', md: '36vw' },
-            height: { xs: '72vw', sm: '54vw', md: '36vw' },
+            width: { xs: '68vw', sm: '48vw', md: '32vw' },
+            height: { xs: '68vw', sm: '48vw', md: '32vw' },
             minWidth: 240,
             minHeight: 240,
-            maxWidth: 500,
-            maxHeight: 500,
+            maxWidth: 460,
+            maxHeight: 460,
             boxSizing: 'border-box',
             display: 'grid',
             placeItems: 'center',
