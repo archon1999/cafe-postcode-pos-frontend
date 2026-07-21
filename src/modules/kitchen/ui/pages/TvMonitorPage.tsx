@@ -115,47 +115,54 @@ export function TvMonitorPage() {
   return (
     <Box
       sx={{
-        minHeight: '100dvh',
+        minHeight: '100vh',
         display: 'grid',
         placeItems: 'center',
-        p: 'clamp(24px, 5vw, 72px)',
+        p: { xs: 3, md: 6, xl: 9 },
         color: '#f5f7fb',
         background: 'radial-gradient(circle at 50% 0%, #253d63 0%, #171b24 48%, #101319 100%)',
       }}>
-      <Stack
-        alignItems="center"
-        spacing="clamp(18px, 2.5vh, 32px)"
-        sx={{ width: 'min(100%, 980px)', textAlign: 'center' }}>
+      <Stack alignItems="center" spacing={3} sx={{ width: '90vw', maxWidth: 980, textAlign: 'center' }}>
         <Box>
-          <Typography sx={{ fontSize: 'clamp(34px, 4vw, 68px)', fontWeight: 850, lineHeight: 1.05 }}>
+          <Typography sx={{ fontSize: { xs: 34, md: 52, xl: 68 }, fontWeight: 850, lineHeight: 1.05 }}>
             TV’ni restoranga ulang
           </Typography>
-          <Typography sx={{ mt: 1.5, color: alpha('#f5f7fb', 0.68), fontSize: 'clamp(18px, 1.8vw, 30px)' }}>
+          <Typography sx={{ mt: 1.5, color: alpha('#f5f7fb', 0.68), fontSize: { xs: 18, md: 24, xl: 30 } }}>
             Avtorizatsiyadan o‘tgan xodim telefondan QR-kodni skanerlaydi
           </Typography>
         </Box>
 
         <Box
           sx={{
-            width: 'clamp(260px, 36vw, 500px)',
-            aspectRatio: '1',
+            width: { xs: '72vw', sm: '54vw', md: '36vw' },
+            height: { xs: '72vw', sm: '54vw', md: '36vw' },
+            minWidth: 240,
+            minHeight: 240,
+            maxWidth: 500,
+            maxHeight: 500,
+            boxSizing: 'border-box',
             display: 'grid',
             placeItems: 'center',
-            p: 'clamp(12px, 1.4vw, 20px)',
-            borderRadius: 'clamp(24px, 3vw, 40px)',
+            p: { xs: 1.5, md: 2.5 },
+            borderRadius: { xs: 3, md: 5 },
             bgcolor: '#fff',
             boxShadow: '0 24px 90px rgba(0, 0, 0, 0.36), 0 0 60px rgba(89, 166, 255, 0.16)',
           }}>
           {qrDataUrl ? (
-            <Box component="img" src={qrDataUrl} alt="TV pairing QR code" sx={{ width: '100%', height: '100%' }} />
+            <Box
+              component="img"
+              src={qrDataUrl}
+              alt="TV pairing QR code"
+              sx={{ display: 'block', width: '100%', height: '100%', objectFit: 'contain' }}
+            />
           ) : (
-            <CircularProgress size="clamp(54px, 7vw, 92px)" />
+            <CircularProgress size={72} />
           )}
         </Box>
 
         {pairingError ? (
           <Stack spacing={1.5} alignItems="center">
-            <Typography color="error.light" sx={{ fontSize: 'clamp(17px, 1.5vw, 24px)' }}>
+            <Typography color="error.light" sx={{ fontSize: { xs: 17, md: 21, xl: 24 } }}>
               {pairingError}
             </Typography>
             <Button variant="contained" size="large" onClick={() => void createPairing()}>
@@ -163,7 +170,7 @@ export function TvMonitorPage() {
             </Button>
           </Stack>
         ) : (
-          <Typography sx={{ color: alpha('#f5f7fb', 0.5), fontSize: 'clamp(14px, 1.2vw, 20px)' }}>
+          <Typography sx={{ color: alpha('#f5f7fb', 0.5), fontSize: { xs: 14, md: 17, xl: 20 } }}>
             Bog‘langandan keyin TV bu restoranni eslab qoladi
           </Typography>
         )}

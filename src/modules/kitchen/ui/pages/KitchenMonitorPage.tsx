@@ -167,32 +167,32 @@ function MonitorColumn({
         minHeight: 0,
         height: '100%',
         overflow: 'hidden',
-        borderRadius: 'clamp(22px, 2.2vw, 36px)',
+        borderRadius: { xs: 2.75, md: 4.5 },
         border: `1px solid ${dividerColor}`,
         background: columnBackground,
         boxShadow: '0 22px 54px rgba(0, 0, 0, 0.1)',
-        px: 'clamp(16px, 1.7vw, 30px)',
-        pt: 'clamp(18px, 2.2vh, 30px)',
-        pb: 'clamp(14px, 1.7vh, 24px)',
+        px: { xs: 2, md: 3.75 },
+        pt: { xs: 2.25, md: 3.75 },
+        pb: { xs: 1.75, md: 3 },
       }}>
       <Typography
         component="h2"
         sx={{
           textAlign: 'center',
-          fontSize: 'clamp(27px, 2.75vw, 54px)',
+          fontSize: { xs: 27, md: 40, xl: 54 },
           fontWeight: 820,
           letterSpacing: '-0.03em',
           lineHeight: 1,
           color: titleColor,
-          mb: 'clamp(14px, 2.2vh, 28px)',
+          mb: { xs: 1.75, md: 3.5 },
           textShadow: `0 0 26px ${alpha(titleColor, 0.14)}`,
           '&::after': {
             content: '""',
             display: 'block',
-            width: 'clamp(44px, 4vw, 72px)',
-            height: 'clamp(3px, 0.3vw, 5px)',
+            width: { xs: 44, md: 72 },
+            height: { xs: 3, md: 5 },
             mx: 'auto',
-            mt: 'clamp(9px, 1.2vh, 14px)',
+            mt: { xs: 1.125, md: 1.75 },
             borderRadius: 999,
             backgroundColor: alpha(titleColor, 0.62),
             boxShadow: `0 0 18px ${alpha(titleColor, 0.2)}`,
@@ -201,7 +201,7 @@ function MonitorColumn({
         {title}
       </Typography>
 
-      <Stack spacing="clamp(8px, 0.9vh, 13px)" sx={{ flex: 1, minHeight: 0 }}>
+      <Stack spacing={1} sx={{ flex: 1, minHeight: 0 }}>
         {visibleItems.map((ticket) => {
           const isHighlighted = highlightedIds.has(ticket.id);
 
@@ -211,14 +211,14 @@ function MonitorColumn({
               data-highlighted={isHighlighted ? 'true' : 'false'}
               sx={{
                 flex: fillsPage ? '1 1 0' : '0 0 auto',
-                minHeight: 'clamp(68px, 8.8vh, 104px)',
-                px: 'clamp(20px, 2.2vw, 40px)',
-                py: 'clamp(6px, 0.8vh, 10px)',
+                minHeight: { xs: 68, md: 84, xl: 104 },
+                px: { xs: 2.5, md: 5 },
+                py: { xs: 0.75, md: 1.25 },
                 display: 'flex',
                 alignItems: 'center',
                 position: 'relative',
                 overflow: 'hidden',
-                borderRadius: 'clamp(14px, 1.4vw, 24px)',
+                borderRadius: { xs: 1.75, md: 3 },
                 border: `1px solid ${alpha(rowAccentColor, 0.15)}`,
                 backgroundColor: isHighlighted ? highlightBackgroundColor : rowBackgroundColor,
                 animation: isHighlighted ? `${readyRowEntrance} 1.2s ease-out` : 'none',
@@ -228,7 +228,7 @@ function MonitorColumn({
                   content: '""',
                   position: 'absolute',
                   inset: '18% auto 18% 0',
-                  width: 'clamp(3px, 0.28vw, 5px)',
+                  width: { xs: 3, md: 5 },
                   borderRadius: '0 999px 999px 0',
                   backgroundColor: alpha(rowAccentColor, 0.72),
                   boxShadow: `0 0 16px ${alpha(rowAccentColor, 0.24)}`,
@@ -236,7 +236,7 @@ function MonitorColumn({
               }}>
               <Typography
                 sx={{
-                  fontSize: 'clamp(40px, 4.35vw, 82px)',
+                  fontSize: { xs: 40, md: 60, xl: 82 },
                   lineHeight: 1,
                   fontWeight: 820,
                   letterSpacing: '-0.04em',
@@ -257,13 +257,13 @@ function MonitorColumn({
             sx={{ flex: 1, minHeight: 160, display: 'grid', placeItems: 'center' }}>
             <Box
               sx={{
-                width: 'clamp(92px, 10vw, 164px)',
-                aspectRatio: '1 / 1',
+                width: { xs: 92, md: 128, xl: 164 },
+                height: { xs: 92, md: 128, xl: 164 },
                 display: 'grid',
                 placeItems: 'center',
                 position: 'relative',
                 borderRadius: '50%',
-                border: `clamp(2px, 0.18vw, 3px) solid ${alpha(titleColor, 0.1)}`,
+                border: `3px solid ${alpha(titleColor, 0.1)}`,
                 background: `radial-gradient(circle, ${alpha(titleColor, 0.045)}, transparent 68%)`,
                 boxShadow: `0 0 70px ${alpha(titleColor, 0.055)}`,
                 '&::before': {
@@ -279,20 +279,20 @@ function MonitorColumn({
                   sx={{
                     width: '25%',
                     height: '42%',
-                    borderRight: `clamp(4px, 0.36vw, 7px) solid ${alpha(titleColor, 0.18)}`,
-                    borderBottom: `clamp(4px, 0.36vw, 7px) solid ${alpha(titleColor, 0.18)}`,
+                    borderRight: `6px solid ${alpha(titleColor, 0.18)}`,
+                    borderBottom: `6px solid ${alpha(titleColor, 0.18)}`,
                     transform: 'translateY(-8%) rotate(45deg)',
                     borderRadius: '0 0 4px 0',
                   }}
                 />
               ) : (
-                <Stack direction="row" spacing="clamp(7px, 0.7vw, 12px)">
+                <Stack direction="row" spacing={1}>
                   {[0, 1, 2].map((dot) => (
                     <Box
                       key={dot}
                       sx={{
-                        width: 'clamp(9px, 0.8vw, 14px)',
-                        aspectRatio: '1 / 1',
+                        width: { xs: 9, md: 14 },
+                        height: { xs: 9, md: 14 },
                         borderRadius: '50%',
                         backgroundColor: alpha(titleColor, 0.16 + dot * 0.025),
                       }}
@@ -310,12 +310,12 @@ function MonitorColumn({
           data-testid="monitor-page-indicator"
           sx={{
             alignSelf: 'center',
-            mt: 'clamp(10px, 1.2vh, 16px)',
-            px: 'clamp(10px, 0.9vw, 16px)',
-            py: 'clamp(3px, 0.35vh, 6px)',
+            mt: { xs: 1.25, md: 2 },
+            px: { xs: 1.25, md: 2 },
+            py: { xs: 0.375, md: 0.75 },
             textAlign: 'center',
             color: alpha(rowTextColor, 0.64),
-            fontSize: 'clamp(13px, 1vw, 18px)',
+            fontSize: { xs: 13, md: 18 },
             fontWeight: 750,
             fontVariantNumeric: 'tabular-nums',
             lineHeight: 1,
@@ -480,18 +480,18 @@ export function KitchenMonitorDisplay({
   return (
     <Box
       sx={{
-        minHeight: '100dvh',
+        minHeight: '100vh',
         display: 'flex',
         flexDirection: 'column',
-        px: 'clamp(20px, 3vw, 64px)',
-        py: 'clamp(14px, 2.2vh, 36px)',
+        px: { xs: 2.5, md: 5, xl: 8 },
+        py: { xs: 1.75, md: 3, xl: 4.5 },
         background: monitorBackground,
         backgroundSize: '140% 140%',
         animation: `${monitorBackgroundDrift} 52s ease-in-out infinite alternate`,
         overflowY: 'auto',
         position: 'relative',
         '@media (orientation: landscape) and (min-width: 700px)': {
-          height: '100dvh',
+          height: '100vh',
           overflow: 'hidden',
         },
       }}>
@@ -501,18 +501,18 @@ export function KitchenMonitorDisplay({
         justifyContent="space-between"
         sx={{
           flex: '0 0 auto',
-          minHeight: 'clamp(36px, 5.2vh, 62px)',
-          mb: 'clamp(8px, 1.2vh, 16px)',
-          px: 'clamp(4px, 0.6vw, 12px)',
+          minHeight: { xs: 36, md: 50, xl: 62 },
+          mb: { xs: 1, md: 2 },
+          px: { xs: 0.5, md: 1.5 },
         }}>
         {restaurantName ? (
-          <Stack direction="row" alignItems="center" spacing="clamp(10px, 1vw, 18px)" sx={{ minWidth: 0 }}>
+          <Stack direction="row" alignItems="center" spacing={1.5} sx={{ minWidth: 0 }}>
             <Box
               aria-hidden="true"
               sx={{
                 flex: '0 0 auto',
-                width: 'clamp(5px, 0.45vw, 9px)',
-                height: 'clamp(30px, 4.2vh, 52px)',
+                width: { xs: 5, md: 9 },
+                height: { xs: 30, md: 52 },
                 borderRadius: 999,
                 background: `linear-gradient(180deg, ${preparingTitleColor}, ${readyTitleColor})`,
                 boxShadow: `0 0 22px ${alpha(preparingTitleColor, 0.3)}`,
@@ -527,7 +527,7 @@ export function KitchenMonitorDisplay({
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
                 color: rowTextColor,
-                fontSize: 'clamp(22px, 2.4vw, 44px)',
+                fontSize: { xs: 22, md: 32, xl: 44 },
                 fontWeight: 850,
                 lineHeight: 1,
                 letterSpacing: '-0.025em',
@@ -538,13 +538,13 @@ export function KitchenMonitorDisplay({
           </Stack>
         ) : null}
 
-        <Stack direction="row" alignItems="center" spacing="clamp(8px, 1vw, 16px)">
+        <Stack direction="row" alignItems="center" spacing={1.5}>
           <Box sx={{ textAlign: 'right' }}>
             <Typography
               data-testid="monitor-clock"
               sx={{
                 color: rowTextColor,
-                fontSize: 'clamp(20px, 2vw, 38px)',
+                fontSize: { xs: 20, md: 29, xl: 38 },
                 fontWeight: 800,
                 lineHeight: 1,
                 fontVariantNumeric: 'tabular-nums',
@@ -554,7 +554,7 @@ export function KitchenMonitorDisplay({
             <Typography
               sx={{
                 color: alpha(rowTextColor, 0.46),
-                fontSize: 'clamp(10px, 0.85vw, 16px)',
+                fontSize: { xs: 10, md: 13, xl: 16 },
                 fontWeight: 650,
                 lineHeight: 1.1,
                 mt: 0.35,
@@ -567,9 +567,9 @@ export function KitchenMonitorDisplay({
             aria-label={isFullscreen ? 'To‘liq ekrandan chiqish' : 'To‘liq ekranga o‘tish'}
             onClick={() => void toggleFullscreen()}
             sx={{
-              width: 'clamp(38px, 4vw, 62px)',
-              height: 'clamp(38px, 4vw, 62px)',
-              borderRadius: 'clamp(12px, 1.2vw, 20px)',
+              width: { xs: 38, md: 50, xl: 62 },
+              height: { xs: 38, md: 50, xl: 62 },
+              borderRadius: { xs: 1.5, md: 2.5 },
               color: rowTextColor,
               border: `1px solid ${dividerColor}`,
               backgroundColor: isDark ? alpha('#ffffff', 0.035) : alpha('#ffffff', 0.42),
@@ -577,7 +577,7 @@ export function KitchenMonitorDisplay({
                 backgroundColor: isDark ? alpha('#ffffff', 0.08) : alpha('#ffffff', 0.72),
               },
             }}>
-            <Typography component="span" sx={{ fontSize: 'clamp(22px, 2.2vw, 34px)', lineHeight: 1 }}>
+            <Typography component="span" sx={{ fontSize: { xs: 22, md: 28, xl: 34 }, lineHeight: 1 }}>
               {isFullscreen ? '×' : '⛶'}
             </Typography>
           </IconButton>
@@ -599,8 +599,12 @@ export function KitchenMonitorDisplay({
           <Box
             sx={{
               position: 'absolute',
-              width: 'clamp(260px, 42vw, 620px)',
-              aspectRatio: '1 / 1',
+              width: '42vw',
+              height: '42vw',
+              minWidth: 260,
+              minHeight: 260,
+              maxWidth: 620,
+              maxHeight: 620,
               borderRadius: '50%',
               background: isDark
                 ? 'radial-gradient(circle, rgba(77, 235, 194, 0.34), rgba(77, 235, 194, 0.08) 48%, transparent 72%)'
@@ -612,11 +616,12 @@ export function KitchenMonitorDisplay({
           <Box
             sx={{
               position: 'relative',
-              minWidth: 'clamp(260px, 40vw, 580px)',
-              maxWidth: 'min(84vw, 680px)',
-              px: 'clamp(28px, 4.5vw, 72px)',
-              py: 'clamp(24px, 4vh, 54px)',
-              borderRadius: 'clamp(26px, 3vw, 42px)',
+              width: '40vw',
+              minWidth: 260,
+              maxWidth: 680,
+              px: { xs: 3.5, md: 6, xl: 9 },
+              py: { xs: 3, md: 4.5, xl: 6.75 },
+              borderRadius: { xs: 3.25, md: 5.25 },
               textAlign: 'center',
               backgroundColor: isDark ? alpha('#111820', 0.92) : alpha('#fffaf1', 0.94),
               border: `1px solid ${isDark ? alpha('#7df5d7', 0.36) : alpha('#168a73', 0.28)}`,
@@ -628,7 +633,7 @@ export function KitchenMonitorDisplay({
             <Typography
               sx={{
                 color: readyTitleColor,
-                fontSize: 'clamp(18px, 2vw, 30px)',
+                fontSize: { xs: 18, md: 24, xl: 30 },
                 fontWeight: 800,
                 lineHeight: 1,
                 mb: { xs: 1.1, md: 1.6 },
@@ -639,7 +644,7 @@ export function KitchenMonitorDisplay({
             <Typography
               sx={{
                 color: rowTextColor,
-                fontSize: 'clamp(72px, 12vw, 168px)',
+                fontSize: { xs: 72, md: 120, xl: 168 },
                 fontWeight: 800,
                 letterSpacing: '-0.04em',
                 lineHeight: 0.9,
@@ -655,7 +660,7 @@ export function KitchenMonitorDisplay({
         sx={{
           display: 'grid',
           gridTemplateColumns: '1fr',
-          gap: 'clamp(12px, 2vw, 34px)',
+          gap: { xs: 1.5, md: 3, xl: 4.25 },
           flex: 1,
           minHeight: 0,
           alignItems: 'stretch',
