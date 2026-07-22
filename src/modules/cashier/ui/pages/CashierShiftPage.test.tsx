@@ -9,6 +9,10 @@ import { CashierShiftPage } from './CashierShiftPage';
 const navigateMock = vi.fn();
 const reportMutateAsyncMock = vi.fn();
 const requestEdgePrintDocumentsMock = vi.hoisted(() => vi.fn());
+const shiftContextState = vi.hoisted(() => ({
+  fiscalProvider: 'fiscal-drive-service',
+  reportPending: false,
+}));
 
 vi.mock('react-router', () => ({
   Navigate: () => null,
@@ -67,7 +71,7 @@ vi.mock('modules/cashier/application', () => ({
           reprintCount: 0,
         },
       ],
-      availableCashDesks: [{ id: 'desk-1', name: 'Kassa', fiscalProvider: 'fiscal-drive-service' }],
+      availableCashDesks: [{ id: 'desk-1', name: 'Kassa', fiscalProvider: shiftContextState.fiscalProvider }],
       availableCashiers: [],
       fiscalShiftOpen: true,
     },
@@ -77,7 +81,7 @@ vi.mock('modules/cashier/application', () => ({
   useOpenCashierShiftMutation: () => ({ isPending: false, mutate: vi.fn() }),
   useCloseCashierShiftMutation: () => ({ isPending: false, mutate: vi.fn() }),
   usePrintCashierShiftReportMutation: () => ({
-    isPending: false,
+    isPending: shiftContextState.reportPending,
     mutateAsync: reportMutateAsyncMock,
   }),
 }));
@@ -107,6 +111,8 @@ describe('CashierShiftPage report printing', () => {
     cleanup();
     reportMutateAsyncMock.mockReset();
     requestEdgePrintDocumentsMock.mockReset();
+    shiftContextState.fiscalProvider = 'fiscal-drive-service';
+    shiftContextState.reportPending = false;
     reportMutateAsyncMock.mockResolvedValue({ printDocuments: ['general-1', 'fiscal-1'] });
   });
 
@@ -129,5 +135,23 @@ describe('CashierShiftPage report printing', () => {
     await waitFor(() => expect(requestEdgePrintDocumentsMock).toHaveBeenCalledTimes(1));
     expect(reportMutateAsyncMock).toHaveBeenCalledWith({ cashShiftId: 'shift-1' });
     expect(requestEdgePrintDocumentsMock).toHaveBeenCalledWith(['general-1', 'fiscal-1']);
+  });
+
+  it('keeps the report button enabled while a report request is pending', () => {
+    shiftContextState.reportPending = true;
+
+    render(<CashierShiftPage />);
+
+    const button = screen.getByRole('button', { name: 'Jarayon...' }) as HTMLButtonElement;
+    expect(button.disabled).toBe(false);
+  });
+
+  it('disables the report button only when fiscal integration is unavailable', () => {
+    shiftContextState.fiscalProvider = '';
+
+    render(<CashierShiftPage />);
+
+    const button = screen.getByRole('button', { name: 'Chek chiqarish' }) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
   });
 });

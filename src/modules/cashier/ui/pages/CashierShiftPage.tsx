@@ -129,6 +129,7 @@ export function CashierShiftPage() {
         canCloseFiscalShift={canCloseFiscalShift}
         closeFiscalShift={shouldCloseFiscalShift}
         closing={closeShiftMutation.isPending}
+        fiscalIntegrationAvailable={hasFiscalIntegration}
         locale={locale}
         onClose={() =>
           closeShiftMutation.mutate({
