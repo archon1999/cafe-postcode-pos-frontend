@@ -10,6 +10,8 @@ type PrintShiftReportResponse = Awaited<ReturnType<CashierRepository['printShift
 type FiscalShiftPayload = Exclude<Parameters<CashierRepository['openFiscalShift']>[0], undefined>;
 type FiscalShiftResponse = Awaited<ReturnType<CashierRepository['openFiscalShift']>>;
 
+const SHIFT_REPORT_REQUEST_TIMEOUT_MS = 10_000;
+
 export const cashierShiftGateway = {
   openShift(payload: OpenShiftPayload) {
     return apiPost<OpenShiftResponse>('/pos/billing/shifts/open/', payload);
@@ -20,7 +22,9 @@ export const cashierShiftGateway = {
   },
 
   printShiftReport(payload: PrintShiftReportPayload) {
-    return apiPost<PrintShiftReportResponse>('/pos/billing/shifts/current/print-report/', payload);
+    return apiPost<PrintShiftReportResponse>('/pos/billing/shifts/current/print-report/', payload, {
+      timeout: SHIFT_REPORT_REQUEST_TIMEOUT_MS,
+    });
   },
 
   openFiscalShift(payload?: FiscalShiftPayload) {

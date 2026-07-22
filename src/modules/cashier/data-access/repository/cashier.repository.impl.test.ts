@@ -93,7 +93,9 @@ describe('cashier repository transport contract', () => {
 
     const result = await cashierRepository.printShiftReport(payload);
 
-    expect(apiPostMock).toHaveBeenCalledWith('/pos/billing/shifts/current/print-report/', payload);
+    expect(apiPostMock).toHaveBeenCalledWith('/pos/billing/shifts/current/print-report/', payload, {
+      timeout: 10_000,
+    });
     expect(result).toBe(response);
   });
 

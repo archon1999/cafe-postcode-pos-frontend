@@ -127,8 +127,8 @@ export async function apiPostRemote<T>(url: string, payload?: unknown, config?: 
   return response.data;
 }
 
-export async function apiPost<T>(url: string, payload?: unknown) {
-  const response = await apiClient.post<T>(url, payload);
+export async function apiPost<T>(url: string, payload?: unknown, config?: AxiosRequestConfig) {
+  const response = await apiClient.post<T>(url, payload, config);
   return response.data;
 }
 
