@@ -146,12 +146,12 @@ describe('CashierShiftPage report printing', () => {
     expect(button.disabled).toBe(false);
   });
 
-  it('disables the report button only when fiscal integration is unavailable', () => {
+  it('keeps the report button enabled when fiscal integration is unavailable', () => {
     shiftContextState.fiscalProvider = '';
 
     render(<CashierShiftPage />);
 
     const button = screen.getByRole('button', { name: 'Chek chiqarish' }) as HTMLButtonElement;
-    expect(button.disabled).toBe(true);
+    expect(button.disabled).toBe(false);
   });
 });

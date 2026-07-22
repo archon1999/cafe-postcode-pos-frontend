@@ -87,7 +87,6 @@ type ManagerShiftCardProps = {
   canCloseFiscalShift: boolean;
   closeFiscalShift: boolean;
   closing: boolean;
-  fiscalIntegrationAvailable: boolean;
   locale: PosLocale;
   onClose: () => void;
   onCloseFiscalChange: (value: boolean) => void;
@@ -100,7 +99,6 @@ export function ManagerShiftCard({
   canCloseFiscalShift,
   closeFiscalShift,
   closing,
-  fiscalIntegrationAvailable,
   locale,
   onClose,
   onCloseFiscalChange,
@@ -125,11 +123,7 @@ export function ManagerShiftCard({
           </Typography>
         </Box>
         <CashierShiftTotals locale={locale} shift={shift} />
-        <Button
-          variant="contained"
-          color="success"
-          disabled={!fiscalIntegrationAvailable}
-          onClick={() => void onPrint()}>
+        <Button variant="contained" color="success" onClick={() => void onPrint()}>
           {printing ? copy.processing : copy.printShiftReport}
         </Button>
         {canCloseFiscalShift ? (
