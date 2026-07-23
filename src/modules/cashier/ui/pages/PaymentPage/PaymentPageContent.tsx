@@ -14,7 +14,6 @@ import {
   aggregateCashierOrderItems,
   getCashierOrderDisplayName,
   getCashierOrderNumberLabel,
-  isCashierFiscalIntegrationReady,
 } from 'modules/cashier/domain';
 import { requestEdgePrintDocuments } from 'modules/edge-printing/application';
 import { getApiErrorMessage } from 'shared/api/errorMessage';
@@ -69,7 +68,6 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     const activeCashDeskId = cashierContextQuery.data?.currentShift?.cashDesk;
     return cashDesks.find((cashDesk) => cashDesk.id === activeCashDeskId) ?? cashDesks[0] ?? null;
   }, [cashierContextQuery.data?.availableCashDesks, cashierContextQuery.data?.currentShift?.cashDesk]);
-  const fiscalIntegrationReady = isCashierFiscalIntegrationReady(cashierContextQuery.data);
   const remainingTotal = useMemo(() => {
     const total = Number(orderQuery.data?.total ?? 0);
     const paidTotal = (orderQuery.data?.payments ?? [])
@@ -298,7 +296,6 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
               canSubmitPayment={canSubmitPayment}
               copy={copy}
               currentShiftOpen={Boolean(cashierContextQuery.data?.currentShift)}
-              fiscalIntegrationReady={fiscalIntegrationReady}
               grandTotal={orderQuery.data?.total}
               isPaymentProcessing={isPaymentProcessing}
               locale={locale}

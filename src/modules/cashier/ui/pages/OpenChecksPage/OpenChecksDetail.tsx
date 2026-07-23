@@ -1,4 +1,4 @@
-import { Box, Button, Divider, Stack, Tooltip, Typography, alpha } from '@mui/material';
+import { Box, Button, Divider, Stack, Typography, alpha } from '@mui/material';
 
 import {
   getCashierOrderDisplayName,
@@ -18,7 +18,6 @@ function formatPercent(value: number) {
 export function OpenChecksDetail({
   copy,
   groupedItems,
-  fiscalIntegrationReady,
   latestSucceededPayment,
   locale,
   onPay,
@@ -33,7 +32,6 @@ export function OpenChecksDetail({
 }: {
   copy: ReturnType<typeof getPosCopy>;
   groupedItems: ReturnType<typeof groupCashierOrderItemsByStation>;
-  fiscalIntegrationReady: boolean;
   latestSucceededPayment: CashierPayment | undefined;
   locale: PosLocale;
   onPay: () => void;
@@ -228,42 +226,23 @@ export function OpenChecksDetail({
             {retryFiscalAvailable || reprintAvailable ? (
               <Stack direction="row" spacing={1.1}>
                 {retryFiscalAvailable ? (
-                  <Tooltip arrow title={fiscalIntegrationReady ? '' : copy.fiscalIntegrationUnavailable}>
-                    <Box component="span" sx={{ display: 'inline-flex', flex: 1 }}>
-                      <Button
-                        variant="contained"
-                        color="warning"
-                        fullWidth
-                        disabled={!fiscalIntegrationReady}
-                        onClick={onRetryFiscal}>
-                        {copy.fiscalClose}
-                      </Button>
-                    </Box>
-                  </Tooltip>
+                  <Button variant="contained" color="warning" fullWidth sx={{ flex: 1 }} onClick={onRetryFiscal}>
+                    {copy.fiscalClose}
+                  </Button>
                 ) : null}
                 {reprintAvailable ? (
-                  <Tooltip
-                    arrow
-                    title={
-                      selectedTab === 'fiscal_closed' && !fiscalIntegrationReady
-                        ? copy.fiscalIntegrationUnavailable
-                        : ''
-                    }>
-                    <Box component="span" sx={{ display: 'inline-flex', flex: 1 }}>
-                      <Button
-                        variant="contained"
-                        fullWidth
-                        disabled={selectedTab === 'fiscal_closed' && !fiscalIntegrationReady}
-                        sx={(theme) => ({
-                          backgroundImage: 'none',
-                          backgroundColor: 'var(--pos-secondary-action-bg)',
-                          color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
-                        })}
-                        onClick={onReprint}>
-                        {selectedTab === 'closed' ? copy.reprintPrecheck : copy.reprintReceipt}
-                      </Button>
-                    </Box>
-                  </Tooltip>
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    sx={(theme) => ({
+                      flex: 1,
+                      backgroundImage: 'none',
+                      backgroundColor: 'var(--pos-secondary-action-bg)',
+                      color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
+                    })}
+                    onClick={onReprint}>
+                    {selectedTab === 'closed' ? copy.reprintPrecheck : copy.reprintReceipt}
+                  </Button>
                 ) : null}
               </Stack>
             ) : null}

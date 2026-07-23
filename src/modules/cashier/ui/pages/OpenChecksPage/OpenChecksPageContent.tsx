@@ -7,7 +7,6 @@ import { toast } from 'sonner';
 import { canManageCashierPayments, usePosSession } from 'modules/auth';
 import {
   useCashierEnsurePaymentPrintDocumentMutation,
-  useCashierContextQuery,
   useCashierOpenChecksQuery,
   useCashierRefundMutation,
   useCashierUpdateOrderDisplayNameMutation,
@@ -17,11 +16,9 @@ import {
   getCashierOrderDisplayName,
   getCashierOrderNumberLabel,
   groupCashierOrderItemsByStation,
-  isCashierFiscalIntegrationReady,
 } from 'modules/cashier/domain';
 import type { CashierCheckStatus, CashierOrder } from 'modules/cashier/domain/entities/order.types';
 import { requestEdgePrintDocuments } from 'modules/edge-printing/application';
-import { POS_CONTEXT_POLL_INTERVAL_MS } from 'shared/api/polling';
 import { refreshTransportAndReload } from 'shared/api/transportResolver';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { getPosCopy } from 'shared/locale/copy';
@@ -66,10 +63,6 @@ export function OpenChecksPageContent() {
   const [fiscalPage, setFiscalPage] = useState(1);
   const refundMutation = useCashierRefundMutation();
   const ensurePrintDocumentMutation = useCashierEnsurePaymentPrintDocumentMutation();
-  const cashierContextQuery = useCashierContextQuery({
-    enabled: canOperatePayments,
-    refetchInterval: canOperatePayments ? POS_CONTEXT_POLL_INTERVAL_MS : false,
-  });
   const updateOrderDisplayNameMutation = useCashierUpdateOrderDisplayNameMutation({
     onSuccess: () => {
       setRenameOrder(null);
@@ -124,7 +117,6 @@ export function OpenChecksPageContent() {
     },
     printDocuments: (documentIds) => requestEdgePrintDocuments(documentIds),
   });
-  const fiscalIntegrationReady = isCashierFiscalIntegrationReady(cashierContextQuery.data);
   const canRefund = Boolean(
     selectedTab !== 'open' && latestSucceededPayment?.id && !latestSucceededPayment?.isRefunded && canOperatePayments,
   );
@@ -160,7 +152,6 @@ export function OpenChecksPageContent() {
   const detailPanel = selectedOrder ? (
     <OpenChecksDetail
       copy={copy}
-      fiscalIntegrationReady={fiscalIntegrationReady}
       groupedItems={groupedItems}
       latestSucceededPayment={latestSucceededPayment}
       locale={locale}
