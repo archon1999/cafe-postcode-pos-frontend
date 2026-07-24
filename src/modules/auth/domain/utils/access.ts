@@ -12,6 +12,8 @@ const POS_PAYMENT_ORDER_ITEMS_CREATE = 'pos_payment_order_items.create';
 const POS_PAYMENT_ORDER_ITEMS_DELETE = 'pos_payment_order_items.delete';
 const POS_PAYMENTS_CREATE = 'pos_payments.create';
 const POS_CASH_SHIFT_MANAGE = 'pos_cash_shift.manage';
+const POS_CASH_EXPENSE_CREATE = 'pos_cash_expenses.create';
+const POS_CASH_EXPENSE_VOID = 'pos_cash_expenses.void';
 const POS_FISCAL_RECEIPTS_SKIP = 'pos_fiscal_receipts.skip';
 const POS_FISCAL_SHIFT_MANAGE = 'pos_fiscal_shift.manage';
 const POS_TABLE_RESERVATIONS_MANAGE = 'pos_table_reservations.manage';
@@ -136,6 +138,14 @@ export function canManageCashShift(user: PosUser | null | undefined) {
   }
 
   return hasPermission(user, POS_CASH_SHIFT_MANAGE);
+}
+
+export function canCreateCashExpense(user: PosUser | null | undefined) {
+  return isRestaurantAccessEnabled(user) && hasPermission(user, POS_CASH_EXPENSE_CREATE);
+}
+
+export function canVoidCashExpense(user: PosUser | null | undefined) {
+  return isRestaurantAccessEnabled(user) && hasPermission(user, POS_CASH_EXPENSE_VOID);
 }
 
 export function canSkipFiscalReceipts(user: PosUser | null | undefined) {

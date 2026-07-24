@@ -25,12 +25,15 @@ import {
   formatWaiterOrderLabel,
   getDefaultWaiterMenuCategory,
   getWaiterOrderItemMeta,
+  type WaiterMenuItem,
 } from 'modules/waiter/domain';
 import { refreshTransportAndReload } from 'shared/api/transportResolver';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { getPosCopy } from 'shared/locale/copy';
+import { selectionsFromOrderModifiers, type PosModifierSelection } from 'shared/pos/modifiers';
 import { useOptimisticBuilderOrder } from 'shared/pos/useOptimisticBuilderOrder';
-import { PosBuilderPageSkeleton, PosSettingsMenu } from 'shared/ui/pos-primitives';
+import { PosBuilderPageSkeleton, PosProductConfiguratorDialog, PosSettingsMenu } from 'shared/ui/pos-primitives';
+import type { PosCartItem } from 'shared/ui/pos-primitives/PosCartItemGroups';
 
 import { TableSessionDesktopCart } from './TableSessionDesktopCart';
 import { TableSessionMobileCart } from './TableSessionMobileCart';
@@ -61,6 +64,10 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
   const [orderSent, setOrderSent] = useState(false);
   const [selectedCartItemKey, setSelectedCartItemKey] = useState<string | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
+  const [configuringItem, setConfiguringItem] = useState<{
+    item: WaiterMenuItem;
+    initialSelections?: PosModifierSelection[];
+  } | null>(null);
   const noteOrderIdRef = useRef<string | null>(null);
   const canViewMenu = isTakeawayMode
     ? canAccessTakeawayBuilder(session?.user)
@@ -103,7 +110,8 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
               order.openedBy === session?.user.id,
           )
         : orders.find((order) => order.tableSession === sessionId && !['closed', 'cancelled'].includes(order.status)),
-    addOrderItem: (orderId, menuItem, note) => waiterRepository.addOrderItem(orderId, menuItem.id, note),
+    addOrderItem: (orderId, menuItem, note, selectedModifiers) =>
+      waiterRepository.addOrderItem(orderId, menuItem.id, note, selectedModifiers),
     syncErrorMessage: copy.itemSyncFailed,
   });
 
@@ -155,6 +163,18 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
     [categories],
   );
   const menuItemMeta = useMemo(() => getWaiterOrderItemMeta(currentOrder?.items), [currentOrder?.items]);
+  const requestAddItem = (menuItem: WaiterMenuItem, sourceItem?: PosCartItem) => {
+    if (menuItem.modifierGroups?.length) {
+      setConfiguringItem({
+        item: menuItem,
+        initialSelections: sourceItem
+          ? selectionsFromOrderModifiers(menuItem.modifierGroups, sourceItem.modifiers)
+          : undefined,
+      });
+      return;
+    }
+    addItem(menuItem, kitchenNote);
+  };
   const categoryTabs = useMemo(
     () =>
       categories.map((category) => ({
@@ -234,7 +254,7 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
           selectedCategory={selectedCategory}
           selectedCountMap={menuItemMeta.countMap}
           showMobileSummary={isMobile}
-          onAdd={(menuItem) => addItem(menuItem, kitchenNote)}
+          onAdd={requestAddItem}
           onOpenCart={() => setCartOpen(true)}
           onRemove={removeItem}
         />
@@ -266,7 +286,7 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
           total={currentOrder?.total}
           vatAmount={vatAmount}
           vatLabel={vatLabel}
-          onAdd={(menuItem) => addItem(menuItem, kitchenNote)}
+          onAdd={requestAddItem}
           onCheckout={() => void handleTakeawayCheckout()}
           onKitchenNoteChange={(value) => {
             setOrderSent(false);
@@ -304,7 +324,7 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
         total={currentOrder?.total}
         vatAmount={vatAmount}
         vatLabel={vatLabel}
-        onAdd={(menuItem) => addItem(menuItem, kitchenNote)}
+        onAdd={requestAddItem}
         onCheckout={() => void handleTakeawayCheckout()}
         onClose={() => setCartOpen(false)}
         onKitchenNoteChange={(value) => {
@@ -332,6 +352,27 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
         themeColor={themeColor}
         themeMode={themeMode}
       />
+      {configuringItem ? (
+        <PosProductConfiguratorDialog
+          item={configuringItem?.item ?? null}
+          initialSelections={configuringItem?.initialSelections}
+          locale={locale}
+          copy={{
+            addToOrder: copy.modifierAddToOrder,
+            free: copy.modifierFree,
+            optional: copy.modifierOptional,
+            required: copy.modifierRequired,
+            selectOne: copy.modifierSelectOne,
+            selectUpTo: copy.modifierSelectUpTo,
+            selectedCount: copy.selectedCount,
+          }}
+          onClose={() => setConfiguringItem(null)}
+          onConfirm={(menuItem, selections) => {
+            addItem(menuItem, kitchenNote, selections);
+            setConfiguringItem(null);
+          }}
+        />
+      ) : null}
     </PosPageFrame>
   );
 }

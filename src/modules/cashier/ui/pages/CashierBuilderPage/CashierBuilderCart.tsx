@@ -1,4 +1,4 @@
-import { Box, Button, Divider, Drawer, Stack, TextField, Typography, alpha } from '@mui/material';
+import { Box, Button, Divider, Drawer, Stack, TextField, Typography, alpha, useMediaQuery } from '@mui/material';
 
 import type { CashierMenuItem } from 'modules/cashier/domain';
 import type { PosLocale, getPosCopy } from 'shared/locale/copy';
@@ -33,7 +33,7 @@ type CartProps = {
   userName: string | undefined;
   vatAmount: number;
   vatLabel: string;
-  onAdd: (menuItem: CashierMenuItem) => void;
+  onAdd: PosCartItemGroupsProps<CashierMenuItem>['onAdd'];
   onChannelChange: (channel: Channel) => void;
   onCheckout: () => void;
   onKitchenNoteChange: (value: string) => void;
@@ -103,18 +103,21 @@ function CartItems({ groups, ...props }: CartProps & { variant: 'desktop' | 'mob
   );
 }
 
-function CartFooter(props: CartProps & { compact?: boolean }) {
+function CartFooter(props: CartProps & { compact?: boolean; dense?: boolean }) {
+  const condensed = props.compact || props.dense;
+
   return (
-    <Stack spacing={props.compact ? 1.25 : 1.4} sx={props.compact ? undefined : { p: 2.25 }}>
+    <Stack spacing={condensed ? 1 : 1.4} sx={props.compact ? undefined : { p: props.dense ? 1.5 : 2.25 }}>
       <TextField
         label={props.copy.kitchenNote}
         value={props.kitchenNote}
         onChange={(event) => props.onKitchenNoteChange(event.target.value)}
         multiline
         minRows={props.compact ? 2 : 1}
+        size={props.dense ? 'small' : 'medium'}
       />
       <CashierOrderTotals
-        compact={props.compact}
+        compact={condensed}
         copy={props.copy}
         locale={props.locale}
         subtotal={props.subtotal}
@@ -144,6 +147,8 @@ function CartFooter(props: CartProps & { compact?: boolean }) {
 }
 
 export function CashierBuilderDesktopCart(props: CartProps) {
+  const dense = useMediaQuery('(max-height: 820px)');
+
   return (
     <Box
       sx={(theme) => ({
@@ -156,13 +161,13 @@ export function CashierBuilderDesktopCart(props: CartProps) {
         flexDirection: 'column',
         border: `1px solid ${alpha('#ffffff', theme.palette.mode === 'dark' ? 0.04 : 0.3)}`,
       })}>
-      <Box sx={{ p: 2.25 }}>
-        <Stack spacing={1.7}>
+      <Box sx={{ p: dense ? 1.5 : 2.25 }}>
+        <Stack spacing={dense ? 1.15 : 1.7}>
           <Stack direction="row" spacing={1.5} alignItems="center">
             <Box
               sx={{
-                minWidth: 64,
-                height: 64,
+                minWidth: dense ? 52 : 64,
+                height: dense ? 52 : 64,
                 borderRadius: '10px',
                 backgroundColor: 'var(--pos-order-avatar-bg)',
                 display: 'grid',
@@ -200,7 +205,7 @@ export function CashierBuilderDesktopCart(props: CartProps) {
         </Stack>
       </Box>
       <Divider />
-      <CartFooter {...props} />
+      <CartFooter {...props} dense={dense} />
     </Box>
   );
 }

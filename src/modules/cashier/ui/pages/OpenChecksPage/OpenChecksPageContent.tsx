@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 
-import { canManageCashierPayments, usePosSession } from 'modules/auth';
+import { canCreateCashExpense, canManageCashierPayments, usePosSession } from 'modules/auth';
 import {
   useCashierEnsurePaymentPrintDocumentMutation,
   useCashierOpenChecksQuery,
@@ -333,6 +333,7 @@ export function OpenChecksPageContent() {
         onLocaleChange={setLocale}
         onRefresh={isMobile ? () => window.location.reload() : undefined}
         onShift={() => navigate('/cashier/shift?next=/cashier/open-checks')}
+        onExpense={canCreateCashExpense(session?.user) ? () => navigate('/cashier/expenses') : undefined}
         onLock={isMobile ? () => navigate('/lock-screen') : undefined}
         onThemeToggle={() => setThemeMode(themeMode === 'dark' ? 'light' : 'dark')}
         onThemeColorChange={setThemeColor}

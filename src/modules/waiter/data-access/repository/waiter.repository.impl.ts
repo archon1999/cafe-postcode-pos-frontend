@@ -72,11 +72,17 @@ class WaiterRepositoryImpl implements WaiterRepository {
     );
   }
 
-  async addOrderItem(orderId: string, catalogItemId: string, note: string) {
+  async addOrderItem(
+    orderId: string,
+    catalogItemId: string,
+    note: string,
+    selectedModifiers: Parameters<WaiterRepository['addOrderItem']>[3] = [],
+  ) {
     return apiPost<{ kitchenPrintDocuments?: string[] }>(`/pos/sales/orders/${orderId}/items/`, {
       catalogItem: catalogItemId,
       quantity: 1,
       note,
+      ...(selectedModifiers.length ? { selectedModifiers } : {}),
     });
   }
 

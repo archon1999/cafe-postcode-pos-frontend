@@ -1,12 +1,17 @@
+import type { PosOrderItemModifier } from 'shared/pos/modifiers';
+
 export type WaiterOrderItem = {
   id: string;
   catalogItem: string;
   catalogItemName: string;
   quantity: number | string;
   lineTotal: number | string;
+  baseUnitPrice?: number | string;
+  unitPrice?: number | string;
   status: string;
   prepStationName?: string | null;
   note?: string;
+  modifiers?: PosOrderItemModifier[];
 };
 
 export type WaiterOrder = {

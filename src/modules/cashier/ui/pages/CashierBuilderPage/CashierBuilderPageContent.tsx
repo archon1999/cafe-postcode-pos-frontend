@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 
-import { usePosSession } from 'modules/auth';
+import { canCreateCashExpense, usePosSession } from 'modules/auth';
 import {
   useCashierBuilderOrdersQuery,
   useCashierMenuQuery,
@@ -22,16 +22,19 @@ import {
   getDefaultCashierMenuCategory,
   type CashierBuilderOrderChannel,
   type CashierMenuCategory,
+  type CashierMenuItem,
 } from 'modules/cashier/domain';
 import { requestEdgePrintDocuments } from 'modules/edge-printing/application';
 import { getApiErrorMessage } from 'shared/api/errorMessage';
 import { refreshTransportAndReload } from 'shared/api/transportResolver';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { getPosCopy } from 'shared/locale/copy';
+import { selectionsFromOrderModifiers, type PosModifierSelection } from 'shared/pos/modifiers';
 import { isTemporaryBuilderId } from 'shared/pos/optimistic-builder-order';
 import { useOptimisticBuilderOrder } from 'shared/pos/useOptimisticBuilderOrder';
 import { useScannerInput } from 'shared/pos/useScannerInput';
-import { PosBuilderPageSkeleton, PosSettingsMenu } from 'shared/ui/pos-primitives';
+import { PosBuilderPageSkeleton, PosProductConfiguratorDialog, PosSettingsMenu } from 'shared/ui/pos-primitives';
+import type { PosCartItem } from 'shared/ui/pos-primitives/PosCartItemGroups';
 
 import { CashierBuilderDesktopCart, CashierBuilderMobileCart } from './CashierBuilderCart';
 import { CashierBuilderHeader } from './CashierBuilderHeader';
@@ -68,6 +71,10 @@ export function CashierBuilderPageContent() {
   const [selectedCartItemKey, setSelectedCartItemKey] = useState<string | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
   const [scanToast, setScanToast] = useState('');
+  const [configuringItem, setConfiguringItem] = useState<{
+    item: CashierMenuItem;
+    initialSelections?: PosModifierSelection[];
+  } | null>(null);
   const noteOrderIdRef = useRef<string | null>(null);
 
   const menuQuery = useCashierMenuQuery();
@@ -102,7 +109,8 @@ export function CashierBuilderPageContent() {
       editOrderId
         ? orders.find((order) => order.id === editOrderId)
         : getCurrentCashierBuilderOrder(orders, session?.user.id),
-    addOrderItem: (orderId, menuItem, note) => cashierRepository.addOrderItem(orderId, menuItem.id, note),
+    addOrderItem: (orderId, menuItem, note, selectedModifiers) =>
+      cashierRepository.addOrderItem(orderId, menuItem.id, note, selectedModifiers),
     syncErrorMessage: copy.itemSyncFailed,
   });
 
@@ -171,6 +179,18 @@ export function CashierBuilderPageContent() {
 
     return { countMap, latestItemMap };
   }, [currentOrder?.items]);
+  const requestAddItem = (menuItem: CashierMenuItem, sourceItem?: PosCartItem) => {
+    if (menuItem.modifierGroups?.length) {
+      setConfiguringItem({
+        item: menuItem,
+        initialSelections: sourceItem
+          ? selectionsFromOrderModifiers(menuItem.modifierGroups, sourceItem.modifiers)
+          : undefined,
+      });
+      return;
+    }
+    addItem(menuItem, kitchenNote);
+  };
   const categoryTabs = useMemo(
     () =>
       categories.map((category) => ({
@@ -289,14 +309,13 @@ export function CashierBuilderPageContent() {
           category={selectedCategory}
           groups={groupedOrderItems}
           isMobile={isMobile}
-          kitchenNote={kitchenNote}
           locale={locale}
           menuLabel={copy.menu}
           itemCounts={menuItemMeta.countMap}
           latestItemIds={menuItemMeta.latestItemMap}
           total={currentOrder?.total}
           billsLabel={copy.bills}
-          onAdd={addItem}
+          onAdd={requestAddItem}
           onCartOpen={() => setCartOpen(true)}
           onRemove={removeItem}
         />
@@ -324,7 +343,7 @@ export function CashierBuilderPageContent() {
           userName={session?.user.fullName}
           vatAmount={vatAmount}
           vatLabel={vatLabel}
-          onAdd={(menuItem) => addItem(menuItem, kitchenNote)}
+          onAdd={requestAddItem}
           onChannelChange={(channel) => void builderActions.changeChannel(channel)}
           onCheckout={() => void builderActions.runOrderAction('checkout')}
           onKitchenNoteChange={setKitchenNote}
@@ -358,7 +377,7 @@ export function CashierBuilderPageContent() {
         userName={session?.user.fullName}
         vatAmount={vatAmount}
         vatLabel={vatLabel}
-        onAdd={(menuItem) => addItem(menuItem, kitchenNote)}
+        onAdd={requestAddItem}
         onChannelChange={(channel) => void builderActions.changeChannel(channel)}
         onCheckout={() => void builderActions.runOrderAction('checkout')}
         onClose={() => setCartOpen(false)}
@@ -384,6 +403,28 @@ export function CashierBuilderPageContent() {
         onConfirm={() => void builderActions.confirmDeliveryDetails()}
       />
 
+      {configuringItem ? (
+        <PosProductConfiguratorDialog
+          item={configuringItem?.item ?? null}
+          initialSelections={configuringItem?.initialSelections}
+          locale={locale}
+          copy={{
+            addToOrder: copy.modifierAddToOrder,
+            free: copy.modifierFree,
+            optional: copy.modifierOptional,
+            required: copy.modifierRequired,
+            selectOne: copy.modifierSelectOne,
+            selectUpTo: copy.modifierSelectUpTo,
+            selectedCount: copy.selectedCount,
+          }}
+          onClose={() => setConfiguringItem(null)}
+          onConfirm={(menuItem, selections) => {
+            addItem(menuItem, kitchenNote, selections);
+            setConfiguringItem(null);
+          }}
+        />
+      ) : null}
+
       <PosSettingsMenu
         anchorEl={settingsAnchor}
         locale={locale}
@@ -391,6 +432,7 @@ export function CashierBuilderPageContent() {
         onLocaleChange={setLocale}
         onRefresh={isMobile ? () => window.location.reload() : undefined}
         onShift={() => navigate('/cashier/shift?next=/cashier/builder')}
+        onExpense={canCreateCashExpense(session?.user) ? () => navigate('/cashier/expenses') : undefined}
         onLock={isMobile ? () => navigate('/lock-screen') : undefined}
         onThemeToggle={() => setThemeMode(themeMode === 'dark' ? 'light' : 'dark')}
         onThemeColorChange={setThemeColor}

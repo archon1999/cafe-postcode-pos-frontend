@@ -1,3 +1,5 @@
+import { orderItemModifierSignature } from 'shared/pos/modifiers';
+
 import type { WaiterMenuCategory, WaiterOrder, WaiterOrderItem } from '../entities';
 
 export type AggregatedWaiterCartItem = {
@@ -10,6 +12,7 @@ export type AggregatedWaiterCartItem = {
   lineTotal: number;
   status: string;
   itemIds: string[];
+  modifiers?: WaiterOrderItem['modifiers'];
 };
 
 export function getDefaultWaiterMenuCategory(categories: WaiterMenuCategory[]) {
@@ -36,7 +39,14 @@ export function aggregateWaiterCartItemsByStation(items: WaiterOrderItem[] | und
     const itemMap = new Map<string, AggregatedWaiterCartItem>();
 
     for (const item of stationItems) {
-      const key = [item.catalogItem, item.note ?? '', item.status, item.prepStationName ?? stationName].join('::');
+      const modifierSignature = orderItemModifierSignature(item.modifiers);
+      const key = [
+        item.catalogItem,
+        item.note ?? '',
+        ...(modifierSignature ? [modifierSignature] : []),
+        item.status,
+        item.prepStationName ?? stationName,
+      ].join('::');
       const existing = itemMap.get(key);
       if (existing) {
         existing.quantity += Number(item.quantity ?? 0);
@@ -56,6 +66,7 @@ export function aggregateWaiterCartItemsByStation(items: WaiterOrderItem[] | und
         lineTotal: Number(item.lineTotal ?? 0),
         status: item.status,
         itemIds: [item.id],
+        ...(item.modifiers?.length ? { modifiers: item.modifiers } : {}),
       });
     }
 

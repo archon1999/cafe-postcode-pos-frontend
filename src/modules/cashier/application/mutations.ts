@@ -2,6 +2,7 @@ import { useMutation } from '@tanstack/react-query';
 
 import { requestEdgePrintDocuments } from 'modules/edge-printing/application';
 import { invalidateQueriesInBackground } from 'shared/api/query-client';
+import type { PosModifierSelection } from 'shared/pos/modifiers';
 
 import { cashierRepository } from '../data-access';
 import type { CashierMenuItem, CashierShiftCloseResponse, PaymentMethod } from '../domain';
@@ -173,12 +174,17 @@ export function useAddCashierPaymentOrderItemMutation(options: { orderId: string
   const { orderId, onSuccess } = options;
 
   return useMutation({
-    mutationFn: async (payload: { catalogItemId: string; note?: string }) => {
+    mutationFn: async (payload: { catalogItemId: string; note?: string; selectedModifiers?: PosModifierSelection[] }) => {
       if (!orderId) {
         throw new Error('Order id is missing');
       }
 
-      await cashierRepository.addOrderItem(orderId, payload.catalogItemId, payload.note ?? '');
+      await cashierRepository.addOrderItem(
+        orderId,
+        payload.catalogItemId,
+        payload.note ?? '',
+        payload.selectedModifiers,
+      );
     },
     onSuccess: () => {
       invalidateQueriesInBackground([
@@ -221,6 +227,27 @@ export function useOpenCashierShiftMutation(options?: { onSuccess?: () => void }
       cashierRepository.openShift(payload),
     onSuccess: () => {
       invalidateQueriesInBackground([cashierKeys.context]);
+      options?.onSuccess?.();
+    },
+  });
+}
+
+export function useCreateCashExpenseMutation(options?: { onSuccess?: () => void }) {
+  return useMutation({
+    mutationFn: (payload: Parameters<typeof cashierRepository.createExpense>[0]) => cashierRepository.createExpense(payload),
+    onSuccess: (expense) => {
+      invalidateQueriesInBackground([cashierKeys.context, cashierKeys.expenses(expense.cashShiftId)]);
+      options?.onSuccess?.();
+    },
+  });
+}
+
+export function useVoidCashExpenseMutation(options?: { onSuccess?: () => void }) {
+  return useMutation({
+    mutationFn: ({ expenseId, reason }: { expenseId: string; reason: string }) =>
+      cashierRepository.voidExpense(expenseId, reason),
+    onSuccess: (expense) => {
+      invalidateQueriesInBackground([cashierKeys.context, cashierKeys.expenses(expense.cashShiftId)]);
       options?.onSuccess?.();
     },
   });

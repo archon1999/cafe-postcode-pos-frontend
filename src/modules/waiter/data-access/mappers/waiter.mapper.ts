@@ -10,8 +10,12 @@ import type {
   WaiterOrderItem,
   WaiterSessionResponse,
 } from 'modules/waiter/domain';
+import { mapPosModifierGroups, mapPosOrderItemModifiers } from 'shared/pos/modifiers';
 
-type WaiterMenuItemDto = WaiterMenuItem & { image_url?: string | null };
+type WaiterMenuItemDto = WaiterMenuItem & {
+  image_url?: string | null;
+  modifier_groups?: Parameters<typeof mapPosModifierGroups>[0];
+};
 type WaiterMenuCategoryDto = Omit<WaiterMenuCategory, 'items'> & {
   image_url?: string | null;
   items: WaiterMenuItemDto[];
@@ -41,7 +45,11 @@ type TableSessionDto = Omit<TableSession, 'tableNumber'> & {
   tableNumber?: number;
   table_number?: number;
 };
-type WaiterOrderItemDto = WaiterOrderItem;
+type WaiterOrderItemDto = WaiterOrderItem & {
+  base_unit_price?: number | string;
+  unit_price?: number | string;
+  modifiers?: Parameters<typeof mapPosOrderItemModifiers>[0];
+};
 type WaiterOrderDto = Omit<WaiterOrder, 'items' | 'displayName'> & {
   items: WaiterOrderItemDto[];
   displayName?: string | null;
@@ -54,7 +62,11 @@ export function mapWaiterMenuCategory(dto: WaiterMenuCategoryDto): WaiterMenuCat
   return {
     ...dto,
     imageUrl: dto.imageUrl ?? dto.image_url ?? null,
-    items: dto.items.map((item) => ({ ...item, imageUrl: item.imageUrl ?? item.image_url ?? null })),
+    items: dto.items.map((item) => ({
+      ...item,
+      imageUrl: item.imageUrl ?? item.image_url ?? null,
+      modifierGroups: mapPosModifierGroups(item.modifierGroups ?? item.modifier_groups),
+    })),
   };
 }
 
@@ -104,7 +116,12 @@ export function mapWaiterOrder(dto: WaiterOrderDto): WaiterOrder {
   return {
     ...dto,
     displayName: dto.displayName ?? dto.display_name ?? null,
-    items: dto.items.map((item) => ({ ...item })),
+    items: dto.items.map((item) => ({
+      ...item,
+      baseUnitPrice: item.baseUnitPrice ?? item.base_unit_price,
+      unitPrice: item.unitPrice ?? item.unit_price,
+      modifiers: mapPosOrderItemModifiers(item.modifiers),
+    })),
   };
 }
 

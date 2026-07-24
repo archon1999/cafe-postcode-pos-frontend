@@ -36,6 +36,7 @@ vi.mock('@iconify/react', () => ({
 }));
 
 vi.mock('modules/auth', () => ({
+  canCreateCashExpense: () => false,
   canAddCashierPaymentOrderItems: (...args: unknown[]) => canAddCashierPaymentOrderItemsMock(...args),
   canAccessTakeawayBuilder: () => false,
   canAccessWaiterTables: (...args: unknown[]) => canAccessWaiterTablesMock(...args),

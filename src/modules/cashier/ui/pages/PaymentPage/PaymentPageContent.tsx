@@ -4,7 +4,13 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 
-import { canAccessTakeawayBuilder, canManageCashierPayments, canSkipFiscalReceipts, usePosSession } from 'modules/auth';
+import {
+  canAccessTakeawayBuilder,
+  canCreateCashExpense,
+  canManageCashierPayments,
+  canSkipFiscalReceipts,
+  usePosSession,
+} from 'modules/auth';
 import {
   useCashierContextQuery,
   useCashierOrderScanMutation,
@@ -249,7 +255,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
           hasCustomOrderName={hasCustomOrderName}
           items={aggregatedOrderItems}
           locale={locale}
-          onAddItem={(item) => void orderEditing.addItem(item.id, item.catalogItem, item.note)}
+          onAddItem={(item) => void orderEditing.addItem(item.id, item.catalogItem, item.note, item.modifiers)}
           onRemoveItem={(itemId) => void orderEditing.removeItem(itemId)}
           onRename={orderEditing.openRenameDialog}
           order={orderQuery.data}
@@ -376,6 +382,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
         onLocaleChange={setLocale}
         onRefresh={isMobile ? () => window.location.reload() : undefined}
         onShift={() => navigate(`/cashier/shift?next=${encodeURIComponent(afterPaymentPath)}`)}
+        onExpense={canCreateCashExpense(session?.user) ? () => navigate('/cashier/expenses') : undefined}
         onLock={isMobile ? () => navigate('/lock-screen') : undefined}
         onThemeToggle={() => setThemeMode(themeMode === 'dark' ? 'light' : 'dark')}
         onThemeColorChange={setThemeColor}

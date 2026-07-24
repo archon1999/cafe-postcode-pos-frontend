@@ -14,14 +14,13 @@ type CashierBuilderMenuPanelProps = {
   category?: CashierMenuCategory;
   groups: ReturnType<typeof aggregateCashierCartItemsByStation>;
   isMobile: boolean;
-  kitchenNote: string;
   locale: PosLocale;
   menuLabel: string;
   itemCounts: Map<string, number>;
   latestItemIds: Map<string, string>;
   total?: number | string | null;
   billsLabel: string;
-  onAdd: (menuItem: CashierMenuItem, note: string) => void;
+  onAdd: (menuItem: CashierMenuItem) => void;
   onCartOpen: () => void;
   onRemove: (itemId: string) => void;
 };
@@ -30,7 +29,6 @@ export function CashierBuilderMenuPanel({
   category,
   groups,
   isMobile,
-  kitchenNote,
   locale,
   menuLabel,
   itemCounts,
@@ -76,7 +74,7 @@ export function CashierBuilderMenuPanel({
             locale={locale}
             menuLabel={menuLabel}
             selectedCount={itemCounts.get(menuItem.id) ?? 0}
-            onAdd={() => onAdd(menuItem, kitchenNote)}
+            onAdd={() => onAdd(menuItem)}
             onRemove={() => {
               const latestItemId = latestItemIds.get(menuItem.id);
               if (latestItemId) {

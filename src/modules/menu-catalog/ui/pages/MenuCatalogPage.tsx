@@ -50,7 +50,8 @@ function WaiterMenuCatalogPage({ sessionId }: { sessionId: string | null }) {
     removeOrderItem: (itemId) => waiterRepository.removeOrderItem(itemId),
     selectCurrentOrder: (orders) =>
       orders.find((order) => order.tableSession === sessionId && !['closed', 'cancelled'].includes(order.status)),
-    addOrderItem: (orderId, menuItem, note) => waiterRepository.addOrderItem(orderId, menuItem.id, note),
+    addOrderItem: (orderId, menuItem, note, selectedModifiers) =>
+      waiterRepository.addOrderItem(orderId, menuItem.id, note, selectedModifiers),
     syncErrorMessage: copy.itemSyncFailed,
   });
 
@@ -97,7 +98,8 @@ function CashierMenuCatalogPage({ channel }: { channel: CashierBuilderOrderChann
     removeOrderItem: (itemId) => cashierRepository.removeOrderItem(itemId),
     resetKey: channel,
     selectCurrentOrder: (orders) => getCurrentCashierBuilderOrder(orders, session?.user.id),
-    addOrderItem: (orderId, menuItem, note) => cashierRepository.addOrderItem(orderId, menuItem.id, note),
+    addOrderItem: (orderId, menuItem, note, selectedModifiers) =>
+      cashierRepository.addOrderItem(orderId, menuItem.id, note, selectedModifiers),
     syncErrorMessage: copy.itemSyncFailed,
   });
 

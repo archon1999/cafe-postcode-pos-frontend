@@ -1,9 +1,13 @@
+import type { PosOrderItemModifier } from 'shared/pos/modifiers';
+
 export type CashierOrderItem = {
   id: string;
   catalogItem: string;
   catalogItemName: string;
   quantity: number | string;
   lineTotal: number | string;
+  baseUnitPrice?: number | string;
+  unitPrice?: number | string;
   status: string;
   prepStationName?: string | null;
   note?: string;
@@ -16,6 +20,7 @@ export type CashierOrderItem = {
   }>;
   markingRequiredCount?: number;
   markingScannedCount?: number;
+  modifiers?: PosOrderItemModifier[];
 };
 
 export type CashierCheckStatus = 'open' | 'closed' | 'fiscal_closed';

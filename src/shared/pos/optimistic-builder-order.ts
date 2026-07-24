@@ -1,8 +1,12 @@
+import type { PosModifierSelection, PosOrderItemModifier } from './modifiers';
+import { modifierPriceDelta, orderItemModifierSignature, selectedModifierOptions } from './modifiers';
+
 export type BuilderMenuItemLike = {
   id: string;
   name: string;
   prepStationName?: string | null;
   price: number | string;
+  modifierGroups?: import('./modifiers').PosModifierGroup[];
 };
 
 export type BuilderOrderItemLike = {
@@ -14,6 +18,7 @@ export type BuilderOrderItemLike = {
   status: string;
   prepStationName?: string | null;
   note?: string | null;
+  modifiers?: PosOrderItemModifier[];
 };
 
 export type BuilderOrderLike<TItem extends BuilderOrderItemLike = BuilderOrderItemLike> = {
@@ -38,6 +43,7 @@ export type PendingAddOperation<TMenuItem extends BuilderMenuItemLike> = {
   tempItemId: string;
   menuItem: TMenuItem;
   note: string;
+  selectedModifiers?: PosModifierSelection[];
   canceled: boolean;
 };
 
@@ -92,16 +98,32 @@ function includedVatAmount(total: number, vatPercent: number) {
 function createOptimisticItem<TMenuItem extends BuilderMenuItemLike, TItem extends BuilderOrderItemLike>(
   operation: PendingAddOperation<TMenuItem>,
 ): TItem {
+  const modifierGroups = operation.menuItem.modifierGroups ?? [];
+  const modifierDelta = modifierPriceDelta(modifierGroups, operation.selectedModifiers ?? []);
+  const modifiers = selectedModifierOptions(modifierGroups, operation.selectedModifiers ?? []).map(
+    ({ group, option }, index) => ({
+      optionId: option.id,
+      groupName: group.name,
+      optionName: option.name,
+      priceDelta: option.priceDelta,
+      sortOrder: index,
+    }),
+  );
+  const unitPrice = toMoneyNumber(operation.menuItem.price) + modifierDelta;
+
   return {
     id: operation.tempItemId,
     catalogItem: operation.menuItem.id,
     catalogItemName: operation.menuItem.name,
     quantity: 1,
-    lineTotal: toMoneyNumber(operation.menuItem.price),
+    baseUnitPrice: toMoneyNumber(operation.menuItem.price),
+    unitPrice,
+    lineTotal: unitPrice,
     status: 'new',
     prepStationName: operation.menuItem.prepStationName,
     note: operation.note || undefined,
-  } as TItem;
+    modifiers,
+  } as unknown as TItem;
 }
 
 export function deriveOptimisticBuilderOrder<
@@ -185,9 +207,10 @@ export function deriveOptimisticBuilderOrder<
 
 export function findLatestOrderItem<TItem extends BuilderOrderItemLike>(
   items: TItem[] | undefined,
-  params: { catalogItemId: string; note: string },
+  params: { catalogItemId: string; note: string; modifiers?: PosOrderItemModifier[] },
 ) {
   const expectedNote = params.note || '';
+  const expectedModifiers = orderItemModifierSignature(params.modifiers);
 
   for (let index = (items?.length ?? 0) - 1; index >= 0; index -= 1) {
     const item = items?.[index];
@@ -196,7 +219,11 @@ export function findLatestOrderItem<TItem extends BuilderOrderItemLike>(
       continue;
     }
 
-    if (item.catalogItem === params.catalogItemId && (item.note ?? '') === expectedNote) {
+    if (
+      item.catalogItem === params.catalogItemId &&
+      (item.note ?? '') === expectedNote &&
+      orderItemModifierSignature(item.modifiers) === expectedModifiers
+    ) {
       return item;
     }
   }

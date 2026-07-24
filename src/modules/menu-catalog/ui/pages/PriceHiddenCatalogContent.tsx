@@ -5,7 +5,8 @@ import { useNavigate } from 'react-router';
 
 import { usePosSession } from 'modules/auth';
 import { getPosCopy } from 'shared/locale/copy';
-import { PosBuilderPageSkeleton } from 'shared/ui/pos-primitives';
+import type { PosModifierSelection } from 'shared/pos/modifiers';
+import { PosBuilderPageSkeleton, PosProductConfiguratorDialog } from 'shared/ui/pos-primitives';
 
 import {
   aggregateSummaryItems,
@@ -36,7 +37,7 @@ export function PriceHiddenCatalogContent<TMenuItem extends CatalogMenuItemLike>
   isLoading: boolean;
   hasPendingOperations: boolean;
   returnPath: string;
-  addItem: (menuItem: TMenuItem, note: string) => void;
+  addItem: (menuItem: TMenuItem, note: string, selectedModifiers?: PosModifierSelection[]) => void;
   removeItem: (itemId: string) => void;
 }) {
   const navigate = useNavigate();
@@ -46,6 +47,7 @@ export function PriceHiddenCatalogContent<TMenuItem extends CatalogMenuItemLike>
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [isSelectionDialogOpen, setSelectionDialogOpen] = useState(false);
+  const [configuringItem, setConfiguringItem] = useState<TMenuItem | null>(null);
 
   const defaultCategory = useMemo(() => getDefaultCategory(categories), [categories]);
   const selectedCategory = categories.find((category) => category.id === selectedCategoryId) ?? defaultCategory;
@@ -56,6 +58,13 @@ export function PriceHiddenCatalogContent<TMenuItem extends CatalogMenuItemLike>
   );
   const selectedItems = useMemo(() => aggregateSummaryItems(orderItems, copy.menu), [copy.menu, orderItems]);
   const selectedCount = selectedItems.reduce((sum, item) => sum + item.quantity, 0);
+  const requestAdd = (item: TMenuItem) => {
+    if (item.modifierGroups?.length) {
+      setConfiguringItem(item);
+      return;
+    }
+    addItem(item, '');
+  };
 
   if (isLoading) {
     return <PosBuilderPageSkeleton mobile={isMobile} />;
@@ -93,7 +102,7 @@ export function PriceHiddenCatalogContent<TMenuItem extends CatalogMenuItemLike>
         latestItemMap={latestItemMap}
         hasPendingOperations={hasPendingOperations}
         noProductsLabel={copy.noProducts}
-        onAdd={addItem}
+        onAdd={(item) => requestAdd(item)}
         onRemove={removeItem}
       />
       <PriceHiddenSelectionDialog
@@ -109,13 +118,33 @@ export function PriceHiddenCatalogContent<TMenuItem extends CatalogMenuItemLike>
               selectedCount={countMap.get(catalogItemId) ?? 0}
               latestItemId={latestItemMap.get(catalogItemId)}
               disabled={hasPendingOperations}
-              onAdd={addItem}
+              onAdd={(selectedItem) => requestAdd(selectedItem)}
               onRemove={removeItem}
             />
           ) : null;
         }}
         onClose={() => setSelectionDialogOpen(false)}
       />
+      {configuringItem ? (
+        <PosProductConfiguratorDialog
+          item={configuringItem}
+          locale={locale}
+          copy={{
+            addToOrder: copy.modifierAddToOrder,
+            free: copy.modifierFree,
+            optional: copy.modifierOptional,
+            required: copy.modifierRequired,
+            selectOne: copy.modifierSelectOne,
+            selectUpTo: copy.modifierSelectUpTo,
+            selectedCount: copy.selectedCount,
+          }}
+          onClose={() => setConfiguringItem(null)}
+          onConfirm={(item, selections) => {
+            addItem(item, '', selections);
+            setConfiguringItem(null);
+          }}
+        />
+      ) : null}
     </Box>
   );
 }

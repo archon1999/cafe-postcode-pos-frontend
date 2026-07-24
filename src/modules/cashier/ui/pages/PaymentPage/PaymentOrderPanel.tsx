@@ -134,6 +134,17 @@ export function PaymentOrderPanel({
                       {item.note}
                     </Typography>
                   ) : null}
+                  {item.modifiers?.map((modifier) => (
+                    <Typography
+                      key={`${modifier.groupName}-${modifier.optionName}`}
+                      variant="body2"
+                      color="text.secondary">
+                      • {modifier.groupName}: {modifier.optionName}
+                      {Number(modifier.priceDelta)
+                        ? ` (+${formatCompactMoney(Number(modifier.priceDelta), locale)})`
+                        : ''}
+                    </Typography>
+                  ))}
                   {item.status === 'cancelled' ? (
                     <Typography variant="caption" sx={{ color: 'error.main', fontWeight: 700 }}>
                       {copy.cancelled}

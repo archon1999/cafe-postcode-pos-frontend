@@ -1,3 +1,5 @@
+import { orderItemModifierSignature } from 'shared/pos/modifiers';
+
 import type { CashierBuilderOrderChannel, CashierMenuCategory, CashierOrder, CashierOrderItem } from '../entities';
 
 export type AggregatedCashierCartItem = {
@@ -13,6 +15,7 @@ export type AggregatedCashierCartItem = {
   markingRequiredCount: number;
   markingScannedCount: number;
   markingMissingCount: number;
+  modifiers?: CashierOrderItem['modifiers'];
 };
 
 export type AggregatedCashierOrderItem = CashierOrderItem & {
@@ -66,9 +69,14 @@ export function aggregateCashierCartItemsByStation(items: CashierOrderItem[] | u
       const markingRequiredCount = getCashierOrderItemMarkingRequiredCount(item);
       const markingScannedCount = getCashierOrderItemMarkingScannedCount(item);
       const markingMissingCount = Math.max(markingRequiredCount - markingScannedCount, 0);
-      const aggregationKey = [item.catalogItem, item.note ?? '', item.status, item.prepStationName ?? stationName].join(
-        '::',
-      );
+      const modifierSignature = orderItemModifierSignature(item.modifiers);
+      const aggregationKey = [
+        item.catalogItem,
+        item.note ?? '',
+        ...(modifierSignature ? [modifierSignature] : []),
+        item.status,
+        item.prepStationName ?? stationName,
+      ].join('::');
       const existing = aggregatedMap.get(aggregationKey);
 
       if (existing) {
@@ -95,6 +103,7 @@ export function aggregateCashierCartItemsByStation(items: CashierOrderItem[] | u
         markingRequiredCount,
         markingScannedCount,
         markingMissingCount,
+        ...(item.modifiers?.length ? { modifiers: item.modifiers } : {}),
       });
     }
 
@@ -107,7 +116,14 @@ export function aggregateCashierOrderItems(items: CashierOrderItem[] | undefined
 
   for (const item of items ?? []) {
     const statusGroup = item.status === 'cancelled' ? 'cancelled' : 'active';
-    const aggregationKey = [item.catalogItem, item.note ?? '', statusGroup, item.prepStationName ?? ''].join('::');
+    const modifierSignature = orderItemModifierSignature(item.modifiers);
+    const aggregationKey = [
+      item.catalogItem,
+      item.note ?? '',
+      ...(modifierSignature ? [modifierSignature] : []),
+      statusGroup,
+      item.prepStationName ?? '',
+    ].join('::');
     const existing = aggregatedItemMap.get(aggregationKey);
 
     if (existing) {

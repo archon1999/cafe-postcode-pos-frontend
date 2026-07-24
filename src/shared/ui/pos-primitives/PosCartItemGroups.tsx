@@ -3,6 +3,7 @@ import { Box, Button, Stack, Typography, alpha } from '@mui/material';
 import type { KeyboardEvent } from 'react';
 
 import { formatPosCopy, type PosLocale } from 'shared/locale/copy';
+import type { PosOrderItemModifier } from 'shared/pos/modifiers';
 import { formatCompactMoney } from 'shared/pos/utils';
 
 export type PosCartItem = {
@@ -18,6 +19,7 @@ export type PosCartItem = {
   markingRequiredCount?: number;
   markingScannedCount?: number;
   markingMissingCount?: number;
+  modifiers?: PosOrderItemModifier[];
 };
 
 export type PosCartMenuItem = {
@@ -32,7 +34,7 @@ export type PosCartItemGroupsProps<TMenuItem extends PosCartMenuItem> = {
   locale: PosLocale;
   markingProgressLabel?: string;
   menuItems: ReadonlyMap<string, TMenuItem>;
-  onAdd: (item: TMenuItem) => void;
+  onAdd: (item: TMenuItem, sourceItem: PosCartItem) => void;
   onRemove: (itemId: string) => void;
   onSelect: (key: string) => void;
   selectedItemKey: string | null;
@@ -59,7 +61,7 @@ function CartItemActions<TMenuItem extends PosCartMenuItem>({
 }: {
   item: PosCartItem;
   menuItems: ReadonlyMap<string, TMenuItem>;
-  onAdd: (item: TMenuItem) => void;
+  onAdd: (item: TMenuItem, sourceItem: PosCartItem) => void;
   onRemove: (itemId: string) => void;
   variant: PosCartItemGroupsProps<TMenuItem>['variant'];
 }) {
@@ -67,7 +69,7 @@ function CartItemActions<TMenuItem extends PosCartMenuItem>({
   const addAnother = () => {
     const menuItem = menuItems.get(item.catalogItem);
     if (menuItem) {
-      onAdd(menuItem);
+      onAdd(menuItem, item);
     }
   };
 
@@ -227,6 +229,21 @@ export function PosCartItemGroups<TMenuItem extends PosCartMenuItem>({
                     {item.note}
                   </Typography>
                 ) : null}
+                {item.modifiers?.map((modifier) => (
+                  <Stack
+                    key={`${modifier.groupName}-${modifier.optionName}`}
+                    direction="row"
+                    spacing={0.65}
+                    alignItems="center">
+                    <Box sx={{ width: 5, height: 5, borderRadius: '50%', bgcolor: 'primary.main', flex: '0 0 auto' }} />
+                    <Typography variant={mobile ? 'caption' : 'body2'} color="text.secondary">
+                      {modifier.groupName}: {modifier.optionName}
+                      {Number(modifier.priceDelta)
+                        ? ` (+${formatCompactMoney(Number(modifier.priceDelta), locale)})`
+                        : ''}
+                    </Typography>
+                  </Stack>
+                ))}
                 {markingProgressLabel &&
                 Number(item.markingRequiredCount ?? 0) > 0 &&
                 Number(item.markingMissingCount ?? 0) > 0 ? (

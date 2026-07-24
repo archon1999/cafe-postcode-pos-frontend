@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 
 import {
   canAccessCashier,
+  canCreateCashExpense,
   canManageCashShift,
   getPosHomePath,
   isCashierBuilderMode,
@@ -253,6 +254,7 @@ export function CashierShiftPage() {
         locale={locale}
         onClose={() => setSettingsAnchor(null)}
         onLocaleChange={setLocale}
+        onExpense={canCreateCashExpense(session?.user) ? () => navigate('/cashier/expenses') : undefined}
         onLock={() => navigate('/lock-screen')}
         onRefresh={() => void contextQuery.refetch()}
         onThemeToggle={() => setThemeMode(themeMode === 'dark' ? 'light' : 'dark')}

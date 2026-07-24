@@ -27,6 +27,7 @@ export function PosSettingsMenu({
   onClose,
   onLocaleChange,
   onShift,
+  onExpense,
   onLock,
   onRefresh,
   onThemeToggle,
@@ -40,6 +41,7 @@ export function PosSettingsMenu({
   onClose: () => void;
   onLocaleChange: (locale: PosLocale) => void;
   onShift?: () => void;
+  onExpense?: () => void;
   onLock?: () => void;
   onRefresh?: () => void;
   onThemeToggle: () => void;
@@ -182,7 +184,20 @@ export function PosSettingsMenu({
         </MenuItem>
       ))}
 
-      {onRefresh || onLock || onShift ? <Divider /> : null}
+      {onRefresh || onLock || onShift || onExpense ? <Divider /> : null}
+
+      {onExpense ? (
+        <MenuItem
+          onClick={() => {
+            onExpense();
+            onClose();
+          }}>
+          <ListItemIcon>
+            <Icon icon="solar:wallet-money-bold-duotone" width={22} />
+          </ListItemIcon>
+          <ListItemText primary={copy.expenses} />
+        </MenuItem>
+      ) : null}
 
       {onShift ? (
         <MenuItem

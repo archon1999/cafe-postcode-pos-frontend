@@ -7,3 +7,4 @@ export * from './PosOrderChannelSegment';
 export * from './PosCartItemGroups';
 export * from './PosSectionTabs';
 export * from './PosSettingsMenu';
+export * from './PosProductConfiguratorDialog';

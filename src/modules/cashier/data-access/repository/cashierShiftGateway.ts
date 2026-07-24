@@ -1,5 +1,5 @@
 import type { CashierRepository } from 'modules/cashier/domain';
-import { apiPost } from 'shared/api/client';
+import { apiGet, apiPost } from 'shared/api/client';
 
 type OpenShiftPayload = Parameters<CashierRepository['openShift']>[0];
 type OpenShiftResponse = Awaited<ReturnType<CashierRepository['openShift']>>;
@@ -13,6 +13,25 @@ type FiscalShiftResponse = Awaited<ReturnType<CashierRepository['openFiscalShift
 const SHIFT_REPORT_REQUEST_TIMEOUT_MS = 10_000;
 
 export const cashierShiftGateway = {
+  getExpenses(cashShiftId?: string) {
+    const query = cashShiftId ? `?cashShiftId=${encodeURIComponent(cashShiftId)}` : '';
+    return apiGet<Awaited<ReturnType<CashierRepository['getExpenses']>>>(`/pos/billing/shifts/current/expenses/${query}`);
+  },
+
+  createExpense(payload: Parameters<CashierRepository['createExpense']>[0]) {
+    return apiPost<Awaited<ReturnType<CashierRepository['createExpense']>>>(
+      '/pos/billing/shifts/current/expenses/',
+      payload,
+    );
+  },
+
+  voidExpense(expenseId: string, reason: string) {
+    return apiPost<Awaited<ReturnType<CashierRepository['voidExpense']>>>(
+      `/pos/billing/expenses/${expenseId}/void/`,
+      { reason },
+    );
+  },
+
   openShift(payload: OpenShiftPayload) {
     return apiPost<OpenShiftResponse>('/pos/billing/shifts/open/', payload);
   },

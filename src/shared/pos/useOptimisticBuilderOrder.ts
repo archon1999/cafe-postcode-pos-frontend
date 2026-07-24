@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { queryClient } from 'shared/api/query-client';
+import type { PosModifierSelection } from 'shared/pos/modifiers';
+import { selectedModifierOptions } from 'shared/pos/modifiers';
 
 import {
   createTemporaryBuilderId,
@@ -35,6 +37,7 @@ type UseOptimisticBuilderOrderOptions<
     orderId: string,
     menuItem: TMenuItem,
     note: string,
+    selectedModifiers?: PosModifierSelection[],
   ) => Promise<{ kitchenPrintDocuments?: string[] } | void>;
   onPrintDocuments?: (documentIds: string[]) => void;
   resetKey?: unknown;
@@ -161,7 +164,14 @@ export function useOptimisticBuilderOrder<
           return;
         }
 
-        const mutationResult = await addOrderItem(orderId, operationBeforeAdd.menuItem, operationBeforeAdd.note);
+        const mutationResult = operationBeforeAdd.selectedModifiers?.length
+          ? await addOrderItem(
+              orderId,
+              operationBeforeAdd.menuItem,
+              operationBeforeAdd.note,
+              operationBeforeAdd.selectedModifiers,
+            )
+          : await addOrderItem(orderId, operationBeforeAdd.menuItem, operationBeforeAdd.note);
         if (mutationResult?.kitchenPrintDocuments?.length) {
           onPrintDocuments?.(mutationResult.kitchenPrintDocuments);
         }
@@ -173,6 +183,15 @@ export function useOptimisticBuilderOrder<
           const createdItem = findLatestOrderItem(refreshedOrder?.items, {
             catalogItemId: operationAfterAdd.menuItem.id,
             note: operationAfterAdd.note,
+            modifiers: selectedModifierOptions(
+              operationAfterAdd.menuItem.modifierGroups ?? [],
+              operationAfterAdd.selectedModifiers ?? [],
+            ).map(({ group, option }) => ({
+              optionId: option.id,
+              groupName: group.name,
+              optionName: option.name,
+              priceDelta: option.priceDelta,
+            })),
           });
 
           if (createdItem) {
@@ -220,11 +239,14 @@ export function useOptimisticBuilderOrder<
   );
 
   const addItem = useCallback(
-    (menuItem: TMenuItem, note: string) => {
+    (menuItem: TMenuItem, note: string, selectedModifiers: PosModifierSelection[] = []) => {
       const opId = createOperationId();
       const tempItemId = createOperationId();
 
-      setPendingAdds((current) => [...current, { opId, tempItemId, menuItem, note, canceled: false }]);
+      setPendingAdds((current) => [
+        ...current,
+        { opId, tempItemId, menuItem, note, selectedModifiers, canceled: false },
+      ]);
       enqueue(() => runAddOperation(opId));
     },
     [enqueue, runAddOperation],

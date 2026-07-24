@@ -6,8 +6,12 @@ import type {
   CashierOrderItem,
   CashierPaymentResponse,
 } from 'modules/cashier/domain';
+import { mapPosModifierGroups, mapPosOrderItemModifiers } from 'shared/pos/modifiers';
 
-type CashierMenuItemDto = CashierMenuItem & { image_url?: string | null };
+type CashierMenuItemDto = CashierMenuItem & {
+  image_url?: string | null;
+  modifier_groups?: Parameters<typeof mapPosModifierGroups>[0];
+};
 type CashierMenuCategoryDto = Omit<CashierMenuCategory, 'items'> & {
   image_url?: string | null;
   items: CashierMenuItemDto[];
@@ -20,6 +24,9 @@ type CashierOrderItemDto = Omit<CashierOrderItem, 'markings'> & {
   markings?: CashierMarkingDto[];
   marking_required_count?: number;
   marking_scanned_count?: number;
+  base_unit_price?: number | string;
+  unit_price?: number | string;
+  modifiers?: Parameters<typeof mapPosOrderItemModifiers>[0];
 };
 type CashierOrderDto = Omit<CashierOrder, 'items' | 'orderNumber' | 'displayName'> & {
   items: CashierOrderItemDto[];
@@ -39,7 +46,11 @@ export function mapCashierMenuCategory(dto: CashierMenuCategoryDto): CashierMenu
   return {
     ...dto,
     imageUrl: dto.imageUrl ?? dto.image_url ?? null,
-    items: dto.items.map((item) => ({ ...item, imageUrl: item.imageUrl ?? item.image_url ?? null })),
+    items: dto.items.map((item) => ({
+      ...item,
+      imageUrl: item.imageUrl ?? item.image_url ?? null,
+      modifierGroups: mapPosModifierGroups(item.modifierGroups ?? item.modifier_groups),
+    })),
   };
 }
 
@@ -58,6 +69,9 @@ export function mapCashierOrder(dto: CashierOrderDto): CashierOrder {
       ...item,
       markingRequiredCount: item.markingRequiredCount ?? item.marking_required_count,
       markingScannedCount: item.markingScannedCount ?? item.marking_scanned_count,
+      baseUnitPrice: item.baseUnitPrice ?? item.base_unit_price,
+      unitPrice: item.unitPrice ?? item.unit_price,
+      modifiers: mapPosOrderItemModifiers(item.modifiers),
       markings: item.markings?.map((marking) => ({
         ...marking,
         rawCode: marking.rawCode ?? marking.raw_code,

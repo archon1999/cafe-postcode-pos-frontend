@@ -40,6 +40,7 @@ vi.mock('@mui/material', async () => {
 });
 
 vi.mock('modules/auth', () => ({
+  canCreateCashExpense: () => false,
   canAccessTakeawayBuilder: () => false,
   canManageCashierPayments: () => true,
   usePosSession: () => ({

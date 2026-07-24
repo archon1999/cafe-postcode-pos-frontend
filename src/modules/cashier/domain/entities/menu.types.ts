@@ -1,3 +1,5 @@
+import type { PosModifierGroup } from 'shared/pos/modifiers';
+
 export type CashierMenuItem = {
   id: string;
   name: string;
@@ -8,6 +10,7 @@ export type CashierMenuItem = {
   price: number | string;
   requiresMarking?: boolean;
   markingGtin?: string | null;
+  modifierGroups?: PosModifierGroup[];
 };
 
 export type CashierMenuCategory = {

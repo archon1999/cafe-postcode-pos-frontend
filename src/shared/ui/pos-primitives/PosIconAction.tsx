@@ -1,15 +1,17 @@
 import { Icon } from '@iconify/react';
-import { Box, Button, alpha } from '@mui/material';
+import { Box, Button, Tooltip, alpha } from '@mui/material';
 import type { SxProps, Theme } from '@mui/material/styles';
 import type { MouseEventHandler } from 'react';
 
 import { deriveSystemHealthTone, systemHealthToneColors, useSystemHealthQuery } from 'shared/system-health';
 
 export function PosIconAction({
+  ariaLabel,
   icon,
   onClick,
   sx,
 }: {
+  ariaLabel?: string;
   icon: string;
   onClick?: MouseEventHandler<HTMLButtonElement>;
   sx?: SxProps<Theme>;
@@ -23,10 +25,10 @@ export function PosIconAction({
   );
   const badgeColor = systemHealthToneColors[badgeTone];
 
-  return (
+  const action = (
     <Button
       variant="contained"
-      aria-label={isSettingsAction ? 'Sozlamalar' : undefined}
+      aria-label={ariaLabel ?? (isSettingsAction ? 'Sozlamalar' : undefined)}
       onClick={onClick}
       sx={[
         () => ({
@@ -67,4 +69,6 @@ export function PosIconAction({
       ) : null}
     </Button>
   );
+
+  return ariaLabel ? <Tooltip title={ariaLabel}>{action}</Tooltip> : action;
 }

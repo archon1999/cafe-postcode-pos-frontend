@@ -6,6 +6,7 @@ import type {
   WaiterOrder,
   WaiterSessionResponse,
 } from '../entities';
+import type { PosModifierSelection } from 'shared/pos/modifiers';
 
 export interface WaiterRepository {
   getHalls(): Promise<Hall[]>;
@@ -16,7 +17,12 @@ export interface WaiterRepository {
   getOrders(): Promise<WaiterOrder[]>;
   createOrder(sessionId: string, note: string): Promise<WaiterCreateOrderResponse>;
   createTakeawayOrder(note: string): Promise<WaiterCreateOrderResponse>;
-  addOrderItem(orderId: string, catalogItemId: string, note: string): Promise<{ kitchenPrintDocuments?: string[] }>;
+  addOrderItem(
+    orderId: string,
+    catalogItemId: string,
+    note: string,
+    selectedModifiers?: PosModifierSelection[],
+  ): Promise<{ kitchenPrintDocuments?: string[] }>;
   removeOrderItem(itemId: string): Promise<void>;
   updateOrderNote(orderId: string, note: string): Promise<WaiterOrder>;
   submitOrder(orderId: string): Promise<WaiterOrder>;

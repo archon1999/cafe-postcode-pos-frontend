@@ -34,11 +34,17 @@ export const cashierOrderGateway = {
     return mapCashierOrder(await apiPatch<OrderResponse>(`/pos/sales/orders/${orderId}/`, { channel }));
   },
 
-  addOrderItem(orderId: string, catalogItemId: string, note: string) {
+  addOrderItem(
+    orderId: string,
+    catalogItemId: string,
+    note: string,
+    selectedModifiers: Parameters<CashierRepository['addOrderItem']>[3] = [],
+  ) {
     return apiPost<AddOrderItemResponse>(`/pos/sales/orders/${orderId}/items/`, {
       catalogItem: catalogItemId,
       quantity: 1,
       note,
+      ...(selectedModifiers.length ? { selectedModifiers } : {}),
     });
   },
 

@@ -21,6 +21,7 @@ vi.mock('react-router', () => ({
 }));
 
 vi.mock('modules/auth', () => ({
+  canCreateCashExpense: () => false,
   canAccessCashier: () => true,
   canManageCashShift: () => true,
   getPosHomePath: () => '/cashier',
@@ -57,6 +58,7 @@ vi.mock('modules/cashier/application', () => ({
           cardTotal: 0,
           qrTotal: 0,
           refundTotal: 0,
+          expenseTotal: 0,
           saleCount: 1,
           refundCount: 0,
           totalSaleAmount: 50000,
@@ -120,7 +122,8 @@ describe('CashierShiftPage report printing', () => {
     render(<CashierShiftPage />);
 
     expect(screen.queryByText("Boshlang'ich naqd")).toBeNull();
-    expect(screen.queryByText('Kutilgan naqd')).toBeNull();
+    expect(screen.getByText('Kutilgan naqd')).toBeTruthy();
+    expect(screen.getByText('Xarajatlar')).toBeTruthy();
     expect(screen.queryByText('QR')).toBeNull();
     expect(screen.queryByLabelText('Izoh')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Ishni davom ettirish' })).toBeNull();
@@ -128,7 +131,7 @@ describe('CashierShiftPage report printing', () => {
     expect(screen.getByText('Qaytarish')).toBeTruthy();
     expect(screen.getByText('Birinchi chek')).toBeTruthy();
     expect(screen.getByText('Oxirgi chek')).toBeTruthy();
-    expect(screen.getAllByText(/50.000 so'm/)).toHaveLength(2);
+    expect(screen.getAllByText(/50.000 so'm/)).toHaveLength(3);
 
     fireEvent.click(screen.getByRole('button', { name: 'Chek chiqarish' }));
 

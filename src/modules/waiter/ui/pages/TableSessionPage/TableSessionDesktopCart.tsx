@@ -33,7 +33,7 @@ export type TableSessionDesktopCartProps = {
   total: number | string | undefined;
   vatAmount: number;
   vatLabel: string;
-  onAdd: (item: WaiterMenuItem) => void;
+  onAdd: PosCartItemGroupsProps<WaiterMenuItem>['onAdd'];
   onCheckout: () => void;
   onKitchenNoteChange: (value: string) => void;
   onRemove: (itemId: string) => void;

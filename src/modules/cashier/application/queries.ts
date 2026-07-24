@@ -15,6 +15,14 @@ export function useCashierContextQuery(options?: { enabled?: boolean; refetchInt
   });
 }
 
+export function useCashExpensesQuery(cashShiftId?: string, enabled = true) {
+  return useQuery({
+    queryKey: cashierKeys.expenses(cashShiftId),
+    queryFn: () => cashierRepository.getExpenses(cashShiftId),
+    enabled,
+  });
+}
+
 export function useCashierMenuQuery() {
   return useQuery({
     queryKey: cashierKeys.menu,

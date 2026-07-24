@@ -6,6 +6,8 @@ import {
   useCashierUpdateOrderDisplayNameMutation,
   useRemoveCashierPaymentOrderItemMutation,
 } from 'modules/cashier/application';
+import type { PosOrderItemModifier } from 'shared/pos/modifiers';
+import { selectionPayloadFromOrderModifiers } from 'shared/pos/modifiers';
 
 import { getMutationErrorPayload } from './payment-error-debug';
 
@@ -48,14 +50,24 @@ export function usePaymentOrderEditing({
   const canAddItems = isBuilderOrder ? canAddCashierPaymentOrderItems(user) : canAccessWaiterTables(user);
   const canRemoveItems = Boolean(isBuilderOrder && canRemoveCashierPaymentOrderItems(user));
 
-  const addItem = async (itemId: string, catalogItemId: string, note?: string | null) => {
+  const addItem = async (
+    itemId: string,
+    catalogItemId: string,
+    note?: string | null,
+    modifiers?: PosOrderItemModifier[],
+  ) => {
     if (!canAddItems || addMutation.isPending) {
       return;
     }
 
     setAddingItemId(itemId);
     try {
-      await addMutation.mutateAsync({ catalogItemId, note: note ?? '' });
+      const selectedModifiers = selectionPayloadFromOrderModifiers(modifiers);
+      await addMutation.mutateAsync({
+        catalogItemId,
+        note: note ?? '',
+        ...(selectedModifiers.length ? { selectedModifiers } : {}),
+      });
     } catch {
       setAddingItemId(null);
     }

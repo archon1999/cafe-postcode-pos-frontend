@@ -9,13 +9,14 @@ import {
   RestaurantLoginPage,
   canAccessTakeawayBuilder,
   canAccessCashierPayments,
+  canCreateCashExpense,
   canAccessKitchen,
   canAccessWaiter,
   canAccessWaiterTables,
   getPosHomePath,
   usePosSession,
 } from 'modules/auth';
-import { CashierBuilderPage, CashierShiftPage, OpenChecksPage, PaymentPage } from 'modules/cashier';
+import { CashExpensesPage, CashierBuilderPage, CashierShiftPage, OpenChecksPage, PaymentPage } from 'modules/cashier';
 import { KitchenMonitorPage, KitchenQueuePage, TvMonitorPage, TvMonitorPairingClaimPage } from 'modules/kitchen';
 import { MenuCatalogPage } from 'modules/menu-catalog';
 import { HallsPage, TableSessionPage } from 'modules/waiter';
@@ -141,6 +142,14 @@ export const posRouter = createBrowserRouter([
         element: (
           <PosAccessGuard canAccess={(session) => canAccessCashierPayments(session?.user)}>
             <OpenChecksPage />
+          </PosAccessGuard>
+        ),
+      },
+      {
+        path: 'cashier/expenses',
+        element: (
+          <PosAccessGuard canAccess={(session) => canCreateCashExpense(session?.user)}>
+            <CashExpensesPage />
           </PosAccessGuard>
         ),
       },

@@ -8,8 +8,10 @@ import type {
   CashierPaymentResponse,
   CashierShiftCloseResponse,
   CashierShiftReportResponse,
+  CashExpense,
   PaymentMethod,
 } from '../entities';
+import type { PosModifierSelection } from 'shared/pos/modifiers';
 
 type CashierReceipt = NonNullable<CashierOrder['receipts']>[number];
 
@@ -46,6 +48,15 @@ export interface CashierRepository {
     closeFiscalShift?: boolean;
   }): Promise<CashierShiftCloseResponse>;
   printShiftReport(payload: { cashShiftId?: string }): Promise<CashierShiftReportResponse>;
+  getExpenses(cashShiftId?: string): Promise<CashExpense[]>;
+  createExpense(payload: {
+    cashShiftId?: string;
+    amount: number;
+    categoryId: string;
+    comment?: string;
+    recipientId?: string;
+  }): Promise<CashExpense>;
+  voidExpense(expenseId: string, reason: string): Promise<CashExpense>;
   createBuilderOrder(payload: {
     channel: CashierBuilderOrderChannel;
     note: string;
@@ -54,7 +65,12 @@ export interface CashierRepository {
   }): Promise<CashierCreateOrderResponse>;
   createTakeawayOrder(note: string): Promise<CashierCreateOrderResponse>;
   updateOrderChannel(orderId: string, channel: CashierBuilderOrderChannel): Promise<CashierOrder>;
-  addOrderItem(orderId: string, catalogItemId: string, note: string): Promise<{ kitchenPrintDocuments?: string[] }>;
+  addOrderItem(
+    orderId: string,
+    catalogItemId: string,
+    note: string,
+    selectedModifiers?: PosModifierSelection[],
+  ): Promise<{ kitchenPrintDocuments?: string[] }>;
   scanOrderMarking(orderId: string, rawCode: string, mode: 'add' | 'attach' | 'remove'): Promise<CashierOrder>;
   removeOrderItem(itemId: string): Promise<void>;
   updateOrderNote(orderId: string, note: string): Promise<CashierOrder>;

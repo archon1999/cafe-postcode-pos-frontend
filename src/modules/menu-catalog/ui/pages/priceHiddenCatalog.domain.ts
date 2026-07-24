@@ -2,6 +2,8 @@ import type { KeyboardEvent } from 'react';
 
 import type { CashierBuilderOrderChannel } from 'modules/cashier/domain';
 import { resolveApiBaseUrl } from 'shared/api/apiUrl';
+import type { PosModifierGroup, PosOrderItemModifier } from 'shared/pos/modifiers';
+import { orderItemModifierSignature } from 'shared/pos/modifiers';
 
 export type CatalogMenuItemLike = {
   id: string;
@@ -10,6 +12,7 @@ export type CatalogMenuItemLike = {
   imageUrl?: string | null;
   prepStationName?: string | null;
   price: number | string;
+  modifierGroups?: PosModifierGroup[];
 };
 
 export type CatalogCategoryLike<TMenuItem extends CatalogMenuItemLike> = {
@@ -27,6 +30,7 @@ export type CatalogOrderItemLike = {
   status: string;
   prepStationName?: string | null;
   note?: string | null;
+  modifiers?: PosOrderItemModifier[];
 };
 
 export type CatalogSummaryItem = {
@@ -117,9 +121,11 @@ export function aggregateSummaryItems(items: CatalogOrderItemLike[] | undefined,
   const itemMap = new Map<string, CatalogSummaryItem>();
 
   for (const item of items ?? []) {
+    const modifierSignature = orderItemModifierSignature(item.modifiers);
     const aggregationKey = [
       item.catalogItem,
       item.note ?? '',
+      ...(modifierSignature ? [modifierSignature] : []),
       item.status,
       item.prepStationName ?? fallbackStationName,
     ].join('::');

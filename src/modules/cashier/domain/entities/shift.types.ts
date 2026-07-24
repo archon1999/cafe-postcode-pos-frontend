@@ -29,6 +29,32 @@ export type CashierContextCashier = {
   username: string;
 };
 
+export type ExpenseCategory = {
+  id: string;
+  name: string;
+  isActive: boolean;
+  sortOrder: number;
+};
+
+export type CashExpense = {
+  id: string;
+  cashShiftId: string;
+  cashDesk: string;
+  cashDeskName: string;
+  category: string;
+  categoryName: string;
+  amount: number;
+  comment: string;
+  recipient?: string | null;
+  recipientName: string;
+  createdBy: string;
+  createdByName: string;
+  status: 'posted' | 'voided';
+  occurredAt: string;
+  voidedAt?: string | null;
+  voidReason: string;
+};
+
 export type CashShiftSummary = {
   id: string;
   status: 'open' | 'closed';
@@ -45,6 +71,7 @@ export type CashShiftSummary = {
   cardTotal: number;
   qrTotal: number;
   refundTotal: number;
+  expenseTotal: number;
   saleCount?: number;
   refundCount?: number;
   totalSaleAmount?: number;
@@ -74,6 +101,8 @@ export type CashierContext = {
   branchFiscalProfile: BranchFiscalProfile;
   availableCashDesks: CashierContextCashDesk[];
   availableCashiers: CashierContextCashier[];
+  expenseCategories: ExpenseCategory[];
+  expenseRecipients: CashierContextCashier[];
   currentShift: CashShiftSummary | null;
   activeShifts: CashShiftSummary[];
   fiscalShiftOpen: boolean;
