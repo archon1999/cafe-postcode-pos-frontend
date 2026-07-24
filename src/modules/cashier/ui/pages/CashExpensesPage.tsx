@@ -19,7 +19,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router';
 import { toast } from 'sonner';
 
-import { canCreateCashExpense, canManageCashShift, canVoidCashExpense, getPosHomePath, usePosSession } from 'modules/auth';
+import {
+  canCreateCashExpense,
+  canManageCashShift,
+  canVoidCashExpense,
+  getPosHomePath,
+  usePosSession,
+} from 'modules/auth';
 import {
   useCashExpensesQuery,
   useCashierContextQuery,
@@ -29,13 +35,15 @@ import {
 import type { CashExpense } from 'modules/cashier/domain';
 import { getApiErrorMessage } from 'shared/api/errorMessage';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
+import { getPosCopy } from 'shared/locale/copy';
 import { PosIconAction } from 'shared/ui/pos-primitives';
 
 const formatMoney = (value: number) => new Intl.NumberFormat('uz-UZ').format(value);
 
 export function CashExpensesPage() {
   const navigate = useNavigate();
-  const { session } = usePosSession();
+  const { session, locale } = usePosSession();
+  const copy = getPosCopy(locale);
   const canCreate = canCreateCashExpense(session?.user);
   const canVoid = canVoidCashExpense(session?.user);
   const canSelectShift = canManageCashShift(session?.user);
@@ -62,7 +70,10 @@ export function CashExpensesPage() {
   }, [selectedShiftId, shifts]);
 
   const selectedShift = shifts.find((shift) => shift.id === selectedShiftId) ?? null;
-  const expensesQuery = useCashExpensesQuery(canSelectShift ? selectedShiftId || undefined : undefined, Boolean(selectedShiftId));
+  const expensesQuery = useCashExpensesQuery(
+    canSelectShift ? selectedShiftId || undefined : undefined,
+    Boolean(selectedShiftId),
+  );
   const createMutation = useCreateCashExpenseMutation({
     onSuccess: () => {
       setAmount('');
@@ -111,18 +122,18 @@ export function CashExpensesPage() {
         <Stack direction="row" spacing={1.5} alignItems="center">
           <PosIconAction icon="solar:alt-arrow-left-bold" onClick={() => navigate(-1)} />
           <Box>
-            <Typography variant="h4">Kassa xarajatlari</Typography>
-            <Typography color="text.secondary">Naqd pul chiqimini smenaga yozish</Typography>
+            <Typography variant="h4">{copy.cashExpensesTitle}</Typography>
+            <Typography color="text.secondary">{copy.cashExpensesSubtitle}</Typography>
           </Box>
         </Stack>
       }>
       <Box sx={{ overflowY: 'auto', pb: 3 }}>
         <Stack spacing={2.5} sx={{ maxWidth: 920, mx: 'auto' }}>
           {!shifts.length && !contextQuery.isLoading ? (
-            <Alert severity="warning">Xarajat kiritish uchun aktiv smena bo‘lishi kerak.</Alert>
+            <Alert severity="warning">{copy.cashExpenseRequiresOpenShift}</Alert>
           ) : null}
           {!categories.length && !contextQuery.isLoading ? (
-            <Alert severity="info">Admin panelda avval xarajat kategoriyasini yarating.</Alert>
+            <Alert severity="info">{copy.cashExpenseNoCategories}</Alert>
           ) : null}
 
           <Paper sx={{ p: { xs: 2, md: 3 }, borderRadius: 3 }}>
@@ -170,7 +181,7 @@ export function CashExpensesPage() {
                   label="Pulni oluvchi"
                   value={recipientId}
                   onChange={(event) => setRecipientId(event.target.value)}>
-                  <MenuItem value="">Ko‘rsatilmagan</MenuItem>
+                  <MenuItem value="">{copy.unspecified}</MenuItem>
                   {recipients.map((recipient) => (
                     <MenuItem key={recipient.id} value={recipient.id}>
                       {recipient.fullName || recipient.username}
@@ -199,10 +210,10 @@ export function CashExpensesPage() {
 
           <Paper sx={{ p: { xs: 2, md: 3 }, borderRadius: 3 }}>
             <Stack spacing={1.5}>
-              <Typography variant="h6">Smena xarajatlari</Typography>
-              {expensesQuery.isLoading ? <Typography color="text.secondary">Yuklanmoqda…</Typography> : null}
+              <Typography variant="h6">{copy.shiftExpenses}</Typography>
+              {expensesQuery.isLoading ? <Typography color="text.secondary">{copy.loading}</Typography> : null}
               {!expensesQuery.isLoading && !expensesQuery.data?.length ? (
-                <Typography color="text.secondary">Hozircha xarajat yo‘q.</Typography>
+                <Typography color="text.secondary">{copy.noExpenses}</Typography>
               ) : null}
               {expensesQuery.data?.map((expense, index) => (
                 <Box key={expense.id}>
@@ -211,7 +222,9 @@ export function CashExpensesPage() {
                     <Box>
                       <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
                         <Typography variant="subtitle1">{expense.categoryName}</Typography>
-                        {expense.status === 'voided' ? <Chip size="small" color="default" label="Bekor qilingan" /> : null}
+                        {expense.status === 'voided' ? (
+                          <Chip size="small" color="default" label="Bekor qilingan" />
+                        ) : null}
                       </Stack>
                       <Typography variant="body2" color="text.secondary">
                         {expense.comment || 'Izohsiz'}
@@ -226,8 +239,12 @@ export function CashExpensesPage() {
                         −{formatMoney(expense.amount)}
                       </Typography>
                       {canVoid && expense.status === 'posted' ? (
-                        <Button size="small" color="error" startIcon={<Icon icon="solar:trash-bin-trash-bold-duotone" />} onClick={() => setVoidExpense(expense)}>
-                          Bekor qilish
+                        <Button
+                          size="small"
+                          color="error"
+                          startIcon={<Icon icon="solar:trash-bin-trash-bold-duotone" />}
+                          onClick={() => setVoidExpense(expense)}>
+                          {copy.cancelItem}
                         </Button>
                       ) : null}
                     </Stack>
@@ -240,7 +257,7 @@ export function CashExpensesPage() {
       </Box>
 
       <Dialog open={Boolean(voidExpense)} onClose={() => setVoidExpense(null)} fullWidth maxWidth="xs">
-        <DialogTitle>Xarajatni bekor qilish</DialogTitle>
+        <DialogTitle>{copy.voidExpenseTitle}</DialogTitle>
         <DialogContent>
           <TextField
             autoFocus
@@ -254,7 +271,7 @@ export function CashExpensesPage() {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setVoidExpense(null)}>Yopish</Button>
+          <Button onClick={() => setVoidExpense(null)}>{copy.close}</Button>
           <Button
             color="error"
             variant="contained"
@@ -262,7 +279,7 @@ export function CashExpensesPage() {
             onClick={() => {
               if (voidExpense) voidMutation.mutate({ expenseId: voidExpense.id, reason: voidReason });
             }}>
-            Bekor qilish
+            {copy.cancelItem}
           </Button>
         </DialogActions>
       </Dialog>

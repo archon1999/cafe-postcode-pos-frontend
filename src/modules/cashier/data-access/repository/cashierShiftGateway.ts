@@ -15,7 +15,9 @@ const SHIFT_REPORT_REQUEST_TIMEOUT_MS = 10_000;
 export const cashierShiftGateway = {
   getExpenses(cashShiftId?: string) {
     const query = cashShiftId ? `?cashShiftId=${encodeURIComponent(cashShiftId)}` : '';
-    return apiGet<Awaited<ReturnType<CashierRepository['getExpenses']>>>(`/pos/billing/shifts/current/expenses/${query}`);
+    return apiGet<Awaited<ReturnType<CashierRepository['getExpenses']>>>(
+      `/pos/billing/shifts/current/expenses/${query}`,
+    );
   },
 
   createExpense(payload: Parameters<CashierRepository['createExpense']>[0]) {
@@ -26,10 +28,9 @@ export const cashierShiftGateway = {
   },
 
   voidExpense(expenseId: string, reason: string) {
-    return apiPost<Awaited<ReturnType<CashierRepository['voidExpense']>>>(
-      `/pos/billing/expenses/${expenseId}/void/`,
-      { reason },
-    );
+    return apiPost<Awaited<ReturnType<CashierRepository['voidExpense']>>>(`/pos/billing/expenses/${expenseId}/void/`, {
+      reason,
+    });
   },
 
   openShift(payload: OpenShiftPayload) {

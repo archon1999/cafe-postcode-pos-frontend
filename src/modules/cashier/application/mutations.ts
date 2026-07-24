@@ -174,7 +174,11 @@ export function useAddCashierPaymentOrderItemMutation(options: { orderId: string
   const { orderId, onSuccess } = options;
 
   return useMutation({
-    mutationFn: async (payload: { catalogItemId: string; note?: string; selectedModifiers?: PosModifierSelection[] }) => {
+    mutationFn: async (payload: {
+      catalogItemId: string;
+      note?: string;
+      selectedModifiers?: PosModifierSelection[];
+    }) => {
       if (!orderId) {
         throw new Error('Order id is missing');
       }
@@ -234,7 +238,8 @@ export function useOpenCashierShiftMutation(options?: { onSuccess?: () => void }
 
 export function useCreateCashExpenseMutation(options?: { onSuccess?: () => void }) {
   return useMutation({
-    mutationFn: (payload: Parameters<typeof cashierRepository.createExpense>[0]) => cashierRepository.createExpense(payload),
+    mutationFn: (payload: Parameters<typeof cashierRepository.createExpense>[0]) =>
+      cashierRepository.createExpense(payload),
     onSuccess: (expense) => {
       invalidateQueriesInBackground([cashierKeys.context, cashierKeys.expenses(expense.cashShiftId)]);
       options?.onSuccess?.();

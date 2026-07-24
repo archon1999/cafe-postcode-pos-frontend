@@ -1,3 +1,5 @@
+import type { PosModifierSelection } from 'shared/pos/modifiers';
+
 import type {
   Hall,
   TableSession,
@@ -6,7 +8,6 @@ import type {
   WaiterOrder,
   WaiterSessionResponse,
 } from '../entities';
-import type { PosModifierSelection } from 'shared/pos/modifiers';
 
 export interface WaiterRepository {
   getHalls(): Promise<Hall[]>;

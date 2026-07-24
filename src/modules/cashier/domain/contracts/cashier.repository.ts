@@ -1,3 +1,5 @@
+import type { PosModifierSelection } from 'shared/pos/modifiers';
+
 import type {
   CashierContext,
   CashierBuilderOrderChannel,
@@ -11,7 +13,6 @@ import type {
   CashExpense,
   PaymentMethod,
 } from '../entities';
-import type { PosModifierSelection } from 'shared/pos/modifiers';
 
 type CashierReceipt = NonNullable<CashierOrder['receipts']>[number];
 

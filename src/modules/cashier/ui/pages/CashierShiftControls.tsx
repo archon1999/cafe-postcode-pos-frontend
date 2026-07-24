@@ -86,7 +86,9 @@ export function CashierShiftTotals({ locale, shift }: ShiftTotalsProps) {
       </Stack>
       <Stack direction="row" justifyContent="space-between">
         <Typography color="text.secondary">{copy.expectedCash}</Typography>
-        <Typography fontWeight={700}>{formatCompactMoney(Number(shift.expectedClosingCashAmount ?? 0), locale)}</Typography>
+        <Typography fontWeight={700}>
+          {formatCompactMoney(Number(shift.expectedClosingCashAmount ?? 0), locale)}
+        </Typography>
       </Stack>
     </Stack>
   );
