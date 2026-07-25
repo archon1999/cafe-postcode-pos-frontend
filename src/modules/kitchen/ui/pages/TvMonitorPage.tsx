@@ -96,7 +96,10 @@ export function TvMonitorPage() {
     const fetchQueue = async () => {
       try {
         const queue = await kitchenRepository.getTvMonitorQueue(device.token);
-        if (active) setMonitorData(queue);
+        if (active) {
+          setMonitorData(queue);
+          window.CafePostcodeTv?.onQueueSuccess?.();
+        }
       } catch (error) {
         if (active && requiresPairing(error)) forgetDevice();
       }
@@ -104,9 +107,19 @@ export function TvMonitorPage() {
 
     void fetchQueue();
     const intervalId = window.setInterval(() => void fetchQueue(), QUEUE_POLL_INTERVAL_MS);
+    const fetchOnRecovery = () => void fetchQueue();
+    const fetchWhenVisible = () => {
+      if (!document.hidden) void fetchQueue();
+    };
+    window.addEventListener('online', fetchOnRecovery);
+    window.addEventListener('focus', fetchOnRecovery);
+    document.addEventListener('visibilitychange', fetchWhenVisible);
     return () => {
       active = false;
       window.clearInterval(intervalId);
+      window.removeEventListener('online', fetchOnRecovery);
+      window.removeEventListener('focus', fetchOnRecovery);
+      document.removeEventListener('visibilitychange', fetchWhenVisible);
     };
   }, [device, forgetDevice]);
 

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">PostCode TV</string>
+    <string name="offline_message">Internet yo‘q · qayta ulanmoqda</string>
+</resources>

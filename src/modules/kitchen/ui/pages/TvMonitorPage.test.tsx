@@ -15,7 +15,10 @@ vi.mock('./KitchenMonitorPage', () => ({
 }));
 
 describe('TvMonitorPage', () => {
-  beforeEach(() => window.localStorage.clear());
+  beforeEach(() => {
+    window.localStorage.clear();
+    delete window.CafePostcodeTv;
+  });
 
   afterEach(() => {
     cleanup();
@@ -23,6 +26,8 @@ describe('TvMonitorPage', () => {
   });
 
   it('stores the device permanently after the manager claims the QR pairing', async () => {
+    const onQueueSuccess = vi.fn();
+    window.CafePostcodeTv = { onQueueSuccess };
     vi.spyOn(kitchenRepository, 'createTvMonitorPairing').mockResolvedValue({
       id: 'pairing-1',
       pollToken: 'device-token',
@@ -46,5 +51,6 @@ describe('TvMonitorPage', () => {
       }),
     );
     expect(kitchenRepository.getTvMonitorQueue).toHaveBeenCalledWith('device-token');
+    expect(onQueueSuccess).toHaveBeenCalled();
   });
 });
