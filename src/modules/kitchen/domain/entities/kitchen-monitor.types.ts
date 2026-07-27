@@ -37,3 +37,18 @@ export type TvMonitorPairingClaimResult = {
   status: 'paired';
   restaurantName: string;
 };
+
+export type TvMonitorDiagnosticEvent =
+  | 'page_loaded'
+  | 'queue_success'
+  | 'queue_error'
+  | 'render_error'
+  | 'window_error'
+  | 'unhandled_rejection';
+
+export type TvMonitorDiagnostic = {
+  event: TvMonitorDiagnosticEvent;
+  message?: string;
+  clientTime: string;
+  context?: Record<string, unknown>;
+};

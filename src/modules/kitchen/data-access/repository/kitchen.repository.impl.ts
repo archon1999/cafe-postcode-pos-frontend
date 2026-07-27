@@ -5,6 +5,7 @@ import type {
   KitchenTicket,
   KitchenTicketStatus,
   TvMonitorPairingClaimResult,
+  TvMonitorDiagnostic,
   TvMonitorPairingSession,
   TvMonitorPairingStatus,
 } from 'modules/kitchen/domain';
@@ -51,6 +52,12 @@ class KitchenRepositoryImpl implements KitchenRepository {
         headers: { 'X-TV-Token': token },
       }),
     );
+  }
+
+  async reportTvMonitorDiagnostic(token: string, diagnostic: TvMonitorDiagnostic): Promise<void> {
+    await apiPostRemotePublic('/pos/monitor/tv-diagnostics/', diagnostic, {
+      headers: { 'X-TV-Token': token },
+    });
   }
 
   async updateTicketStatus(ticketId: string, status: KitchenTicketStatus) {

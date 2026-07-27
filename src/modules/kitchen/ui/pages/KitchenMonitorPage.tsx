@@ -225,6 +225,7 @@ function MonitorColumn({
           return (
             <Box
               key={ticket.id}
+              data-monitor-ticket-id={ticket.id}
               data-highlighted={isHighlighted ? 'true' : 'false'}
               sx={{
                 flex: fillsPage ? '1 1 0' : '0 0 auto',

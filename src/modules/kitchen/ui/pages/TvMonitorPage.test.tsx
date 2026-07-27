@@ -18,6 +18,7 @@ describe('TvMonitorPage', () => {
   beforeEach(() => {
     window.localStorage.clear();
     delete window.CafePostcodeTv;
+    vi.spyOn(kitchenRepository, 'reportTvMonitorDiagnostic').mockResolvedValue();
   });
 
   afterEach(() => {
@@ -52,5 +53,12 @@ describe('TvMonitorPage', () => {
     );
     expect(kitchenRepository.getTvMonitorQueue).toHaveBeenCalledWith('device-token');
     expect(onQueueSuccess).toHaveBeenCalled();
+    expect((await screen.findByTestId('tv-monitor-diagnostics')).textContent).toContain('ONLINE');
+    await waitFor(() =>
+      expect(kitchenRepository.reportTvMonitorDiagnostic).toHaveBeenCalledWith(
+        'device-token',
+        expect.objectContaining({ event: 'queue_success' }),
+      ),
+    );
   });
 });

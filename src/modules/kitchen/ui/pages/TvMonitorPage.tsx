@@ -5,18 +5,46 @@ import QRCode from 'qrcode';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { kitchenRepository, persistTvMonitorDevice, readTvMonitorDevice } from 'modules/kitchen/data-access';
-import type { KitchenMonitorQueue, TvMonitorDeviceRegistration, TvMonitorPairingSession } from 'modules/kitchen/domain';
+import type {
+  KitchenMonitorQueue,
+  TvMonitorDeviceRegistration,
+  TvMonitorDiagnosticEvent,
+  TvMonitorPairingSession,
+} from 'modules/kitchen/domain';
 
 import { KitchenMonitorDisplay } from './KitchenMonitorPage';
+import {
+  TvMonitorDiagnostics,
+  TvMonitorRenderBoundary,
+  type TvMonitorDiagnosticSnapshot,
+} from './TvMonitorDiagnostics';
 
 const PAIRING_POLL_INTERVAL_MS = 2000;
 const QUEUE_POLL_INTERVAL_MS = 5000;
+const DIAGNOSTIC_HEARTBEAT_INTERVAL_MS = 60_000;
 const EMPTY_QUEUE: KitchenMonitorQueue = { preparing: [], recentlyDone: [] };
+const INITIAL_DIAGNOSTICS: TvMonitorDiagnosticSnapshot = {
+  stage: 'pairing',
+  lastSuccessAt: null,
+  preparingCount: 0,
+  readyCount: 0,
+  lastError: '',
+  renderError: '',
+};
 
 function requiresPairing(error: unknown) {
   return (
     axios.isAxiosError(error) && error.response?.status === 401 && error.response.data?.code === 'tv_pairing_required'
   );
+}
+
+function describeTvMonitorError(error: unknown) {
+  if (axios.isAxiosError(error)) {
+    const status = error.response?.status ? `HTTP ${error.response.status}` : 'NETWORK';
+    const detail = error.response?.data?.detail || error.message;
+    return `${status}: ${String(detail)}`.slice(0, 1000);
+  }
+  return error instanceof Error ? error.message.slice(0, 1000) : String(error).slice(0, 1000);
 }
 
 export function TvMonitorPage() {
@@ -25,13 +53,39 @@ export function TvMonitorPage() {
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [monitorData, setMonitorData] = useState<KitchenMonitorQueue>(EMPTY_QUEUE);
   const [pairingError, setPairingError] = useState('');
+  const [diagnostics, setDiagnostics] = useState<TvMonitorDiagnosticSnapshot>(INITIAL_DIAGNOSTICS);
   const pairingRequestRef = useRef<Promise<TvMonitorPairingSession> | null>(null);
+  const lastQueueDiagnosticRef = useRef({ signature: '', reportedAt: 0 });
+
+  const reportDiagnostic = useCallback(
+    (event: TvMonitorDiagnosticEvent, message = '', context: Record<string, unknown> = {}) => {
+      if (!device) return;
+      void kitchenRepository
+        .reportTvMonitorDiagnostic(device.token, {
+          event,
+          message,
+          clientTime: new Date().toISOString(),
+          context: {
+            ...context,
+            restaurantId: device.restaurantId,
+            viewportWidth: window.innerWidth,
+            viewportHeight: window.innerHeight,
+            online: navigator.onLine,
+            visibilityState: document.visibilityState,
+            nativeBridge: Boolean(window.CafePostcodeTv),
+          },
+        })
+        .catch(() => undefined);
+    },
+    [device],
+  );
 
   const forgetDevice = useCallback(() => {
     persistTvMonitorDevice(null);
     setDevice(null);
     setPairing(null);
     setMonitorData(EMPTY_QUEUE);
+    setDiagnostics(INITIAL_DIAGNOSTICS);
   }, []);
 
   const createPairing = useCallback(async () => {
@@ -92,16 +146,81 @@ export function TvMonitorPage() {
   useEffect(() => {
     if (!device) return;
 
+    setDiagnostics((current) => ({ ...current, stage: 'loading', lastError: '' }));
+    reportDiagnostic('page_loaded', 'TV monitor page loaded', {
+      userAgent: navigator.userAgent,
+      language: navigator.language,
+      screenWidth: window.screen.width,
+      screenHeight: window.screen.height,
+    });
+  }, [device, reportDiagnostic]);
+
+  useEffect(() => {
+    if (!device) return;
+
+    const handleWindowError = (event: ErrorEvent) => {
+      const message = `${event.message || 'Unknown window error'}${event.filename ? ` @ ${event.filename}:${event.lineno}` : ''}`;
+      setDiagnostics((current) => ({ ...current, stage: 'error', renderError: message }));
+      reportDiagnostic('window_error', message, { stack: event.error instanceof Error ? event.error.stack : '' });
+    };
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      const message = describeTvMonitorError(event.reason);
+      setDiagnostics((current) => ({ ...current, stage: 'error', renderError: message }));
+      reportDiagnostic('unhandled_rejection', message);
+    };
+
+    window.addEventListener('error', handleWindowError);
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    return () => {
+      window.removeEventListener('error', handleWindowError);
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    };
+  }, [device, reportDiagnostic]);
+
+  useEffect(() => {
+    if (!device) return;
+
     let active = true;
     const fetchQueue = async () => {
+      setDiagnostics((current) => ({ ...current, stage: current.lastSuccessAt ? current.stage : 'loading' }));
       try {
         const queue = await kitchenRepository.getTvMonitorQueue(device.token);
         if (active) {
+          const succeededAt = new Date().toISOString();
           setMonitorData(queue);
+          setDiagnostics((current) => ({
+            ...current,
+            stage: 'online',
+            lastSuccessAt: succeededAt,
+            preparingCount: queue.preparing.length,
+            readyCount: queue.recentlyDone.length,
+            lastError: '',
+          }));
           window.CafePostcodeTv?.onQueueSuccess?.();
+
+          const now = Date.now();
+          const signature = `${queue.preparing.length}:${queue.recentlyDone.length}`;
+          const shouldReport =
+            lastQueueDiagnosticRef.current.signature !== signature ||
+            now - lastQueueDiagnosticRef.current.reportedAt >= DIAGNOSTIC_HEARTBEAT_INTERVAL_MS;
+          if (shouldReport) {
+            lastQueueDiagnosticRef.current = { signature, reportedAt: now };
+            window.setTimeout(() => {
+              reportDiagnostic('queue_success', 'Queue response applied', {
+                preparingCount: queue.preparing.length,
+                readyCount: queue.recentlyDone.length,
+                renderedTicketCount: document.querySelectorAll('[data-monitor-ticket-id]').length,
+                monitorCanvasPresent: Boolean(document.querySelector('[data-testid="monitor-canvas"]')),
+              });
+            }, 0);
+          }
         }
       } catch (error) {
-        if (active && requiresPairing(error)) forgetDevice();
+        if (!active) return;
+        const message = describeTvMonitorError(error);
+        setDiagnostics((current) => ({ ...current, stage: 'error', lastError: message }));
+        reportDiagnostic('queue_error', message);
+        if (requiresPairing(error)) forgetDevice();
       }
     };
 
@@ -121,9 +240,22 @@ export function TvMonitorPage() {
       window.removeEventListener('focus', fetchOnRecovery);
       document.removeEventListener('visibilitychange', fetchWhenVisible);
     };
-  }, [device, forgetDevice]);
+  }, [device, forgetDevice, reportDiagnostic]);
 
-  if (device) return <KitchenMonitorDisplay monitorData={monitorData} restaurantName={device.restaurantName} />;
+  if (device)
+    return (
+      <>
+        <TvMonitorRenderBoundary
+          onError={(error, info) => {
+            const message = error.message.slice(0, 1000);
+            setDiagnostics((current) => ({ ...current, stage: 'error', renderError: message }));
+            reportDiagnostic('render_error', message, { componentStack: info.componentStack?.slice(0, 3000) });
+          }}>
+          <KitchenMonitorDisplay monitorData={monitorData} restaurantName={device.restaurantName} />
+        </TvMonitorRenderBoundary>
+        <TvMonitorDiagnostics restaurantName={device.restaurantName} snapshot={diagnostics} />
+      </>
+    );
 
   return (
     <Box
@@ -189,6 +321,7 @@ export function TvMonitorPage() {
           </Typography>
         )}
       </Stack>
+      <TvMonitorDiagnostics snapshot={diagnostics} />
     </Box>
   );
 }
