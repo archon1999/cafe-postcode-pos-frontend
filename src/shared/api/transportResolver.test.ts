@@ -6,7 +6,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { persistSession } from 'modules/auth/data-access/storage/session.storage';
 
 import { persistTransportConnection, readTransportConnection } from './edgeConnection';
-import { refreshTransportMode, resolveRestaurantTransport } from './transportResolver';
+import {
+  LOCAL_AGENT_PROTOCOL_VERSION,
+  LocalAgentCompatibilityError,
+  refreshTransportMode,
+  resolveRestaurantTransport,
+} from './transportResolver';
 
 vi.mock('axios');
 
@@ -83,7 +88,11 @@ describe('restaurant transport resolver', () => {
       } as Response)
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ restaurantId: 'new-york', backendOnline: true }),
+        json: async () => ({
+          restaurantId: 'new-york',
+          backendOnline: true,
+          protocolVersion: LOCAL_AGENT_PROTOCOL_VERSION,
+        }),
       } as Response);
 
     await resolveRestaurantTransport('NY1111');
@@ -93,7 +102,24 @@ describe('restaurant transport resolver', () => {
       restaurantId: 'new-york',
       origin: 'http://127.0.0.1:18181',
       backendOnline: true,
+      protocolVersion: LOCAL_AGENT_PROTOCOL_VERSION,
     });
+  });
+
+  it('blocks an incompatible local agent instead of silently mixing POS and agent versions', async () => {
+    fetchMock()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ restaurantId: 'qamish', restaurantName: 'Qamish' }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ restaurantId: 'qamish', backendOnline: false, protocolVersion: 2 }),
+      } as Response);
+
+    await expect(resolveRestaurantTransport('ABC123')).rejects.toEqual(expect.any(LocalAgentCompatibilityError));
+    expect(mockedAxios.post).not.toHaveBeenCalled();
+    expect(readTransportConnection()).toBeNull();
   });
 
   it('rejects a local agent when its health identity differs from its restaurant context', async () => {

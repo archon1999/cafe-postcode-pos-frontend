@@ -27,15 +27,31 @@ function toPublicUrl(absolutePath) {
     .join('/')}`;
 }
 
+function shouldPrecache(absolutePath) {
+  const url = toPublicUrl(absolutePath);
+  return (
+    url === '/index.html' ||
+    url === '/manifest.webmanifest' ||
+    url === '/favicon.png' ||
+    url === '/favicon.svg' ||
+    url === '/pos-auth-bg-source.png' ||
+    url.startsWith('/assets/') ||
+    url.startsWith('/icons/')
+  );
+}
+
 const outputFiles = (await listFiles(outputDirectory))
   .filter((file) => file !== serviceWorkerPath && !file.endsWith('.map'))
+  .filter(shouldPrecache)
   .sort();
 
 if (outputFiles.length === 0) {
   throw new Error('No build output was found for the POS offline cache.');
 }
 
+const serviceWorkerTemplate = await readFile(serviceWorkerPath, 'utf8');
 const buildHash = createHash('sha256');
+buildHash.update(serviceWorkerTemplate);
 for (const file of outputFiles) {
   buildHash.update(toPublicUrl(file));
   buildHash.update(await readFile(file));
@@ -43,7 +59,6 @@ for (const file of outputFiles) {
 
 const cacheVersion = buildHash.digest('hex').slice(0, 16);
 const precacheManifest = outputFiles.map(toPublicUrl).map((url) => JSON.stringify(url)).join(',\n  ');
-const serviceWorkerTemplate = await readFile(serviceWorkerPath, 'utf8');
 
 if (!serviceWorkerTemplate.includes(manifestToken) || !serviceWorkerTemplate.includes(hashToken)) {
   throw new Error('Service worker injection tokens are missing.');

@@ -7,6 +7,7 @@ import { Toaster } from 'sonner';
 import { PosSessionProvider, usePosSession } from 'modules/auth';
 
 import { queryClient } from '../shared/api/query-client';
+import { PwaUpdatePrompt } from '../shared/pwa/PwaUpdatePrompt';
 import { registerServiceWorker } from '../shared/pwa/register-service-worker';
 
 import { posRouter } from './router';
@@ -15,7 +16,7 @@ import { createPosTheme } from './theme';
 registerServiceWorker();
 
 function PosApplication() {
-  const { themeColor, themeMode } = usePosSession();
+  const { locale, themeColor, themeMode } = usePosSession();
   const theme = useMemo(() => createPosTheme(themeMode, themeColor), [themeColor, themeMode]);
 
   return (
@@ -23,6 +24,7 @@ function PosApplication() {
       <CssBaseline />
       <QueryClientProvider client={queryClient}>
         <Toaster richColors position="top-center" />
+        <PwaUpdatePrompt locale={locale} />
         <RouterProvider router={posRouter} />
       </QueryClientProvider>
     </ThemeProvider>

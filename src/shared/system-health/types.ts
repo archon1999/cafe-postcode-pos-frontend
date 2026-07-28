@@ -26,6 +26,7 @@ export type EdgeSystemStatus = {
   agent: {
     online: boolean;
     version: string;
+    protocolVersion?: number;
     restaurantId?: string;
   };
   backend: {

@@ -37,6 +37,9 @@ jobs:
       - name: Build production bundle
         run: npm run prod:build
 
+      - name: Test offline and safe-update service worker
+        run: npm run test:pwa
+
       - name: Build Docker image
         run: docker build -t postcode/pos-frontend:ci .
 

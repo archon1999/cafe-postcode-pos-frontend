@@ -15,15 +15,32 @@ import {
 } from './edgeConnection';
 
 const TERMINAL_ID_KEY = 'cafe-pos.terminal-id';
+export const LOCAL_AGENT_PROTOCOL_VERSION = 1;
 
 type Coordinator = NonNullable<PosRestaurantContext['coordinator']>;
-type HealthResponse = { restaurantId?: string; backendOnline?: boolean };
-type StatusResponse = { status?: { backend?: { online?: boolean } } };
+type HealthResponse = { restaurantId?: string; backendOnline?: boolean; protocolVersion?: number };
+type StatusResponse = {
+  status?: { agent?: { protocolVersion?: number }; backend?: { online?: boolean }; sync?: { schemaVersion?: number } };
+};
 type EdgeCandidate = { origin: string; token?: string };
 type ProbeResult =
   | { status: 'selected'; connection: PosTransportConnection }
   | { status: 'identity-mismatch' }
+  | { status: 'incompatible'; protocolVersion: number }
   | { status: 'unavailable' };
+
+export class LocalAgentCompatibilityError extends Error {
+  readonly actualProtocolVersion: number;
+
+  constructor(actualProtocolVersion: number) {
+    super(
+      `Local Agent protokoli mos emas (agent: ${actualProtocolVersion}, POS: ${LOCAL_AGENT_PROTOCOL_VERSION}). ` +
+        'Local Agent va POS versiyalarini birga yangilang.',
+    );
+    this.name = 'LocalAgentCompatibilityError';
+    this.actualProtocolVersion = actualProtocolVersion;
+  }
+}
 
 function safeNormalizeEdgeOrigin(value: unknown) {
   if (typeof value !== 'string' || !value.trim()) return null;
@@ -74,10 +91,21 @@ async function probe(origin: string, token: string | undefined, restaurantId: st
   try {
     const health = await edgeFetch<HealthResponse>(origin, token, '/health');
     if (health.restaurantId !== restaurantId) return { status: 'identity-mismatch' };
+    const protocolVersion = health.protocolVersion ?? LOCAL_AGENT_PROTOCOL_VERSION;
+    if (!Number.isInteger(protocolVersion) || protocolVersion !== LOCAL_AGENT_PROTOCOL_VERSION) {
+      return { status: 'incompatible', protocolVersion };
+    }
     let backendOnline = health.backendOnline;
     if (typeof backendOnline !== 'boolean') {
       // Compatibility with agents released before the lightweight health signal.
       const system = await edgeFetch<StatusResponse>(origin, token, '/v1/system/status', undefined, 7_000);
+      const statusProtocolVersion = system.status?.agent?.protocolVersion;
+      if (
+        statusProtocolVersion !== undefined &&
+        (!Number.isInteger(statusProtocolVersion) || statusProtocolVersion !== LOCAL_AGENT_PROTOCOL_VERSION)
+      ) {
+        return { status: 'incompatible', protocolVersion: statusProtocolVersion };
+      }
       backendOnline = system.status?.backend?.online !== false;
     }
     return {
@@ -87,6 +115,7 @@ async function probe(origin: string, token: string | undefined, restaurantId: st
         restaurantId,
         origin: normalizeEdgeOrigin(origin),
         ...(token ? { token } : {}),
+        protocolVersion,
         backendOnline,
         selectedAt: new Date().toISOString(),
       },
@@ -133,14 +162,20 @@ function orderedEdgeCandidates(coordinator?: Coordinator | null) {
 
 async function selectCoordinator(restaurantId: string, coordinator?: Coordinator | null) {
   if (coordinator?.restaurantId && coordinator.restaurantId !== restaurantId) return null;
+  let compatibilityError: LocalAgentCompatibilityError | null = null;
   for (const candidate of orderedEdgeCandidates(coordinator)) {
     const result = await probe(candidate.origin, candidate.token, restaurantId);
     if (result.status === 'selected') return result.connection;
+    if (result.status === 'incompatible') {
+      compatibilityError = new LocalAgentCompatibilityError(result.protocolVersion);
+    }
   }
+  if (compatibilityError) throw compatibilityError;
   return null;
 }
 
 async function resolveRestaurantFromLocalAgent(code: string, identity: ReturnType<typeof terminalIdentity>) {
+  let compatibilityError: LocalAgentCompatibilityError | null = null;
   for (const candidate of orderedEdgeCandidates()) {
     try {
       const context = await edgeFetch<PosRestaurantContext>(
@@ -151,6 +186,10 @@ async function resolveRestaurantFromLocalAgent(code: string, identity: ReturnTyp
       );
       const result = await probe(candidate.origin, candidate.token, context.restaurantId);
       if (result.status === 'identity-mismatch') continue;
+      if (result.status === 'incompatible') {
+        compatibilityError = new LocalAgentCompatibilityError(result.protocolVersion);
+        continue;
+      }
       persistTransportConnection(
         result.status === 'selected'
           ? result.connection
@@ -163,10 +202,12 @@ async function resolveRestaurantFromLocalAgent(code: string, identity: ReturnTyp
             },
       );
       return context;
-    } catch {
+    } catch (error) {
+      if (error instanceof LocalAgentCompatibilityError) compatibilityError = error;
       // Try the next local candidate, then the remote backend.
     }
   }
+  if (compatibilityError) throw compatibilityError;
   return null;
 }
 
@@ -202,12 +243,14 @@ export async function refreshTransportMode() {
         if (response.data.restaurantId === current.restaurantId) {
           next = await selectCoordinator(current.restaurantId, response.data.coordinator);
         }
-      } catch {
+      } catch (error) {
+        if (error instanceof LocalAgentCompatibilityError) throw error;
         next = null;
       }
     }
   } else if (current.origin && (current.token || isLoopbackEdgeOrigin(current.origin))) {
     const result = await probe(current.origin, current.token, current.restaurantId);
+    if (result.status === 'incompatible') throw new LocalAgentCompatibilityError(result.protocolVersion);
     next = result.status === 'selected' ? result.connection : null;
   }
   if (!next)

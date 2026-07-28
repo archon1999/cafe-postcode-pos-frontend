@@ -10,6 +10,7 @@ export type PosTransportConnection = {
   restaurantId: string;
   origin?: string;
   token?: string;
+  protocolVersion?: number;
   backendOnline?: boolean;
   selectedAt: string;
 };
