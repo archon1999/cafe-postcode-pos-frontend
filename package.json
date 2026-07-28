@@ -6,8 +6,9 @@
   "scripts": {
     "dev": "vite",
     "preview": "vite preview",
-    "build": "vite build",
-    "prod:build": "vite build --mode production",
+    "build": "vite build && npm run pwa:inject",
+    "prod:build": "vite build --mode production && npm run pwa:inject",
+    "pwa:inject": "node scripts/inject-sw-manifest.mjs",
     "lint:ts": "eslint \"**/*.{ts,tsx}\" --max-warnings 0",
     "lint:ts:fix": "eslint \"**/*.{ts,tsx}\" --fix --max-warnings 0",
     "lint:css": "stylelint \"**/*.css\" --allow-empty-input",

@@ -1,19 +1,37 @@
-const CACHE_NAME = 'restaurant-pos-shell-v15';
-const APP_SHELL = ['/', '/manifest.webmanifest', '/icons/pos-icon.svg'];
+const CACHE_PREFIX = 'restaurant-pos-shell-';
+const CACHE_NAME = `${CACHE_PREFIX}__BUILD_HASH__`;
+const NAVIGATION_FALLBACK = '/index.html';
+const NETWORK_TIMEOUT_MS = 3_000;
+const APP_SHELL = [/* __PRECACHE_MANIFEST__ */];
 
-function isCacheableRequest(request) {
-  const url = new URL(request.url);
+function networkWithTimeout(request) {
+  return new Promise((resolve, reject) => {
+    const timeout = self.setTimeout(() => reject(new Error('Network timeout')), NETWORK_TIMEOUT_MS);
 
-  if (url.origin !== self.location.origin) {
-    return false;
-  }
+    fetch(request).then(
+      (response) => {
+        self.clearTimeout(timeout);
+        resolve(response);
+      },
+      (error) => {
+        self.clearTimeout(timeout);
+        reject(error);
+      },
+    );
+  });
+}
 
-  return APP_SHELL.includes(url.pathname);
+function isApiRequest(url) {
+  return url.pathname === '/api' || url.pathname.startsWith('/api/');
 }
 
 self.addEventListener('install', (event) => {
-  self.skipWaiting();
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
+  event.waitUntil(
+    caches
+      .open(CACHE_NAME)
+      .then((cache) => cache.addAll(APP_SHELL))
+      .then(() => self.skipWaiting()),
+  );
 });
 
 self.addEventListener('activate', (event) => {
@@ -21,10 +39,9 @@ self.addEventListener('activate', (event) => {
     Promise.all([
       self.clients.claim(),
       caches.keys().then((keys) =>
-        Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))),
-      ),
-      self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) =>
-        Promise.all(clients.map((client) => client.navigate(client.url))),
+        Promise.all(
+          keys.filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME).map((key) => caches.delete(key)),
+        ),
       ),
     ]),
   );
@@ -38,49 +55,38 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   const isNavigationRequest = event.request.mode === 'navigate';
 
-  // API requests to the Local Agent are cross-origin loopback requests. Let the
-  // browser handle their CORS/PNA checks directly instead of proxying them
-  // through the service worker. The worker only owns navigation and app-shell
-  // caching; API failures must never be replaced with the cached index page.
-  if (url.origin !== self.location.origin || (!isNavigationRequest && !isCacheableRequest(event.request))) {
+  // Local Agent requests are cross-origin loopback calls. Same-origin API calls
+  // are also always network-only: an API failure must never become cached HTML.
+  if (url.origin !== self.location.origin || isApiRequest(url) || url.pathname === '/sw.js') {
+    return;
+  }
+
+  if (isNavigationRequest) {
+    event.respondWith(
+      networkWithTimeout(event.request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.ok) {
+          const responseToCache = networkResponse.clone();
+          void caches.open(CACHE_NAME).then((cache) => cache.put(NAVIGATION_FALLBACK, responseToCache));
+        }
+        return networkResponse;
+      })
+      .catch(() => caches.match(NAVIGATION_FALLBACK, { ignoreSearch: true })),
+    );
     return;
   }
 
   event.respondWith(
-    fetch(event.request)
-      .then((networkResponse) => {
-        if (isNavigationRequest) {
-          return networkResponse;
-        }
+    caches.match(event.request, { ignoreSearch: true }).then((cachedResponse) => {
+      if (cachedResponse) return cachedResponse;
 
-        if (isCacheableRequest(event.request) && networkResponse && networkResponse.status === 200) {
+      return fetch(event.request).then((networkResponse) => {
+        if (networkResponse && networkResponse.ok) {
           const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
+          void caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
         }
-
         return networkResponse;
-      })
-      .catch(async () => {
-        if (isNavigationRequest) {
-          const cachedShell = await caches.match('/');
-          if (cachedShell) {
-            return cachedShell;
-          }
-        }
-
-        const cachedResponse = await caches.match(event.request);
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-
-        if (url.pathname !== '/') {
-          return caches.match('/');
-        }
-
-        return fetch(event.request)
-        .then((networkResponse) => {
-          return networkResponse;
-        });
-      }),
+      });
+    }),
   );
 });
