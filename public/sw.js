@@ -64,11 +64,14 @@ self.addEventListener('fetch', (event) => {
   if (isNavigationRequest) {
     event.respondWith(
       networkWithTimeout(event.request)
-      .then((networkResponse) => {
-        if (networkResponse && networkResponse.ok) {
-          const responseToCache = networkResponse.clone();
-          void caches.open(CACHE_NAME).then((cache) => cache.put(NAVIGATION_FALLBACK, responseToCache));
+      .then(async (networkResponse) => {
+        if (!networkResponse || !networkResponse.ok) {
+          const cachedShell = await caches.match(NAVIGATION_FALLBACK, { ignoreSearch: true });
+          return cachedShell || networkResponse;
         }
+
+        const responseToCache = networkResponse.clone();
+        void caches.open(CACHE_NAME).then((cache) => cache.put(NAVIGATION_FALLBACK, responseToCache));
         return networkResponse;
       })
       .catch(() => caches.match(NAVIGATION_FALLBACK, { ignoreSearch: true })),
