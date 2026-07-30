@@ -8,7 +8,10 @@ export type KitchenMonitorTicket = {
   completedAt?: string | null;
 };
 
+export type PosMonitorVariant = 'default' | 'light_compact';
+
 export type KitchenMonitorQueue = {
+  monitorVariant: PosMonitorVariant;
   preparing: KitchenMonitorTicket[];
   recentlyDone: KitchenMonitorTicket[];
 };
@@ -23,6 +26,7 @@ export type TvMonitorPairingSession = {
 export type TvMonitorRestaurantContext = {
   restaurantId: string;
   restaurantName: string;
+  posMonitorVariant?: PosMonitorVariant;
 };
 
 export type TvMonitorPairingStatus =

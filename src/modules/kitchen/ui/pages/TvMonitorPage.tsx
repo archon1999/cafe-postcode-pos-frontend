@@ -22,7 +22,7 @@ import {
 const PAIRING_POLL_INTERVAL_MS = 2000;
 const QUEUE_POLL_INTERVAL_MS = 5000;
 const DIAGNOSTIC_HEARTBEAT_INTERVAL_MS = 60_000;
-const EMPTY_QUEUE: KitchenMonitorQueue = { preparing: [], recentlyDone: [] };
+const EMPTY_QUEUE: KitchenMonitorQueue = { monitorVariant: 'default', preparing: [], recentlyDone: [] };
 const INITIAL_DIAGNOSTICS: TvMonitorDiagnosticSnapshot = {
   stage: 'pairing',
   lastSuccessAt: null,
@@ -124,6 +124,7 @@ export function TvMonitorPage() {
           token: pairing.pollToken,
           restaurantId: status.restaurantContext.restaurantId,
           restaurantName: status.restaurantContext.restaurantName,
+          posMonitorVariant: status.restaurantContext.posMonitorVariant,
         };
         persistTvMonitorDevice(registration);
         setDevice(registration);

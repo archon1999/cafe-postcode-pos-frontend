@@ -50,6 +50,7 @@ export type PosRestaurantContext = {
   vatEnabled?: boolean;
   vatPercent?: number | string;
   markingCheckEnabled?: boolean;
+  posMonitorVariant?: 'default' | 'light_compact';
   coordinator?: {
     restaurantId: string;
     edgeToken: string;

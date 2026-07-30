@@ -70,6 +70,7 @@ describe('POS kitchen characterization', () => {
         ],
       })
       .mockResolvedValueOnce({
+        monitorVariant: 'light_compact',
         preparing: [{ id: 'ticket-1', orderNumber: 41, displayName: '7', status: 'cooking', completedAt: null }],
         recentlyDone: [
           { id: 'ticket-2', orderNumber: 40, displayName: '6', status: 'done', completedAt: '2026-07-15T10:00:00Z' },
@@ -89,6 +90,7 @@ describe('POS kitchen characterization', () => {
       items: [{ quantity: 2 }],
     });
     expect(monitor).toEqual({
+      monitorVariant: 'light_compact',
       preparing: [{ id: 'ticket-1', orderNumber: 41, displayName: '7', status: 'cooking', completedAt: null }],
       recentlyDone: [
         { id: 'ticket-2', orderNumber: 40, displayName: '6', status: 'done', completedAt: '2026-07-15T10:00:00Z' },

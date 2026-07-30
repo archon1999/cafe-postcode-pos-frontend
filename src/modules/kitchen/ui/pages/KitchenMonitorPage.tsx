@@ -6,6 +6,8 @@ import { usePosSession } from 'modules/auth';
 import { useKitchenMonitorQuery } from 'modules/kitchen/application';
 import type { KitchenMonitorQueue, KitchenMonitorTicket } from 'modules/kitchen/domain';
 
+import { LightCompactMonitorVariant } from '../components/monitor-variants/LightCompactMonitorVariant';
+
 const readyRowEntrance = keyframes`
   0% {
     opacity: 0;
@@ -348,7 +350,7 @@ function MonitorColumn({
   );
 }
 
-export function KitchenMonitorDisplay({
+function DefaultMonitorVariant({
   monitorData,
   restaurantName,
 }: {
@@ -502,6 +504,7 @@ export function KitchenMonitorDisplay({
 
   return (
     <Box
+      data-monitor-variant="default"
       sx={{
         width: '100vw',
         height: isCompactLayout ? 'auto' : '100vh',
@@ -739,13 +742,33 @@ export function KitchenMonitorDisplay({
   );
 }
 
+export function KitchenMonitorDisplay({
+  monitorData,
+  restaurantName,
+}: {
+  monitorData: KitchenMonitorQueue;
+  restaurantName?: string;
+}) {
+  if (monitorData.monitorVariant === 'light_compact') {
+    return <LightCompactMonitorVariant monitorData={monitorData} restaurantName={restaurantName} />;
+  }
+
+  return <DefaultMonitorVariant monitorData={monitorData} restaurantName={restaurantName} />;
+}
+
 export function KitchenMonitorPage() {
   const { restaurantContext } = usePosSession();
   const monitorQuery = useKitchenMonitorQuery(restaurantContext?.restaurantId ?? null);
 
   return (
     <KitchenMonitorDisplay
-      monitorData={monitorQuery.data ?? { preparing: [], recentlyDone: [] }}
+      monitorData={
+        monitorQuery.data ?? {
+          monitorVariant: restaurantContext?.posMonitorVariant ?? 'default',
+          preparing: [],
+          recentlyDone: [],
+        }
+      }
       restaurantName={restaurantContext?.restaurantName}
     />
   );

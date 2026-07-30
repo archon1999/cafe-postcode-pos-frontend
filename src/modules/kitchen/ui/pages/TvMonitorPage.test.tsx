@@ -37,9 +37,17 @@ describe('TvMonitorPage', () => {
     });
     vi.spyOn(kitchenRepository, 'getTvMonitorPairingStatus').mockResolvedValue({
       status: 'paired',
-      restaurantContext: { restaurantId: 'restaurant-1', restaurantName: 'Qamish' },
+      restaurantContext: {
+        restaurantId: 'restaurant-1',
+        restaurantName: 'Qamish',
+        posMonitorVariant: 'light_compact',
+      },
     });
-    vi.spyOn(kitchenRepository, 'getTvMonitorQueue').mockResolvedValue({ preparing: [], recentlyDone: [] });
+    vi.spyOn(kitchenRepository, 'getTvMonitorQueue').mockResolvedValue({
+      monitorVariant: 'light_compact',
+      preparing: [],
+      recentlyDone: [],
+    });
 
     render(<TvMonitorPage />);
 
@@ -49,6 +57,7 @@ describe('TvMonitorPage', () => {
         token: 'device-token',
         restaurantId: 'restaurant-1',
         restaurantName: 'Qamish',
+        posMonitorVariant: 'light_compact',
       }),
     );
     expect(kitchenRepository.getTvMonitorQueue).toHaveBeenCalledWith('device-token');

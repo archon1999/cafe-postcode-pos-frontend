@@ -3,7 +3,7 @@ import type { KitchenItem, KitchenMonitorQueue, KitchenMonitorTicket, KitchenTic
 type KitchenItemDto = KitchenItem;
 type KitchenTicketDto = Omit<KitchenTicket, 'items'> & { items: KitchenItemDto[] };
 type KitchenMonitorTicketDto = KitchenMonitorTicket;
-type KitchenMonitorQueueDto = KitchenMonitorQueue;
+type KitchenMonitorQueueDto = Omit<KitchenMonitorQueue, 'monitorVariant'> & { monitorVariant?: string };
 
 export function mapKitchenTicket(dto: KitchenTicketDto): KitchenTicket {
   return {
@@ -22,6 +22,7 @@ export function mapKitchenMonitorTicket(dto: KitchenMonitorTicketDto): KitchenMo
 
 export function mapKitchenMonitorQueue(dto: KitchenMonitorQueueDto): KitchenMonitorQueue {
   return {
+    monitorVariant: dto.monitorVariant === 'light_compact' ? 'light_compact' : 'default',
     preparing: dto.preparing.map(mapKitchenMonitorTicket),
     recentlyDone: dto.recentlyDone.map(mapKitchenMonitorTicket),
   };

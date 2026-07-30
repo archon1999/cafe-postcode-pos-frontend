@@ -94,6 +94,26 @@ describe('KitchenMonitorPage', () => {
     expect(audioContextConstructor).not.toHaveBeenCalled();
   });
 
+  it('renders the selected light compact variant as a light two-column board', () => {
+    useKitchenMonitorQueryMock.mockReturnValue({
+      data: {
+        monitorVariant: 'light_compact',
+        preparing: [{ id: 'prep-1', orderNumber: 214, displayName: '14', status: 'new', completedAt: null }],
+        recentlyDone: [
+          { id: 'done-1', orderNumber: 215, displayName: '15', status: 'done', completedAt: '2026-04-09T10:00:00Z' },
+        ],
+      },
+    });
+
+    const { container } = render(<KitchenMonitorPage />);
+
+    expect(container.querySelector('[data-monitor-variant="light_compact"]')).toBeTruthy();
+    expect(screen.getByText('Tayyorlanayapti')).toBeTruthy();
+    expect(screen.getByText("Tayyor bo'lganlar")).toBeTruthy();
+    expect(screen.getByText('14')).toBeTruthy();
+    expect(screen.getByText('15')).toBeTruthy();
+  });
+
   it('fits the same 1920x1080 canvas to TV resolutions and keeps compact screens native', () => {
     useKitchenMonitorQueryMock.mockReturnValue({ data: { preparing: [], recentlyDone: [] } });
 
