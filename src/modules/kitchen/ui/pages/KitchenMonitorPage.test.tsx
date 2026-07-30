@@ -108,10 +108,17 @@ describe('KitchenMonitorPage', () => {
     const { container } = render(<KitchenMonitorPage />);
 
     expect(container.querySelector('[data-monitor-variant="light_compact"]')).toBeTruthy();
+    expect(screen.getByTestId('monitor-canvas').getAttribute('data-layout')).toBe('scaled');
+    expect(screen.getByTestId('monitor-canvas').getAttribute('data-scale')).toBe('1.0000');
+    expect(screen.getByTestId('monitor-clock')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'To‘liq ekranga o‘tish' })).toBeTruthy();
     expect(screen.getByText('Tayyorlanayapti')).toBeTruthy();
     expect(screen.getByText("Tayyor bo'lganlar")).toBeTruthy();
     expect(screen.getByText('14')).toBeTruthy();
     expect(screen.getByText('15')).toBeTruthy();
+
+    act(() => resizeViewport(1280, 720));
+    expect(screen.getByTestId('monitor-canvas').getAttribute('data-scale')).toBe('0.6667');
   });
 
   it('fits the same 1920x1080 canvas to TV resolutions and keeps compact screens native', () => {
