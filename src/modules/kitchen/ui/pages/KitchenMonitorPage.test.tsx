@@ -118,7 +118,11 @@ describe('KitchenMonitorPage', () => {
     expect(screen.getByText("Tayyor bo'lganlar")).toBeTruthy();
     expect(screen.getByText('14')).toBeTruthy();
     expect(screen.getByText('16')).toBeTruthy();
-    expect(screen.getAllByTestId('compact-monitor-grid')[0].getAttribute('data-item-layout')).toBe('pair');
+    const preparingGrid = screen.getAllByTestId('compact-monitor-grid')[0];
+    const firstPreparingTicket = container.querySelector('[data-monitor-ticket-id="prep-1"]');
+    expect(preparingGrid.getAttribute('data-item-layout')).toBe('pair');
+    expect(getComputedStyle(preparingGrid).paddingLeft).toBe('56px');
+    expect(getComputedStyle(firstPreparingTicket as Element).paddingLeft).toBe('16px');
     expect(screen.getAllByTestId('compact-monitor-grid')[1].getAttribute('data-item-layout')).toBe('empty');
     expect(screen.queryByTestId('compact-empty-mark')).toBeNull();
 

@@ -82,7 +82,7 @@ function CompactColumn({
       }}>
       <Box
         sx={{
-          px: 32,
+          px: '32px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -101,7 +101,6 @@ function CompactColumn({
             fontSize: 52,
             fontWeight: 780,
             letterSpacing: '-0.025em',
-            lineHeight: 1,
           }}>
           {title}
         </Typography>
@@ -141,10 +140,10 @@ function CompactColumn({
           gridAutoFlow: 'row',
           alignContent: 'center',
           position: 'relative',
-          px: 56,
-          py: 44,
-          columnGap: 28,
-          rowGap: 22,
+          px: '56px',
+          py: '44px',
+          columnGap: '28px',
+          rowGap: '22px',
         }}>
         {visibleItems.map((ticket) => (
           <Box
@@ -155,7 +154,7 @@ function CompactColumn({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              px: 16,
+              px: '16px',
             }}>
             <Typography
               sx={{
