@@ -9,21 +9,9 @@ const PREPARING_COLOR = '#1d6fd1';
 const READY_COLOR = '#168a73';
 const TV_CANVAS_WIDTH = 1920;
 const TV_CANVAS_HEIGHT = 1080;
-const CLOCK_TICK_MS = 30_000;
 
 function formatOrderNumber(ticket: KitchenMonitorTicket) {
   return ticket.displayName?.trim() || String(ticket.orderNumber);
-}
-
-function useMonitorClock() {
-  const [currentTime, setCurrentTime] = useState(() => new Date());
-
-  useEffect(() => {
-    const intervalId = window.setInterval(() => setCurrentTime(new Date()), CLOCK_TICK_MS);
-    return () => window.clearInterval(intervalId);
-  }, []);
-
-  return currentTime;
 }
 
 function useTvViewport() {
@@ -64,12 +52,14 @@ function CompactColumn({
   title,
   items,
   color,
-  showEmptyMark = false,
+  isFullscreen = false,
+  onToggleFullscreen,
 }: {
   title: string;
   items: KitchenMonitorTicket[];
   color: string;
-  showEmptyMark?: boolean;
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
 }) {
   const { pageCount, pageIndex, visibleItems } = usePagedTickets(items);
   const itemCount = visibleItems.length;
@@ -93,8 +83,10 @@ function CompactColumn({
       <Box
         sx={{
           px: 32,
-          display: 'grid',
-          placeItems: 'center',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          position: 'relative',
           color: '#fff',
           backgroundColor: color,
           boxShadow: `0 3px 14px ${alpha(color, 0.22)}`,
@@ -113,6 +105,28 @@ function CompactColumn({
           }}>
           {title}
         </Typography>
+        {onToggleFullscreen ? (
+          <IconButton
+            aria-label={isFullscreen ? 'To‘liq ekrandan chiqish' : 'To‘liq ekranga o‘tish'}
+            onClick={onToggleFullscreen}
+            sx={{
+              width: 62,
+              height: 62,
+              position: 'absolute',
+              right: 24,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              borderRadius: 2.5,
+              color: '#fff',
+              border: '1px solid rgba(255, 255, 255, 0.42)',
+              backgroundColor: 'rgba(255, 255, 255, 0.08)',
+              '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.16)' },
+            }}>
+            <Typography component="span" sx={{ fontSize: 34, lineHeight: 1 }}>
+              {isFullscreen ? '×' : '⛶'}
+            </Typography>
+          </IconButton>
+        ) : null}
       </Box>
 
       <Box
@@ -132,33 +146,6 @@ function CompactColumn({
           columnGap: 28,
           rowGap: 22,
         }}>
-        {!itemCount && showEmptyMark ? (
-          <Box
-            data-testid="compact-empty-mark"
-            sx={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              width: 210,
-              height: 210,
-              display: 'grid',
-              placeItems: 'center',
-              borderRadius: '50%',
-              border: `10px solid ${alpha(color, 0.08)}`,
-              transform: 'translate(-50%, -50%)',
-            }}>
-            <Box
-              sx={{
-                width: 86,
-                height: 46,
-                mt: -2.5,
-                borderRight: `14px solid ${alpha(color, 0.1)}`,
-                borderBottom: `14px solid ${alpha(color, 0.1)}`,
-                transform: 'rotate(45deg)',
-              }}
-            />
-          </Box>
-        ) : null}
         {visibleItems.map((ticket) => (
           <Box
             key={ticket.id}
@@ -208,14 +195,7 @@ function CompactColumn({
   );
 }
 
-export function LightCompactMonitorVariant({
-  monitorData,
-  restaurantName,
-}: {
-  monitorData: KitchenMonitorQueue;
-  restaurantName?: string;
-}) {
-  const currentTime = useMonitorClock();
+export function LightCompactMonitorVariant({ monitorData }: { monitorData: KitchenMonitorQueue }) {
   const viewport = useTvViewport();
   const [isFullscreen, setIsFullscreen] = useState(() => Boolean(document.fullscreenElement));
 
@@ -235,16 +215,6 @@ export function LightCompactMonitorVariant({
   };
 
   const canvasScale = Math.min(viewport.width / TV_CANVAS_WIDTH, viewport.height / TV_CANVAS_HEIGHT);
-  const formattedTime = new Intl.DateTimeFormat('uz-UZ', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(currentTime);
-  const formattedDate = [
-    String(currentTime.getDate()).padStart(2, '0'),
-    String(currentTime.getMonth() + 1).padStart(2, '0'),
-    currentTime.getFullYear(),
-  ].join('.');
 
   return (
     <Box
@@ -263,8 +233,6 @@ export function LightCompactMonitorVariant({
         sx={{
           width: TV_CANVAS_WIDTH,
           height: TV_CANVAS_HEIGHT,
-          display: 'grid',
-          gridTemplateRows: '84px minmax(0, 1fr)',
           overflow: 'hidden',
           position: 'absolute',
           top: '50%',
@@ -275,88 +243,21 @@ export function LightCompactMonitorVariant({
         }}>
         <Box
           sx={{
-            px: 52,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 4,
-            color: '#27313b',
-            backgroundColor: '#fff',
-            borderBottom: '1px solid #e6e9ec',
-            boxShadow: '0 3px 14px rgba(39, 49, 59, 0.06)',
-            zIndex: 1,
-          }}>
-          {restaurantName ? (
-            <Box sx={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 2.25 }}>
-              <Box
-                aria-hidden="true"
-                sx={{
-                  width: 8,
-                  height: 48,
-                  flex: '0 0 auto',
-                  borderRadius: 999,
-                  background: `linear-gradient(180deg, ${PREPARING_COLOR}, ${READY_COLOR})`,
-                }}
-              />
-              <Typography
-                data-testid="monitor-restaurant-name"
-                sx={{
-                  maxWidth: 980,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  fontSize: 38,
-                  fontWeight: 850,
-                  letterSpacing: '-0.025em',
-                  lineHeight: 1,
-                }}>
-                {restaurantName}
-              </Typography>
-            </Box>
-          ) : (
-            <Box />
-          )}
-
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.25 }}>
-            <Box sx={{ textAlign: 'right' }}>
-              <Typography
-                data-testid="monitor-clock"
-                sx={{ fontSize: 30, fontWeight: 800, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
-                {formattedTime}
-              </Typography>
-              <Typography sx={{ mt: 0.5, color: '#77808a', fontSize: 14, fontWeight: 650, lineHeight: 1 }}>
-                {formattedDate}
-              </Typography>
-            </Box>
-            <IconButton
-              aria-label={isFullscreen ? 'To‘liq ekrandan chiqish' : 'To‘liq ekranga o‘tish'}
-              onClick={() => void toggleFullscreen()}
-              sx={{
-                width: 62,
-                height: 62,
-                borderRadius: 2.5,
-                color: '#27313b',
-                border: '1px solid #d8dde2',
-                backgroundColor: '#f7f8f9',
-                '&:hover': { backgroundColor: '#eef1f3' },
-              }}>
-              <Typography component="span" sx={{ fontSize: 34, lineHeight: 1 }}>
-                {isFullscreen ? '×' : '⛶'}
-              </Typography>
-            </IconButton>
-          </Box>
-        </Box>
-
-        <Box
-          sx={{
-            minHeight: 0,
+            width: '100%',
+            height: '100%',
             display: 'grid',
             gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
             gap: '1px',
             backgroundColor: '#d7dce0',
           }}>
           <CompactColumn title="Tayyorlanayapti" items={monitorData.preparing} color={PREPARING_COLOR} />
-          <CompactColumn title="Tayyor bo'lganlar" items={monitorData.recentlyDone} color={READY_COLOR} showEmptyMark />
+          <CompactColumn
+            title="Tayyor bo'lganlar"
+            items={monitorData.recentlyDone}
+            color={READY_COLOR}
+            isFullscreen={isFullscreen}
+            onToggleFullscreen={() => void toggleFullscreen()}
+          />
         </Box>
       </Box>
     </Box>

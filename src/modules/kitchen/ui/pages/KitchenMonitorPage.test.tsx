@@ -111,7 +111,8 @@ describe('KitchenMonitorPage', () => {
     expect(container.querySelector('[data-monitor-variant="light_compact"]')).toBeTruthy();
     expect(screen.getByTestId('monitor-canvas').getAttribute('data-layout')).toBe('scaled');
     expect(screen.getByTestId('monitor-canvas').getAttribute('data-scale')).toBe('1.0000');
-    expect(screen.getByTestId('monitor-clock')).toBeTruthy();
+    expect(screen.queryByTestId('monitor-clock')).toBeNull();
+    expect(screen.queryByTestId('monitor-restaurant-name')).toBeNull();
     expect(screen.getByRole('button', { name: 'To‘liq ekranga o‘tish' })).toBeTruthy();
     expect(screen.getByText('Tayyorlanayapti')).toBeTruthy();
     expect(screen.getByText("Tayyor bo'lganlar")).toBeTruthy();
@@ -119,7 +120,7 @@ describe('KitchenMonitorPage', () => {
     expect(screen.getByText('16')).toBeTruthy();
     expect(screen.getAllByTestId('compact-monitor-grid')[0].getAttribute('data-item-layout')).toBe('pair');
     expect(screen.getAllByTestId('compact-monitor-grid')[1].getAttribute('data-item-layout')).toBe('empty');
-    expect(screen.getByTestId('compact-empty-mark')).toBeTruthy();
+    expect(screen.queryByTestId('compact-empty-mark')).toBeNull();
 
     act(() => resizeViewport(1280, 720));
     expect(screen.getByTestId('monitor-canvas').getAttribute('data-scale')).toBe('0.6667');

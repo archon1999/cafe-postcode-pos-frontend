@@ -750,7 +750,7 @@ export function KitchenMonitorDisplay({
   restaurantName?: string;
 }) {
   if (monitorData.monitorVariant === 'light_compact') {
-    return <LightCompactMonitorVariant monitorData={monitorData} restaurantName={restaurantName} />;
+    return <LightCompactMonitorVariant monitorData={monitorData} />;
   }
 
   return <DefaultMonitorVariant monitorData={monitorData} restaurantName={restaurantName} />;
