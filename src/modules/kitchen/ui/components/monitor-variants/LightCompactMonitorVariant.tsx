@@ -67,7 +67,7 @@ function CompactColumn({
   const rowCount = Math.max(1, Math.ceil(itemCount / columnCount));
   const itemLayout = itemCount === 0 ? 'empty' : itemCount === 1 ? 'single' : itemCount === 2 ? 'pair' : 'grid';
   const rowHeight = itemCount <= 2 ? 220 : itemCount <= 4 ? 170 : 110;
-  const numberFontSize = itemCount === 1 ? 190 : itemCount === 2 ? 154 : itemCount <= 4 ? 132 : 96;
+  const numberFontSize = itemCount <= 4 ? 190 : 132;
 
   return (
     <Box
@@ -132,6 +132,7 @@ function CompactColumn({
         data-testid="compact-monitor-grid"
         data-item-layout={itemLayout}
         data-item-count={itemCount}
+        data-number-font-size={numberFontSize}
         sx={{
           minHeight: 0,
           display: 'grid',
@@ -213,7 +214,8 @@ export function LightCompactMonitorVariant({ monitorData }: { monitorData: Kitch
     }
   };
 
-  const canvasScale = Math.min(viewport.width / TV_CANVAS_WIDTH, viewport.height / TV_CANVAS_HEIGHT);
+  const canvasScaleX = viewport.width / TV_CANVAS_WIDTH;
+  const canvasScaleY = viewport.height / TV_CANVAS_HEIGHT;
 
   return (
     <Box
@@ -228,16 +230,17 @@ export function LightCompactMonitorVariant({ monitorData }: { monitorData: Kitch
       <Box
         data-testid="monitor-canvas"
         data-layout="scaled"
-        data-scale={canvasScale.toFixed(4)}
+        data-scale-x={canvasScaleX.toFixed(4)}
+        data-scale-y={canvasScaleY.toFixed(4)}
         sx={{
           width: TV_CANVAS_WIDTH,
           height: TV_CANVAS_HEIGHT,
           overflow: 'hidden',
           position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: `translate(-50%, -50%) scale(${canvasScale})`,
-          transformOrigin: 'center center',
+          top: 0,
+          left: 0,
+          transform: `scale(${canvasScaleX}, ${canvasScaleY})`,
+          transformOrigin: 'top left',
           backgroundColor: '#fff',
         }}>
         <Box

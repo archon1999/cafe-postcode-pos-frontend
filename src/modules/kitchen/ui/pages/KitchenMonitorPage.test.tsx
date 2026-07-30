@@ -110,7 +110,8 @@ describe('KitchenMonitorPage', () => {
 
     expect(container.querySelector('[data-monitor-variant="light_compact"]')).toBeTruthy();
     expect(screen.getByTestId('monitor-canvas').getAttribute('data-layout')).toBe('scaled');
-    expect(screen.getByTestId('monitor-canvas').getAttribute('data-scale')).toBe('1.0000');
+    expect(screen.getByTestId('monitor-canvas').getAttribute('data-scale-x')).toBe('1.0000');
+    expect(screen.getByTestId('monitor-canvas').getAttribute('data-scale-y')).toBe('1.0000');
     expect(screen.queryByTestId('monitor-clock')).toBeNull();
     expect(screen.queryByTestId('monitor-restaurant-name')).toBeNull();
     expect(screen.getByRole('button', { name: 'To‘liq ekranga o‘tish' })).toBeTruthy();
@@ -121,13 +122,48 @@ describe('KitchenMonitorPage', () => {
     const preparingGrid = screen.getAllByTestId('compact-monitor-grid')[0];
     const firstPreparingTicket = container.querySelector('[data-monitor-ticket-id="prep-1"]');
     expect(preparingGrid.getAttribute('data-item-layout')).toBe('pair');
+    expect(preparingGrid.getAttribute('data-number-font-size')).toBe('190');
     expect(getComputedStyle(preparingGrid).paddingLeft).toBe('56px');
     expect(getComputedStyle(firstPreparingTicket as Element).paddingLeft).toBe('16px');
     expect(screen.getAllByTestId('compact-monitor-grid')[1].getAttribute('data-item-layout')).toBe('empty');
     expect(screen.queryByTestId('compact-empty-mark')).toBeNull();
 
     act(() => resizeViewport(1280, 720));
-    expect(screen.getByTestId('monitor-canvas').getAttribute('data-scale')).toBe('0.6667');
+    expect(screen.getByTestId('monitor-canvas').getAttribute('data-scale-x')).toBe('0.6667');
+    expect(screen.getByTestId('monitor-canvas').getAttribute('data-scale-y')).toBe('0.6667');
+
+    act(() => resizeViewport(1280, 650));
+    expect(screen.getByTestId('monitor-canvas').getAttribute('data-scale-x')).toBe('0.6667');
+    expect(screen.getByTestId('monitor-canvas').getAttribute('data-scale-y')).toBe('0.6019');
+  });
+
+  it.each([
+    [1, '190'],
+    [2, '190'],
+    [3, '190'],
+    [4, '190'],
+    [5, '132'],
+    [12, '132'],
+  ])('uses the intended light compact font size for %i visible tickets', (ticketCount, expectedFontSize) => {
+    useKitchenMonitorQueryMock.mockReturnValue({
+      data: {
+        monitorVariant: 'light_compact',
+        preparing: Array.from({ length: ticketCount }, (_, index) => ({
+          id: `prep-${index + 1}`,
+          orderNumber: index + 1,
+          displayName: String(index + 1),
+          status: 'new',
+          completedAt: null,
+        })),
+        recentlyDone: [],
+      },
+    });
+
+    render(<KitchenMonitorPage />);
+
+    expect(screen.getAllByTestId('compact-monitor-grid')[0].getAttribute('data-number-font-size')).toBe(
+      expectedFontSize,
+    );
   });
 
   it('fits the same 1920x1080 canvas to TV resolutions and keeps compact screens native', () => {
