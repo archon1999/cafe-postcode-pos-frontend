@@ -1,5 +1,5 @@
 import { Box, IconButton, Typography, alpha } from '@mui/material';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import type { KitchenMonitorQueue, KitchenMonitorTicket } from 'modules/kitchen/domain';
 
@@ -64,14 +64,20 @@ function CompactColumn({
   title,
   items,
   color,
-  headerRight,
+  showEmptyMark = false,
 }: {
   title: string;
   items: KitchenMonitorTicket[];
   color: string;
-  headerRight?: ReactNode;
+  showEmptyMark?: boolean;
 }) {
   const { pageCount, pageIndex, visibleItems } = usePagedTickets(items);
+  const itemCount = visibleItems.length;
+  const columnCount = itemCount <= 1 ? 1 : 2;
+  const rowCount = Math.max(1, Math.ceil(itemCount / columnCount));
+  const itemLayout = itemCount === 0 ? 'empty' : itemCount === 1 ? 'single' : itemCount === 2 ? 'pair' : 'grid';
+  const rowHeight = itemCount <= 2 ? 220 : itemCount <= 4 ? 170 : 110;
+  const numberFontSize = itemCount === 1 ? 190 : itemCount === 2 ? 154 : itemCount <= 4 ? 132 : 96;
 
   return (
     <Box
@@ -86,11 +92,9 @@ function CompactColumn({
       }}>
       <Box
         sx={{
-          px: 40,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 2,
+          px: 32,
+          display: 'grid',
+          placeItems: 'center',
           color: '#fff',
           backgroundColor: color,
           boxShadow: `0 3px 14px ${alpha(color, 0.22)}`,
@@ -109,20 +113,52 @@ function CompactColumn({
           }}>
           {title}
         </Typography>
-        {headerRight}
       </Box>
 
       <Box
+        data-testid="compact-monitor-grid"
+        data-item-layout={itemLayout}
+        data-item-count={itemCount}
         sx={{
           minHeight: 0,
           display: 'grid',
-          gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-          gridTemplateRows: 'repeat(6, minmax(0, 1fr))',
-          gridAutoFlow: 'column',
-          px: 24,
-          py: 20,
-          columnGap: 24,
+          gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`,
+          gridTemplateRows: `repeat(${rowCount}, minmax(0, ${rowHeight}px))`,
+          gridAutoFlow: 'row',
+          alignContent: 'center',
+          position: 'relative',
+          px: 56,
+          py: 44,
+          columnGap: 28,
+          rowGap: 22,
         }}>
+        {!itemCount && showEmptyMark ? (
+          <Box
+            data-testid="compact-empty-mark"
+            sx={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              width: 210,
+              height: 210,
+              display: 'grid',
+              placeItems: 'center',
+              borderRadius: '50%',
+              border: `10px solid ${alpha(color, 0.08)}`,
+              transform: 'translate(-50%, -50%)',
+            }}>
+            <Box
+              sx={{
+                width: 86,
+                height: 46,
+                mt: -2.5,
+                borderRight: `14px solid ${alpha(color, 0.1)}`,
+                borderBottom: `14px solid ${alpha(color, 0.1)}`,
+                transform: 'rotate(45deg)',
+              }}
+            />
+          </Box>
+        ) : null}
         {visibleItems.map((ticket) => (
           <Box
             key={ticket.id}
@@ -142,7 +178,7 @@ function CompactColumn({
                 whiteSpace: 'nowrap',
                 color,
                 textAlign: 'center',
-                fontSize: 96,
+                fontSize: numberFontSize,
                 fontWeight: 800,
                 letterSpacing: '-0.045em',
                 lineHeight: 0.95,
@@ -228,72 +264,100 @@ export function LightCompactMonitorVariant({
           width: TV_CANVAS_WIDTH,
           height: TV_CANVAS_HEIGHT,
           display: 'grid',
-          gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-          gap: '1px',
+          gridTemplateRows: '84px minmax(0, 1fr)',
           overflow: 'hidden',
           position: 'absolute',
           top: '50%',
           left: '50%',
           transform: `translate(-50%, -50%) scale(${canvasScale})`,
           transformOrigin: 'center center',
-          backgroundColor: '#d7dce0',
+          backgroundColor: '#fff',
         }}>
-        <CompactColumn
-          title="Tayyorlanayapti"
-          items={monitorData.preparing}
-          color={PREPARING_COLOR}
-          headerRight={
-            restaurantName ? (
-              <Typography
+        <Box
+          sx={{
+            px: 52,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 4,
+            color: '#27313b',
+            backgroundColor: '#fff',
+            borderBottom: '1px solid #e6e9ec',
+            boxShadow: '0 3px 14px rgba(39, 49, 59, 0.06)',
+            zIndex: 1,
+          }}>
+          {restaurantName ? (
+            <Box sx={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 2.25 }}>
+              <Box
+                aria-hidden="true"
                 sx={{
-                  maxWidth: 360,
+                  width: 8,
+                  height: 48,
+                  flex: '0 0 auto',
+                  borderRadius: 999,
+                  background: `linear-gradient(180deg, ${PREPARING_COLOR}, ${READY_COLOR})`,
+                }}
+              />
+              <Typography
+                data-testid="monitor-restaurant-name"
+                sx={{
+                  maxWidth: 980,
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
-                  fontSize: 22,
-                  fontWeight: 700,
-                  opacity: 0.8,
+                  fontSize: 38,
+                  fontWeight: 850,
+                  letterSpacing: '-0.025em',
+                  lineHeight: 1,
                 }}>
                 {restaurantName}
               </Typography>
-            ) : null
-          }
-        />
-        <CompactColumn
-          title="Tayyor bo'lganlar"
-          items={monitorData.recentlyDone}
-          color={READY_COLOR}
-          headerRight={
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.25 }}>
-              <Box sx={{ textAlign: 'right' }}>
-                <Typography
-                  data-testid="monitor-clock"
-                  sx={{ fontSize: 30, fontWeight: 800, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
-                  {formattedTime}
-                </Typography>
-                <Typography sx={{ mt: 0.5, fontSize: 14, fontWeight: 650, lineHeight: 1, opacity: 0.72 }}>
-                  {formattedDate}
-                </Typography>
-              </Box>
-              <IconButton
-                aria-label={isFullscreen ? 'To‘liq ekrandan chiqish' : 'To‘liq ekranga o‘tish'}
-                onClick={() => void toggleFullscreen()}
-                sx={{
-                  width: 62,
-                  height: 62,
-                  borderRadius: 2.5,
-                  color: '#fff',
-                  border: '1px solid rgba(255, 255, 255, 0.42)',
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                  '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.2)' },
-                }}>
-                <Typography component="span" sx={{ fontSize: 34, lineHeight: 1 }}>
-                  {isFullscreen ? '×' : '⛶'}
-                </Typography>
-              </IconButton>
             </Box>
-          }
-        />
+          ) : (
+            <Box />
+          )}
+
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.25 }}>
+            <Box sx={{ textAlign: 'right' }}>
+              <Typography
+                data-testid="monitor-clock"
+                sx={{ fontSize: 30, fontWeight: 800, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
+                {formattedTime}
+              </Typography>
+              <Typography sx={{ mt: 0.5, color: '#77808a', fontSize: 14, fontWeight: 650, lineHeight: 1 }}>
+                {formattedDate}
+              </Typography>
+            </Box>
+            <IconButton
+              aria-label={isFullscreen ? 'To‘liq ekrandan chiqish' : 'To‘liq ekranga o‘tish'}
+              onClick={() => void toggleFullscreen()}
+              sx={{
+                width: 62,
+                height: 62,
+                borderRadius: 2.5,
+                color: '#27313b',
+                border: '1px solid #d8dde2',
+                backgroundColor: '#f7f8f9',
+                '&:hover': { backgroundColor: '#eef1f3' },
+              }}>
+              <Typography component="span" sx={{ fontSize: 34, lineHeight: 1 }}>
+                {isFullscreen ? '×' : '⛶'}
+              </Typography>
+            </IconButton>
+          </Box>
+        </Box>
+
+        <Box
+          sx={{
+            minHeight: 0,
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+            gap: '1px',
+            backgroundColor: '#d7dce0',
+          }}>
+          <CompactColumn title="Tayyorlanayapti" items={monitorData.preparing} color={PREPARING_COLOR} />
+          <CompactColumn title="Tayyor bo'lganlar" items={monitorData.recentlyDone} color={READY_COLOR} showEmptyMark />
+        </Box>
       </Box>
     </Box>
   );

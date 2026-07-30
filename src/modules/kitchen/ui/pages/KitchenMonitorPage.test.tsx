@@ -98,10 +98,11 @@ describe('KitchenMonitorPage', () => {
     useKitchenMonitorQueryMock.mockReturnValue({
       data: {
         monitorVariant: 'light_compact',
-        preparing: [{ id: 'prep-1', orderNumber: 214, displayName: '14', status: 'new', completedAt: null }],
-        recentlyDone: [
-          { id: 'done-1', orderNumber: 215, displayName: '15', status: 'done', completedAt: '2026-04-09T10:00:00Z' },
+        preparing: [
+          { id: 'prep-1', orderNumber: 214, displayName: '14', status: 'new', completedAt: null },
+          { id: 'prep-2', orderNumber: 216, displayName: '16', status: 'new', completedAt: null },
         ],
+        recentlyDone: [],
       },
     });
 
@@ -115,7 +116,10 @@ describe('KitchenMonitorPage', () => {
     expect(screen.getByText('Tayyorlanayapti')).toBeTruthy();
     expect(screen.getByText("Tayyor bo'lganlar")).toBeTruthy();
     expect(screen.getByText('14')).toBeTruthy();
-    expect(screen.getByText('15')).toBeTruthy();
+    expect(screen.getByText('16')).toBeTruthy();
+    expect(screen.getAllByTestId('compact-monitor-grid')[0].getAttribute('data-item-layout')).toBe('pair');
+    expect(screen.getAllByTestId('compact-monitor-grid')[1].getAttribute('data-item-layout')).toBe('empty');
+    expect(screen.getByTestId('compact-empty-mark')).toBeTruthy();
 
     act(() => resizeViewport(1280, 720));
     expect(screen.getByTestId('monitor-canvas').getAttribute('data-scale')).toBe('0.6667');
