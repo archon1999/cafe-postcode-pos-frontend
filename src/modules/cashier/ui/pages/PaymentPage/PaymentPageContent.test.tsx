@@ -43,6 +43,7 @@ vi.mock('modules/auth', () => ({
   canManageCashierPayments: () => true,
   canRemoveCashierPaymentOrderItems: (...args: unknown[]) => canRemoveCashierPaymentOrderItemsMock(...args),
   canSkipFiscalReceipts: (...args: unknown[]) => canSkipFiscalReceiptsMock(...args),
+  canViewCashShift: () => false,
   usePosSession: () => ({
     session: { user: { id: 'cashier-1', fullName: 'Cashier Test', permissionCodes: ['pos_open_checks.view'] } },
     locale: 'uz',

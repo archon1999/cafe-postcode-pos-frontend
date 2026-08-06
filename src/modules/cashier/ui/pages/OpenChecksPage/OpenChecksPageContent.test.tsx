@@ -43,6 +43,7 @@ vi.mock('modules/auth', () => ({
   canCreateCashExpense: () => false,
   canAccessTakeawayBuilder: () => false,
   canManageCashierPayments: () => true,
+  canViewCashShift: () => false,
   usePosSession: () => ({
     session: { user: { id: 'cashier-1', fullName: 'Cashier Test', permissionCodes: ['pos_open_checks.view'] } },
     locale: 'uz',

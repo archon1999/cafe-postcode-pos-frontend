@@ -10,6 +10,7 @@ import {
   canAccessTakeawayBuilder,
   canAccessCashierPayments,
   canCreateCashExpense,
+  canViewCashShift,
   canAccessKitchen,
   canAccessWaiter,
   canAccessWaiterTables,
@@ -156,8 +157,7 @@ export const posRouter = createBrowserRouter([
       {
         path: 'cashier/shift',
         element: (
-          <PosAccessGuard
-            canAccess={(session) => canAccessCashierPayments(session?.user) || canAccessTakeawayBuilder(session?.user)}>
+          <PosAccessGuard canAccess={(session) => canViewCashShift(session?.user)}>
             <CashierShiftPage />
           </PosAccessGuard>
         ),

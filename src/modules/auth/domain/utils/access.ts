@@ -11,6 +11,7 @@ const POS_OPEN_CHECKS_VIEW = 'pos_open_checks.view';
 const POS_PAYMENT_ORDER_ITEMS_CREATE = 'pos_payment_order_items.create';
 const POS_PAYMENT_ORDER_ITEMS_DELETE = 'pos_payment_order_items.delete';
 const POS_PAYMENTS_CREATE = 'pos_payments.create';
+const POS_CASH_SHIFT_VIEW = 'pos_cash_shift.view';
 const POS_CASH_SHIFT_MANAGE = 'pos_cash_shift.manage';
 const POS_CASH_EXPENSE_CREATE = 'pos_cash_expenses.create';
 const POS_CASH_EXPENSE_VOID = 'pos_cash_expenses.void';
@@ -138,6 +139,14 @@ export function canManageCashShift(user: PosUser | null | undefined) {
   }
 
   return hasPermission(user, POS_CASH_SHIFT_MANAGE);
+}
+
+export function canViewCashShift(user: PosUser | null | undefined) {
+  if (!isRestaurantAccessEnabled(user)) {
+    return false;
+  }
+
+  return hasPermission(user, POS_CASH_SHIFT_VIEW);
 }
 
 export function canCreateCashExpense(user: PosUser | null | undefined) {

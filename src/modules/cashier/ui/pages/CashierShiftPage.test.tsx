@@ -22,8 +22,8 @@ vi.mock('react-router', () => ({
 
 vi.mock('modules/auth', () => ({
   canCreateCashExpense: () => false,
-  canAccessCashier: () => true,
   canManageCashShift: () => true,
+  canViewCashShift: () => true,
   getPosHomePath: () => '/cashier',
   isCashierBuilderMode: () => false,
   usePosSession: () => ({

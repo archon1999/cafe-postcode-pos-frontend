@@ -38,6 +38,7 @@ vi.mock('react-router', () => ({
 
 vi.mock('modules/auth', () => ({
   canCreateCashExpense: () => false,
+  canViewCashShift: () => false,
   usePosSession: () => ({
     session: {
       user: { id: 'user-1', fullName: 'Cashier Test' },

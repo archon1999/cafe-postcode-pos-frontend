@@ -17,6 +17,7 @@ import {
   canManageCashierPayments,
   canManageKitchenOrders,
   canManageTableReservations,
+  canViewCashShift,
   getAccessiblePosSurfaces,
   getPosHomePath,
   isCashierBuilderMode,
@@ -99,6 +100,7 @@ describe('auth access utils', () => {
     expect(canAccessCashierBuilder(cashier)).toBe(true);
     expect(canAccessTakeawayBuilder(cashier)).toBe(true);
     expect(getPosHomePath(createSession(cashier))).toBe('/cashier/builder');
+    expect(canViewCashShift(cashier)).toBe(false);
 
     const paymentsOnlyCashier = createUser({
       permissionCodes: ['pos_open_checks.view', 'pos_payments.create'],
@@ -107,6 +109,14 @@ describe('auth access utils', () => {
     expect(canAccessCashier(paymentsOnlyCashier)).toBe(true);
     expect(canAccessCashierBuilder(paymentsOnlyCashier)).toBe(false);
     expect(getPosHomePath(createSession(paymentsOnlyCashier))).toBe('/cashier/open-checks');
+  });
+
+  it('requires the dedicated permission to view cash-shift information', () => {
+    const manager = createUser({ permissionCodes: ['pos_cash_shift.manage', 'pos_cash_shift.view'] });
+    const managerWithoutView = createUser({ permissionCodes: ['pos_cash_shift.manage'] });
+
+    expect(canViewCashShift(manager)).toBe(true);
+    expect(canViewCashShift(managerWithoutView)).toBe(false);
   });
 
   it('keeps hall session access limited to waiter permissions', () => {

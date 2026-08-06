@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 
-import { canCreateCashExpense, canManageCashierPayments, usePosSession } from 'modules/auth';
+import { canCreateCashExpense, canManageCashierPayments, canViewCashShift, usePosSession } from 'modules/auth';
 import {
   useCashierEnsurePaymentPrintDocumentMutation,
   useCashierOpenChecksQuery,
@@ -50,6 +50,7 @@ export function OpenChecksPageContent() {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const copy = getPosCopy(locale);
   const canOperatePayments = canManageCashierPayments(session?.user);
+  const canViewShift = canViewCashShift(session?.user);
   const [settingsAnchor, setSettingsAnchor] = useState<HTMLElement | null>(null);
   const [selectedTab, setSelectedTab] = useState<CashierCheckStatus>('open');
   const [selectedOrderId, setSelectedOrderId] = useState<string>('');
@@ -332,7 +333,7 @@ export function OpenChecksPageContent() {
         onClose={() => setSettingsAnchor(null)}
         onLocaleChange={setLocale}
         onRefresh={isMobile ? () => window.location.reload() : undefined}
-        onShift={() => navigate('/cashier/shift?next=/cashier/open-checks')}
+        onShift={canViewShift ? () => navigate('/cashier/shift?next=/cashier/open-checks') : undefined}
         onExpense={canCreateCashExpense(session?.user) ? () => navigate('/cashier/expenses') : undefined}
         onLock={isMobile ? () => navigate('/lock-screen') : undefined}
         onThemeToggle={() => setThemeMode(themeMode === 'dark' ? 'light' : 'dark')}

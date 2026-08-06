@@ -5,9 +5,9 @@ import { Navigate, useNavigate, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 
 import {
-  canAccessCashier,
   canCreateCashExpense,
   canManageCashShift,
+  canViewCashShift,
   getPosHomePath,
   isCashierBuilderMode,
   usePosSession,
@@ -48,10 +48,10 @@ export function CashierShiftPage() {
   const [shiftCloseReport, setShiftCloseReport] = useState<CashierShiftCloseResponse | null>(null);
   const [closeFiscalByShift, setCloseFiscalByShift] = useState<Record<string, boolean>>({});
 
-  const hasCashierAccess = canAccessCashier(session?.user);
+  const canViewShift = canViewCashShift(session?.user);
   const canManageShift = canManageCashShift(session?.user);
   const contextQuery = useCashierContextQuery({
-    enabled: hasCashierAccess,
+    enabled: canViewShift,
     refetchInterval: POS_CONTEXT_POLL_INTERVAL_MS,
   });
   const nextPath =
@@ -112,7 +112,7 @@ export function CashierShiftPage() {
       !openShiftMutation.isPending,
   );
 
-  if (!hasCashierAccess) {
+  if (!canViewShift) {
     return <Navigate to={getPosHomePath(session)} replace />;
   }
 

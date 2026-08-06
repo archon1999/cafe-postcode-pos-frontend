@@ -9,6 +9,7 @@ import {
   canCreateCashExpense,
   canManageCashierPayments,
   canSkipFiscalReceipts,
+  canViewCashShift,
   usePosSession,
 } from 'modules/auth';
 import {
@@ -57,6 +58,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [settingsAnchor, setSettingsAnchor] = useState<HTMLElement | null>(null);
   const canProcessPayments = canManageCashierPayments(session?.user);
+  const canViewShift = canViewCashShift(session?.user);
   const canDisableFiscalRegistration = canSkipFiscalReceipts(session?.user);
   const normalizedOrderId = orderId ?? null;
 
@@ -381,7 +383,9 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
         onClose={() => setSettingsAnchor(null)}
         onLocaleChange={setLocale}
         onRefresh={isMobile ? () => window.location.reload() : undefined}
-        onShift={() => navigate(`/cashier/shift?next=${encodeURIComponent(afterPaymentPath)}`)}
+        onShift={
+          canViewShift ? () => navigate(`/cashier/shift?next=${encodeURIComponent(afterPaymentPath)}`) : undefined
+        }
         onExpense={canCreateCashExpense(session?.user) ? () => navigate('/cashier/expenses') : undefined}
         onLock={isMobile ? () => navigate('/lock-screen') : undefined}
         onThemeToggle={() => setThemeMode(themeMode === 'dark' ? 'light' : 'dark')}

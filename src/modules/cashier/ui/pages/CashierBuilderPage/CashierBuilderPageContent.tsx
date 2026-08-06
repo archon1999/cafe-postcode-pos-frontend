@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 
-import { canCreateCashExpense, usePosSession } from 'modules/auth';
+import { canCreateCashExpense, canViewCashShift, usePosSession } from 'modules/auth';
 import {
   useCashierBuilderOrdersQuery,
   useCashierMenuQuery,
@@ -57,6 +57,7 @@ export function CashierBuilderPageContent() {
   const [searchParams] = useSearchParams();
   const { session, locale, setLocale, setSession, themeColor, setThemeColor, themeMode, setThemeMode } =
     usePosSession();
+  const canViewShift = canViewCashShift(session?.user);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -431,7 +432,7 @@ export function CashierBuilderPageContent() {
         onClose={() => setSettingsAnchor(null)}
         onLocaleChange={setLocale}
         onRefresh={isMobile ? () => window.location.reload() : undefined}
-        onShift={() => navigate('/cashier/shift?next=/cashier/builder')}
+        onShift={canViewShift ? () => navigate('/cashier/shift?next=/cashier/builder') : undefined}
         onExpense={canCreateCashExpense(session?.user) ? () => navigate('/cashier/expenses') : undefined}
         onLock={isMobile ? () => navigate('/lock-screen') : undefined}
         onThemeToggle={() => setThemeMode(themeMode === 'dark' ? 'light' : 'dark')}
