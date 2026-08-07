@@ -22,7 +22,12 @@ import {
 const PAIRING_POLL_INTERVAL_MS = 2000;
 const QUEUE_POLL_INTERVAL_MS = 5000;
 const DIAGNOSTIC_HEARTBEAT_INTERVAL_MS = 60_000;
-const EMPTY_QUEUE: KitchenMonitorQueue = { monitorVariant: 'default', preparing: [], recentlyDone: [] };
+const EMPTY_QUEUE: KitchenMonitorQueue = {
+  monitorVariant: 'default',
+  preparing: [],
+  recentlyDone: [],
+  announcements: [],
+};
 const INITIAL_DIAGNOSTICS: TvMonitorDiagnosticSnapshot = {
   stage: 'pairing',
   lastSuccessAt: null,
@@ -252,7 +257,11 @@ export function TvMonitorPage() {
             setDiagnostics((current) => ({ ...current, stage: 'error', renderError: message }));
             reportDiagnostic('render_error', message, { componentStack: info.componentStack?.slice(0, 3000) });
           }}>
-          <KitchenMonitorDisplay monitorData={monitorData} restaurantName={device.restaurantName} />
+          <KitchenMonitorDisplay
+            monitorData={monitorData}
+            restaurantName={device.restaurantName}
+            onAnnouncementPlayback={reportDiagnostic}
+          />
         </TvMonitorRenderBoundary>
         <TvMonitorDiagnostics restaurantName={device.restaurantName} snapshot={diagnostics} />
       </>

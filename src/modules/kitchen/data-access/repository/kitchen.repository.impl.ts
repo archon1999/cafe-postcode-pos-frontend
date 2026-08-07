@@ -60,6 +60,10 @@ class KitchenRepositoryImpl implements KitchenRepository {
     });
   }
 
+  async replayTicketAnnouncement(ticketId: string): Promise<void> {
+    await apiPost(`/pos/kitchen/tickets/${ticketId}/announce/`, {});
+  }
+
   async updateTicketStatus(ticketId: string, status: KitchenTicketStatus) {
     await apiPost(`/pos/kitchen/tickets/${ticketId}/status/`, { status });
   }

@@ -1,0 +1,1616 @@
+{
+  "version": 1,
+  "locale": "uz",
+  "speaker": 0,
+  "format": "audio/wav",
+  "entries": [
+    {
+      "number": null,
+      "file": "generic.wav",
+      "text": "Buyurtmangiz tayyor.",
+      "durationMs": 2088,
+      "bytes": 92122,
+      "sha256": "1e1524f1578c2def23891a297401fa74eb16ade9e9757919eb3f043d9b4d4a9f"
+    },
+    {
+      "number": 1,
+      "file": "1.wav",
+      "text": "Buyurtma raqami bir tayyor.",
+      "durationMs": 2378,
+      "bytes": 104922,
+      "sha256": "d88d93ae62b009fa9b1526497cfc283f632bdda1ef06233ccaf99ac15c795330"
+    },
+    {
+      "number": 2,
+      "file": "2.wav",
+      "text": "Buyurtma raqami ikki tayyor.",
+      "durationMs": 2773,
+      "bytes": 122330,
+      "sha256": "66872f90bf479fd463cec68171e6a136841012a43ce40c96e82d16516ed354b0"
+    },
+    {
+      "number": 3,
+      "file": "3.wav",
+      "text": "Buyurtma raqami uch tayyor.",
+      "durationMs": 2634,
+      "bytes": 116186,
+      "sha256": "9b857d86835c8703ba3022e091da28aabc19183c4213e28616c154d907d3872a"
+    },
+    {
+      "number": 4,
+      "file": "4.wav",
+      "text": "Buyurtma raqami to'rt tayyor.",
+      "durationMs": 2738,
+      "bytes": 120794,
+      "sha256": "e9090cf07e5bf7cf192fd2939e04b41d6c3a0c93dd48d1cf8748a0c7f1762876"
+    },
+    {
+      "number": 5,
+      "file": "5.wav",
+      "text": "Buyurtma raqami besh tayyor.",
+      "durationMs": 2459,
+      "bytes": 108506,
+      "sha256": "b8ff0ad8f85d17a931c9be832052d178617ddaab5e23e047529c8e24269e232c"
+    },
+    {
+      "number": 6,
+      "file": "6.wav",
+      "text": "Buyurtma raqami olti tayyor.",
+      "durationMs": 2692,
+      "bytes": 118746,
+      "sha256": "16f820d61c3be910d00cb64734435a20613fdedeb3b427f6cf97a71b8ada4dde"
+    },
+    {
+      "number": 7,
+      "file": "7.wav",
+      "text": "Buyurtma raqami yetti tayyor.",
+      "durationMs": 2657,
+      "bytes": 117210,
+      "sha256": "d46e6fd46bb996df52423761fa11d9939046396a926d055bbdc64aa9d59fcaf1"
+    },
+    {
+      "number": 8,
+      "file": "8.wav",
+      "text": "Buyurtma raqami sakkiz tayyor.",
+      "durationMs": 2645,
+      "bytes": 116698,
+      "sha256": "a0f60e9a0cccfe2663193099fbc3fb28a7d72c2b48d0936c3bc1aad541826d69"
+    },
+    {
+      "number": 9,
+      "file": "9.wav",
+      "text": "Buyurtma raqami to'qqiz tayyor.",
+      "durationMs": 2831,
+      "bytes": 124890,
+      "sha256": "dbbb8f5514eafcb7d1a3b87af2bbf87d105116b21677d754d23fe245f40837c0"
+    },
+    {
+      "number": 10,
+      "file": "10.wav",
+      "text": "Buyurtma raqami o'n tayyor.",
+      "durationMs": 2761,
+      "bytes": 121818,
+      "sha256": "917691e30cb12258ba815f242980497f1cd60d752de6e9e68f883796505669d2"
+    },
+    {
+      "number": 11,
+      "file": "11.wav",
+      "text": "Buyurtma raqami o'n bir tayyor.",
+      "durationMs": 2866,
+      "bytes": 126426,
+      "sha256": "bffba506b98649df7060481c544c38f81709095600ba991c8b981934f0646f92"
+    },
+    {
+      "number": 12,
+      "file": "12.wav",
+      "text": "Buyurtma raqami o'n ikki tayyor.",
+      "durationMs": 2994,
+      "bytes": 132058,
+      "sha256": "a7c55a466d4c9015989434e13f3c8f9137bd54ddc7db02de5fe803c7ba3a6334"
+    },
+    {
+      "number": 13,
+      "file": "13.wav",
+      "text": "Buyurtma raqami o'n uch tayyor.",
+      "durationMs": 2970,
+      "bytes": 131034,
+      "sha256": "11b7db48a56eb1c126372a04b54bc48774cc863f4b60996814359369dc6a6f0e"
+    },
+    {
+      "number": 14,
+      "file": "14.wav",
+      "text": "Buyurtma raqami o'n to'rt tayyor.",
+      "durationMs": 3144,
+      "bytes": 138714,
+      "sha256": "4928952aa256dd39b6b421b8db9e8a7f18d6af6a22e14f83a3a3d93d3c3be2e9"
+    },
+    {
+      "number": 15,
+      "file": "15.wav",
+      "text": "Buyurtma raqami o'n besh tayyor.",
+      "durationMs": 2796,
+      "bytes": 123354,
+      "sha256": "b051091cde88cf9abfc38d36da5b5352a452d0f5951bcb3c4d85988a5a07b803"
+    },
+    {
+      "number": 16,
+      "file": "16.wav",
+      "text": "Buyurtma raqami o'n olti tayyor.",
+      "durationMs": 3086,
+      "bytes": 136154,
+      "sha256": "d838202be0e07026c1f33a360112b07654dcacba4c81c704e4054c645fb93631"
+    },
+    {
+      "number": 17,
+      "file": "17.wav",
+      "text": "Buyurtma raqami o'n yetti tayyor.",
+      "durationMs": 2982,
+      "bytes": 131546,
+      "sha256": "082c121ff6868fb3723ee1ff77213c2a1b96baed6c6859237cf4df1aac2c7ef2"
+    },
+    {
+      "number": 18,
+      "file": "18.wav",
+      "text": "Buyurtma raqami o'n sakkiz tayyor.",
+      "durationMs": 3052,
+      "bytes": 134618,
+      "sha256": "cd096dde2b168e0e6cc8bb2feb12cc34c373c505b531635743059ba93cd9c97b"
+    },
+    {
+      "number": 19,
+      "file": "19.wav",
+      "text": "Buyurtma raqami o'n to'qqiz tayyor.",
+      "durationMs": 3202,
+      "bytes": 141274,
+      "sha256": "f62993a53cf3ca6d0de63eb10db10c547ccd2095243b826edea24b8c0d0ebc0c"
+    },
+    {
+      "number": 20,
+      "file": "20.wav",
+      "text": "Buyurtma raqami yigirma tayyor.",
+      "durationMs": 2738,
+      "bytes": 120794,
+      "sha256": "44b6af684c6f0ca52350898f90da9623e16a204417c33ba10ad3206929e3d058"
+    },
+    {
+      "number": 21,
+      "file": "21.wav",
+      "text": "Buyurtma raqami yigirma bir tayyor.",
+      "durationMs": 3098,
+      "bytes": 136666,
+      "sha256": "03d3ae184b29ceddda464550e8d96860f50ba2ce3f32a40e58b4debcf00f125b"
+    },
+    {
+      "number": 22,
+      "file": "22.wav",
+      "text": "Buyurtma raqami yigirma ikki tayyor.",
+      "durationMs": 3191,
+      "bytes": 140762,
+      "sha256": "066aa87b096affffbbca5f52983ad24e989de897ca7fecc01976aef401e164a3"
+    },
+    {
+      "number": 23,
+      "file": "23.wav",
+      "text": "Buyurtma raqami yigirma uch tayyor.",
+      "durationMs": 3319,
+      "bytes": 146394,
+      "sha256": "e5efd03e34f285b724441be9c671064a69b8c450823b094ebca714cf8dc6ef9b"
+    },
+    {
+      "number": 24,
+      "file": "24.wav",
+      "text": "Buyurtma raqami yigirma to'rt tayyor.",
+      "durationMs": 3307,
+      "bytes": 145882,
+      "sha256": "9c46c287d93fda5a6e79999a7d923e009752a2381ba6ea70b76bee0db745e40b"
+    },
+    {
+      "number": 25,
+      "file": "25.wav",
+      "text": "Buyurtma raqami yigirma besh tayyor.",
+      "durationMs": 3237,
+      "bytes": 142810,
+      "sha256": "051fbf1098e7caa5a94b210e1689d5db5e054e2299f20b92e074cc954f2c7f0b"
+    },
+    {
+      "number": 26,
+      "file": "26.wav",
+      "text": "Buyurtma raqami yigirma olti tayyor.",
+      "durationMs": 3411,
+      "bytes": 150490,
+      "sha256": "ac6f9219418d706b9fa9200c5d5ecb556dfcfaa22efe86d6d6c7e5fb030e5ea3"
+    },
+    {
+      "number": 27,
+      "file": "27.wav",
+      "text": "Buyurtma raqami yigirma yetti tayyor.",
+      "durationMs": 3191,
+      "bytes": 140762,
+      "sha256": "938351a8006643aac69331e2ddbf584a17d8a42af8bf2250763e48d28464c7ca"
+    },
+    {
+      "number": 28,
+      "file": "28.wav",
+      "text": "Buyurtma raqami yigirma sakkiz tayyor.",
+      "durationMs": 3272,
+      "bytes": 144346,
+      "sha256": "06a0325836eb7ff101468032d8a5f16b6bdd723f9d56e3b51a74d0c4fdd71ad3"
+    },
+    {
+      "number": 29,
+      "file": "29.wav",
+      "text": "Buyurtma raqami yigirma to'qqiz tayyor.",
+      "durationMs": 3423,
+      "bytes": 151002,
+      "sha256": "6b71d0fcdc397ea91c704108ec2019d12c247b503cfea22e918eae8c63540d50"
+    },
+    {
+      "number": 30,
+      "file": "30.wav",
+      "text": "Buyurtma raqami o'ttiz tayyor.",
+      "durationMs": 3017,
+      "bytes": 133082,
+      "sha256": "031f7c58531754f8e1d309b842e8c73dfba4e9179caa47053f7cc7707fd86ef0"
+    },
+    {
+      "number": 31,
+      "file": "31.wav",
+      "text": "Buyurtma raqami o'ttiz bir tayyor.",
+      "durationMs": 3098,
+      "bytes": 136666,
+      "sha256": "34fc97ac186cb75529f088d73402bee52ea85e7a000cc58b9ced981b43558301"
+    },
+    {
+      "number": 32,
+      "file": "32.wav",
+      "text": "Buyurtma raqami o'ttiz ikki tayyor.",
+      "durationMs": 3202,
+      "bytes": 141274,
+      "sha256": "c1c4af84fd26bc1fd5b71000352e1e8b2c1c870edea8b034281f28cb9884d8d6"
+    },
+    {
+      "number": 33,
+      "file": "33.wav",
+      "text": "Buyurtma raqami o'ttiz uch tayyor.",
+      "durationMs": 3144,
+      "bytes": 138714,
+      "sha256": "e6080df38f321dcfe4d0e83418fc532db755e47e4f549ffc7c2e2bb8a07a026e"
+    },
+    {
+      "number": 34,
+      "file": "34.wav",
+      "text": "Buyurtma raqami o'ttiz to'rt tayyor.",
+      "durationMs": 3330,
+      "bytes": 146906,
+      "sha256": "25793aef0ba2d99f3a9c7e43a1c2367ee7b92687200402f18c10882bbe381f5f"
+    },
+    {
+      "number": 35,
+      "file": "35.wav",
+      "text": "Buyurtma raqami o'ttiz besh tayyor.",
+      "durationMs": 3237,
+      "bytes": 142810,
+      "sha256": "07fb1c299b9e51c37577612d73ef51060f342c039d7c6460f3b3a1bd0dc2e66e"
+    },
+    {
+      "number": 36,
+      "file": "36.wav",
+      "text": "Buyurtma raqami o'ttiz olti tayyor.",
+      "durationMs": 3202,
+      "bytes": 141274,
+      "sha256": "3e42458d0d12f3424651587907dddb3e4da23e00d2dce2ffb25e74f41559c3c6"
+    },
+    {
+      "number": 37,
+      "file": "37.wav",
+      "text": "Buyurtma raqami o'ttiz yetti tayyor.",
+      "durationMs": 3040,
+      "bytes": 134106,
+      "sha256": "b6ce7f333a64e6131bf7327e89b17be7a9f883d3307c219a37d30d87a6d2a9b9"
+    },
+    {
+      "number": 38,
+      "file": "38.wav",
+      "text": "Buyurtma raqami o'ttiz sakkiz tayyor.",
+      "durationMs": 3377,
+      "bytes": 148954,
+      "sha256": "9f2fe7137e59a282e0361141b362dfb51703e5addfb93821c8ac9596b3ff670b"
+    },
+    {
+      "number": 39,
+      "file": "39.wav",
+      "text": "Buyurtma raqami o'ttiz to'qqiz tayyor.",
+      "durationMs": 3493,
+      "bytes": 154074,
+      "sha256": "9806edb731779f9f6694df743f5590d5383cb24d3cdd4f91ebf938ade62c243d"
+    },
+    {
+      "number": 40,
+      "file": "40.wav",
+      "text": "Buyurtma raqami qirq tayyor.",
+      "durationMs": 2785,
+      "bytes": 122842,
+      "sha256": "7ec269d9ec7c49638e920a6e6c24d85e53493ec78204ec879ad38a8b55f938ec"
+    },
+    {
+      "number": 41,
+      "file": "41.wav",
+      "text": "Buyurtma raqami qirq bir tayyor.",
+      "durationMs": 2866,
+      "bytes": 126426,
+      "sha256": "afa7c5067831b6329d6b9e32bde43498aa769290c47db4e6b8673a0ec412fa7e"
+    },
+    {
+      "number": 42,
+      "file": "42.wav",
+      "text": "Buyurtma raqami qirq ikki tayyor.",
+      "durationMs": 2924,
+      "bytes": 128986,
+      "sha256": "2093f42ccf3d1969f8f6e53cb0f0c5be7b720f0c9f481882a8a84951512b52ff"
+    },
+    {
+      "number": 43,
+      "file": "43.wav",
+      "text": "Buyurtma raqami qirq uch tayyor.",
+      "durationMs": 2808,
+      "bytes": 123866,
+      "sha256": "82c918ddf69dbc998ac4f558852f4b3ca58c70d42dd0e51269668518688a7e7e"
+    },
+    {
+      "number": 44,
+      "file": "44.wav",
+      "text": "Buyurtma raqami qirq to'rt tayyor.",
+      "durationMs": 3168,
+      "bytes": 139738,
+      "sha256": "6dd5d029fabb0d167e2743b6a0238178456ddcbc36ff70223f41b52904e63b27"
+    },
+    {
+      "number": 45,
+      "file": "45.wav",
+      "text": "Buyurtma raqami qirq besh tayyor.",
+      "durationMs": 3063,
+      "bytes": 135130,
+      "sha256": "d712b50a66f735320c89074c3b097ae10d3b54bd9a48f0ca31cb8a4af3360bfb"
+    },
+    {
+      "number": 46,
+      "file": "46.wav",
+      "text": "Buyurtma raqami qirq olti tayyor.",
+      "durationMs": 3191,
+      "bytes": 140762,
+      "sha256": "e207da3723ddf4c62f8461a46371040c05e21c759ba05303d70088ec3c80a599"
+    },
+    {
+      "number": 47,
+      "file": "47.wav",
+      "text": "Buyurtma raqami qirq yetti tayyor.",
+      "durationMs": 3179,
+      "bytes": 140250,
+      "sha256": "07e75c469d71b1a3b8c3507fc00430196179cfe54d6a12045f7d26fe7f67109d"
+    },
+    {
+      "number": 48,
+      "file": "48.wav",
+      "text": "Buyurtma raqami qirq sakkiz tayyor.",
+      "durationMs": 2982,
+      "bytes": 131546,
+      "sha256": "ce5a51e08bec41d3ee3f984c878ab7065f724c60fb1848ba10e673a9bf500119"
+    },
+    {
+      "number": 49,
+      "file": "49.wav",
+      "text": "Buyurtma raqami qirq to'qqiz tayyor.",
+      "durationMs": 3214,
+      "bytes": 141786,
+      "sha256": "40da468f77288c93b18dcf4ef848d83ea5b49bc8b8e5a41f1ce980f124c10f36"
+    },
+    {
+      "number": 50,
+      "file": "50.wav",
+      "text": "Buyurtma raqami ellik tayyor.",
+      "durationMs": 2645,
+      "bytes": 116698,
+      "sha256": "2595ea9d6be2f7bab87ffcfe276c644bec28d2d9780bc0b87e8f74e408e6ad75"
+    },
+    {
+      "number": 51,
+      "file": "51.wav",
+      "text": "Buyurtma raqami ellik bir tayyor.",
+      "durationMs": 3017,
+      "bytes": 133082,
+      "sha256": "6c7db7d851de8e3b0b2afb32f8941bab1f3075072ec9b485fc88fa413f921ffe"
+    },
+    {
+      "number": 52,
+      "file": "52.wav",
+      "text": "Buyurtma raqami ellik ikki tayyor.",
+      "durationMs": 3330,
+      "bytes": 146906,
+      "sha256": "76904917d7b3105baf757eaff5e6d55b23b9d5e250dad578207cd5a0bfdaa5ef"
+    },
+    {
+      "number": 53,
+      "file": "53.wav",
+      "text": "Buyurtma raqami ellik uch tayyor.",
+      "durationMs": 3226,
+      "bytes": 142298,
+      "sha256": "d19981921f9a9bf2bf17783ec2daae54d652b1afae068e0241cc4769c1e444e4"
+    },
+    {
+      "number": 54,
+      "file": "54.wav",
+      "text": "Buyurtma raqami ellik to'rt tayyor.",
+      "durationMs": 3284,
+      "bytes": 144858,
+      "sha256": "df4478e0d61f25766380aef2b9410cf8d63c9dab978811b3fdc89d9e409880e9"
+    },
+    {
+      "number": 55,
+      "file": "55.wav",
+      "text": "Buyurtma raqami ellik besh tayyor.",
+      "durationMs": 2947,
+      "bytes": 130010,
+      "sha256": "8fedf14ab5adf580c86f7f203da693cedec727dae8d89dc502c8ab27e07653d0"
+    },
+    {
+      "number": 56,
+      "file": "56.wav",
+      "text": "Buyurtma raqami ellik olti tayyor.",
+      "durationMs": 3377,
+      "bytes": 148954,
+      "sha256": "a25cd3d12281fd92aeb407421989366ee12286f15819855db42b39f3cdde955e"
+    },
+    {
+      "number": 57,
+      "file": "57.wav",
+      "text": "Buyurtma raqami ellik yetti tayyor.",
+      "durationMs": 3284,
+      "bytes": 144858,
+      "sha256": "f2b049cbb513c76f4c94b8dec2bdacf850b70824561ffa377076e1a6a913f6f0"
+    },
+    {
+      "number": 58,
+      "file": "58.wav",
+      "text": "Buyurtma raqami ellik sakkiz tayyor.",
+      "durationMs": 3388,
+      "bytes": 149466,
+      "sha256": "07ce59af68740d1370c276ddb54f0d237b2c8947561555694b73927e63587234"
+    },
+    {
+      "number": 59,
+      "file": "59.wav",
+      "text": "Buyurtma raqami ellik to'qqiz tayyor.",
+      "durationMs": 3435,
+      "bytes": 151514,
+      "sha256": "27611111d9637abfb98186752d939c2548afa3f2805ead3d4af74a40ca53326a"
+    },
+    {
+      "number": 60,
+      "file": "60.wav",
+      "text": "Buyurtma raqami oltmish tayyor.",
+      "durationMs": 2935,
+      "bytes": 129498,
+      "sha256": "3a1d96fe58467806cae61f473203808f7a4e7957a87fb01668fc804343f435bb"
+    },
+    {
+      "number": 61,
+      "file": "61.wav",
+      "text": "Buyurtma raqami oltmish bir tayyor.",
+      "durationMs": 3237,
+      "bytes": 142810,
+      "sha256": "18c49d0733f58fd735ee57a02e9b062b848a4b3bbd6623159d258fac4d7f5858"
+    },
+    {
+      "number": 62,
+      "file": "62.wav",
+      "text": "Buyurtma raqami oltmish ikki tayyor.",
+      "durationMs": 3237,
+      "bytes": 142810,
+      "sha256": "af03ab7bec35f5632b03f45a82e3cf8e4bd44dbf0404b5fba50afb1442ce2ef5"
+    },
+    {
+      "number": 63,
+      "file": "63.wav",
+      "text": "Buyurtma raqami oltmish uch tayyor.",
+      "durationMs": 3110,
+      "bytes": 137178,
+      "sha256": "5aad9fb8684898c7a6f9609df253afa348474aa369db1f4da87bdf3b0abf48c5"
+    },
+    {
+      "number": 64,
+      "file": "64.wav",
+      "text": "Buyurtma raqami oltmish to'rt tayyor.",
+      "durationMs": 3353,
+      "bytes": 147930,
+      "sha256": "72a5cceeac4c9a079ef8b7d6209d89b729262da8bbed85bb996fe55b529c1386"
+    },
+    {
+      "number": 65,
+      "file": "65.wav",
+      "text": "Buyurtma raqami oltmish besh tayyor.",
+      "durationMs": 3144,
+      "bytes": 138714,
+      "sha256": "e21b0fb58dd969a48871176293b7c98cf89c90a0afe85c6f7f3b432a925be287"
+    },
+    {
+      "number": 66,
+      "file": "66.wav",
+      "text": "Buyurtma raqami oltmish olti tayyor.",
+      "durationMs": 3295,
+      "bytes": 145370,
+      "sha256": "a9cabb81c4eeabbf570a64235a30a56eb2a0317edf63842ac50a5528d8188f01"
+    },
+    {
+      "number": 67,
+      "file": "67.wav",
+      "text": "Buyurtma raqami oltmish yetti tayyor.",
+      "durationMs": 3098,
+      "bytes": 136666,
+      "sha256": "da16efe58a6d5978b3cd727d246226b58dfa4bdb1ee88ee1d3e07b7c39f66957"
+    },
+    {
+      "number": 68,
+      "file": "68.wav",
+      "text": "Buyurtma raqami oltmish sakkiz tayyor.",
+      "durationMs": 3423,
+      "bytes": 151002,
+      "sha256": "9327f5aacaa129a3e7783651e95400e04c0a12f49fd484ee21ef58890ca2eb59"
+    },
+    {
+      "number": 69,
+      "file": "69.wav",
+      "text": "Buyurtma raqami oltmish to'qqiz tayyor.",
+      "durationMs": 3586,
+      "bytes": 158170,
+      "sha256": "9f92a1ad6a6f2312124cd9a05354006ed48a208ba41e6b30ebfa3ea1bdaaacbd"
+    },
+    {
+      "number": 70,
+      "file": "70.wav",
+      "text": "Buyurtma raqami yetmish tayyor.",
+      "durationMs": 2947,
+      "bytes": 130010,
+      "sha256": "e278804e4c7de3b282dc3005a59f0a81c27914fe3dca520d18adaff894aaf368"
+    },
+    {
+      "number": 71,
+      "file": "71.wav",
+      "text": "Buyurtma raqami yetmish bir tayyor.",
+      "durationMs": 3272,
+      "bytes": 144346,
+      "sha256": "ab3a67e82dba22ed39a8b9b2e3fbef0b4f284348ab575d97dcdadfba27dd131c"
+    },
+    {
+      "number": 72,
+      "file": "72.wav",
+      "text": "Buyurtma raqami yetmish ikki tayyor.",
+      "durationMs": 3226,
+      "bytes": 142298,
+      "sha256": "0f7a8f9e5bdc8f4075691c009e46d97879a93d8bf7ea09c7f1faf0895673d5b1"
+    },
+    {
+      "number": 73,
+      "file": "73.wav",
+      "text": "Buyurtma raqami yetmish uch tayyor.",
+      "durationMs": 3353,
+      "bytes": 147930,
+      "sha256": "8eef745934bbba19855155fefea4d18ab1db0c8baf8e176167c44c640487904f"
+    },
+    {
+      "number": 74,
+      "file": "74.wav",
+      "text": "Buyurtma raqami yetmish to'rt tayyor.",
+      "durationMs": 3539,
+      "bytes": 156122,
+      "sha256": "ec38bcec26259a73776f736939c9f9bb03abe106e3d4e379b5d3a715936be643"
+    },
+    {
+      "number": 75,
+      "file": "75.wav",
+      "text": "Buyurtma raqami yetmish besh tayyor.",
+      "durationMs": 3156,
+      "bytes": 139226,
+      "sha256": "4ac631a51018bd73c80541049210dd7f19033400371d9bda32de21fd26a26821"
+    },
+    {
+      "number": 76,
+      "file": "76.wav",
+      "text": "Buyurtma raqami yetmish olti tayyor.",
+      "durationMs": 3377,
+      "bytes": 148954,
+      "sha256": "5952a30f092914cede3094d275041342171b7c46c95f7b7fb418281c807d15c5"
+    },
+    {
+      "number": 77,
+      "file": "77.wav",
+      "text": "Buyurtma raqami yetmish yetti tayyor.",
+      "durationMs": 3261,
+      "bytes": 143834,
+      "sha256": "90c094031ff0e017a377f578e34165b0c4fd2f19e58f10a6a6f40d8915036fa2"
+    },
+    {
+      "number": 78,
+      "file": "78.wav",
+      "text": "Buyurtma raqami yetmish sakkiz tayyor.",
+      "durationMs": 3284,
+      "bytes": 144858,
+      "sha256": "a9752f1d186070acc1e78c80a34086b3b1696a66e1d6a6d4b38f883d1cd78319"
+    },
+    {
+      "number": 79,
+      "file": "79.wav",
+      "text": "Buyurtma raqami yetmish to'qqiz tayyor.",
+      "durationMs": 3202,
+      "bytes": 141274,
+      "sha256": "bd9fed778a27258261c77dd5f5327c4a280e30337e7b658476c45075993c5b66"
+    },
+    {
+      "number": 80,
+      "file": "80.wav",
+      "text": "Buyurtma raqami sakson tayyor.",
+      "durationMs": 2843,
+      "bytes": 125402,
+      "sha256": "2fb811a9f615b0602c48732e37cd883a441fe6130cbed0086fbdf2ada9ffc61f"
+    },
+    {
+      "number": 81,
+      "file": "81.wav",
+      "text": "Buyurtma raqami sakson bir tayyor.",
+      "durationMs": 3028,
+      "bytes": 133594,
+      "sha256": "cec14572145b3d8e565a88ad222d38c42300c82de672fdb220f08e7c5537ff97"
+    },
+    {
+      "number": 82,
+      "file": "82.wav",
+      "text": "Buyurtma raqami sakson ikki tayyor.",
+      "durationMs": 3133,
+      "bytes": 138202,
+      "sha256": "3fb0f129f069d59924e43cddff42915652ad09def98bc62611b87269afc2d0a1"
+    },
+    {
+      "number": 83,
+      "file": "83.wav",
+      "text": "Buyurtma raqami sakson uch tayyor.",
+      "durationMs": 3063,
+      "bytes": 135130,
+      "sha256": "73298ff043adac741d06d9f6cb7c4b6b4e1783ade5615893cc48c5b5773fc448"
+    },
+    {
+      "number": 84,
+      "file": "84.wav",
+      "text": "Buyurtma raqami sakson to'rt tayyor.",
+      "durationMs": 3179,
+      "bytes": 140250,
+      "sha256": "4f20c8bca6e339b4df1e373e4f44fef1acedbf422b982830b123189a4c286932"
+    },
+    {
+      "number": 85,
+      "file": "85.wav",
+      "text": "Buyurtma raqami sakson besh tayyor.",
+      "durationMs": 3028,
+      "bytes": 133594,
+      "sha256": "fb2ffa1fda4cb2f50e4f9fbc47c86bcb3086c0bf3241773dc526a13bfabdc789"
+    },
+    {
+      "number": 86,
+      "file": "86.wav",
+      "text": "Buyurtma raqami sakson olti tayyor.",
+      "durationMs": 3249,
+      "bytes": 143322,
+      "sha256": "05ef29341ff1a4839df0c0f49255cbbcc769a99adc13d81fc034f49213af8e21"
+    },
+    {
+      "number": 87,
+      "file": "87.wav",
+      "text": "Buyurtma raqami sakson yetti tayyor.",
+      "durationMs": 3121,
+      "bytes": 137690,
+      "sha256": "465812e49ad5198a7c4a153fdc39a26c44c9f2b72e04b04f3183f6f50645e789"
+    },
+    {
+      "number": 88,
+      "file": "88.wav",
+      "text": "Buyurtma raqami sakson sakkiz tayyor.",
+      "durationMs": 3377,
+      "bytes": 148954,
+      "sha256": "724fee33a328803c1fdb749ee55c1cfe9c352931c9f31aa83259dad9b259340d"
+    },
+    {
+      "number": 89,
+      "file": "89.wav",
+      "text": "Buyurtma raqami sakson to'qqiz tayyor.",
+      "durationMs": 3377,
+      "bytes": 148954,
+      "sha256": "32409abfc151776df86f1feadf230fe468b49c658517d410db293a2dea9d024b"
+    },
+    {
+      "number": 90,
+      "file": "90.wav",
+      "text": "Buyurtma raqami to'qson tayyor.",
+      "durationMs": 2831,
+      "bytes": 124890,
+      "sha256": "1e3ebc25f5c7326a6ad3f84c2d65ffbf12513943471d6394cbe8b981e7e3031a"
+    },
+    {
+      "number": 91,
+      "file": "91.wav",
+      "text": "Buyurtma raqami to'qson bir tayyor.",
+      "durationMs": 3075,
+      "bytes": 135642,
+      "sha256": "10ec10f24fda28e9b12860cc5ac1423fdb38948b5d7d50f8ad6df1ce0f62588e"
+    },
+    {
+      "number": 92,
+      "file": "92.wav",
+      "text": "Buyurtma raqami to'qson ikki tayyor.",
+      "durationMs": 3168,
+      "bytes": 139738,
+      "sha256": "af0d720e16aa6b39f8064bc59649e49b3d0e6189948496472fa85c9f8f835aca"
+    },
+    {
+      "number": 93,
+      "file": "93.wav",
+      "text": "Buyurtma raqami to'qson uch tayyor.",
+      "durationMs": 3202,
+      "bytes": 141274,
+      "sha256": "05dae4ca67d09d39ec4c43a0fe01bfab6416050b72450cb0f377813df238fd2e"
+    },
+    {
+      "number": 94,
+      "file": "94.wav",
+      "text": "Buyurtma raqami to'qson to'rt tayyor.",
+      "durationMs": 3202,
+      "bytes": 141274,
+      "sha256": "fb1418e2e3eff383aded1951999d5eb366be0b3b7360bb8a4c6ea96d2d7b386d"
+    },
+    {
+      "number": 95,
+      "file": "95.wav",
+      "text": "Buyurtma raqami to'qson besh tayyor.",
+      "durationMs": 3005,
+      "bytes": 132570,
+      "sha256": "d212fd343dfa244137bdddb7d24a18c70d29a05949e81edac6390f1b398365a0"
+    },
+    {
+      "number": 96,
+      "file": "96.wav",
+      "text": "Buyurtma raqami to'qson olti tayyor.",
+      "durationMs": 3504,
+      "bytes": 154586,
+      "sha256": "59067f4417fbc73020c9a5318129a742d597a4fed620f7a83bfad6d43f51a9ae"
+    },
+    {
+      "number": 97,
+      "file": "97.wav",
+      "text": "Buyurtma raqami to'qson yetti tayyor.",
+      "durationMs": 3144,
+      "bytes": 138714,
+      "sha256": "1ccd28ad9ab7f364ac591292bedb0fe1cfa887f3130d119c7134f0695fad0784"
+    },
+    {
+      "number": 98,
+      "file": "98.wav",
+      "text": "Buyurtma raqami to'qson sakkiz tayyor.",
+      "durationMs": 3307,
+      "bytes": 145882,
+      "sha256": "10e1890ae13552b6ef8662d58eaa982451ef9234b70cdbfcef5982ae5579d244"
+    },
+    {
+      "number": 99,
+      "file": "99.wav",
+      "text": "Buyurtma raqami to'qson to'qqiz tayyor.",
+      "durationMs": 3330,
+      "bytes": 146906,
+      "sha256": "b1ec845c184145b942dc634408686309b8c43da5445cc6cccbe0da066a6aaf36"
+    },
+    {
+      "number": 100,
+      "file": "100.wav",
+      "text": "Buyurtma raqami bir yuz tayyor.",
+      "durationMs": 2761,
+      "bytes": 121818,
+      "sha256": "93ea665ed5e7aa3f696f0ee09e8a7e95a75f49df1f88d40cc6cb1b7ef42a337a"
+    },
+    {
+      "number": 101,
+      "file": "101.wav",
+      "text": "Buyurtma raqami bir yuz bir tayyor.",
+      "durationMs": 3017,
+      "bytes": 133082,
+      "sha256": "5c21f3b27ecca5c5203048a9672330ffbdfd5bffc88c6fbb6a57870d19a28a76"
+    },
+    {
+      "number": 102,
+      "file": "102.wav",
+      "text": "Buyurtma raqami bir yuz ikki tayyor.",
+      "durationMs": 3121,
+      "bytes": 137690,
+      "sha256": "e2f2c054e16c2eed4015fc2bc78ca2e503d7905b5ea53fe8dfbef56faa6d87f6"
+    },
+    {
+      "number": 103,
+      "file": "103.wav",
+      "text": "Buyurtma raqami bir yuz uch tayyor.",
+      "durationMs": 3017,
+      "bytes": 133082,
+      "sha256": "8c9885f06a65301156626d667452d9a14f9f739c12a39863d86a9b1e0d0f2107"
+    },
+    {
+      "number": 104,
+      "file": "104.wav",
+      "text": "Buyurtma raqami bir yuz to'rt tayyor.",
+      "durationMs": 3179,
+      "bytes": 140250,
+      "sha256": "1cfdd6a819963fb5cd31adfe5743157dd163365bcd4eae7af768dc6b7e35f934"
+    },
+    {
+      "number": 105,
+      "file": "105.wav",
+      "text": "Buyurtma raqami bir yuz besh tayyor.",
+      "durationMs": 3017,
+      "bytes": 133082,
+      "sha256": "58f73fee77295d0432657748239b25768d4e9db33fe5ec3e70049d6039e83280"
+    },
+    {
+      "number": 106,
+      "file": "106.wav",
+      "text": "Buyurtma raqami bir yuz olti tayyor.",
+      "durationMs": 3365,
+      "bytes": 148442,
+      "sha256": "750c3dee316481d9008921df5af45b6f3b04c7030a4017f35551656c8fba5859"
+    },
+    {
+      "number": 107,
+      "file": "107.wav",
+      "text": "Buyurtma raqami bir yuz yetti tayyor.",
+      "durationMs": 3017,
+      "bytes": 133082,
+      "sha256": "6f893bcdc32131fb751ce13dd30bfe356f5c6d347303ad3ace16382856de4495"
+    },
+    {
+      "number": 108,
+      "file": "108.wav",
+      "text": "Buyurtma raqami bir yuz sakkiz tayyor.",
+      "durationMs": 3121,
+      "bytes": 137690,
+      "sha256": "883e530424cf7fb4e1e4ee0116858b8c40a7ccd7df86996ea72393f3f1fbef64"
+    },
+    {
+      "number": 109,
+      "file": "109.wav",
+      "text": "Buyurtma raqami bir yuz to'qqiz tayyor.",
+      "durationMs": 3156,
+      "bytes": 139226,
+      "sha256": "c73b7a22e3579d13f26e8e3b131a4c98afeba0cda3effa837f814aaeaed2a6ad"
+    },
+    {
+      "number": 110,
+      "file": "110.wav",
+      "text": "Buyurtma raqami bir yuz o'n tayyor.",
+      "durationMs": 3075,
+      "bytes": 135642,
+      "sha256": "7136d6617a2511648bd5bf3e50e41c5fcc8f5c9369c27d640bce2a584ef4e1c1"
+    },
+    {
+      "number": 111,
+      "file": "111.wav",
+      "text": "Buyurtma raqami bir yuz o'n bir tayyor.",
+      "durationMs": 3307,
+      "bytes": 145882,
+      "sha256": "d783c7a0f30f1e509270ed4ab81ee115588f140ad9a9efbe2cd0e65529ee3263"
+    },
+    {
+      "number": 112,
+      "file": "112.wav",
+      "text": "Buyurtma raqami bir yuz o'n ikki tayyor.",
+      "durationMs": 3342,
+      "bytes": 147418,
+      "sha256": "da20bb2ede6bf1e7de6468998a8e4973e322edefca50204d5dde4a651c9388f5"
+    },
+    {
+      "number": 113,
+      "file": "113.wav",
+      "text": "Buyurtma raqami bir yuz o'n uch tayyor.",
+      "durationMs": 3377,
+      "bytes": 148954,
+      "sha256": "e1b7abd157843b22352d373ede2d484be6d986f48afcdef13494265fba2bc520"
+    },
+    {
+      "number": 114,
+      "file": "114.wav",
+      "text": "Buyurtma raqami bir yuz o'n to'rt tayyor.",
+      "durationMs": 3528,
+      "bytes": 155610,
+      "sha256": "07b3d539fafc6afe2e39e65b053f1dba0d3ff4579c2d0e542c0676f8102b840d"
+    },
+    {
+      "number": 115,
+      "file": "115.wav",
+      "text": "Buyurtma raqami bir yuz o'n besh tayyor.",
+      "durationMs": 3388,
+      "bytes": 149466,
+      "sha256": "e88240ecc224deac432a672e904aeac93df2b4dec9b54fc24c0b1c7cf547a1a7"
+    },
+    {
+      "number": 116,
+      "file": "116.wav",
+      "text": "Buyurtma raqami bir yuz o'n olti tayyor.",
+      "durationMs": 3470,
+      "bytes": 153050,
+      "sha256": "dbcba4678b8bc25884e3e0145a6dfedbd78d60750591434eda577aa4034000b1"
+    },
+    {
+      "number": 117,
+      "file": "117.wav",
+      "text": "Buyurtma raqami bir yuz o'n yetti tayyor.",
+      "durationMs": 3481,
+      "bytes": 153562,
+      "sha256": "684725fbd2b1c25ddcb92ca618f8b4129c608c70064f03c0a18a6d35416e9e6d"
+    },
+    {
+      "number": 118,
+      "file": "118.wav",
+      "text": "Buyurtma raqami bir yuz o'n sakkiz tayyor.",
+      "durationMs": 3516,
+      "bytes": 155098,
+      "sha256": "fbe3697cdd3eabc381683928e03b13c1336a68d0d39875a756a5462e2545176c"
+    },
+    {
+      "number": 119,
+      "file": "119.wav",
+      "text": "Buyurtma raqami bir yuz o'n to'qqiz tayyor.",
+      "durationMs": 3539,
+      "bytes": 156122,
+      "sha256": "1f3a4f6ade519cd145a9fbd1ae76bad059b0b0163bde1d83b1429926d47cedc7"
+    },
+    {
+      "number": 120,
+      "file": "120.wav",
+      "text": "Buyurtma raqami bir yuz yigirma tayyor.",
+      "durationMs": 3005,
+      "bytes": 132570,
+      "sha256": "f801cc401b8b08591e805bc6e48bb629491bf86f294d2676fd61a8668d0ea132"
+    },
+    {
+      "number": 121,
+      "file": "121.wav",
+      "text": "Buyurtma raqami bir yuz yigirma bir tayyor.",
+      "durationMs": 3319,
+      "bytes": 146394,
+      "sha256": "ea93a58b3ac5420a31fba7ca94f650090908c0a79655f10634aa252411f4a9b9"
+    },
+    {
+      "number": 122,
+      "file": "122.wav",
+      "text": "Buyurtma raqami bir yuz yigirma ikki tayyor.",
+      "durationMs": 3562,
+      "bytes": 157146,
+      "sha256": "c5070c5347916ea97c54e574d76e01dab6812afdd07d68586a9f037c579ee40d"
+    },
+    {
+      "number": 123,
+      "file": "123.wav",
+      "text": "Buyurtma raqami bir yuz yigirma uch tayyor.",
+      "durationMs": 3458,
+      "bytes": 152538,
+      "sha256": "27698fcb2e91ceb12db9912e0876e045fea1cbcad89328dd36010b31ac5040a8"
+    },
+    {
+      "number": 124,
+      "file": "124.wav",
+      "text": "Buyurtma raqami bir yuz yigirma to'rt tayyor.",
+      "durationMs": 3562,
+      "bytes": 157146,
+      "sha256": "fb2b634f0479eea80d039f3d3f4e8d01ded297c73d4375b9488182bc0fdf583b"
+    },
+    {
+      "number": 125,
+      "file": "125.wav",
+      "text": "Buyurtma raqami bir yuz yigirma besh tayyor.",
+      "durationMs": 3470,
+      "bytes": 153050,
+      "sha256": "0d55603205c199388ef6687640be1c330ae5c38d68057b29e8578c6df8fc3343"
+    },
+    {
+      "number": 126,
+      "file": "126.wav",
+      "text": "Buyurtma raqami bir yuz yigirma olti tayyor.",
+      "durationMs": 3551,
+      "bytes": 156634,
+      "sha256": "4526aef3cbea0c2b6a4714f429cfe37dae5fcf961eff5cb4648ad8dae997ac50"
+    },
+    {
+      "number": 127,
+      "file": "127.wav",
+      "text": "Buyurtma raqami bir yuz yigirma yetti tayyor.",
+      "durationMs": 3667,
+      "bytes": 161754,
+      "sha256": "afd7686ae13f8ce30213dbd8c233c4df11e66e869696b04275a913892eb6825e"
+    },
+    {
+      "number": 128,
+      "file": "128.wav",
+      "text": "Buyurtma raqami bir yuz yigirma sakkiz tayyor.",
+      "durationMs": 3528,
+      "bytes": 155610,
+      "sha256": "72f4fcdce70866e428ecb34b5ece8c9e1b217cf560f3f9d23510d9278bc1042d"
+    },
+    {
+      "number": 129,
+      "file": "129.wav",
+      "text": "Buyurtma raqami bir yuz yigirma to'qqiz tayyor.",
+      "durationMs": 3458,
+      "bytes": 152538,
+      "sha256": "fd7e38fbf001747b6cebaa8d908026d01c97d4be83c21e37c827f0d1571576c3"
+    },
+    {
+      "number": 130,
+      "file": "130.wav",
+      "text": "Buyurtma raqami bir yuz o'ttiz tayyor.",
+      "durationMs": 3261,
+      "bytes": 143834,
+      "sha256": "e491831710e3c1e039e4c3f268ccb5f0dff53407993d0d2c159f449e03a8955f"
+    },
+    {
+      "number": 131,
+      "file": "131.wav",
+      "text": "Buyurtma raqami bir yuz o'ttiz bir tayyor.",
+      "durationMs": 3342,
+      "bytes": 147418,
+      "sha256": "693feb494fcb0893011d2ba5d883a8b9afcebfb2c9cf64ff0a97e039a443c84c"
+    },
+    {
+      "number": 132,
+      "file": "132.wav",
+      "text": "Buyurtma raqami bir yuz o'ttiz ikki tayyor.",
+      "durationMs": 3655,
+      "bytes": 161242,
+      "sha256": "1c50f4e8bc12e574ecc1b05dd6a633f10bad160d14c3130943f8a5095b885346"
+    },
+    {
+      "number": 133,
+      "file": "133.wav",
+      "text": "Buyurtma raqami bir yuz o'ttiz uch tayyor.",
+      "durationMs": 3493,
+      "bytes": 154074,
+      "sha256": "5022a9bdd9aa8985a0b940898e9d785dfac04cb3eeb211c0104810322e9c83b3"
+    },
+    {
+      "number": 134,
+      "file": "134.wav",
+      "text": "Buyurtma raqami bir yuz o'ttiz to'rt tayyor.",
+      "durationMs": 4027,
+      "bytes": 177626,
+      "sha256": "f58e5872169094511b6d36ad45543c0086e7fd26c369557556dce34e578f4577"
+    },
+    {
+      "number": 135,
+      "file": "135.wav",
+      "text": "Buyurtma raqami bir yuz o'ttiz besh tayyor.",
+      "durationMs": 3644,
+      "bytes": 160730,
+      "sha256": "f29356c70ad44a75aff27c8582f2054811b1765c83a4fff5bc50e52ccb9b6c55"
+    },
+    {
+      "number": 136,
+      "file": "136.wav",
+      "text": "Buyurtma raqami bir yuz o'ttiz olti tayyor.",
+      "durationMs": 3760,
+      "bytes": 165850,
+      "sha256": "a0ef863475f15e2aafddb08e84513eeff378c1ed6a8e2708eaefe5b2a2097d56"
+    },
+    {
+      "number": 137,
+      "file": "137.wav",
+      "text": "Buyurtma raqami bir yuz o'ttiz yetti tayyor.",
+      "durationMs": 3806,
+      "bytes": 167898,
+      "sha256": "0fd30ef8fa3f99a546fe5d0a2db7dc4bfa7e74021b8fd8bfeb04a7c682a83943"
+    },
+    {
+      "number": 138,
+      "file": "138.wav",
+      "text": "Buyurtma raqami bir yuz o'ttiz sakkiz tayyor.",
+      "durationMs": 3737,
+      "bytes": 164826,
+      "sha256": "c9c5675f434dfef4abb5e998c5058854a209ea93c0637710fd008f60841c1598"
+    },
+    {
+      "number": 139,
+      "file": "139.wav",
+      "text": "Buyurtma raqami bir yuz o'ttiz to'qqiz tayyor.",
+      "durationMs": 3818,
+      "bytes": 168410,
+      "sha256": "dc2354f29cacffce49182c7b278989b3af9eed0bbcad34371df94240cb1651ce"
+    },
+    {
+      "number": 140,
+      "file": "140.wav",
+      "text": "Buyurtma raqami bir yuz qirq tayyor.",
+      "durationMs": 2843,
+      "bytes": 125402,
+      "sha256": "30944d261e7ef959722d24f54c397f892bf53a15cced620b268f72521ffcfe0f"
+    },
+    {
+      "number": 141,
+      "file": "141.wav",
+      "text": "Buyurtma raqami bir yuz qirq bir tayyor.",
+      "durationMs": 3272,
+      "bytes": 144346,
+      "sha256": "f70bf4940402c229d8036d4f685004da1e026c7e10c734512e4346a13abd3597"
+    },
+    {
+      "number": 142,
+      "file": "142.wav",
+      "text": "Buyurtma raqami bir yuz qirq ikki tayyor.",
+      "durationMs": 3470,
+      "bytes": 153050,
+      "sha256": "185f90fb224f7944b0ce31ac7d50b1d78fb3561797dbff8061aa8fe8527d93b1"
+    },
+    {
+      "number": 143,
+      "file": "143.wav",
+      "text": "Buyurtma raqami bir yuz qirq uch tayyor.",
+      "durationMs": 3307,
+      "bytes": 145882,
+      "sha256": "8e92a33ce3e07f64b377000e6cd2f2076fe1d0be7390943da5c82b27a8ee6ab1"
+    },
+    {
+      "number": 144,
+      "file": "144.wav",
+      "text": "Buyurtma raqami bir yuz qirq to'rt tayyor.",
+      "durationMs": 3458,
+      "bytes": 152538,
+      "sha256": "622f6a0eff2dc28ad7333bed1809d8fcf2c6a35d949dca7489c449f23e999794"
+    },
+    {
+      "number": 145,
+      "file": "145.wav",
+      "text": "Buyurtma raqami bir yuz qirq besh tayyor.",
+      "durationMs": 3284,
+      "bytes": 144858,
+      "sha256": "34c8c70a16d6a37c760790f7677f20eda90bbb494c6bfffd83b2fa075622a6a2"
+    },
+    {
+      "number": 146,
+      "file": "146.wav",
+      "text": "Buyurtma raqami bir yuz qirq olti tayyor.",
+      "durationMs": 3435,
+      "bytes": 151514,
+      "sha256": "cf4b26617c57922f2fbb2301d99cde51458703ec39b90dcf9cdcb55b650b7d2b"
+    },
+    {
+      "number": 147,
+      "file": "147.wav",
+      "text": "Buyurtma raqami bir yuz qirq yetti tayyor.",
+      "durationMs": 3655,
+      "bytes": 161242,
+      "sha256": "688db038cae53809215a19961d7a499521b0e29677eb2b794ca98b22e5df0a47"
+    },
+    {
+      "number": 148,
+      "file": "148.wav",
+      "text": "Buyurtma raqami bir yuz qirq sakkiz tayyor.",
+      "durationMs": 3446,
+      "bytes": 152026,
+      "sha256": "1a10ad9b2f23cad0c79fed02ee30a2203791c000341fddffcf567f6302200837"
+    },
+    {
+      "number": 149,
+      "file": "149.wav",
+      "text": "Buyurtma raqami bir yuz qirq to'qqiz tayyor.",
+      "durationMs": 3679,
+      "bytes": 162266,
+      "sha256": "5c9c2dd2e02ca8d4ccdc499836cbf3031f125723b52c2cb4bed2ae90a23545bc"
+    },
+    {
+      "number": 150,
+      "file": "150.wav",
+      "text": "Buyurtma raqami bir yuz ellik tayyor.",
+      "durationMs": 3075,
+      "bytes": 135642,
+      "sha256": "e210a745a8a46b1d09f065c1815a7a6cd2646d9efd450c16bf97dcc04e5918dc"
+    },
+    {
+      "number": 151,
+      "file": "151.wav",
+      "text": "Buyurtma raqami bir yuz ellik bir tayyor.",
+      "durationMs": 3562,
+      "bytes": 157146,
+      "sha256": "793c5184695490ca0c35070556f34de24382268a882c00a0878727e9ee78e19a"
+    },
+    {
+      "number": 152,
+      "file": "152.wav",
+      "text": "Buyurtma raqami bir yuz ellik ikki tayyor.",
+      "durationMs": 3725,
+      "bytes": 164314,
+      "sha256": "955f07d04fa01e195c0876819edcc90f7a958357fec7651352ccfbd90ca07165"
+    },
+    {
+      "number": 153,
+      "file": "153.wav",
+      "text": "Buyurtma raqami bir yuz ellik uch tayyor.",
+      "durationMs": 3458,
+      "bytes": 152538,
+      "sha256": "94988504d79ef80e6c2099f4f2b267578a506a9b89b41f237b052fd14fe96cfb"
+    },
+    {
+      "number": 154,
+      "file": "154.wav",
+      "text": "Buyurtma raqami bir yuz ellik to'rt tayyor.",
+      "durationMs": 3737,
+      "bytes": 164826,
+      "sha256": "d99f5190b6bf0733306f234806d1b0e24a8b397bb32e12b0ae3d592e3c955fd0"
+    },
+    {
+      "number": 155,
+      "file": "155.wav",
+      "text": "Buyurtma raqami bir yuz ellik besh tayyor.",
+      "durationMs": 3632,
+      "bytes": 160218,
+      "sha256": "9accbf10002637e5d451ad00eb8c44ed176c9da28bb890207accefc7d805e5e2"
+    },
+    {
+      "number": 156,
+      "file": "156.wav",
+      "text": "Buyurtma raqami bir yuz ellik olti tayyor.",
+      "durationMs": 3818,
+      "bytes": 168410,
+      "sha256": "c6172718d3a36977897add5fdac3668339e19a00827a04bd850ae00c9f269ad2"
+    },
+    {
+      "number": 157,
+      "file": "157.wav",
+      "text": "Buyurtma raqami bir yuz ellik yetti tayyor.",
+      "durationMs": 3760,
+      "bytes": 165850,
+      "sha256": "fbc74647284a1f301ac01331e3e7897a8f4671211c3d9e52c37108c81fffb10b"
+    },
+    {
+      "number": 158,
+      "file": "158.wav",
+      "text": "Buyurtma raqami bir yuz ellik sakkiz tayyor.",
+      "durationMs": 3760,
+      "bytes": 165850,
+      "sha256": "b8e48c3ea2f1809a0891caaf9dabf8b085a0f691de09abe657c68d49ebd57e87"
+    },
+    {
+      "number": 159,
+      "file": "159.wav",
+      "text": "Buyurtma raqami bir yuz ellik to'qqiz tayyor.",
+      "durationMs": 3620,
+      "bytes": 159706,
+      "sha256": "d7af1f8ee0f6f580db0c42339e573eb385a2844b523e85c0bf3ec1f6d792f4b4"
+    },
+    {
+      "number": 160,
+      "file": "160.wav",
+      "text": "Buyurtma raqami bir yuz oltmish tayyor.",
+      "durationMs": 3179,
+      "bytes": 140250,
+      "sha256": "8b37167bf838ee9ff0628b49b57bff36b895e8800cdef9bd111492a8f34f5b8e"
+    },
+    {
+      "number": 161,
+      "file": "161.wav",
+      "text": "Buyurtma raqami bir yuz oltmish bir tayyor.",
+      "durationMs": 3620,
+      "bytes": 159706,
+      "sha256": "1f67b7c76ccd82fd6317521efc82b42e201e392e953ea8fe6f323e39c4722d94"
+    },
+    {
+      "number": 162,
+      "file": "162.wav",
+      "text": "Buyurtma raqami bir yuz oltmish ikki tayyor.",
+      "durationMs": 3841,
+      "bytes": 169434,
+      "sha256": "e3ad4e83779246adf2dcb19e07f5d530ce843a10d8c34be41613717a3c22bbf2"
+    },
+    {
+      "number": 163,
+      "file": "163.wav",
+      "text": "Buyurtma raqami bir yuz oltmish uch tayyor.",
+      "durationMs": 3760,
+      "bytes": 165850,
+      "sha256": "247d71ce9749996cb3e89d6c6aab61302b9b7f8ce84d31e182d1c8be4b572368"
+    },
+    {
+      "number": 164,
+      "file": "164.wav",
+      "text": "Buyurtma raqami bir yuz oltmish to'rt tayyor.",
+      "durationMs": 4015,
+      "bytes": 177114,
+      "sha256": "be3aa7b0d42050cf3f953afc562a8668fcffec424bcb36a3336b09ce431f1cb1"
+    },
+    {
+      "number": 165,
+      "file": "165.wav",
+      "text": "Buyurtma raqami bir yuz oltmish besh tayyor.",
+      "durationMs": 3725,
+      "bytes": 164314,
+      "sha256": "33c40c60d667fb6c96a87bb44f14219ef0da870e2b007b9e9a6ea8409bf9f4a6"
+    },
+    {
+      "number": 166,
+      "file": "166.wav",
+      "text": "Buyurtma raqami bir yuz oltmish olti tayyor.",
+      "durationMs": 3876,
+      "bytes": 170970,
+      "sha256": "79689bae774461f3ab8515517e03e62f8931996dfac5bf1ff344fa68e9d1fd35"
+    },
+    {
+      "number": 167,
+      "file": "167.wav",
+      "text": "Buyurtma raqami bir yuz oltmish yetti tayyor.",
+      "durationMs": 3853,
+      "bytes": 169946,
+      "sha256": "9339796e01e365b76e82187ff7128898fdf82c1cbd859f439b0338f21fdf6722"
+    },
+    {
+      "number": 168,
+      "file": "168.wav",
+      "text": "Buyurtma raqami bir yuz oltmish sakkiz tayyor.",
+      "durationMs": 3911,
+      "bytes": 172506,
+      "sha256": "3554edf4f7aee05f95e0751380a56a76b50a394781bfa8a18d519f372aca8beb"
+    },
+    {
+      "number": 169,
+      "file": "169.wav",
+      "text": "Buyurtma raqami bir yuz oltmish to'qqiz tayyor.",
+      "durationMs": 3760,
+      "bytes": 165850,
+      "sha256": "856d78ee08bc655acb1cba6fdd5deb01cca3959ffc716798b34a826e41ede9ff"
+    },
+    {
+      "number": 170,
+      "file": "170.wav",
+      "text": "Buyurtma raqami bir yuz yetmish tayyor.",
+      "durationMs": 3179,
+      "bytes": 140250,
+      "sha256": "fe2fdd85f2937e7a54fb8f1fbc6a82db2e2306549f56d74b4d6d219d4f2f4aa0"
+    },
+    {
+      "number": 171,
+      "file": "171.wav",
+      "text": "Buyurtma raqami bir yuz yetmish bir tayyor.",
+      "durationMs": 3516,
+      "bytes": 155098,
+      "sha256": "1a6ac57e3e48e7dc658f922b1530676c27ef00b8d038ff67cb48e3cebc6c3935"
+    },
+    {
+      "number": 172,
+      "file": "172.wav",
+      "text": "Buyurtma raqami bir yuz yetmish ikki tayyor.",
+      "durationMs": 3609,
+      "bytes": 159194,
+      "sha256": "07bdc04d27c2f268150f94548c7327b3a03a76fe23e0b29e8e6c55b0c7c0dbc9"
+    },
+    {
+      "number": 173,
+      "file": "173.wav",
+      "text": "Buyurtma raqami bir yuz yetmish uch tayyor.",
+      "durationMs": 3504,
+      "bytes": 154586,
+      "sha256": "f51f5be61914fbfdde7493a65bed08a8e222c8501c5c8a4701ef89536d3d2e67"
+    },
+    {
+      "number": 174,
+      "file": "174.wav",
+      "text": "Buyurtma raqami bir yuz yetmish to'rt tayyor.",
+      "durationMs": 3609,
+      "bytes": 159194,
+      "sha256": "9ab1f317849e2e54745e17f62f63ad64293dae5ec9aa5a42b235a5eb867c6f45"
+    },
+    {
+      "number": 175,
+      "file": "175.wav",
+      "text": "Buyurtma raqami bir yuz yetmish besh tayyor.",
+      "durationMs": 3272,
+      "bytes": 144346,
+      "sha256": "cab6b958f2e52d19960beb257e51cbf8fa13d3a2a8fc5b80a84a1b1ef279b9f6"
+    },
+    {
+      "number": 176,
+      "file": "176.wav",
+      "text": "Buyurtma raqami bir yuz yetmish olti tayyor.",
+      "durationMs": 3725,
+      "bytes": 164314,
+      "sha256": "d01b74af84536fb38500823a893b96954aa88332e4502828902a35d5f3a80f55"
+    },
+    {
+      "number": 177,
+      "file": "177.wav",
+      "text": "Buyurtma raqami bir yuz yetmish yetti tayyor.",
+      "durationMs": 3551,
+      "bytes": 156634,
+      "sha256": "278610e6467beda7e6022509231e5b1cb4a81f0653912d77c19f2ae12aac6b63"
+    },
+    {
+      "number": 178,
+      "file": "178.wav",
+      "text": "Buyurtma raqami bir yuz yetmish sakkiz tayyor.",
+      "durationMs": 3458,
+      "bytes": 152538,
+      "sha256": "d881c21092b5cc3cd3d9146baf58292f08de3f678b21d72eef5b7a1cff9b8499"
+    },
+    {
+      "number": 179,
+      "file": "179.wav",
+      "text": "Buyurtma raqami bir yuz yetmish to'qqiz tayyor.",
+      "durationMs": 3620,
+      "bytes": 159706,
+      "sha256": "04684e504cb19d467971a5d0b04f6c5b861e233d06e32e7734999615ccf9ba8e"
+    },
+    {
+      "number": 180,
+      "file": "180.wav",
+      "text": "Buyurtma raqami bir yuz sakson tayyor.",
+      "durationMs": 3156,
+      "bytes": 139226,
+      "sha256": "a041796ef70849807164e58aaf97c1a374c6b08e479b1a0329befea141e12579"
+    },
+    {
+      "number": 181,
+      "file": "181.wav",
+      "text": "Buyurtma raqami bir yuz sakson bir tayyor.",
+      "durationMs": 3272,
+      "bytes": 144346,
+      "sha256": "380a32c34e658fa43dcc30746b39b749c9c6265a5c3507909736fa284e0c0f2c"
+    },
+    {
+      "number": 182,
+      "file": "182.wav",
+      "text": "Buyurtma raqami bir yuz sakson ikki tayyor.",
+      "durationMs": 3528,
+      "bytes": 155610,
+      "sha256": "b7fdce9c02b3dfc2b27a59e2c5265c4c8fdcae64b97ba381f061c244be0ca3ea"
+    },
+    {
+      "number": 183,
+      "file": "183.wav",
+      "text": "Buyurtma raqami bir yuz sakson uch tayyor.",
+      "durationMs": 3307,
+      "bytes": 145882,
+      "sha256": "37abad313883826c303f690d5d4ed15f85fdf489844bfc2d047f814af4620d27"
+    },
+    {
+      "number": 184,
+      "file": "184.wav",
+      "text": "Buyurtma raqami bir yuz sakson to'rt tayyor.",
+      "durationMs": 3597,
+      "bytes": 158682,
+      "sha256": "87355c974b5996709ee7626d088538458762781c0553d37c5fc30b80c5ea3df5"
+    },
+    {
+      "number": 185,
+      "file": "185.wav",
+      "text": "Buyurtma raqami bir yuz sakson besh tayyor.",
+      "durationMs": 3679,
+      "bytes": 162266,
+      "sha256": "69bca3b97186da3a20be250fc0d958cc04e4f888a90e8adfd9cc2b370f3d1641"
+    },
+    {
+      "number": 186,
+      "file": "186.wav",
+      "text": "Buyurtma raqami bir yuz sakson olti tayyor.",
+      "durationMs": 3899,
+      "bytes": 171994,
+      "sha256": "18996fc0361ca9add2c3ad6f9da4e6086984c344dacc5926699c6b4e86932333"
+    },
+    {
+      "number": 187,
+      "file": "187.wav",
+      "text": "Buyurtma raqami bir yuz sakson yetti tayyor.",
+      "durationMs": 3644,
+      "bytes": 160730,
+      "sha256": "7b0c70aded724909dabd0a023bf9b310986632eb0db056755853d2d19a7a43eb"
+    },
+    {
+      "number": 188,
+      "file": "188.wav",
+      "text": "Buyurtma raqami bir yuz sakson sakkiz tayyor.",
+      "durationMs": 3644,
+      "bytes": 160730,
+      "sha256": "0b1dbc69098f8ba902ab5cd90b7ff9aa2d557b8b5098e40b0909615684a4e292"
+    },
+    {
+      "number": 189,
+      "file": "189.wav",
+      "text": "Buyurtma raqami bir yuz sakson to'qqiz tayyor.",
+      "durationMs": 3957,
+      "bytes": 174554,
+      "sha256": "e07175bf7759c0b31b6702df772b4264cbab65482f8ea7c3da3c8d4af43ed2f6"
+    },
+    {
+      "number": 190,
+      "file": "190.wav",
+      "text": "Buyurtma raqami bir yuz to'qson tayyor.",
+      "durationMs": 3202,
+      "bytes": 141274,
+      "sha256": "24ab0b80f1518ed55bbf55e50d90aef7f440034b13fe6d85344252bc8e41ba2f"
+    },
+    {
+      "number": 191,
+      "file": "191.wav",
+      "text": "Buyurtma raqami bir yuz to'qson bir tayyor.",
+      "durationMs": 3342,
+      "bytes": 147418,
+      "sha256": "8901d81efaccdc100a97c0768f7998d0f4f3f9c7bdef21da79a2d98e86966e55"
+    },
+    {
+      "number": 192,
+      "file": "192.wav",
+      "text": "Buyurtma raqami bir yuz to'qson ikki tayyor.",
+      "durationMs": 3562,
+      "bytes": 157146,
+      "sha256": "90633020f8443532b5f96dd51e22d2b9b53a3ffa7b0345433a21dfcb9d8ed9ae"
+    },
+    {
+      "number": 193,
+      "file": "193.wav",
+      "text": "Buyurtma raqami bir yuz to'qson uch tayyor.",
+      "durationMs": 3574,
+      "bytes": 157658,
+      "sha256": "c02b1e6a99937142dab088cfcbf9c8dfcce90181c218c117ae82e886a6b472f5"
+    },
+    {
+      "number": 194,
+      "file": "194.wav",
+      "text": "Buyurtma raqami bir yuz to'qson to'rt tayyor.",
+      "durationMs": 3679,
+      "bytes": 162266,
+      "sha256": "8b56ac9466c6734549c91659bd90886ca46bbd31bda7296ba4295baee81e0e57"
+    },
+    {
+      "number": 195,
+      "file": "195.wav",
+      "text": "Buyurtma raqami bir yuz to'qson besh tayyor.",
+      "durationMs": 3609,
+      "bytes": 159194,
+      "sha256": "281ec85177b489b6a7bcb146f6eee780c431deb6a332d16341f2cd05279af8d0"
+    },
+    {
+      "number": 196,
+      "file": "196.wav",
+      "text": "Buyurtma raqami bir yuz to'qson olti tayyor.",
+      "durationMs": 3644,
+      "bytes": 160730,
+      "sha256": "53fad5f0b51c3b160a569b3f72d2fad5813cffaf67ce1a6abf7f6f3a031a9c2a"
+    },
+    {
+      "number": 197,
+      "file": "197.wav",
+      "text": "Buyurtma raqami bir yuz to'qson yetti tayyor.",
+      "durationMs": 3725,
+      "bytes": 164314,
+      "sha256": "71d07c0b899c18a95ecd23fc127dfaae3771af77eedd8e2900487de68ae6ad9c"
+    },
+    {
+      "number": 198,
+      "file": "198.wav",
+      "text": "Buyurtma raqami bir yuz to'qson sakkiz tayyor.",
+      "durationMs": 3679,
+      "bytes": 162266,
+      "sha256": "f5396d1954aa008648648aaceff88d3b17554f6222c16ff29b9f517d9281f363"
+    },
+    {
+      "number": 199,
+      "file": "199.wav",
+      "text": "Buyurtma raqami bir yuz to'qson to'qqiz tayyor.",
+      "durationMs": 3690,
+      "bytes": 162778,
+      "sha256": "c89e8f8795d52545ab6dae99efed0c0e0bcba69cd0ed662fb2d8e6f52b111157"
+    },
+    {
+      "number": 200,
+      "file": "200.wav",
+      "text": "Buyurtma raqami ikki yuz tayyor.",
+      "durationMs": 2819,
+      "bytes": 124378,
+      "sha256": "c1bac49c426d9ffc600de824bd0b738abb2760dc0a2446e7ef16e52ee7df7744"
+    }
+  ]
+}

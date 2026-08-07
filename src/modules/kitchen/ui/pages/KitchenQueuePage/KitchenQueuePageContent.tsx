@@ -3,10 +3,12 @@ import { alpha, Box, Button, Stack, Typography, useMediaQuery } from '@mui/mater
 import { useTheme } from '@mui/material/styles';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { toast } from 'sonner';
 
 import { canCancelKitchenOrders, canManageKitchenOrders, usePosSession } from 'modules/auth';
 import {
   useKitchenQueueQuery,
+  useReplayKitchenAnnouncementMutation,
   useUpdateKitchenItemStatusMutation,
   useUpdateKitchenTicketStatusMutation,
 } from 'modules/kitchen/application';
@@ -39,6 +41,7 @@ export function KitchenQueuePageContent() {
   const queueQuery = useKitchenQueueQuery();
   const updateTicketStatusMutation = useUpdateKitchenTicketStatusMutation();
   const updateItemStatusMutation = useUpdateKitchenItemStatusMutation();
+  const replayAnnouncementMutation = useReplayKitchenAnnouncementMutation();
   const isInitialLoading = queueQuery.isLoading && !queueQuery.data;
 
   const activeTickets = useMemo(
@@ -225,11 +228,35 @@ export function KitchenQueuePageContent() {
                           </Button>
                         </Stack>
                       ) : selectedTab === 'done' ? (
-                        <Stack direction="row" spacing={0.9} alignItems="center">
-                          <Icon icon={meta.icon} width={20} color={meta.color} />
-                          <Typography variant="body2" color="text.secondary">
-                            {copy.completedOrders}
-                          </Typography>
+                        <Stack spacing={1.1}>
+                          <Stack direction="row" spacing={0.9} alignItems="center">
+                            <Icon icon={meta.icon} width={20} color={meta.color} />
+                            <Typography variant="body2" color="text.secondary">
+                              {copy.completedOrders}
+                            </Typography>
+                          </Stack>
+                          {canUpdateKitchenOrders && ticket.canAnnounce !== false ? (
+                            <Button
+                              variant="outlined"
+                              disabled={
+                                replayAnnouncementMutation.isPending &&
+                                replayAnnouncementMutation.variables?.ticketId === ticket.id
+                              }
+                              startIcon={<Icon icon="solar:volume-loud-bold" width={20} />}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                replayAnnouncementMutation.mutate(
+                                  { ticketId: ticket.id },
+                                  {
+                                    onSuccess: () => toast.success(copy.announcementQueued),
+                                    onError: () => toast.error(copy.announcementFailed),
+                                  },
+                                );
+                              }}
+                              sx={{ minHeight: 44, borderRadius: '14px', fontWeight: 700 }}>
+                              {copy.announceOnTv}
+                            </Button>
+                          ) : null}
                         </Stack>
                       ) : null}
                     </Stack>

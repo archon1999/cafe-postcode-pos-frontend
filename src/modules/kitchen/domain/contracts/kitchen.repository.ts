@@ -17,6 +17,7 @@ export interface KitchenRepository {
   claimTvMonitorPairing(pairingId: string, claimToken: string): Promise<TvMonitorPairingClaimResult>;
   getTvMonitorQueue(token: string): Promise<KitchenMonitorQueue>;
   reportTvMonitorDiagnostic(token: string, diagnostic: TvMonitorDiagnostic): Promise<void>;
+  replayTicketAnnouncement(ticketId: string): Promise<void>;
   updateTicketStatus(ticketId: string, status: KitchenTicketStatus): Promise<void>;
   updateItemStatus(itemId: string, status: KitchenItemStatus): Promise<void>;
 }

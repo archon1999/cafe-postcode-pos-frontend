@@ -1,7 +1,9 @@
 import { Box, IconButton, Typography, alpha } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
 
-import type { KitchenMonitorQueue, KitchenMonitorTicket } from 'modules/kitchen/domain';
+import type { KitchenAnnouncement, KitchenMonitorQueue, KitchenMonitorTicket } from 'modules/kitchen/domain';
+
+import { ReadyOrderSpotlight } from './ReadyOrderSpotlight';
 
 const ITEMS_PER_PAGE = 12;
 const PAGE_ROTATION_MS = 8000;
@@ -54,12 +56,14 @@ function CompactColumn({
   color,
   isFullscreen = false,
   onToggleFullscreen,
+  highlightedIds,
 }: {
   title: string;
   items: KitchenMonitorTicket[];
   color: string;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
+  highlightedIds: Set<string>;
 }) {
   const { pageCount, pageIndex, visibleItems } = usePagedTickets(items);
   const itemCount = visibleItems.length;
@@ -150,12 +154,17 @@ function CompactColumn({
           <Box
             key={ticket.id}
             data-monitor-ticket-id={ticket.id}
+            data-highlighted={highlightedIds.has(ticket.id) ? 'true' : 'false'}
             sx={{
               minWidth: 0,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               px: '16px',
+              borderRadius: 4,
+              backgroundColor: highlightedIds.has(ticket.id) ? alpha(color, 0.1) : 'transparent',
+              boxShadow: highlightedIds.has(ticket.id) ? `0 0 42px ${alpha(color, 0.22)}` : 'none',
+              transition: 'background-color 180ms ease, box-shadow 180ms ease',
             }}>
             <Typography
               sx={{
@@ -195,7 +204,15 @@ function CompactColumn({
   );
 }
 
-export function LightCompactMonitorVariant({ monitorData }: { monitorData: KitchenMonitorQueue }) {
+export function LightCompactMonitorVariant({
+  monitorData,
+  activeAnnouncement,
+  highlightedDoneIds,
+}: {
+  monitorData: KitchenMonitorQueue;
+  activeAnnouncement: KitchenAnnouncement | null;
+  highlightedDoneIds: Set<string>;
+}) {
   const viewport = useTvViewport();
   const [isFullscreen, setIsFullscreen] = useState(() => Boolean(document.fullscreenElement));
 
@@ -252,15 +269,24 @@ export function LightCompactMonitorVariant({ monitorData }: { monitorData: Kitch
             gap: '1px',
             backgroundColor: '#d7dce0',
           }}>
-          <CompactColumn title="Tayyorlanayapti" items={monitorData.preparing} color={PREPARING_COLOR} />
+          <CompactColumn
+            title="Tayyorlanayapti"
+            items={monitorData.preparing}
+            color={PREPARING_COLOR}
+            highlightedIds={new Set<string>()}
+          />
           <CompactColumn
             title="Tayyor bo'lganlar"
             items={monitorData.recentlyDone}
             color={READY_COLOR}
             isFullscreen={isFullscreen}
             onToggleFullscreen={() => void toggleFullscreen()}
+            highlightedIds={highlightedDoneIds}
           />
         </Box>
+        {activeAnnouncement ? (
+          <ReadyOrderSpotlight announcement={activeAnnouncement} compactLayout={false} dark={false} />
+        ) : null}
       </Box>
     </Box>
   );

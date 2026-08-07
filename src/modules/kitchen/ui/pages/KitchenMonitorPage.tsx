@@ -1,12 +1,19 @@
 import { Box, IconButton, Stack, Typography, alpha, keyframes } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { usePosSession } from 'modules/auth';
 import { useKitchenMonitorQuery } from 'modules/kitchen/application';
-import type { KitchenMonitorQueue, KitchenMonitorTicket } from 'modules/kitchen/domain';
+import type {
+  KitchenAnnouncement,
+  KitchenMonitorQueue,
+  KitchenMonitorTicket,
+  TvMonitorDiagnosticEvent,
+} from 'modules/kitchen/domain';
 
 import { LightCompactMonitorVariant } from '../components/monitor-variants/LightCompactMonitorVariant';
+import { ReadyOrderSpotlight } from '../components/monitor-variants/ReadyOrderSpotlight';
+import { useMonitorAnnouncementPlayback } from '../shared/useMonitorAnnouncementPlayback';
 
 const readyRowEntrance = keyframes`
   0% {
@@ -29,45 +36,6 @@ const readyRowEntrance = keyframes`
   }
 `;
 
-const readySpotlightEntrance = keyframes`
-  0% {
-    opacity: 0;
-    transform: translate3d(-14vw, 0, 0) scale(0.72);
-    filter: blur(3px);
-  }
-  18% {
-    opacity: 1;
-    transform: translate3d(0, 0, 0) scale(1);
-    filter: blur(0);
-  }
-  42% {
-    opacity: 1;
-    transform: translate3d(0, 0, 0) scale(1.08);
-    filter: blur(0);
-  }
-  68% {
-    opacity: 1;
-    transform: translate3d(0, 0, 0) scale(1);
-    filter: blur(0);
-  }
-  100% {
-    opacity: 0;
-    transform: translate3d(30vw, 0, 0) scale(0.72);
-    filter: blur(2px);
-  }
-`;
-
-const readySpotlightGlow = keyframes`
-  0%, 100% {
-    opacity: 0.38;
-    transform: scale(0.82);
-  }
-  42% {
-    opacity: 0.86;
-    transform: scale(1.14);
-  }
-`;
-
 const monitorBackgroundDrift = keyframes`
   0% {
     background-position: 46% 0%;
@@ -80,18 +48,12 @@ const monitorBackgroundDrift = keyframes`
   }
 `;
 
-const READY_SPOTLIGHT_DURATION_MS = 2200;
-const READY_SPOTLIGHT_LABEL = 'Tayyor';
 const TV_ITEMS_PER_PAGE = 6;
 const TV_PAGE_ROTATION_MS = 8000;
 const TV_CLOCK_TICK_MS = 30_000;
 const TV_CANVAS_WIDTH = 1920;
 const TV_CANVAS_HEIGHT = 1080;
 const TV_COMPACT_BREAKPOINT = 640;
-
-type BrowserWindow = typeof window & {
-  webkitAudioContext?: typeof AudioContext;
-};
 
 function formatOrderNumber(ticket: KitchenMonitorTicket) {
   return ticket.displayName?.trim() || String(ticket.orderNumber);
@@ -353,103 +315,18 @@ function MonitorColumn({
 function DefaultMonitorVariant({
   monitorData,
   restaurantName,
+  activeAnnouncement,
+  highlightedDoneIds,
 }: {
   monitorData: KitchenMonitorQueue;
   restaurantName?: string;
+  activeAnnouncement: KitchenAnnouncement | null;
+  highlightedDoneIds: Set<string>;
 }) {
   const theme = useTheme();
   const currentTime = useMonitorClock();
   const viewport = useTvViewport();
-  const [highlightedDoneIds, setHighlightedDoneIds] = useState<string[]>([]);
-  const [spotlightTicket, setSpotlightTicket] = useState<KitchenMonitorTicket | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(() => Boolean(document.fullscreenElement));
-  const previousDoneIdsRef = useRef<string[] | null>(null);
-  const clearAnimationTimeoutRef = useRef<number | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const playReadySoundRef = useRef<() => Promise<void>>(async () => undefined);
-
-  playReadySoundRef.current = async () => {
-    const browserWindow = window as BrowserWindow;
-    const AudioContextConstructor = window.AudioContext ?? browserWindow.webkitAudioContext;
-
-    if (!AudioContextConstructor) {
-      return;
-    }
-
-    try {
-      const audioContext = audioContextRef.current ?? new AudioContextConstructor();
-      audioContextRef.current = audioContext;
-
-      if (audioContext.state === 'suspended') {
-        await audioContext.resume();
-      }
-
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-      const startAt = audioContext.currentTime;
-
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(932, startAt);
-      oscillator.frequency.exponentialRampToValueAtTime(784, startAt + 0.18);
-
-      gainNode.gain.setValueAtTime(0.0001, startAt);
-      gainNode.gain.exponentialRampToValueAtTime(0.08, startAt + 0.02);
-      gainNode.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.24);
-
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-
-      oscillator.start(startAt);
-      oscillator.stop(startAt + 0.26);
-    } catch {
-      // Ignore autoplay and output device errors on passive monitor screens.
-    }
-  };
-
-  useEffect(() => {
-    const recentlyDone = monitorData.recentlyDone;
-    const doneIds = recentlyDone.map((ticket) => ticket.id);
-
-    if (previousDoneIdsRef.current === null) {
-      previousDoneIdsRef.current = doneIds;
-      return;
-    }
-
-    const previousIds = new Set(previousDoneIdsRef.current);
-    const newlyDoneTickets = recentlyDone.filter((ticket) => !previousIds.has(ticket.id));
-    const newlyDoneIds = newlyDoneTickets.map((ticket) => ticket.id);
-    previousDoneIdsRef.current = doneIds;
-
-    if (!newlyDoneIds.length) {
-      return;
-    }
-
-    setHighlightedDoneIds(newlyDoneIds);
-    setSpotlightTicket(newlyDoneTickets[0]);
-    void playReadySoundRef.current();
-
-    if (clearAnimationTimeoutRef.current) {
-      window.clearTimeout(clearAnimationTimeoutRef.current);
-    }
-
-    clearAnimationTimeoutRef.current = window.setTimeout(() => {
-      setHighlightedDoneIds([]);
-      setSpotlightTicket(null);
-      clearAnimationTimeoutRef.current = null;
-    }, READY_SPOTLIGHT_DURATION_MS);
-  }, [monitorData.recentlyDone]);
-
-  useEffect(() => {
-    return () => {
-      if (clearAnimationTimeoutRef.current) {
-        window.clearTimeout(clearAnimationTimeoutRef.current);
-      }
-
-      if (audioContextRef.current) {
-        void audioContextRef.current.close().catch(() => undefined);
-      }
-    };
-  }, []);
 
   useEffect(() => {
     const handleFullscreenChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
@@ -624,76 +501,8 @@ function DefaultMonitorVariant({
           </Stack>
         </Stack>
 
-        {spotlightTicket ? (
-          <Box
-            aria-live="polite"
-            data-testid="ready-order-spotlight"
-            sx={{
-              position: 'absolute',
-              inset: 0,
-              zIndex: 3,
-              pointerEvents: 'none',
-              display: 'grid',
-              placeItems: 'center',
-            }}>
-            <Box
-              sx={{
-                position: 'absolute',
-                width: isCompactLayout ? '42vw' : 620,
-                height: isCompactLayout ? '42vw' : 620,
-                minWidth: 260,
-                minHeight: 260,
-                maxWidth: 620,
-                maxHeight: 620,
-                borderRadius: '50%',
-                background: isDark
-                  ? 'radial-gradient(circle, rgba(77, 235, 194, 0.34), rgba(77, 235, 194, 0.08) 48%, transparent 72%)'
-                  : 'radial-gradient(circle, rgba(22, 138, 115, 0.28), rgba(22, 138, 115, 0.08) 50%, transparent 74%)',
-                animation: `${readySpotlightGlow} ${READY_SPOTLIGHT_DURATION_MS}ms ease-out forwards`,
-              }}
-            />
-
-            <Box
-              sx={{
-                position: 'relative',
-                width: isCompactLayout ? '84vw' : 580,
-                minWidth: 260,
-                maxWidth: 680,
-                px: isCompactLayout ? 3.5 : 9,
-                py: isCompactLayout ? 3 : 6.75,
-                borderRadius: isCompactLayout ? 3.25 : 5.25,
-                textAlign: 'center',
-                backgroundColor: isDark ? alpha('#111820', 0.92) : alpha('#fffaf1', 0.94),
-                border: `1px solid ${isDark ? alpha('#7df5d7', 0.36) : alpha('#168a73', 0.28)}`,
-                boxShadow: isDark
-                  ? '0 0 86px rgba(77, 235, 194, 0.34), 0 26px 90px rgba(0, 0, 0, 0.42)'
-                  : '0 0 72px rgba(47, 177, 141, 0.24), 0 26px 90px rgba(69, 47, 20, 0.2)',
-                animation: `${readySpotlightEntrance} ${READY_SPOTLIGHT_DURATION_MS}ms cubic-bezier(0.16, 1, 0.3, 1) forwards`,
-              }}>
-              <Typography
-                sx={{
-                  color: readyTitleColor,
-                  fontSize: isCompactLayout ? 18 : 30,
-                  fontWeight: 800,
-                  lineHeight: 1,
-                  mb: isCompactLayout ? 1.1 : 1.6,
-                  textTransform: 'uppercase',
-                }}>
-                {READY_SPOTLIGHT_LABEL}
-              </Typography>
-              <Typography
-                sx={{
-                  color: rowTextColor,
-                  fontSize: isCompactLayout ? 72 : 168,
-                  fontWeight: 800,
-                  letterSpacing: '-0.04em',
-                  lineHeight: 0.9,
-                  textShadow: isDark ? '0 0 34px rgba(125, 245, 215, 0.28)' : '0 0 26px rgba(47, 177, 141, 0.24)',
-                }}>
-                {formatOrderNumber(spotlightTicket)}
-              </Typography>
-            </Box>
-          </Box>
+        {activeAnnouncement ? (
+          <ReadyOrderSpotlight announcement={activeAnnouncement} compactLayout={isCompactLayout} dark={isDark} />
         ) : null}
 
         <Box
@@ -725,7 +534,7 @@ function DefaultMonitorVariant({
             title="Tayyor bo'lganlar"
             items={monitorData.recentlyDone}
             compactLayout={isCompactLayout}
-            highlightedIds={new Set(highlightedDoneIds)}
+            highlightedIds={highlightedDoneIds}
             titleColor={readyTitleColor}
             dividerColor={dividerColor}
             rowTextColor={rowTextColor}
@@ -745,15 +554,39 @@ function DefaultMonitorVariant({
 export function KitchenMonitorDisplay({
   monitorData,
   restaurantName,
+  onAnnouncementPlayback,
 }: {
   monitorData: KitchenMonitorQueue;
   restaurantName?: string;
+  onAnnouncementPlayback?: (
+    event: Extract<TvMonitorDiagnosticEvent, `announcement_${string}`>,
+    message: string,
+    context: Record<string, unknown>,
+  ) => void;
 }) {
+  const { activeAnnouncement, highlightedDoneIds } = useMonitorAnnouncementPlayback(
+    monitorData,
+    onAnnouncementPlayback,
+  );
+
   if (monitorData.monitorVariant === 'light_compact') {
-    return <LightCompactMonitorVariant monitorData={monitorData} />;
+    return (
+      <LightCompactMonitorVariant
+        monitorData={monitorData}
+        activeAnnouncement={activeAnnouncement}
+        highlightedDoneIds={highlightedDoneIds}
+      />
+    );
   }
 
-  return <DefaultMonitorVariant monitorData={monitorData} restaurantName={restaurantName} />;
+  return (
+    <DefaultMonitorVariant
+      monitorData={monitorData}
+      restaurantName={restaurantName}
+      activeAnnouncement={activeAnnouncement}
+      highlightedDoneIds={highlightedDoneIds}
+    />
+  );
 }
 
 export function KitchenMonitorPage() {
@@ -767,6 +600,7 @@ export function KitchenMonitorPage() {
           monitorVariant: restaurantContext?.posMonitorVariant ?? 'default',
           preparing: [],
           recentlyDone: [],
+          announcements: [],
         }
       }
       restaurantName={restaurantContext?.restaurantName}

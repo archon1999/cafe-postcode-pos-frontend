@@ -90,6 +90,7 @@ describe('POS kitchen characterization', () => {
       items: [{ quantity: 2 }],
     });
     expect(monitor).toEqual({
+      announcements: [],
       monitorVariant: 'light_compact',
       preparing: [{ id: 'ticket-1', orderNumber: 41, displayName: '7', status: 'cooking', completedAt: null }],
       recentlyDone: [

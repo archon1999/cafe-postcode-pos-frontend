@@ -31,3 +31,9 @@ export function useUpdateKitchenItemStatusMutation() {
     onSuccess: invalidateKitchenRelatedQueries,
   });
 }
+
+export function useReplayKitchenAnnouncementMutation() {
+  return useMutation({
+    mutationFn: ({ ticketId }: { ticketId: string }) => kitchenRepository.replayTicketAnnouncement(ticketId),
+  });
+}

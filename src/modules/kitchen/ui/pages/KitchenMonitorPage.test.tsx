@@ -49,6 +49,19 @@ class MockAudioContext {
   }
 }
 
+const audioInstances: MockAudio[] = [];
+
+class MockAudio extends EventTarget {
+  preload = '';
+  pause = vi.fn();
+  play = vi.fn().mockResolvedValue(undefined);
+
+  constructor(public readonly src: string) {
+    super();
+    audioInstances.push(this);
+  }
+}
+
 function resizeViewport(width: number, height: number) {
   Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
   Object.defineProperty(window, 'innerHeight', { configurable: true, value: height });
@@ -63,7 +76,9 @@ describe('KitchenMonitorPage', () => {
     resizeViewport(1920, 1080);
     useKitchenMonitorQueryMock.mockReset();
     audioContextConstructor.mockClear();
+    audioInstances.length = 0;
     vi.stubGlobal('AudioContext', audioContextConstructor);
+    vi.stubGlobal('Audio', MockAudio);
   });
 
   afterEach(() => {
@@ -247,7 +262,9 @@ describe('KitchenMonitorPage', () => {
 
     await act(async () => {});
 
-    expect(audioContextConstructor).toHaveBeenCalledTimes(1);
+    expect(audioInstances).toHaveLength(1);
+    expect(audioInstances[0].src).toContain('/19.wav');
+    expect(audioInstances[0].play).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('ready-order-spotlight')).toBeTruthy();
     expect(screen.getAllByText('19')).toHaveLength(2);
 
@@ -257,9 +274,11 @@ describe('KitchenMonitorPage', () => {
       .find(Boolean);
     expect(highlightedRow?.getAttribute('data-highlighted')).toBe('true');
 
-    await act(async () => {
-      vi.advanceTimersByTime(2300);
-    });
+    await act(async () => vi.advanceTimersByTime(5000));
+
+    expect(screen.getByTestId('ready-order-spotlight')).toBeTruthy();
+
+    await act(async () => audioInstances[0].dispatchEvent(new Event('ended')));
 
     expect(screen.queryByTestId('ready-order-spotlight')).toBeNull();
     expect(screen.getByText('19').closest('[data-highlighted]')?.getAttribute('data-highlighted')).toBe('false');
@@ -292,19 +311,71 @@ describe('KitchenMonitorPage', () => {
 
     await act(async () => {});
 
-    expect(audioContextConstructor).toHaveBeenCalledTimes(1);
+    expect(audioInstances).toHaveLength(1);
     expect(screen.getByTestId('ready-order-spotlight').textContent).toContain('20');
     expect(screen.getAllByText('20')).toHaveLength(2);
     expect(screen.getAllByText('19')).toHaveLength(1);
 
-    const highlightedOrderNumbers = ['20', '19'];
-    highlightedOrderNumbers.forEach((orderNumber) => {
-      const highlightedRow = screen
-        .getAllByText(orderNumber)
+    expect(
+      screen
+        .getAllByText('20')
         .map((node) => node.closest('[data-highlighted]'))
-        .find(Boolean);
+        .find(Boolean)
+        ?.getAttribute('data-highlighted'),
+    ).toBe('true');
+    expect(screen.getByText('19').closest('[data-highlighted]')?.getAttribute('data-highlighted')).toBe('false');
 
-      expect(highlightedRow?.getAttribute('data-highlighted')).toBe('true');
-    });
+    await act(async () => audioInstances[0].dispatchEvent(new Event('ended')));
+
+    expect(audioInstances).toHaveLength(2);
+    expect(audioInstances[1].src).toContain('/19.wav');
+    expect(screen.getByTestId('ready-order-spotlight').textContent).toContain('19');
+  });
+
+  it('uses the same audio-bound spotlight on the light compact monitor', async () => {
+    useKitchenMonitorQueryMock
+      .mockReturnValueOnce({
+        data: { monitorVariant: 'light_compact', preparing: [], recentlyDone: [], announcements: [] },
+      })
+      .mockReturnValue({
+        data: {
+          monitorVariant: 'light_compact',
+          preparing: [],
+          recentlyDone: [
+            {
+              id: 'done-128',
+              orderId: 'order-128',
+              orderNumber: 3718,
+              displayName: '128',
+              status: 'done',
+              completedAt: '2026-08-06T10:00:00Z',
+            },
+          ],
+          announcements: [
+            {
+              id: 'announcement-128',
+              orderId: 'order-128',
+              orderNumber: 3718,
+              displayName: '128',
+              locale: 'uz',
+              kind: 'auto',
+              createdAt: '2026-08-06T10:00:00Z',
+            },
+          ],
+        },
+      });
+
+    const { rerender } = render(<KitchenMonitorPage />);
+    rerender(<KitchenMonitorPage />);
+    await act(async () => {});
+
+    expect(screen.getByTestId('ready-order-spotlight').textContent).toContain('128');
+    expect(audioInstances[0].src).toContain('/128.wav');
+    expect(document.querySelector('[data-monitor-ticket-id="done-128"]')?.getAttribute('data-highlighted')).toBe(
+      'true',
+    );
+
+    await act(async () => audioInstances[0].dispatchEvent(new Event('ended')));
+    expect(screen.queryByTestId('ready-order-spotlight')).toBeNull();
   });
 });

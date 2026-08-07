@@ -25,5 +25,6 @@ export function mapKitchenMonitorQueue(dto: KitchenMonitorQueueDto): KitchenMoni
     monitorVariant: dto.monitorVariant === 'light_compact' ? 'light_compact' : 'default',
     preparing: dto.preparing.map(mapKitchenMonitorTicket),
     recentlyDone: dto.recentlyDone.map(mapKitchenMonitorTicket),
+    announcements: (dto.announcements ?? []).map((announcement) => ({ ...announcement })),
   };
 }

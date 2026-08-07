@@ -10,6 +10,7 @@
     "prod:build": "vite build --mode production && npm run pwa:inject",
     "pwa:inject": "node scripts/inject-sw-manifest.mjs",
     "test:pwa": "node scripts/test-pwa-build.mjs",
+    "audio:generate:monitor": "node scripts/generate-monitor-announcements.mjs",
     "lint:ts": "eslint \"**/*.{ts,tsx}\" --max-warnings 0",
     "lint:ts:fix": "eslint \"**/*.{ts,tsx}\" --fix --max-warnings 0",
     "lint:css": "stylelint \"**/*.css\" --allow-empty-input",

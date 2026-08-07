@@ -21,4 +21,5 @@ export type KitchenTicket = {
   waiterName?: string | null;
   items: KitchenItem[];
   createdAt?: string;
+  canAnnounce?: boolean;
 };

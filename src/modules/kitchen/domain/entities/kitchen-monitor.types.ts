@@ -2,10 +2,21 @@ import type { KitchenTicketStatus } from '../enums';
 
 export type KitchenMonitorTicket = {
   id: string;
+  orderId?: string;
   orderNumber: number;
   displayName?: string | null;
   status: KitchenTicketStatus;
   completedAt?: string | null;
+};
+
+export type KitchenAnnouncement = {
+  id: string;
+  orderId: string;
+  orderNumber: number;
+  displayName: string;
+  locale: 'uz' | 'ru';
+  kind: 'auto' | 'replay';
+  createdAt: string;
 };
 
 export type PosMonitorVariant = 'default' | 'light_compact';
@@ -14,6 +25,7 @@ export type KitchenMonitorQueue = {
   monitorVariant: PosMonitorVariant;
   preparing: KitchenMonitorTicket[];
   recentlyDone: KitchenMonitorTicket[];
+  announcements: KitchenAnnouncement[];
 };
 
 export type TvMonitorPairingSession = {
@@ -48,7 +60,11 @@ export type TvMonitorDiagnosticEvent =
   | 'queue_error'
   | 'render_error'
   | 'window_error'
-  | 'unhandled_rejection';
+  | 'unhandled_rejection'
+  | 'announcement_play_started'
+  | 'announcement_play_ended'
+  | 'announcement_play_blocked'
+  | 'announcement_play_error';
 
 export type TvMonitorDiagnostic = {
   event: TvMonitorDiagnosticEvent;
