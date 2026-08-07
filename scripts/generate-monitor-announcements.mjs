@@ -1,6 +1,9 @@
 import { createHash } from 'node:crypto';
+import { spawn } from 'node:child_process';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+
+import ffmpegPath from 'ffmpeg-static';
 
 const API_URL = 'https://service.muxlisa.uz/api/v2/tts';
 const DEFAULT_OUTPUT = 'public/monitor-announcements/v1/uz/female';
@@ -51,13 +54,15 @@ function wavDurationMs(buffer) {
 
 async function fileExists(filePath) {
   try {
-    return (await stat(filePath)).size > 44;
+    return (await stat(filePath)).size > 100;
   } catch {
     return false;
   }
 }
 
 async function synthesize({ token, text, speaker }) {
+  if (!token) throw new Error('MUXLISA_API_TOKEN is required when an audio source needs to be synthesized.');
+
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
     const response = await fetch(API_URL, {
       method: 'POST',
@@ -75,9 +80,59 @@ async function synthesize({ token, text, speaker }) {
   throw new Error('Muxlisa TTS retry limit was reached.');
 }
 
+function encodeMp3(wavAudio) {
+  if (!ffmpegPath) throw new Error('ffmpeg-static does not provide a binary for this platform.');
+
+  return new Promise((resolve, reject) => {
+    const process = spawn(
+      ffmpegPath,
+      [
+        '-hide_banner',
+        '-loglevel',
+        'error',
+        '-f',
+        'wav',
+        '-i',
+        'pipe:0',
+        '-vn',
+        '-ac',
+        '1',
+        '-ar',
+        '24000',
+        '-codec:a',
+        'libmp3lame',
+        '-b:a',
+        '64k',
+        '-f',
+        'mp3',
+        'pipe:1',
+      ],
+      { stdio: ['pipe', 'pipe', 'pipe'] },
+    );
+    const output = [];
+    const errors = [];
+    process.stdout.on('data', (chunk) => output.push(chunk));
+    process.stderr.on('data', (chunk) => errors.push(chunk));
+    process.on('error', reject);
+    process.on('close', (code) => {
+      if (code === 0) resolve(Buffer.concat(output));
+      else reject(new Error(`MP3 encoding failed (${code}): ${Buffer.concat(errors).toString('utf8').trim()}`));
+    });
+    process.stdin.end(wavAudio);
+  });
+}
+
+async function readExistingManifest(outputDirectory) {
+  try {
+    const manifest = JSON.parse(await readFile(path.join(outputDirectory, 'manifest.json'), 'utf8'));
+    return new Map(manifest.entries.map((entry) => [entry.number ?? 'generic', entry]));
+  } catch {
+    return new Map();
+  }
+}
+
 async function main() {
   const token = process.env.MUXLISA_API_TOKEN?.trim();
-  if (!token) throw new Error('MUXLISA_API_TOKEN environment variable is required.');
 
   const from = Number(readOption('from', '1'));
   const to = Number(readOption('to', '200'));
@@ -89,11 +144,19 @@ async function main() {
   if (![0, 1].includes(speaker)) throw new Error('--speaker must be 0 (female) or 1 (male).');
 
   await mkdir(outputDirectory, { recursive: true });
+  const existingManifest = await readExistingManifest(outputDirectory);
+  const durationByKey = new Map([...existingManifest].map(([key, entry]) => [key, entry.durationMs ?? null]));
   const targets = [
-    { fileName: 'generic.wav', text: 'Buyurtmangiz tayyor.' },
+    { key: 'generic', fileName: 'generic.mp3', legacyFileName: 'generic.wav', text: 'Buyurtmangiz tayyor.' },
     ...Array.from({ length: to - from + 1 }, (_, index) => {
       const number = from + index;
-      return { fileName: `${number}.wav`, text: phraseForNumber(number), number };
+      return {
+        key: number,
+        fileName: `${number}.mp3`,
+        legacyFileName: `${number}.wav`,
+        text: phraseForNumber(number),
+        number,
+      };
     }),
   ];
 
@@ -101,10 +164,17 @@ async function main() {
     const target = targets[index];
     const filePath = path.join(outputDirectory, target.fileName);
     if (!(await fileExists(filePath))) {
-      const audio = await synthesize({ token, text: target.text, speaker });
-      await writeFile(filePath, audio);
-      process.stdout.write(`generated ${target.fileName} (${index + 1}/${targets.length})\n`);
-      if (index < targets.length - 1) await new Promise((resolve) => setTimeout(resolve, REQUEST_INTERVAL_MS));
+      const legacyFilePath = path.join(outputDirectory, target.legacyFileName);
+      const hasLegacySource = await fileExists(legacyFilePath);
+      const wavAudio = hasLegacySource
+        ? await readFile(legacyFilePath)
+        : await synthesize({ token, text: target.text, speaker });
+      durationByKey.set(target.key, wavDurationMs(wavAudio));
+      await writeFile(filePath, await encodeMp3(wavAudio));
+      process.stdout.write(`${hasLegacySource ? 'converted' : 'generated'} ${target.fileName} (${index + 1}/${targets.length})\n`);
+      if (!hasLegacySource && index < targets.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, REQUEST_INTERVAL_MS));
+      }
     } else {
       process.stdout.write(`kept ${target.fileName} (${index + 1}/${targets.length})\n`);
     }
@@ -117,14 +187,14 @@ async function main() {
       number: target.number ?? null,
       file: target.fileName,
       text: target.text,
-      durationMs: wavDurationMs(audio),
+      durationMs: durationByKey.get(target.key) ?? null,
       bytes: audio.length,
       sha256: createHash('sha256').update(audio).digest('hex'),
     });
   }
   await writeFile(
     path.join(outputDirectory, 'manifest.json'),
-    `${JSON.stringify({ version: 1, locale: 'uz', speaker, format: 'audio/wav', entries: manifestEntries }, null, 2)}\n`,
+    `${JSON.stringify({ version: 2, locale: 'uz', speaker, format: 'audio/mpeg', bitrateKbps: 64, entries: manifestEntries }, null, 2)}\n`,
   );
   process.stdout.write(`manifest written with ${manifestEntries.length} files\n`);
 }

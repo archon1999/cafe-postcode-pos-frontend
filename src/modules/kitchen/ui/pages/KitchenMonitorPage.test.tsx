@@ -263,7 +263,7 @@ describe('KitchenMonitorPage', () => {
     await act(async () => {});
 
     expect(audioInstances).toHaveLength(1);
-    expect(audioInstances[0].src).toContain('/19.wav');
+    expect(audioInstances[0].src).toContain('/19.mp3');
     expect(audioInstances[0].play).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('ready-order-spotlight')).toBeTruthy();
     expect(screen.getAllByText('19')).toHaveLength(2);
@@ -328,7 +328,7 @@ describe('KitchenMonitorPage', () => {
     await act(async () => audioInstances[0].dispatchEvent(new Event('ended')));
 
     expect(audioInstances).toHaveLength(2);
-    expect(audioInstances[1].src).toContain('/19.wav');
+    expect(audioInstances[1].src).toContain('/19.mp3');
     expect(screen.getByTestId('ready-order-spotlight').textContent).toContain('19');
   });
 
@@ -370,7 +370,7 @@ describe('KitchenMonitorPage', () => {
     await act(async () => {});
 
     expect(screen.getByTestId('ready-order-spotlight').textContent).toContain('128');
-    expect(audioInstances[0].src).toContain('/128.wav');
+    expect(audioInstances[0].src).toContain('/128.mp3');
     expect(document.querySelector('[data-monitor-ticket-id="done-128"]')?.getAttribute('data-highlighted')).toBe(
       'true',
     );

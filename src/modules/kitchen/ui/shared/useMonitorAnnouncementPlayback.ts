@@ -21,7 +21,7 @@ function buildAudioPath(displayName: string) {
   const parsedNumber = /^\d+$/.test(normalized) ? Number(normalized) : Number.NaN;
   const fileName =
     Number.isInteger(parsedNumber) && parsedNumber >= 1 && parsedNumber <= 200 ? parsedNumber : 'generic';
-  return `${ANNOUNCEMENT_AUDIO_BASE_PATH}/${fileName}.wav`;
+  return `${ANNOUNCEMENT_AUDIO_BASE_PATH}/${fileName}.mp3`;
 }
 
 function createLegacyAnnouncements(monitorData: KitchenMonitorQueue): KitchenAnnouncement[] {
