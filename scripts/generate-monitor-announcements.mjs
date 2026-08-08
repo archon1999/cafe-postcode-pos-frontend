@@ -80,35 +80,13 @@ async function synthesize({ token, text, speaker }) {
   throw new Error('Muxlisa TTS retry limit was reached.');
 }
 
-function encodeMp3(wavAudio) {
+function runFfmpeg(args, input) {
   if (!ffmpegPath) throw new Error('ffmpeg-static does not provide a binary for this platform.');
 
   return new Promise((resolve, reject) => {
-    const process = spawn(
-      ffmpegPath,
-      [
-        '-hide_banner',
-        '-loglevel',
-        'error',
-        '-f',
-        'wav',
-        '-i',
-        'pipe:0',
-        '-vn',
-        '-ac',
-        '1',
-        '-ar',
-        '24000',
-        '-codec:a',
-        'libmp3lame',
-        '-b:a',
-        '64k',
-        '-f',
-        'mp3',
-        'pipe:1',
-      ],
-      { stdio: ['pipe', 'pipe', 'pipe'] },
-    );
+    const process = spawn(ffmpegPath, ['-hide_banner', '-loglevel', 'error', ...args], {
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
     const output = [];
     const errors = [];
     process.stdout.on('data', (chunk) => output.push(chunk));
@@ -118,14 +96,38 @@ function encodeMp3(wavAudio) {
       if (code === 0) resolve(Buffer.concat(output));
       else reject(new Error(`MP3 encoding failed (${code}): ${Buffer.concat(errors).toString('utf8').trim()}`));
     });
-    process.stdin.end(wavAudio);
+    process.stdin.end(input);
   });
+}
+
+function encodeMp3(wavAudio) {
+  return runFfmpeg(
+    [
+      '-f',
+      'wav',
+      '-i',
+      'pipe:0',
+      '-vn',
+      '-ac',
+      '1',
+      '-ar',
+      '24000',
+      '-codec:a',
+      'libmp3lame',
+      '-b:a',
+      '64k',
+      '-f',
+      'mp3',
+      'pipe:1',
+    ],
+    wavAudio,
+  );
 }
 
 async function readExistingManifest(outputDirectory) {
   try {
     const manifest = JSON.parse(await readFile(path.join(outputDirectory, 'manifest.json'), 'utf8'));
-    return new Map(manifest.entries.map((entry) => [entry.number ?? 'generic', entry]));
+    return new Map(manifest.entries.map((entry) => [entry.key ?? entry.number ?? 'generic', entry]));
   } catch {
     return new Map();
   }
@@ -147,6 +149,11 @@ async function main() {
   const existingManifest = await readExistingManifest(outputDirectory);
   const durationByKey = new Map([...existingManifest].map(([key, entry]) => [key, entry.durationMs ?? null]));
   const targets = [
+    {
+      key: 'unlock',
+      fileName: 'unlock.mp3',
+      text: 'Ovozli e’lonlar yoqildi.',
+    },
     { key: 'generic', fileName: 'generic.mp3', legacyFileName: 'generic.wav', text: 'Buyurtmangiz tayyor.' },
     ...Array.from({ length: to - from + 1 }, (_, index) => {
       const number = from + index;
@@ -163,15 +170,18 @@ async function main() {
   for (let index = 0; index < targets.length; index += 1) {
     const target = targets[index];
     const filePath = path.join(outputDirectory, target.fileName);
-    if (!(await fileExists(filePath))) {
-      const legacyFilePath = path.join(outputDirectory, target.legacyFileName);
-      const hasLegacySource = await fileExists(legacyFilePath);
+    const audioTextChanged = existingManifest.get(target.key)?.text !== target.text;
+    if (!(await fileExists(filePath)) || audioTextChanged) {
+      const legacyFilePath = target.legacyFileName ? path.join(outputDirectory, target.legacyFileName) : null;
+      const hasLegacySource = legacyFilePath ? await fileExists(legacyFilePath) : false;
       const wavAudio = hasLegacySource
         ? await readFile(legacyFilePath)
         : await synthesize({ token, text: target.text, speaker });
       durationByKey.set(target.key, wavDurationMs(wavAudio));
       await writeFile(filePath, await encodeMp3(wavAudio));
-      process.stdout.write(`${hasLegacySource ? 'converted' : 'generated'} ${target.fileName} (${index + 1}/${targets.length})\n`);
+      process.stdout.write(
+        `${hasLegacySource ? 'converted' : 'generated'} ${target.fileName} (${index + 1}/${targets.length})\n`,
+      );
       if (!hasLegacySource && index < targets.length - 1) {
         await new Promise((resolve) => setTimeout(resolve, REQUEST_INTERVAL_MS));
       }
@@ -184,6 +194,7 @@ async function main() {
   for (const target of targets) {
     const audio = await readFile(path.join(outputDirectory, target.fileName));
     manifestEntries.push({
+      key: target.key,
       number: target.number ?? null,
       file: target.fileName,
       text: target.text,
@@ -194,7 +205,7 @@ async function main() {
   }
   await writeFile(
     path.join(outputDirectory, 'manifest.json'),
-    `${JSON.stringify({ version: 2, locale: 'uz', speaker, format: 'audio/mpeg', bitrateKbps: 64, entries: manifestEntries }, null, 2)}\n`,
+    `${JSON.stringify({ version: 3, locale: 'uz', speaker, format: 'audio/mpeg', bitrateKbps: 64, entries: manifestEntries }, null, 2)}\n`,
   );
   process.stdout.write(`manifest written with ${manifestEntries.length} files\n`);
 }

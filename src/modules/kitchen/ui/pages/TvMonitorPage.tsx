@@ -12,7 +12,10 @@ import type {
   TvMonitorPairingSession,
 } from 'modules/kitchen/domain';
 
+import { MONITOR_AUDIO_UNLOCK_PATH } from '../shared/useMonitorAnnouncementPlayback';
+
 import { KitchenMonitorDisplay } from './KitchenMonitorPage';
+import { TvAudioUnlockOverlay, type TvAudioUnlockState } from './TvAudioUnlockOverlay';
 import {
   TvMonitorDiagnostics,
   TvMonitorRenderBoundary,
@@ -37,6 +40,43 @@ const INITIAL_DIAGNOSTICS: TvMonitorDiagnosticSnapshot = {
   renderError: '',
 };
 
+function playUnlockAudio(audio: HTMLAudioElement) {
+  return new Promise<void>((resolve, reject) => {
+    const watchdog = window.setTimeout(() => {
+      cleanup();
+      reject(new Error('Test ovozi belgilangan vaqtda tugamadi'));
+    }, 6000);
+    const cleanup = () => {
+      window.clearTimeout(watchdog);
+      audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('error', handleError);
+    };
+    const handleEnded = () => {
+      cleanup();
+      resolve();
+    };
+    const handleError = () => {
+      cleanup();
+      reject(new Error('Test ovozi yuklanmadi'));
+    };
+
+    audio.addEventListener('ended', handleEnded, { once: true });
+    audio.addEventListener('error', handleError, { once: true });
+    try {
+      const playResult = audio.play();
+      if (playResult && typeof playResult.catch === 'function') {
+        void playResult.catch((error) => {
+          cleanup();
+          reject(error);
+        });
+      }
+    } catch (error) {
+      cleanup();
+      reject(error);
+    }
+  });
+}
+
 function requiresPairing(error: unknown) {
   return (
     axios.isAxiosError(error) && error.response?.status === 401 && error.response.data?.code === 'tv_pairing_required'
@@ -58,6 +98,13 @@ export function TvMonitorPage() {
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [monitorData, setMonitorData] = useState<KitchenMonitorQueue>(EMPTY_QUEUE);
   const [pairingError, setPairingError] = useState('');
+  const [announcementAudio] = useState<HTMLAudioElement | null>(() =>
+    typeof Audio === 'undefined' ? null : new Audio(),
+  );
+  const [audioUnlockState, setAudioUnlockState] = useState<'ready' | TvAudioUnlockState>(() =>
+    window.CafePostcodeTv ? 'ready' : 'required',
+  );
+  const [audioUnlockError, setAudioUnlockError] = useState('');
   const [diagnostics, setDiagnostics] = useState<TvMonitorDiagnosticSnapshot>(INITIAL_DIAGNOSTICS);
   const pairingRequestRef = useRef<Promise<TvMonitorPairingSession> | null>(null);
   const lastQueueDiagnosticRef = useRef({ signature: '', reportedAt: 0 });
@@ -91,6 +138,48 @@ export function TvMonitorPage() {
     setPairing(null);
     setMonitorData(EMPTY_QUEUE);
     setDiagnostics(INITIAL_DIAGNOSTICS);
+    setAudioUnlockState(window.CafePostcodeTv ? 'ready' : 'required');
+    setAudioUnlockError('');
+  }, []);
+
+  const handleEnableAudio = useCallback(async () => {
+    if (!announcementAudio || !device) return;
+
+    setAudioUnlockState('enabling');
+    setAudioUnlockError('');
+    try {
+      if (!document.fullscreenElement) {
+        const fullscreenResult = document.documentElement.requestFullscreen?.();
+        if (fullscreenResult) void fullscreenResult.catch(() => undefined);
+      }
+
+      announcementAudio.pause();
+      announcementAudio.src = MONITOR_AUDIO_UNLOCK_PATH;
+      announcementAudio.currentTime = 0;
+      announcementAudio.preload = 'auto';
+      announcementAudio.load();
+      reportDiagnostic('announcement_play_started', 'TV audio unlock test started', {
+        source: 'audio_unlock',
+        audioPath: MONITOR_AUDIO_UNLOCK_PATH,
+      });
+      await playUnlockAudio(announcementAudio);
+      setAudioUnlockState('ready');
+      reportDiagnostic('announcement_play_ended', 'TV audio unlocked', { source: 'audio_unlock' });
+    } catch {
+      const message = 'Brauzer ovozni blokladi. TV ovozini tekshirib, qayta bosing.';
+      setAudioUnlockState('error');
+      setAudioUnlockError(message);
+      reportDiagnostic('announcement_play_blocked', message, {
+        source: 'audio_unlock',
+        audioPath: MONITOR_AUDIO_UNLOCK_PATH,
+      });
+    }
+  }, [announcementAudio, device, reportDiagnostic]);
+
+  const handleAnnouncementPlaybackUnavailable = useCallback(() => {
+    if (window.CafePostcodeTv) return;
+    setAudioUnlockError('Ovoz to‘xtadi. Davom ettirish uchun qayta yoqing.');
+    setAudioUnlockState('error');
   }, []);
 
   const createPairing = useCallback(async () => {
@@ -261,9 +350,19 @@ export function TvMonitorPage() {
             monitorData={monitorData}
             restaurantName={device.restaurantName}
             onAnnouncementPlayback={reportDiagnostic}
+            announcementAudio={announcementAudio}
+            announcementPlaybackEnabled={audioUnlockState === 'ready'}
+            onAnnouncementPlaybackUnavailable={handleAnnouncementPlaybackUnavailable}
           />
         </TvMonitorRenderBoundary>
         <TvMonitorDiagnostics restaurantName={device.restaurantName} snapshot={diagnostics} />
+        {!window.CafePostcodeTv && audioUnlockState !== 'ready' ? (
+          <TvAudioUnlockOverlay
+            state={audioUnlockState}
+            error={audioUnlockError}
+            onEnable={() => void handleEnableAudio()}
+          />
+        ) : null}
       </>
     );
 

@@ -2,9 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { KitchenAnnouncement, KitchenMonitorQueue, TvMonitorDiagnosticEvent } from 'modules/kitchen/domain';
 
-const ANNOUNCEMENT_AUDIO_BASE_PATH = (
+export const MONITOR_ANNOUNCEMENT_AUDIO_BASE_PATH = (
   import.meta.env.VITE_MONITOR_ANNOUNCEMENT_BASE_URL || '/monitor-announcements/v1/uz/female'
 ).replace(/\/+$/, '');
+export const MONITOR_AUDIO_UNLOCK_PATH = `${MONITOR_ANNOUNCEMENT_AUDIO_BASE_PATH}/unlock.mp3`;
 const FALLBACK_ANIMATION_DURATION_MS = 2200;
 const PLAYBACK_WATCHDOG_MS = 15_000;
 
@@ -16,12 +17,18 @@ type PlaybackReporter = (
 
 type QueuedAnnouncement = KitchenAnnouncement & { audioPath: string };
 
+type PlaybackOptions = {
+  audioElement?: HTMLAudioElement | null;
+  enabled?: boolean;
+  onUnavailable?: (message: string) => void;
+};
+
 function buildAudioPath(displayName: string) {
   const normalized = displayName.trim();
   const parsedNumber = /^\d+$/.test(normalized) ? Number(normalized) : Number.NaN;
   const fileName =
     Number.isInteger(parsedNumber) && parsedNumber >= 1 && parsedNumber <= 200 ? parsedNumber : 'generic';
-  return `${ANNOUNCEMENT_AUDIO_BASE_PATH}/${fileName}.mp3`;
+  return `${MONITOR_ANNOUNCEMENT_AUDIO_BASE_PATH}/${fileName}.mp3`;
 }
 
 function createLegacyAnnouncements(monitorData: KitchenMonitorQueue): KitchenAnnouncement[] {
@@ -61,7 +68,11 @@ function playFallbackTone() {
   }
 }
 
-export function useMonitorAnnouncementPlayback(monitorData: KitchenMonitorQueue, reportPlayback?: PlaybackReporter) {
+export function useMonitorAnnouncementPlayback(
+  monitorData: KitchenMonitorQueue,
+  reportPlayback?: PlaybackReporter,
+  { audioElement = null, enabled = true, onUnavailable }: PlaybackOptions = {},
+) {
   const sourceAnnouncements = useMemo(
     () => (monitorData.announcements?.length ? monitorData.announcements : createLegacyAnnouncements(monitorData)),
     [monitorData],
@@ -85,15 +96,21 @@ export function useMonitorAnnouncementPlayback(monitorData: KitchenMonitorQueue,
   }, [sourceAnnouncements]);
 
   useEffect(() => {
-    if (activeAnnouncement || !pendingAnnouncements.length) return;
+    if (!enabled || activeAnnouncement || !pendingAnnouncements.length) return;
     setActiveAnnouncement(pendingAnnouncements[0]);
     setPendingAnnouncements((current) => current.slice(1));
-  }, [activeAnnouncement, pendingAnnouncements]);
+  }, [activeAnnouncement, enabled, pendingAnnouncements]);
 
   useEffect(() => {
-    if (!activeAnnouncement) return;
+    if (!activeAnnouncement || !enabled) return;
 
-    const audio = new Audio(activeAnnouncement.audioPath);
+    const audio = audioElement ?? new Audio(activeAnnouncement.audioPath);
+    if (audioElement) {
+      audio.pause();
+      audio.src = activeAnnouncement.audioPath;
+      audio.currentTime = 0;
+      audio.load();
+    }
     audio.preload = 'auto';
     let finished = false;
     let fallbackTimer: number | null = null;
@@ -114,6 +131,7 @@ export function useMonitorAnnouncementPlayback(monitorData: KitchenMonitorQueue,
     const startFallback = (event: 'announcement_play_blocked' | 'announcement_play_error', message: string) => {
       if (finished || fallbackTimer !== null) return;
       reportPlayback?.(event, message, context);
+      onUnavailable?.(message);
       playFallbackTone();
       fallbackTimer = window.setTimeout(
         () => finish('announcement_play_error', 'Announcement finished with fallback tone'),
@@ -149,7 +167,7 @@ export function useMonitorAnnouncementPlayback(monitorData: KitchenMonitorQueue,
       window.clearTimeout(watchdog);
       if (fallbackTimer !== null) window.clearTimeout(fallbackTimer);
     };
-  }, [activeAnnouncement, reportPlayback]);
+  }, [activeAnnouncement, audioElement, enabled, onUnavailable, reportPlayback]);
 
   const highlightedDoneIds = useMemo(() => {
     if (!activeAnnouncement) return new Set<string>();

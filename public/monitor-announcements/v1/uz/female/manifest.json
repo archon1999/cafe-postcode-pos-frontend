@@ -1,11 +1,21 @@
 {
-  "version": 2,
+  "version": 3,
   "locale": "uz",
   "speaker": 0,
   "format": "audio/mpeg",
   "bitrateKbps": 64,
   "entries": [
     {
+      "key": "unlock",
+      "number": null,
+      "file": "unlock.mp3",
+      "text": "Ovozli e’lonlar yoqildi.",
+      "durationMs": 2378,
+      "bytes": 19629,
+      "sha256": "56e458b39a7dd7624dc4370da36ddc93466c9be0477b3c23693ee50875c62ffc"
+    },
+    {
+      "key": "generic",
       "number": null,
       "file": "generic.mp3",
       "text": "Buyurtmangiz tayyor.",
@@ -14,6 +24,7 @@
       "sha256": "81298c5886f80dde965f9947ff182a8a6c765fe9dbb73156af27545c6e415bbe"
     },
     {
+      "key": 1,
       "number": 1,
       "file": "1.mp3",
       "text": "Buyurtma raqami bir tayyor.",
@@ -22,6 +33,7 @@
       "sha256": "a35701331033954e246b266a9e204b3f42b0b55abb070366a0875dc07bdcda5c"
     },
     {
+      "key": 2,
       "number": 2,
       "file": "2.mp3",
       "text": "Buyurtma raqami ikki tayyor.",
@@ -30,6 +42,7 @@
       "sha256": "11dea6c070fce5f447f7f950ce20de80818f4a8791652c77c89508f2ef073251"
     },
     {
+      "key": 3,
       "number": 3,
       "file": "3.mp3",
       "text": "Buyurtma raqami uch tayyor.",
@@ -38,6 +51,7 @@
       "sha256": "d437cb66a9bade223b3fcf6753aad5c0f3727e3188bde45a8df6718e33ab39d3"
     },
     {
+      "key": 4,
       "number": 4,
       "file": "4.mp3",
       "text": "Buyurtma raqami to'rt tayyor.",
@@ -46,6 +60,7 @@
       "sha256": "40fdfc0b6412bce5ba6acfd81a795ecd79252be49ce9cbb03ed2154838d494de"
     },
     {
+      "key": 5,
       "number": 5,
       "file": "5.mp3",
       "text": "Buyurtma raqami besh tayyor.",
@@ -54,6 +69,7 @@
       "sha256": "4a1dfb98ffa511c071b62d5f692e0def59ee29ac2c3e45fa5412305e716995b9"
     },
     {
+      "key": 6,
       "number": 6,
       "file": "6.mp3",
       "text": "Buyurtma raqami olti tayyor.",
@@ -62,6 +78,7 @@
       "sha256": "9d5cac198521fb52bdb6669aeaf5e9eb1c51ca8ba138b676b8586b91b398f226"
     },
     {
+      "key": 7,
       "number": 7,
       "file": "7.mp3",
       "text": "Buyurtma raqami yetti tayyor.",
@@ -70,6 +87,7 @@
       "sha256": "b6d05c132e1080b3ad0f9949b836b71f71eb7cbbe5b1f0783563bad2fa5401a7"
     },
     {
+      "key": 8,
       "number": 8,
       "file": "8.mp3",
       "text": "Buyurtma raqami sakkiz tayyor.",
@@ -78,6 +96,7 @@
       "sha256": "3e244bf05d2d793422dddd7f3b46311723039b4212151169e7f123eda147a76b"
     },
     {
+      "key": 9,
       "number": 9,
       "file": "9.mp3",
       "text": "Buyurtma raqami to'qqiz tayyor.",
@@ -86,6 +105,7 @@
       "sha256": "2de7b9da52cbd59ebc748185eb66de74f9b4491f45113c7193b40b35a253853a"
     },
     {
+      "key": 10,
       "number": 10,
       "file": "10.mp3",
       "text": "Buyurtma raqami o'n tayyor.",
@@ -94,6 +114,7 @@
       "sha256": "4af75f6a29b30eb7bf9351f660b2db8f49f6c6caee275433b59419b4f383eca6"
     },
     {
+      "key": 11,
       "number": 11,
       "file": "11.mp3",
       "text": "Buyurtma raqami o'n bir tayyor.",
@@ -102,6 +123,7 @@
       "sha256": "bb73f5c54ee73fde8668fe12fa9b9bfb602ae3043844ddd53421d5ed083aca36"
     },
     {
+      "key": 12,
       "number": 12,
       "file": "12.mp3",
       "text": "Buyurtma raqami o'n ikki tayyor.",
@@ -110,6 +132,7 @@
       "sha256": "6ae526947c60f56f8a5edf51246e6bf1d68905477fef0b9ed00cb62663f8e2f3"
     },
     {
+      "key": 13,
       "number": 13,
       "file": "13.mp3",
       "text": "Buyurtma raqami o'n uch tayyor.",
@@ -118,6 +141,7 @@
       "sha256": "ca290f6ae878f143a36d03661587abfd3e557868e71607dc1febe70c70996760"
     },
     {
+      "key": 14,
       "number": 14,
       "file": "14.mp3",
       "text": "Buyurtma raqami o'n to'rt tayyor.",
@@ -126,6 +150,7 @@
       "sha256": "8c2fb96dbd40a1f30455162139c43daea5ece4eabdf17ea975f176d1ec6b9706"
     },
     {
+      "key": 15,
       "number": 15,
       "file": "15.mp3",
       "text": "Buyurtma raqami o'n besh tayyor.",
@@ -134,6 +159,7 @@
       "sha256": "0866e4f8386b056c83ecde37371c297b780c6e0b57af25dfd1a11f7c6260b578"
     },
     {
+      "key": 16,
       "number": 16,
       "file": "16.mp3",
       "text": "Buyurtma raqami o'n olti tayyor.",
@@ -142,6 +168,7 @@
       "sha256": "2668dbb8a158a67282afa016c53e60b9166a6c1d75728d7029e22eaaa16aa0dc"
     },
     {
+      "key": 17,
       "number": 17,
       "file": "17.mp3",
       "text": "Buyurtma raqami o'n yetti tayyor.",
@@ -150,6 +177,7 @@
       "sha256": "738baad29bdccf888bda0f92d22208e1db20ab83602c713440f2db0bce4b44d2"
     },
     {
+      "key": 18,
       "number": 18,
       "file": "18.mp3",
       "text": "Buyurtma raqami o'n sakkiz tayyor.",
@@ -158,6 +186,7 @@
       "sha256": "bdf520a17e85f6fcca502d99399ebace4d9fbaf4f97d9b472114d1a6f9ed2585"
     },
     {
+      "key": 19,
       "number": 19,
       "file": "19.mp3",
       "text": "Buyurtma raqami o'n to'qqiz tayyor.",
@@ -166,6 +195,7 @@
       "sha256": "3a11b112534ef1b823f8bea981178eb97c26e744d0cd465303b1a0bad35fd23d"
     },
     {
+      "key": 20,
       "number": 20,
       "file": "20.mp3",
       "text": "Buyurtma raqami yigirma tayyor.",
@@ -174,6 +204,7 @@
       "sha256": "62b72a13cee0f8475b9c1a5f1c412bf48df8719df46506534f0e975b6c83307a"
     },
     {
+      "key": 21,
       "number": 21,
       "file": "21.mp3",
       "text": "Buyurtma raqami yigirma bir tayyor.",
@@ -182,6 +213,7 @@
       "sha256": "ee6abbf05f6263ffd3e49613b82dc76d07242a4386d86855c53e0ffef833850b"
     },
     {
+      "key": 22,
       "number": 22,
       "file": "22.mp3",
       "text": "Buyurtma raqami yigirma ikki tayyor.",
@@ -190,6 +222,7 @@
       "sha256": "1500259d99b8ea0162fa97ba2a00a86d77e8d54c0fd9ffed7180423e577191c6"
     },
     {
+      "key": 23,
       "number": 23,
       "file": "23.mp3",
       "text": "Buyurtma raqami yigirma uch tayyor.",
@@ -198,6 +231,7 @@
       "sha256": "9ac12b547498d93ad8c60a48d65c54610875e81bb34aca5c6133be2cf1e5165d"
     },
     {
+      "key": 24,
       "number": 24,
       "file": "24.mp3",
       "text": "Buyurtma raqami yigirma to'rt tayyor.",
@@ -206,6 +240,7 @@
       "sha256": "eb35a1a2f55c202e2564c369e8f3e14c6326f1e2765620361a110b9d12048520"
     },
     {
+      "key": 25,
       "number": 25,
       "file": "25.mp3",
       "text": "Buyurtma raqami yigirma besh tayyor.",
@@ -214,6 +249,7 @@
       "sha256": "312886c817ddd90c5ce58073ff3c99beadae07f3b227f597023852fa604bc81d"
     },
     {
+      "key": 26,
       "number": 26,
       "file": "26.mp3",
       "text": "Buyurtma raqami yigirma olti tayyor.",
@@ -222,6 +258,7 @@
       "sha256": "e53771e108100e83538f51f732f11015ff33440e1093fbb9d8b4cb0d2b147287"
     },
     {
+      "key": 27,
       "number": 27,
       "file": "27.mp3",
       "text": "Buyurtma raqami yigirma yetti tayyor.",
@@ -230,6 +267,7 @@
       "sha256": "caa48d76551c74c7f91392367c4057cfbf82ab9abd218e3f0bbf96706d72a0c8"
     },
     {
+      "key": 28,
       "number": 28,
       "file": "28.mp3",
       "text": "Buyurtma raqami yigirma sakkiz tayyor.",
@@ -238,6 +276,7 @@
       "sha256": "c1adcef64e6b533ad04cfa026b2e49e5d1de4fc0b381c79afa5acebd154cbd42"
     },
     {
+      "key": 29,
       "number": 29,
       "file": "29.mp3",
       "text": "Buyurtma raqami yigirma to'qqiz tayyor.",
@@ -246,6 +285,7 @@
       "sha256": "b85d7b1c848f2e8be4a25c7e87b657dc3a88fcd007b6bacc096dec6752d5187f"
     },
     {
+      "key": 30,
       "number": 30,
       "file": "30.mp3",
       "text": "Buyurtma raqami o'ttiz tayyor.",
@@ -254,6 +294,7 @@
       "sha256": "8eb19eb871c5b02d897496be88e6c8a9496d001b7f6ded174dff2bb2e3b169b7"
     },
     {
+      "key": 31,
       "number": 31,
       "file": "31.mp3",
       "text": "Buyurtma raqami o'ttiz bir tayyor.",
@@ -262,6 +303,7 @@
       "sha256": "1dab702f32e6e8b6898bb7f9eb9c3914c13b5aa7cb2e8e29dde7b25f3899f719"
     },
     {
+      "key": 32,
       "number": 32,
       "file": "32.mp3",
       "text": "Buyurtma raqami o'ttiz ikki tayyor.",
@@ -270,6 +312,7 @@
       "sha256": "47604134e514d9aa019f4cc6f876147639dc7ae45459e035cf620021afd8461e"
     },
     {
+      "key": 33,
       "number": 33,
       "file": "33.mp3",
       "text": "Buyurtma raqami o'ttiz uch tayyor.",
@@ -278,6 +321,7 @@
       "sha256": "45a1acdbe523fb0c75f9f5e359c9b3ad5554d50ca71cda86a50318ecbdd81fa8"
     },
     {
+      "key": 34,
       "number": 34,
       "file": "34.mp3",
       "text": "Buyurtma raqami o'ttiz to'rt tayyor.",
@@ -286,6 +330,7 @@
       "sha256": "10efa3631dfb7ab41f65f7ab6f72af51ff1b028432d5189928c60760d3e80f3e"
     },
     {
+      "key": 35,
       "number": 35,
       "file": "35.mp3",
       "text": "Buyurtma raqami o'ttiz besh tayyor.",
@@ -294,6 +339,7 @@
       "sha256": "42c41d9b24aac965d00d9fd3e7f2ab75546e8e2603b0d174f0e366f547f7f12f"
     },
     {
+      "key": 36,
       "number": 36,
       "file": "36.mp3",
       "text": "Buyurtma raqami o'ttiz olti tayyor.",
@@ -302,6 +348,7 @@
       "sha256": "cbf306a8b65fe0875e4a15bb78cd893a75d82ce86e7c70cdcdd0b6745e55eaf3"
     },
     {
+      "key": 37,
       "number": 37,
       "file": "37.mp3",
       "text": "Buyurtma raqami o'ttiz yetti tayyor.",
@@ -310,6 +357,7 @@
       "sha256": "cf662b84ad413ec3b340a2676515d0e8b5dab888c564d760d279a757e20c24f4"
     },
     {
+      "key": 38,
       "number": 38,
       "file": "38.mp3",
       "text": "Buyurtma raqami o'ttiz sakkiz tayyor.",
@@ -318,6 +366,7 @@
       "sha256": "3fca14af915d43c1b46416027e7bbd2691b403f6013a4c00d077df7684cd7666"
     },
     {
+      "key": 39,
       "number": 39,
       "file": "39.mp3",
       "text": "Buyurtma raqami o'ttiz to'qqiz tayyor.",
@@ -326,6 +375,7 @@
       "sha256": "989a0a66a1440c9606782b568bcf5e965eff7cb8bc3dd96a821c1dcd7cfdb9da"
     },
     {
+      "key": 40,
       "number": 40,
       "file": "40.mp3",
       "text": "Buyurtma raqami qirq tayyor.",
@@ -334,6 +384,7 @@
       "sha256": "8a7894a24b939c29275d4903aba1d42c973c62aa375fbd2e1f3531e28844372e"
     },
     {
+      "key": 41,
       "number": 41,
       "file": "41.mp3",
       "text": "Buyurtma raqami qirq bir tayyor.",
@@ -342,6 +393,7 @@
       "sha256": "cc5a723ccbb611a15a90723c801f2986ca76a0b403bc2313f3dd7b3bc941859a"
     },
     {
+      "key": 42,
       "number": 42,
       "file": "42.mp3",
       "text": "Buyurtma raqami qirq ikki tayyor.",
@@ -350,6 +402,7 @@
       "sha256": "d4c540910a8ea8ea93082a7edd8bb15509a254b29741f55256df270565d26222"
     },
     {
+      "key": 43,
       "number": 43,
       "file": "43.mp3",
       "text": "Buyurtma raqami qirq uch tayyor.",
@@ -358,6 +411,7 @@
       "sha256": "e616719c3611ac36723dcfa0401c5d6c31456e5a8685e96480f8e3a0e7305d4b"
     },
     {
+      "key": 44,
       "number": 44,
       "file": "44.mp3",
       "text": "Buyurtma raqami qirq to'rt tayyor.",
@@ -366,6 +420,7 @@
       "sha256": "0c40492e85f927c632c598ff7d02d5f9b93d4efc48e0cf4e400a41e602930593"
     },
     {
+      "key": 45,
       "number": 45,
       "file": "45.mp3",
       "text": "Buyurtma raqami qirq besh tayyor.",
@@ -374,6 +429,7 @@
       "sha256": "1a1af48b9cda60f146216fe661cac6cff6de76afdeb105b764b7ddd6e0f1f568"
     },
     {
+      "key": 46,
       "number": 46,
       "file": "46.mp3",
       "text": "Buyurtma raqami qirq olti tayyor.",
@@ -382,6 +438,7 @@
       "sha256": "11734bec1817e55de3ad02e2af9e7726ed10dd332e4051d9b85c54c5bfd6797e"
     },
     {
+      "key": 47,
       "number": 47,
       "file": "47.mp3",
       "text": "Buyurtma raqami qirq yetti tayyor.",
@@ -390,6 +447,7 @@
       "sha256": "aa0de5c007e00a35fba44038ac5ccff26de881fe70a6aa0d4afaa718b0c2b012"
     },
     {
+      "key": 48,
       "number": 48,
       "file": "48.mp3",
       "text": "Buyurtma raqami qirq sakkiz tayyor.",
@@ -398,6 +456,7 @@
       "sha256": "a27a7299c161023a7409a8e24086a5a9a43389c06fe28928f8f7e3b892384ca0"
     },
     {
+      "key": 49,
       "number": 49,
       "file": "49.mp3",
       "text": "Buyurtma raqami qirq to'qqiz tayyor.",
@@ -406,6 +465,7 @@
       "sha256": "a7022140e6f6b7796e92f0bdc51e8a3781c2bffe3d0d23a11346d7b889669f34"
     },
     {
+      "key": 50,
       "number": 50,
       "file": "50.mp3",
       "text": "Buyurtma raqami ellik tayyor.",
@@ -414,6 +474,7 @@
       "sha256": "2b12e22a95dce58aeca8e42500c6bc55ff4fa1bb2fb42de33f570d541aebe6a8"
     },
     {
+      "key": 51,
       "number": 51,
       "file": "51.mp3",
       "text": "Buyurtma raqami ellik bir tayyor.",
@@ -422,6 +483,7 @@
       "sha256": "2f235ca84f791399a705d93f79331fdc63dc6be4dc09760c77c9c0f91218a911"
     },
     {
+      "key": 52,
       "number": 52,
       "file": "52.mp3",
       "text": "Buyurtma raqami ellik ikki tayyor.",
@@ -430,6 +492,7 @@
       "sha256": "2dc768479a87f4ef79910911884d351ff421faa7e570365d09eb1294dc7d1ead"
     },
     {
+      "key": 53,
       "number": 53,
       "file": "53.mp3",
       "text": "Buyurtma raqami ellik uch tayyor.",
@@ -438,6 +501,7 @@
       "sha256": "1914cca3485646964beec0c9fed728d7dfb089e51046591a4d1dd81e67312dd3"
     },
     {
+      "key": 54,
       "number": 54,
       "file": "54.mp3",
       "text": "Buyurtma raqami ellik to'rt tayyor.",
@@ -446,6 +510,7 @@
       "sha256": "c659f0c72c15460df657d3f6c478b2d9c4ad755ff0b43a2fcc8d221af3d36d1f"
     },
     {
+      "key": 55,
       "number": 55,
       "file": "55.mp3",
       "text": "Buyurtma raqami ellik besh tayyor.",
@@ -454,6 +519,7 @@
       "sha256": "e3bf044bb813287e8d8dd0616b8bd9cf0c32ef83772394be25918b0a01d47e7d"
     },
     {
+      "key": 56,
       "number": 56,
       "file": "56.mp3",
       "text": "Buyurtma raqami ellik olti tayyor.",
@@ -462,6 +528,7 @@
       "sha256": "7da95b0cb4d9b7a16a174d124039b20c99e5d62c9ce045376c22fd6930512959"
     },
     {
+      "key": 57,
       "number": 57,
       "file": "57.mp3",
       "text": "Buyurtma raqami ellik yetti tayyor.",
@@ -470,6 +537,7 @@
       "sha256": "9a452b77c81840b5e74efc764553f6412809f83177e9472c9c49b3d8ac0b07a5"
     },
     {
+      "key": 58,
       "number": 58,
       "file": "58.mp3",
       "text": "Buyurtma raqami ellik sakkiz tayyor.",
@@ -478,6 +546,7 @@
       "sha256": "e35f00ba3c26297450253b8251cd8fef3a9840e512fb8fa4ac2afa769d3fabd4"
     },
     {
+      "key": 59,
       "number": 59,
       "file": "59.mp3",
       "text": "Buyurtma raqami ellik to'qqiz tayyor.",
@@ -486,6 +555,7 @@
       "sha256": "35820f9ba1de42314bc7cdce9dc50b049de7a9a3c0ccdf0171c4d766643bf099"
     },
     {
+      "key": 60,
       "number": 60,
       "file": "60.mp3",
       "text": "Buyurtma raqami oltmish tayyor.",
@@ -494,6 +564,7 @@
       "sha256": "f96f3508305ed4d4d82ee066d93a00076349a0fd7ee282977faca9bde2ee5a69"
     },
     {
+      "key": 61,
       "number": 61,
       "file": "61.mp3",
       "text": "Buyurtma raqami oltmish bir tayyor.",
@@ -502,6 +573,7 @@
       "sha256": "b81792cb296954c081813691cfbf578433abbd222a54023c55039966180b1b66"
     },
     {
+      "key": 62,
       "number": 62,
       "file": "62.mp3",
       "text": "Buyurtma raqami oltmish ikki tayyor.",
@@ -510,6 +582,7 @@
       "sha256": "8c70ecff5dc0e405243dc46022f1bc69a7dbfadefa1fb01b1973d8dc3c1efe90"
     },
     {
+      "key": 63,
       "number": 63,
       "file": "63.mp3",
       "text": "Buyurtma raqami oltmish uch tayyor.",
@@ -518,6 +591,7 @@
       "sha256": "dd24f9c52253c7d8dac7b0604257a0e512ab25b111362fb5ac4b0bf6676e2038"
     },
     {
+      "key": 64,
       "number": 64,
       "file": "64.mp3",
       "text": "Buyurtma raqami oltmish to'rt tayyor.",
@@ -526,6 +600,7 @@
       "sha256": "7b66a5da4497cf276c8156c49a566f6a53b5df80f5ea9ee52bb9ba5fb7d821e6"
     },
     {
+      "key": 65,
       "number": 65,
       "file": "65.mp3",
       "text": "Buyurtma raqami oltmish besh tayyor.",
@@ -534,6 +609,7 @@
       "sha256": "6a9d3468bb4ba81018717a7cac7f348628bdfeb93c356df61eaec5b3edd355b7"
     },
     {
+      "key": 66,
       "number": 66,
       "file": "66.mp3",
       "text": "Buyurtma raqami oltmish olti tayyor.",
@@ -542,6 +618,7 @@
       "sha256": "1ce78fcc7c855ed141b5628765d02ce4ed222087a45b2e4d3f7ba6425e681d3d"
     },
     {
+      "key": 67,
       "number": 67,
       "file": "67.mp3",
       "text": "Buyurtma raqami oltmish yetti tayyor.",
@@ -550,6 +627,7 @@
       "sha256": "4f2e127d3ae2b60b4c000edb29058c92059d46c104c8dfc57423b75e3be8e04f"
     },
     {
+      "key": 68,
       "number": 68,
       "file": "68.mp3",
       "text": "Buyurtma raqami oltmish sakkiz tayyor.",
@@ -558,6 +636,7 @@
       "sha256": "83d27d9419c5740fbfb151bd737f545ffc40373a55742b31180c125882fe4a60"
     },
     {
+      "key": 69,
       "number": 69,
       "file": "69.mp3",
       "text": "Buyurtma raqami oltmish to'qqiz tayyor.",
@@ -566,6 +645,7 @@
       "sha256": "97d91d06b41c94f5b013b01561e2f38fc0a84ace6706f309dcc208364a9e1407"
     },
     {
+      "key": 70,
       "number": 70,
       "file": "70.mp3",
       "text": "Buyurtma raqami yetmish tayyor.",
@@ -574,6 +654,7 @@
       "sha256": "4b14b621a42e1f1cbbacd6b1cef430b585fc8036e5e2dbc26239f4342327934b"
     },
     {
+      "key": 71,
       "number": 71,
       "file": "71.mp3",
       "text": "Buyurtma raqami yetmish bir tayyor.",
@@ -582,6 +663,7 @@
       "sha256": "2ddbbac7bdc6c5aa2de84560d9078e15725d7023b42d28bd9e4b978fa6e6ab4e"
     },
     {
+      "key": 72,
       "number": 72,
       "file": "72.mp3",
       "text": "Buyurtma raqami yetmish ikki tayyor.",
@@ -590,6 +672,7 @@
       "sha256": "9353747e126a117c32c00e2960b088f8bf7a1762b8f1b6a1909a6687fa5b1c58"
     },
     {
+      "key": 73,
       "number": 73,
       "file": "73.mp3",
       "text": "Buyurtma raqami yetmish uch tayyor.",
@@ -598,6 +681,7 @@
       "sha256": "a756a90e8d36ee43b561fd447fa7214d135b19992706ec84c07d2ac78fa5036c"
     },
     {
+      "key": 74,
       "number": 74,
       "file": "74.mp3",
       "text": "Buyurtma raqami yetmish to'rt tayyor.",
@@ -606,6 +690,7 @@
       "sha256": "1173f7e1e6378dfb3108ad211b4c56015a8cf8b08b92d8d8fbf599d9c7836846"
     },
     {
+      "key": 75,
       "number": 75,
       "file": "75.mp3",
       "text": "Buyurtma raqami yetmish besh tayyor.",
@@ -614,6 +699,7 @@
       "sha256": "dfeceb698c84b817f47fd4fa4fd1b9502c5e69c5c2d5311809cce0a0f632c4c7"
     },
     {
+      "key": 76,
       "number": 76,
       "file": "76.mp3",
       "text": "Buyurtma raqami yetmish olti tayyor.",
@@ -622,6 +708,7 @@
       "sha256": "9be67cdc8b8b9eedc08cffe403f121ec578e6b7fb00a46cd11338f82aa741d2e"
     },
     {
+      "key": 77,
       "number": 77,
       "file": "77.mp3",
       "text": "Buyurtma raqami yetmish yetti tayyor.",
@@ -630,6 +717,7 @@
       "sha256": "3f32e2b0024f50426e16f8bf09c79555c8c47942a8b8a4daf46fc0703a828764"
     },
     {
+      "key": 78,
       "number": 78,
       "file": "78.mp3",
       "text": "Buyurtma raqami yetmish sakkiz tayyor.",
@@ -638,6 +726,7 @@
       "sha256": "9474565f9cf1d11f73ee3593457ee320df252f747f037e9630c055a0b6228038"
     },
     {
+      "key": 79,
       "number": 79,
       "file": "79.mp3",
       "text": "Buyurtma raqami yetmish to'qqiz tayyor.",
@@ -646,6 +735,7 @@
       "sha256": "065a6e85b2c1c87ebfe2203ddac592bbeb1da7ee24a31f2f7b6bd4ad65993e93"
     },
     {
+      "key": 80,
       "number": 80,
       "file": "80.mp3",
       "text": "Buyurtma raqami sakson tayyor.",
@@ -654,6 +744,7 @@
       "sha256": "a524772bacf6fa4f85415e095736ccbf8ca0415580b32f264bc45e5638c46d31"
     },
     {
+      "key": 81,
       "number": 81,
       "file": "81.mp3",
       "text": "Buyurtma raqami sakson bir tayyor.",
@@ -662,6 +753,7 @@
       "sha256": "63ac6cfaba984683a2ca6b8e2c00e4d3a18ddc452bacfa81bdd83f5d0f4e29c6"
     },
     {
+      "key": 82,
       "number": 82,
       "file": "82.mp3",
       "text": "Buyurtma raqami sakson ikki tayyor.",
@@ -670,6 +762,7 @@
       "sha256": "f2fd80525392a64f60b2a3e417786cf3bdd10b3c6ff93046e3c435473cee08ea"
     },
     {
+      "key": 83,
       "number": 83,
       "file": "83.mp3",
       "text": "Buyurtma raqami sakson uch tayyor.",
@@ -678,6 +771,7 @@
       "sha256": "8394eca4d92acc0155f2afe62064b4d150b37d00172df3864e8c0c4f16c9ac8e"
     },
     {
+      "key": 84,
       "number": 84,
       "file": "84.mp3",
       "text": "Buyurtma raqami sakson to'rt tayyor.",
@@ -686,6 +780,7 @@
       "sha256": "9ec820e5a5e4fb003c3521676b2557d7515f06b4d1ed7bc23bc447aa3726a940"
     },
     {
+      "key": 85,
       "number": 85,
       "file": "85.mp3",
       "text": "Buyurtma raqami sakson besh tayyor.",
@@ -694,6 +789,7 @@
       "sha256": "bdab1d63815a6cb38a86872a498672523193834774bf0509901507fe70b000fd"
     },
     {
+      "key": 86,
       "number": 86,
       "file": "86.mp3",
       "text": "Buyurtma raqami sakson olti tayyor.",
@@ -702,6 +798,7 @@
       "sha256": "fa37acbcf2d2be22bf461766f4ff68375cebd0e0d053ac52f38fe921c51c9376"
     },
     {
+      "key": 87,
       "number": 87,
       "file": "87.mp3",
       "text": "Buyurtma raqami sakson yetti tayyor.",
@@ -710,6 +807,7 @@
       "sha256": "5b0528ab6b58fe6b8dba6ddb8c3d289f8df497a00a73cf0a8c338ee30f5068a8"
     },
     {
+      "key": 88,
       "number": 88,
       "file": "88.mp3",
       "text": "Buyurtma raqami sakson sakkiz tayyor.",
@@ -718,6 +816,7 @@
       "sha256": "8da5adb9007c540d061b765e29d37a6824f67626f6e621dc6bf98b45006245ca"
     },
     {
+      "key": 89,
       "number": 89,
       "file": "89.mp3",
       "text": "Buyurtma raqami sakson to'qqiz tayyor.",
@@ -726,6 +825,7 @@
       "sha256": "340d6696484b83f8b8577d067bdbd1209e426e245bb9b1567454eb4d4bb63452"
     },
     {
+      "key": 90,
       "number": 90,
       "file": "90.mp3",
       "text": "Buyurtma raqami to'qson tayyor.",
@@ -734,6 +834,7 @@
       "sha256": "ddc723c94ee435eb44f5f3c4cc7a88576d83e4cc049f49002f771e44105225ea"
     },
     {
+      "key": 91,
       "number": 91,
       "file": "91.mp3",
       "text": "Buyurtma raqami to'qson bir tayyor.",
@@ -742,6 +843,7 @@
       "sha256": "f380e3601778b3e458c7be09aa6946abfd72cf8bd9e0c96b538f2317914578b8"
     },
     {
+      "key": 92,
       "number": 92,
       "file": "92.mp3",
       "text": "Buyurtma raqami to'qson ikki tayyor.",
@@ -750,6 +852,7 @@
       "sha256": "7ba6c26c954a411bd24c3587f0c2a0bff88a7a6c91ebde69a191f9221ebb3b46"
     },
     {
+      "key": 93,
       "number": 93,
       "file": "93.mp3",
       "text": "Buyurtma raqami to'qson uch tayyor.",
@@ -758,6 +861,7 @@
       "sha256": "26acd6a6db895d2f38c50af6d3cca23d7de8d80a22af7a4585f1179edefdb934"
     },
     {
+      "key": 94,
       "number": 94,
       "file": "94.mp3",
       "text": "Buyurtma raqami to'qson to'rt tayyor.",
@@ -766,6 +870,7 @@
       "sha256": "4b34a452f5ec1e3c57c3625aa3813469fc849d64ee6ef594f9da30ca11e91311"
     },
     {
+      "key": 95,
       "number": 95,
       "file": "95.mp3",
       "text": "Buyurtma raqami to'qson besh tayyor.",
@@ -774,6 +879,7 @@
       "sha256": "cf07fca967cdbdbe8f5bdf1d3faded6b59d789c7d0478c654bdb6f2ef367375f"
     },
     {
+      "key": 96,
       "number": 96,
       "file": "96.mp3",
       "text": "Buyurtma raqami to'qson olti tayyor.",
@@ -782,6 +888,7 @@
       "sha256": "2323d91746f06094ec7fb95e63eccd03f17691c8a527f05e404013ddc7da4b43"
     },
     {
+      "key": 97,
       "number": 97,
       "file": "97.mp3",
       "text": "Buyurtma raqami to'qson yetti tayyor.",
@@ -790,6 +897,7 @@
       "sha256": "8b33c289139a41e241285195f01fedaee5834af7bbe8e9dd85a5f64d5170faed"
     },
     {
+      "key": 98,
       "number": 98,
       "file": "98.mp3",
       "text": "Buyurtma raqami to'qson sakkiz tayyor.",
@@ -798,6 +906,7 @@
       "sha256": "00315a8f888b561e8bd47b7d92e093476606ccc51a2edafedcf196a4800c7dd3"
     },
     {
+      "key": 99,
       "number": 99,
       "file": "99.mp3",
       "text": "Buyurtma raqami to'qson to'qqiz tayyor.",
@@ -806,6 +915,7 @@
       "sha256": "02f54e016fe8a9c779d796f1ecbd6e2046b246129c4e277a038d86ab03b3435f"
     },
     {
+      "key": 100,
       "number": 100,
       "file": "100.mp3",
       "text": "Buyurtma raqami bir yuz tayyor.",
@@ -814,6 +924,7 @@
       "sha256": "0f3516a7a747d21fc7dc243beeaae90757d245198af663d9df963211313de8bf"
     },
     {
+      "key": 101,
       "number": 101,
       "file": "101.mp3",
       "text": "Buyurtma raqami bir yuz bir tayyor.",
@@ -822,6 +933,7 @@
       "sha256": "d83d83349b64986c264602a7b242c8c7940b56bb1acfc429ac90cb47aeaec94b"
     },
     {
+      "key": 102,
       "number": 102,
       "file": "102.mp3",
       "text": "Buyurtma raqami bir yuz ikki tayyor.",
@@ -830,6 +942,7 @@
       "sha256": "ad68083dfa34c71ce2b6ae516d55c592595a560fa6b99307ea7a2c3f27e27cb6"
     },
     {
+      "key": 103,
       "number": 103,
       "file": "103.mp3",
       "text": "Buyurtma raqami bir yuz uch tayyor.",
@@ -838,6 +951,7 @@
       "sha256": "cc842d89711c6f23534dea56593897bca169a8c4b007817b63c267b75a9b81da"
     },
     {
+      "key": 104,
       "number": 104,
       "file": "104.mp3",
       "text": "Buyurtma raqami bir yuz to'rt tayyor.",
@@ -846,6 +960,7 @@
       "sha256": "4c60b21bab9416670102742b32e695c40c201868a07cc104592d581835f659b6"
     },
     {
+      "key": 105,
       "number": 105,
       "file": "105.mp3",
       "text": "Buyurtma raqami bir yuz besh tayyor.",
@@ -854,6 +969,7 @@
       "sha256": "1381e0a32db41db76e1cae117327b4089cebab4d41841e81e322b56c87e26c74"
     },
     {
+      "key": 106,
       "number": 106,
       "file": "106.mp3",
       "text": "Buyurtma raqami bir yuz olti tayyor.",
@@ -862,6 +978,7 @@
       "sha256": "2f2245c1f55b1d8e1e7c4fb08513d67f7a4782f83f0e4b089ac1f5aa23d79b64"
     },
     {
+      "key": 107,
       "number": 107,
       "file": "107.mp3",
       "text": "Buyurtma raqami bir yuz yetti tayyor.",
@@ -870,6 +987,7 @@
       "sha256": "4bbfafac0b0016148768e579090a35d8b3b9a81561d1a163f12eda00d7bda562"
     },
     {
+      "key": 108,
       "number": 108,
       "file": "108.mp3",
       "text": "Buyurtma raqami bir yuz sakkiz tayyor.",
@@ -878,6 +996,7 @@
       "sha256": "a2a0cb351db9d16095fa64934197b8ce985ccd4ffe3aa8e1a2cd2abfab0cc539"
     },
     {
+      "key": 109,
       "number": 109,
       "file": "109.mp3",
       "text": "Buyurtma raqami bir yuz to'qqiz tayyor.",
@@ -886,6 +1005,7 @@
       "sha256": "1ac3f86fc405a7f0efa30b7837a56e5f1d5e5f03dcb92eecc6b07351b6c72e3d"
     },
     {
+      "key": 110,
       "number": 110,
       "file": "110.mp3",
       "text": "Buyurtma raqami bir yuz o'n tayyor.",
@@ -894,6 +1014,7 @@
       "sha256": "04c0e5eae8fc875bed7d71a95916d381029ecfc2d3c7fca123477eed06015e55"
     },
     {
+      "key": 111,
       "number": 111,
       "file": "111.mp3",
       "text": "Buyurtma raqami bir yuz o'n bir tayyor.",
@@ -902,6 +1023,7 @@
       "sha256": "b4db82cf8ed8be4ffd6380b16359302a3d2f4318ae35fa9e0db1a4f8b8f64e25"
     },
     {
+      "key": 112,
       "number": 112,
       "file": "112.mp3",
       "text": "Buyurtma raqami bir yuz o'n ikki tayyor.",
@@ -910,6 +1032,7 @@
       "sha256": "792b6bf22db3afbbd5f63e73b2c1dcd57275135f64f12b4a462409244ffd4496"
     },
     {
+      "key": 113,
       "number": 113,
       "file": "113.mp3",
       "text": "Buyurtma raqami bir yuz o'n uch tayyor.",
@@ -918,6 +1041,7 @@
       "sha256": "6d9c3e2807e7ae9fbce1ea899f11bd15ae4170a438383a2279147b94beb19ad2"
     },
     {
+      "key": 114,
       "number": 114,
       "file": "114.mp3",
       "text": "Buyurtma raqami bir yuz o'n to'rt tayyor.",
@@ -926,6 +1050,7 @@
       "sha256": "9f618654c1539615227d9dbba0a619ed33f317370c765eb484c328c98bd7d8bc"
     },
     {
+      "key": 115,
       "number": 115,
       "file": "115.mp3",
       "text": "Buyurtma raqami bir yuz o'n besh tayyor.",
@@ -934,6 +1059,7 @@
       "sha256": "67e2a4342f0a972878b58107d08f3e91474e5196a5263e9e715219304b04a7fe"
     },
     {
+      "key": 116,
       "number": 116,
       "file": "116.mp3",
       "text": "Buyurtma raqami bir yuz o'n olti tayyor.",
@@ -942,6 +1068,7 @@
       "sha256": "0927905ec8931e907aa64c6526665609a034ed9de1c7d4404f77a5ab1d9f9686"
     },
     {
+      "key": 117,
       "number": 117,
       "file": "117.mp3",
       "text": "Buyurtma raqami bir yuz o'n yetti tayyor.",
@@ -950,6 +1077,7 @@
       "sha256": "86e600db8fd33d115d09cd53c1e46c07c8a4bc848a5734dfa44e87d22d2b4d78"
     },
     {
+      "key": 118,
       "number": 118,
       "file": "118.mp3",
       "text": "Buyurtma raqami bir yuz o'n sakkiz tayyor.",
@@ -958,6 +1086,7 @@
       "sha256": "11ca87002753756e9915f2fc18807d58a7a416f289819c7a31632e3ba7e26904"
     },
     {
+      "key": 119,
       "number": 119,
       "file": "119.mp3",
       "text": "Buyurtma raqami bir yuz o'n to'qqiz tayyor.",
@@ -966,6 +1095,7 @@
       "sha256": "c6c150429d67664c68af2cabab69452f0ac1a046cb97e4395fe50511297ee594"
     },
     {
+      "key": 120,
       "number": 120,
       "file": "120.mp3",
       "text": "Buyurtma raqami bir yuz yigirma tayyor.",
@@ -974,6 +1104,7 @@
       "sha256": "2ac289722c9e0b775b259f9e3685f09a2d62fc1f619bb05dc88be5144e936bcb"
     },
     {
+      "key": 121,
       "number": 121,
       "file": "121.mp3",
       "text": "Buyurtma raqami bir yuz yigirma bir tayyor.",
@@ -982,6 +1113,7 @@
       "sha256": "c60edc95cfadc1a2d9180f3091428e1140c842babd65c1b15a799cf7e6d8e648"
     },
     {
+      "key": 122,
       "number": 122,
       "file": "122.mp3",
       "text": "Buyurtma raqami bir yuz yigirma ikki tayyor.",
@@ -990,6 +1122,7 @@
       "sha256": "698f48d14310430a7a63a6f12aa2d4d5d57e862d389c5a82828d6b1fdb1f4396"
     },
     {
+      "key": 123,
       "number": 123,
       "file": "123.mp3",
       "text": "Buyurtma raqami bir yuz yigirma uch tayyor.",
@@ -998,6 +1131,7 @@
       "sha256": "0aab36e6573e028f6fd5101ca7e0bbba9cf6a173a140ea915e6486abfe44626e"
     },
     {
+      "key": 124,
       "number": 124,
       "file": "124.mp3",
       "text": "Buyurtma raqami bir yuz yigirma to'rt tayyor.",
@@ -1006,6 +1140,7 @@
       "sha256": "9cc69cf6532b29db8f31c4891c60c43cbb2532c730c5d7ba65a28991e3d9d45a"
     },
     {
+      "key": 125,
       "number": 125,
       "file": "125.mp3",
       "text": "Buyurtma raqami bir yuz yigirma besh tayyor.",
@@ -1014,6 +1149,7 @@
       "sha256": "2d1a299ba6c896bfe57fbeb183c6d0b2cb3eba8f42085b93ff47841e3aa4dab9"
     },
     {
+      "key": 126,
       "number": 126,
       "file": "126.mp3",
       "text": "Buyurtma raqami bir yuz yigirma olti tayyor.",
@@ -1022,6 +1158,7 @@
       "sha256": "b16d020d52dcb739cabf44ada227556bbfffc75102aab1e0a0231bfbd6042a5a"
     },
     {
+      "key": 127,
       "number": 127,
       "file": "127.mp3",
       "text": "Buyurtma raqami bir yuz yigirma yetti tayyor.",
@@ -1030,6 +1167,7 @@
       "sha256": "efdbf4c62eb0935644df608143f272b01449d922cabe0550e8b7de501259a383"
     },
     {
+      "key": 128,
       "number": 128,
       "file": "128.mp3",
       "text": "Buyurtma raqami bir yuz yigirma sakkiz tayyor.",
@@ -1038,6 +1176,7 @@
       "sha256": "a855cd3fdc65d37dde1a56721f51bb82304e2e7f6376f0b8622668a8522190ca"
     },
     {
+      "key": 129,
       "number": 129,
       "file": "129.mp3",
       "text": "Buyurtma raqami bir yuz yigirma to'qqiz tayyor.",
@@ -1046,6 +1185,7 @@
       "sha256": "0af263ce11302a82e5ad381ac90d452e6f1b1aa5a076cdde202ee6b65ab65bce"
     },
     {
+      "key": 130,
       "number": 130,
       "file": "130.mp3",
       "text": "Buyurtma raqami bir yuz o'ttiz tayyor.",
@@ -1054,6 +1194,7 @@
       "sha256": "b2f48c8cbf9f75269be9e5ced9329680ea5c4fbaaf6324f6cbdd37842ccfc7cb"
     },
     {
+      "key": 131,
       "number": 131,
       "file": "131.mp3",
       "text": "Buyurtma raqami bir yuz o'ttiz bir tayyor.",
@@ -1062,6 +1203,7 @@
       "sha256": "49e04563f95c0a19c6a120d96b7842891ccd1787abc1490a68e13c44a6eb49e5"
     },
     {
+      "key": 132,
       "number": 132,
       "file": "132.mp3",
       "text": "Buyurtma raqami bir yuz o'ttiz ikki tayyor.",
@@ -1070,6 +1212,7 @@
       "sha256": "547349268f717a9cc4ca3c08b7287957127c2f58d8788489d6fe695f7146f8e3"
     },
     {
+      "key": 133,
       "number": 133,
       "file": "133.mp3",
       "text": "Buyurtma raqami bir yuz o'ttiz uch tayyor.",
@@ -1078,6 +1221,7 @@
       "sha256": "86acd4e210458385199da50cc1e0b87cd3ba2e671c9cf02b95bbccad30725781"
     },
     {
+      "key": 134,
       "number": 134,
       "file": "134.mp3",
       "text": "Buyurtma raqami bir yuz o'ttiz to'rt tayyor.",
@@ -1086,6 +1230,7 @@
       "sha256": "4a78135cb74f9c0c137eedb26829597cbe169e870e73525e3720fa6c92fae286"
     },
     {
+      "key": 135,
       "number": 135,
       "file": "135.mp3",
       "text": "Buyurtma raqami bir yuz o'ttiz besh tayyor.",
@@ -1094,6 +1239,7 @@
       "sha256": "3ab67bd98804c49497d2462ed5422329b1fe9c2c5286a96f6c8d2574a09b0b62"
     },
     {
+      "key": 136,
       "number": 136,
       "file": "136.mp3",
       "text": "Buyurtma raqami bir yuz o'ttiz olti tayyor.",
@@ -1102,6 +1248,7 @@
       "sha256": "d82111d380ca8e5f015427ff033b959bd865cb41f2cbe7d3aec2f00e042c5213"
     },
     {
+      "key": 137,
       "number": 137,
       "file": "137.mp3",
       "text": "Buyurtma raqami bir yuz o'ttiz yetti tayyor.",
@@ -1110,6 +1257,7 @@
       "sha256": "0300ae764030a47fc5ff39749e0050c5ce778eaa56bfe4f3907b2e4ac2afb7b9"
     },
     {
+      "key": 138,
       "number": 138,
       "file": "138.mp3",
       "text": "Buyurtma raqami bir yuz o'ttiz sakkiz tayyor.",
@@ -1118,6 +1266,7 @@
       "sha256": "d533b5ba70c42f424f8fa450bed7d0c072232d1eeee51a3926060453a1130ab0"
     },
     {
+      "key": 139,
       "number": 139,
       "file": "139.mp3",
       "text": "Buyurtma raqami bir yuz o'ttiz to'qqiz tayyor.",
@@ -1126,6 +1275,7 @@
       "sha256": "018b087d21351169785e1b2fbcfa62fd864480180669e5c9dfb121d931c1c573"
     },
     {
+      "key": 140,
       "number": 140,
       "file": "140.mp3",
       "text": "Buyurtma raqami bir yuz qirq tayyor.",
@@ -1134,6 +1284,7 @@
       "sha256": "b65fa9c4e6449ade723d17eb377271e27f9f53f373dd18125d820a16235cdc50"
     },
     {
+      "key": 141,
       "number": 141,
       "file": "141.mp3",
       "text": "Buyurtma raqami bir yuz qirq bir tayyor.",
@@ -1142,6 +1293,7 @@
       "sha256": "fabfe267471902d18b169997360d6d2e5050cf574921ef53ce6aff12ea590b92"
     },
     {
+      "key": 142,
       "number": 142,
       "file": "142.mp3",
       "text": "Buyurtma raqami bir yuz qirq ikki tayyor.",
@@ -1150,6 +1302,7 @@
       "sha256": "ea728235429871198a4f7cd07235750d6350406915f6641d4629217f805c6670"
     },
     {
+      "key": 143,
       "number": 143,
       "file": "143.mp3",
       "text": "Buyurtma raqami bir yuz qirq uch tayyor.",
@@ -1158,6 +1311,7 @@
       "sha256": "39c198575bafacf62ff1465a52b81a089caaeef7c258f10f8fda6fd44cc8aeb6"
     },
     {
+      "key": 144,
       "number": 144,
       "file": "144.mp3",
       "text": "Buyurtma raqami bir yuz qirq to'rt tayyor.",
@@ -1166,6 +1320,7 @@
       "sha256": "4f74e87f195e4bced1502f67743562b08718c43c38b4ba1a3d84fbfe5285cbb2"
     },
     {
+      "key": 145,
       "number": 145,
       "file": "145.mp3",
       "text": "Buyurtma raqami bir yuz qirq besh tayyor.",
@@ -1174,6 +1329,7 @@
       "sha256": "c2d0383cf878096bfe2b5a47e17f74195f5444732d3188c74d2b637734f7985b"
     },
     {
+      "key": 146,
       "number": 146,
       "file": "146.mp3",
       "text": "Buyurtma raqami bir yuz qirq olti tayyor.",
@@ -1182,6 +1338,7 @@
       "sha256": "7af2d2a9615dc3dfe54c6ea1721f0652f08b596db7f2a39b4e109d16fd452bb4"
     },
     {
+      "key": 147,
       "number": 147,
       "file": "147.mp3",
       "text": "Buyurtma raqami bir yuz qirq yetti tayyor.",
@@ -1190,6 +1347,7 @@
       "sha256": "08bec443788b907480421fc48264b10fddd6dfa8689350e93649897e71f61e7a"
     },
     {
+      "key": 148,
       "number": 148,
       "file": "148.mp3",
       "text": "Buyurtma raqami bir yuz qirq sakkiz tayyor.",
@@ -1198,6 +1356,7 @@
       "sha256": "815599d7659204a862229e4a53b4a6371c6130463c3cc3b335ea97a5e28adff0"
     },
     {
+      "key": 149,
       "number": 149,
       "file": "149.mp3",
       "text": "Buyurtma raqami bir yuz qirq to'qqiz tayyor.",
@@ -1206,6 +1365,7 @@
       "sha256": "ad1a2a903dc4cb897266a1a253bb1af5deb505ab364267dadd3eb88e49a1f572"
     },
     {
+      "key": 150,
       "number": 150,
       "file": "150.mp3",
       "text": "Buyurtma raqami bir yuz ellik tayyor.",
@@ -1214,6 +1374,7 @@
       "sha256": "375a2a222c9363e057590859e48557175a64ce09b6451b6b398eaf6f6472e821"
     },
     {
+      "key": 151,
       "number": 151,
       "file": "151.mp3",
       "text": "Buyurtma raqami bir yuz ellik bir tayyor.",
@@ -1222,6 +1383,7 @@
       "sha256": "831f71c8fd6f8b7c2ebbfeff342da5c453d10a8f2ce72bab7865b173cbca12b8"
     },
     {
+      "key": 152,
       "number": 152,
       "file": "152.mp3",
       "text": "Buyurtma raqami bir yuz ellik ikki tayyor.",
@@ -1230,6 +1392,7 @@
       "sha256": "4a4b4431b33c4b0a41759e1b2fc8e0777b9dd99c918ca84dea1bc79e5b25ccce"
     },
     {
+      "key": 153,
       "number": 153,
       "file": "153.mp3",
       "text": "Buyurtma raqami bir yuz ellik uch tayyor.",
@@ -1238,6 +1401,7 @@
       "sha256": "f1daa7b26861933c058f4b591146d0d857901341396986d2d3d7cd3fdbc8e7a6"
     },
     {
+      "key": 154,
       "number": 154,
       "file": "154.mp3",
       "text": "Buyurtma raqami bir yuz ellik to'rt tayyor.",
@@ -1246,6 +1410,7 @@
       "sha256": "f78c03f16327a13d2fa06143bdf604e56fcb2f2f5c1fc691ecd8b72a903280a7"
     },
     {
+      "key": 155,
       "number": 155,
       "file": "155.mp3",
       "text": "Buyurtma raqami bir yuz ellik besh tayyor.",
@@ -1254,6 +1419,7 @@
       "sha256": "118736e7d05b55aac827a0f0cf5e8ca3b8d9e43d76204d689eb1712815378b06"
     },
     {
+      "key": 156,
       "number": 156,
       "file": "156.mp3",
       "text": "Buyurtma raqami bir yuz ellik olti tayyor.",
@@ -1262,6 +1428,7 @@
       "sha256": "95c746ea5a71632b276fbf5ae7740e7eaa6ff69714b1e646e0c32d3da567e006"
     },
     {
+      "key": 157,
       "number": 157,
       "file": "157.mp3",
       "text": "Buyurtma raqami bir yuz ellik yetti tayyor.",
@@ -1270,6 +1437,7 @@
       "sha256": "92755e0b1a27e622edd12b3927a27cd340715b415d74bc27c13484c8e55ec726"
     },
     {
+      "key": 158,
       "number": 158,
       "file": "158.mp3",
       "text": "Buyurtma raqami bir yuz ellik sakkiz tayyor.",
@@ -1278,6 +1446,7 @@
       "sha256": "394be9899ae6e088b4b462c237ada3916dce6d94f72e1e2ddf64861dc2291e20"
     },
     {
+      "key": 159,
       "number": 159,
       "file": "159.mp3",
       "text": "Buyurtma raqami bir yuz ellik to'qqiz tayyor.",
@@ -1286,6 +1455,7 @@
       "sha256": "5b5a91882e20f060a247015f8f6a013a7f2d3ba847b387988bbc49189323042f"
     },
     {
+      "key": 160,
       "number": 160,
       "file": "160.mp3",
       "text": "Buyurtma raqami bir yuz oltmish tayyor.",
@@ -1294,6 +1464,7 @@
       "sha256": "972950d7231c21d54088e4aa6e0182ff0ce55023a895038781682a7f4be51be3"
     },
     {
+      "key": 161,
       "number": 161,
       "file": "161.mp3",
       "text": "Buyurtma raqami bir yuz oltmish bir tayyor.",
@@ -1302,6 +1473,7 @@
       "sha256": "2aaeabfc4f922b165b5685d4f1d3d787ed8743580328a673889f4b203bfccc79"
     },
     {
+      "key": 162,
       "number": 162,
       "file": "162.mp3",
       "text": "Buyurtma raqami bir yuz oltmish ikki tayyor.",
@@ -1310,6 +1482,7 @@
       "sha256": "7042af29f4b5a0b11db57b0d3547338a697ccf48da2ce529c39c69975879d6c2"
     },
     {
+      "key": 163,
       "number": 163,
       "file": "163.mp3",
       "text": "Buyurtma raqami bir yuz oltmish uch tayyor.",
@@ -1318,6 +1491,7 @@
       "sha256": "a5fd77e96921b7c9ba828f7203aaa4423cd1195b7a4a412fbde27e0598322587"
     },
     {
+      "key": 164,
       "number": 164,
       "file": "164.mp3",
       "text": "Buyurtma raqami bir yuz oltmish to'rt tayyor.",
@@ -1326,6 +1500,7 @@
       "sha256": "82a06f5dd8b763ef83afc19822622f5e5215210d14b5cdbc22358c21e97f819e"
     },
     {
+      "key": 165,
       "number": 165,
       "file": "165.mp3",
       "text": "Buyurtma raqami bir yuz oltmish besh tayyor.",
@@ -1334,6 +1509,7 @@
       "sha256": "6fb0d6ddf50c09df38d1d913a188f8f7d7a0f15364311d4ea16d544ed36fee61"
     },
     {
+      "key": 166,
       "number": 166,
       "file": "166.mp3",
       "text": "Buyurtma raqami bir yuz oltmish olti tayyor.",
@@ -1342,6 +1518,7 @@
       "sha256": "6a639b1e8f0ae47ee87cc31c9817af0a8b8c4e415dcb985ca7f67ff402c3d308"
     },
     {
+      "key": 167,
       "number": 167,
       "file": "167.mp3",
       "text": "Buyurtma raqami bir yuz oltmish yetti tayyor.",
@@ -1350,6 +1527,7 @@
       "sha256": "00cb5cdc23ef9483664ab989ae0b1cc3e0283fb7b690eb46b59c86d1861c743c"
     },
     {
+      "key": 168,
       "number": 168,
       "file": "168.mp3",
       "text": "Buyurtma raqami bir yuz oltmish sakkiz tayyor.",
@@ -1358,6 +1536,7 @@
       "sha256": "d48d0200f00286ca0c978592c0482b290dc46738c385d460a3c54b8a6786a854"
     },
     {
+      "key": 169,
       "number": 169,
       "file": "169.mp3",
       "text": "Buyurtma raqami bir yuz oltmish to'qqiz tayyor.",
@@ -1366,6 +1545,7 @@
       "sha256": "5a31edef860d15e8da49a22cd59d9810671107f4a4f814d3712bbc98422dc317"
     },
     {
+      "key": 170,
       "number": 170,
       "file": "170.mp3",
       "text": "Buyurtma raqami bir yuz yetmish tayyor.",
@@ -1374,6 +1554,7 @@
       "sha256": "8f50074f66f637646147c4dd7d56e3be84cdda9ecaadd15075089baa158f1a01"
     },
     {
+      "key": 171,
       "number": 171,
       "file": "171.mp3",
       "text": "Buyurtma raqami bir yuz yetmish bir tayyor.",
@@ -1382,6 +1563,7 @@
       "sha256": "797ca61ebb8edc6c10d2ec54dcc3b6b8f75fa58f12f15f5f0f70f3b4be99c5c2"
     },
     {
+      "key": 172,
       "number": 172,
       "file": "172.mp3",
       "text": "Buyurtma raqami bir yuz yetmish ikki tayyor.",
@@ -1390,6 +1572,7 @@
       "sha256": "1f0cc78793389a42ca420a2636cda9087c3e8ff3722e7c3f409ff4c61a9ecc39"
     },
     {
+      "key": 173,
       "number": 173,
       "file": "173.mp3",
       "text": "Buyurtma raqami bir yuz yetmish uch tayyor.",
@@ -1398,6 +1581,7 @@
       "sha256": "b296f8fb7ac3609007d07aa5ba484d816e4e2492867b2bdd672fe87e50cc0b78"
     },
     {
+      "key": 174,
       "number": 174,
       "file": "174.mp3",
       "text": "Buyurtma raqami bir yuz yetmish to'rt tayyor.",
@@ -1406,6 +1590,7 @@
       "sha256": "6381fce7d8ea6646e273719eb872d839866d726670c5378b38b49e21ce73a962"
     },
     {
+      "key": 175,
       "number": 175,
       "file": "175.mp3",
       "text": "Buyurtma raqami bir yuz yetmish besh tayyor.",
@@ -1414,6 +1599,7 @@
       "sha256": "7aa4929dc0afd739980e3577422f34fa854bd04de72f66e6b1856f8f90328f40"
     },
     {
+      "key": 176,
       "number": 176,
       "file": "176.mp3",
       "text": "Buyurtma raqami bir yuz yetmish olti tayyor.",
@@ -1422,6 +1608,7 @@
       "sha256": "a0d0d6f8085fe886a71561aab5fa5b107aa6417857e4398c80ffefca647cc8b9"
     },
     {
+      "key": 177,
       "number": 177,
       "file": "177.mp3",
       "text": "Buyurtma raqami bir yuz yetmish yetti tayyor.",
@@ -1430,6 +1617,7 @@
       "sha256": "8bfc4b91adab7c31c158492ea47237356a32261f5c30d1ecedfdce816309d183"
     },
     {
+      "key": 178,
       "number": 178,
       "file": "178.mp3",
       "text": "Buyurtma raqami bir yuz yetmish sakkiz tayyor.",
@@ -1438,6 +1626,7 @@
       "sha256": "1f973b5f1f8d602e9cf59e3cc309a472496653db84d9ca936f900531d22d2993"
     },
     {
+      "key": 179,
       "number": 179,
       "file": "179.mp3",
       "text": "Buyurtma raqami bir yuz yetmish to'qqiz tayyor.",
@@ -1446,6 +1635,7 @@
       "sha256": "9db343ca579d09a7007a8cd23af9366fda8c6ed6a32213ec80594d23ec7ca7cc"
     },
     {
+      "key": 180,
       "number": 180,
       "file": "180.mp3",
       "text": "Buyurtma raqami bir yuz sakson tayyor.",
@@ -1454,6 +1644,7 @@
       "sha256": "b6c85d71c8072a651039506911d9688419f950658da70f9458f85b207604f8c5"
     },
     {
+      "key": 181,
       "number": 181,
       "file": "181.mp3",
       "text": "Buyurtma raqami bir yuz sakson bir tayyor.",
@@ -1462,6 +1653,7 @@
       "sha256": "4113d288772ded85efb9c215156e1b79efe3398f86a0846b3e8e75b26da89711"
     },
     {
+      "key": 182,
       "number": 182,
       "file": "182.mp3",
       "text": "Buyurtma raqami bir yuz sakson ikki tayyor.",
@@ -1470,6 +1662,7 @@
       "sha256": "dbb2b3cca0024215983f00c80dfb343cabbe50bd04f8f901aeba5162218c8462"
     },
     {
+      "key": 183,
       "number": 183,
       "file": "183.mp3",
       "text": "Buyurtma raqami bir yuz sakson uch tayyor.",
@@ -1478,6 +1671,7 @@
       "sha256": "d624b8a4fc999bd942bc865f58d39b330701b13803b0bb1374cffe37c009ea87"
     },
     {
+      "key": 184,
       "number": 184,
       "file": "184.mp3",
       "text": "Buyurtma raqami bir yuz sakson to'rt tayyor.",
@@ -1486,6 +1680,7 @@
       "sha256": "0e4e84a3f1d2c9c23701180ab2eb1fcac1f1c03088b04c500e5060b007add8ee"
     },
     {
+      "key": 185,
       "number": 185,
       "file": "185.mp3",
       "text": "Buyurtma raqami bir yuz sakson besh tayyor.",
@@ -1494,6 +1689,7 @@
       "sha256": "1c31b89322c773e40243a2e57ac5901512c473f2fd006efa96192bd260b9c21e"
     },
     {
+      "key": 186,
       "number": 186,
       "file": "186.mp3",
       "text": "Buyurtma raqami bir yuz sakson olti tayyor.",
@@ -1502,6 +1698,7 @@
       "sha256": "c785782e811c4d60367c9150d72b5a5efeebd0abd192b9727efe99f4bb653301"
     },
     {
+      "key": 187,
       "number": 187,
       "file": "187.mp3",
       "text": "Buyurtma raqami bir yuz sakson yetti tayyor.",
@@ -1510,6 +1707,7 @@
       "sha256": "784bb2b5d3cae6adafd1aafd2961b98da83913f963ee675c5d456c459082658f"
     },
     {
+      "key": 188,
       "number": 188,
       "file": "188.mp3",
       "text": "Buyurtma raqami bir yuz sakson sakkiz tayyor.",
@@ -1518,6 +1716,7 @@
       "sha256": "bbef1e1bfd4e51227ba178492f40478716392d53ec2d7f01101469b3998aa0b4"
     },
     {
+      "key": 189,
       "number": 189,
       "file": "189.mp3",
       "text": "Buyurtma raqami bir yuz sakson to'qqiz tayyor.",
@@ -1526,6 +1725,7 @@
       "sha256": "45ed0a036503163b1290dbc7a8ff00de251d9e41868719d6ae9d1bc2e073addd"
     },
     {
+      "key": 190,
       "number": 190,
       "file": "190.mp3",
       "text": "Buyurtma raqami bir yuz to'qson tayyor.",
@@ -1534,6 +1734,7 @@
       "sha256": "2695884214a54830de4bdbb23f37fa5d94e961a89ede9cea4de3d9f53ea88576"
     },
     {
+      "key": 191,
       "number": 191,
       "file": "191.mp3",
       "text": "Buyurtma raqami bir yuz to'qson bir tayyor.",
@@ -1542,6 +1743,7 @@
       "sha256": "d1b3bac922d804c9cf22cb8d48110abf7f45f22891b78673c26d4b4ffd304308"
     },
     {
+      "key": 192,
       "number": 192,
       "file": "192.mp3",
       "text": "Buyurtma raqami bir yuz to'qson ikki tayyor.",
@@ -1550,6 +1752,7 @@
       "sha256": "357fa4fd3cc6337a5faccf94d1c396562acbb80e9241dfc516c82381d27f3dfd"
     },
     {
+      "key": 193,
       "number": 193,
       "file": "193.mp3",
       "text": "Buyurtma raqami bir yuz to'qson uch tayyor.",
@@ -1558,6 +1761,7 @@
       "sha256": "a43d380477a9ac2e87eb694ad04f4fff206cda34f0ba0dafed47486b79f37efb"
     },
     {
+      "key": 194,
       "number": 194,
       "file": "194.mp3",
       "text": "Buyurtma raqami bir yuz to'qson to'rt tayyor.",
@@ -1566,6 +1770,7 @@
       "sha256": "b045aecbb860f61c4cb85593887b64ffb4c2eef8aeeed7f1be92837eff97e9b5"
     },
     {
+      "key": 195,
       "number": 195,
       "file": "195.mp3",
       "text": "Buyurtma raqami bir yuz to'qson besh tayyor.",
@@ -1574,6 +1779,7 @@
       "sha256": "25bd717b3d92a8b967d0d9e087ad229a44c52a14769a06818768bbba84d08dd7"
     },
     {
+      "key": 196,
       "number": 196,
       "file": "196.mp3",
       "text": "Buyurtma raqami bir yuz to'qson olti tayyor.",
@@ -1582,6 +1788,7 @@
       "sha256": "f7cd663a379fc979fac3945718aef3639ff0bd4a69c9964e917c99ea9eb3ed01"
     },
     {
+      "key": 197,
       "number": 197,
       "file": "197.mp3",
       "text": "Buyurtma raqami bir yuz to'qson yetti tayyor.",
@@ -1590,6 +1797,7 @@
       "sha256": "923cb0977e4ea9a4d94bcb0eb1cb2412b975ddec2dd57848da34ea29c31b339f"
     },
     {
+      "key": 198,
       "number": 198,
       "file": "198.mp3",
       "text": "Buyurtma raqami bir yuz to'qson sakkiz tayyor.",
@@ -1598,6 +1806,7 @@
       "sha256": "c7bdd6c4487d86b919196234c0e65c708ff66e96b05e8f0bdbf321d43355d0db"
     },
     {
+      "key": 199,
       "number": 199,
       "file": "199.mp3",
       "text": "Buyurtma raqami bir yuz to'qson to'qqiz tayyor.",
@@ -1606,6 +1815,7 @@
       "sha256": "1bc5592b1498335e48a353b1d3e76a1fd425cd685624af173a4cfac0abb304e0"
     },
     {
+      "key": 200,
       "number": 200,
       "file": "200.mp3",
       "text": "Buyurtma raqami ikki yuz tayyor.",

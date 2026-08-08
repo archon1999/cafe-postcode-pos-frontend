@@ -3,7 +3,7 @@
 import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { KitchenMonitorPage } from './KitchenMonitorPage';
+import { KitchenMonitorDisplay, KitchenMonitorPage } from './KitchenMonitorPage';
 
 const useKitchenMonitorQueryMock = vi.fn();
 
@@ -52,11 +52,13 @@ class MockAudioContext {
 const audioInstances: MockAudio[] = [];
 
 class MockAudio extends EventTarget {
+  currentTime = 0;
   preload = '';
   pause = vi.fn();
+  load = vi.fn();
   play = vi.fn().mockResolvedValue(undefined);
 
-  constructor(public readonly src: string) {
+  constructor(public src = '') {
     super();
     audioInstances.push(this);
   }
@@ -107,6 +109,95 @@ describe('KitchenMonitorPage', () => {
     expect(screen.getByText('15')).toBeTruthy();
     expect(screen.queryByTestId('ready-order-spotlight')).toBeNull();
     expect(audioContextConstructor).not.toHaveBeenCalled();
+  });
+
+  it('queues announcements until the shared TV audio element is unlocked', async () => {
+    const sharedAudio = new MockAudio();
+    const baseQueue = {
+      monitorVariant: 'default' as const,
+      preparing: [],
+      recentlyDone: [],
+      announcements: [],
+    };
+    const { rerender } = render(
+      <KitchenMonitorDisplay
+        monitorData={baseQueue}
+        announcementAudio={sharedAudio as unknown as HTMLAudioElement}
+        announcementPlaybackEnabled={false}
+      />,
+    );
+
+    rerender(
+      <KitchenMonitorDisplay
+        monitorData={{
+          ...baseQueue,
+          recentlyDone: [
+            {
+              id: 'done-128',
+              orderId: 'order-128',
+              orderNumber: 5128,
+              displayName: '128',
+              status: 'done',
+              completedAt: '2026-08-08T06:00:00Z',
+            },
+          ],
+          announcements: [
+            {
+              id: 'announcement-128',
+              orderId: 'order-128',
+              orderNumber: 5128,
+              displayName: '128',
+              locale: 'uz',
+              kind: 'auto',
+              createdAt: '2026-08-08T06:00:00Z',
+            },
+          ],
+        }}
+        announcementAudio={sharedAudio as unknown as HTMLAudioElement}
+        announcementPlaybackEnabled={false}
+      />,
+    );
+    await act(async () => {});
+
+    expect(sharedAudio.play).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('ready-order-spotlight')).toBeNull();
+
+    rerender(
+      <KitchenMonitorDisplay
+        monitorData={{
+          ...baseQueue,
+          recentlyDone: [
+            {
+              id: 'done-128',
+              orderId: 'order-128',
+              orderNumber: 5128,
+              displayName: '128',
+              status: 'done',
+              completedAt: '2026-08-08T06:00:00Z',
+            },
+          ],
+          announcements: [
+            {
+              id: 'announcement-128',
+              orderId: 'order-128',
+              orderNumber: 5128,
+              displayName: '128',
+              locale: 'uz',
+              kind: 'auto',
+              createdAt: '2026-08-08T06:00:00Z',
+            },
+          ],
+        }}
+        announcementAudio={sharedAudio as unknown as HTMLAudioElement}
+        announcementPlaybackEnabled
+      />,
+    );
+    await act(async () => {});
+
+    expect(sharedAudio.src).toContain('/128.mp3');
+    expect(sharedAudio.load).toHaveBeenCalledTimes(1);
+    expect(sharedAudio.play).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('ready-order-spotlight')).toBeTruthy();
   });
 
   it('renders the selected light compact variant as a light two-column board', () => {

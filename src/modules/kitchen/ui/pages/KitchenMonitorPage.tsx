@@ -555,6 +555,9 @@ export function KitchenMonitorDisplay({
   monitorData,
   restaurantName,
   onAnnouncementPlayback,
+  announcementAudio,
+  announcementPlaybackEnabled = true,
+  onAnnouncementPlaybackUnavailable,
 }: {
   monitorData: KitchenMonitorQueue;
   restaurantName?: string;
@@ -563,10 +566,18 @@ export function KitchenMonitorDisplay({
     message: string,
     context: Record<string, unknown>,
   ) => void;
+  announcementAudio?: HTMLAudioElement | null;
+  announcementPlaybackEnabled?: boolean;
+  onAnnouncementPlaybackUnavailable?: (message: string) => void;
 }) {
   const { activeAnnouncement, highlightedDoneIds } = useMonitorAnnouncementPlayback(
     monitorData,
     onAnnouncementPlayback,
+    {
+      audioElement: announcementAudio,
+      enabled: announcementPlaybackEnabled,
+      onUnavailable: onAnnouncementPlaybackUnavailable,
+    },
   );
 
   if (monitorData.monitorVariant === 'light_compact') {
