@@ -15,8 +15,12 @@ export type TableSessionDesktopCartProps = {
   copy: ReturnType<typeof getPosCopy>;
   groups: PosCartItemGroupsProps<WaiterMenuItem>['groups'];
   isSubmitDisabled: boolean;
+  isCheckoutDisabled: boolean;
   isSubmitting: boolean;
   isTakeawayMode: boolean;
+  pendingItemCount: number;
+  readyItemCount: number;
+  isServingReady: boolean;
   kitchenNote: string;
   locale: PosLocale;
   menuItems: ReadonlyMap<string, WaiterMenuItem>;
@@ -39,13 +43,25 @@ export type TableSessionDesktopCartProps = {
   onRemove: (itemId: string) => void;
   onSelect: (key: string) => void;
   onSubmit: () => void;
+  onServeReady: () => void;
 };
+
+function getWaiterItemStatusLabel(props: TableSessionDesktopCartProps) {
+  return (item: Parameters<NonNullable<PosCartItemGroupsProps<WaiterMenuItem>['getStatusLabel']>>[0]) => {
+    if (!item.kitchenDispatched) return props.copy.kitchenDraft;
+    if (item.status === 'cooking') return props.copy.kitchenCooking;
+    if (item.status === 'done') return props.copy.kitchenReady;
+    if (item.status === 'served') return props.copy.kitchenServed;
+    if (item.status === 'cancelled') return props.copy.kitchenCancelled;
+    return props.copy.kitchenQueued;
+  };
+}
 
 export function TableSessionActions(props: TableSessionDesktopCartProps) {
   if (!props.isTakeawayMode) {
     return (
       <Button variant="contained" sx={{ flex: 1 }} disabled={props.isSubmitDisabled} onClick={props.onSubmit}>
-        {props.isSubmitting ? props.copy.processing : props.copy.sendOrder}
+        {props.isSubmitting ? props.copy.processing : `${props.copy.sendOrder} · ${props.pendingItemCount}`}
       </Button>
     );
   }
@@ -62,9 +78,9 @@ export function TableSessionActions(props: TableSessionDesktopCartProps) {
         })}
         disabled={props.isSubmitDisabled}
         onClick={props.onSubmit}>
-        {props.isSubmitting ? props.copy.processing : props.copy.sendOrder}
+        {props.isSubmitting ? props.copy.processing : `${props.copy.sendOrder} · ${props.pendingItemCount}`}
       </Button>
-      <Button variant="contained" sx={{ flex: 1.15 }} disabled={props.isSubmitDisabled} onClick={props.onCheckout}>
+      <Button variant="contained" sx={{ flex: 1.15 }} disabled={props.isCheckoutDisabled} onClick={props.onCheckout}>
         {props.canTakePayment ? props.copy.goToPayment : props.copy.sendToCashier}
       </Button>
     </>
@@ -146,6 +162,7 @@ export function TableSessionDesktopCart(props: TableSessionDesktopCartProps) {
               onSelect={props.onSelect}
               selectedItemKey={props.selectedItemKey}
               variant="desktop"
+              getStatusLabel={getWaiterItemStatusLabel(props)}
             />
           ) : (
             <Stack sx={{ py: 14, textAlign: 'center' }} spacing={1}>
@@ -160,7 +177,19 @@ export function TableSessionDesktopCart(props: TableSessionDesktopCartProps) {
 
       <Divider />
       <Stack spacing={1.5} sx={{ p: 2.5 }}>
-        {props.orderSent ? (
+        {!props.isTakeawayMode && props.readyItemCount > 0 ? (
+          <Button
+            variant="outlined"
+            color="success"
+            disabled={props.isServingReady}
+            onClick={props.onServeReady}
+            startIcon={<Icon icon="solar:check-read-bold-duotone" width={20} />}>
+            {props.isServingReady
+              ? props.copy.servingReadyItems
+              : `${props.copy.serveReadyItems} · ${props.readyItemCount}`}
+          </Button>
+        ) : null}
+        {props.orderSent || (props.groups.length > 0 && props.pendingItemCount === 0) ? (
           <Box
             sx={(theme) => ({
               borderRadius: '10px',
@@ -169,7 +198,9 @@ export function TableSessionDesktopCart(props: TableSessionDesktopCartProps) {
               backgroundColor: theme.palette.mode === 'dark' ? alpha('#24c5bf', 0.12) : alpha('#1384ef', 0.08),
               border: `1px solid ${alpha(theme.palette.primary.main, 0.24)}`,
             })}>
-            <Typography variant="body2">{props.copy.orderSent}</Typography>
+            <Typography variant="body2">
+              {props.orderSent ? props.copy.orderSent : props.copy.allKitchenItemsSent}
+            </Typography>
           </Box>
         ) : null}
         <TextField

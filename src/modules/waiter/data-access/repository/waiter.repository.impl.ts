@@ -97,6 +97,10 @@ class WaiterRepositoryImpl implements WaiterRepository {
   async submitOrder(orderId: string) {
     return apiPost<WaiterOrder>(`/pos/sales/orders/${orderId}/submit/`);
   }
+
+  async serveReadyItems(orderId: string) {
+    return apiPost<WaiterOrder>(`/pos/sales/orders/${orderId}/serve-ready/`);
+  }
 }
 
 export const waiterRepository: WaiterRepository = new WaiterRepositoryImpl();

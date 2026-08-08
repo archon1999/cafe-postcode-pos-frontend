@@ -152,6 +152,13 @@ export function KitchenQueuePageContent() {
                           <Typography variant="body2" sx={{ color: '#9a9fa8', fontSize: 13 }}>
                             {getKitchenTicketContextLabel(ticket, copy)}
                           </Typography>
+                          {ticket.isAddition ? (
+                            <Typography
+                              variant="caption"
+                              sx={{ color: 'primary.main', fontWeight: 800, letterSpacing: 0.2 }}>
+                              {copy.additionOrder} #{ticket.dispatchNumber}
+                            </Typography>
+                          ) : null}
                         </Stack>
                         <Stack spacing={0.18} alignItems="flex-end">
                           <Typography sx={{ fontSize: 17, fontWeight: 700, lineHeight: 1.1 }}>

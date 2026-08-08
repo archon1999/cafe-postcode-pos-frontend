@@ -14,6 +14,7 @@ import { requestEdgePrintDocuments } from 'modules/edge-printing/application';
 import {
   useCurrentWaiterOrder,
   useCurrentWaiterTakeawayOrder,
+  useServeReadyWaiterItemsMutation,
   useSubmitWaiterOrderMutation,
   useWaiterMenuQuery,
   useWaiterTableSessionQuery,
@@ -150,6 +151,11 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
       setCartOpen(false);
     },
   });
+  const serveReadyMutation = useServeReadyWaiterItemsMutation({
+    orderId: currentOrder?.id,
+    sessionId,
+    onSuccess: () => toast.success(copy.servedSuccess),
+  });
 
   const categories = useMemo(() => menuQuery.data ?? [], [menuQuery.data]);
   const defaultCategory = useMemo(() => getDefaultWaiterMenuCategory(categories), [categories]);
@@ -164,6 +170,7 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
   );
   const menuItemMeta = useMemo(() => getWaiterOrderItemMeta(currentOrder?.items), [currentOrder?.items]);
   const requestAddItem = (menuItem: WaiterMenuItem, sourceItem?: PosCartItem) => {
+    setOrderSent(false);
     if (menuItem.modifierGroups?.length) {
       setConfiguringItem({
         item: menuItem,
@@ -185,10 +192,18 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
     [categories, menuItemMeta.countMap],
   );
   const canTakePayment = canAccessCashierPayments(session?.user);
-  const isSubmitDisabled = !currentOrder || submitOrderMutation.isPending || hasPendingOperations;
+  const pendingItemCount = (currentOrder?.items ?? [])
+    .filter((item) => item.status !== 'cancelled' && !item.kitchenDispatched)
+    .reduce((sum, item) => sum + Number(item.quantity ?? 0), 0);
+  const readyItemCount = (currentOrder?.items ?? [])
+    .filter((item) => item.status === 'done')
+    .reduce((sum, item) => sum + Number(item.quantity ?? 0), 0);
+  const isMutationBusy = submitOrderMutation.isPending || hasPendingOperations;
+  const isSubmitDisabled = !currentOrder || pendingItemCount === 0 || isMutationBusy;
+  const isCheckoutDisabled = !currentOrder || isMutationBusy;
 
   const handleTakeawayCheckout = async () => {
-    if (!currentOrder || submitOrderMutation.isPending || hasPendingOperations) {
+    if (!currentOrder || isMutationBusy) {
       return;
     }
 
@@ -197,7 +212,9 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
       return;
     }
 
-    await submitOrderMutation.mutateAsync();
+    if (pendingItemCount > 0) {
+      await submitOrderMutation.mutateAsync();
+    }
     setCartOpen(false);
     void navigate(`/cashier/payment?orderId=${currentOrder.id}`);
   };
@@ -266,8 +283,12 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
           copy={copy}
           groups={groupedOrderItems}
           isSubmitDisabled={isSubmitDisabled}
+          isCheckoutDisabled={isCheckoutDisabled}
           isSubmitting={submitOrderMutation.isPending}
           isTakeawayMode={isTakeawayMode}
+          pendingItemCount={pendingItemCount}
+          readyItemCount={readyItemCount}
+          isServingReady={serveReadyMutation.isPending}
           kitchenNote={kitchenNote}
           locale={locale}
           menuItems={menuItemById}
@@ -295,6 +316,7 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
           onRemove={removeItem}
           onSelect={(key) => setSelectedCartItemKey((current) => (current === key ? null : key))}
           onSubmit={() => submitOrderMutation.mutate()}
+          onServeReady={() => serveReadyMutation.mutate()}
         />
       </Box>
 
@@ -306,8 +328,12 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
         copy={copy}
         groups={groupedOrderItems}
         isSubmitDisabled={isSubmitDisabled}
+        isCheckoutDisabled={isCheckoutDisabled}
         isSubmitting={submitOrderMutation.isPending}
         isTakeawayMode={isTakeawayMode}
+        pendingItemCount={pendingItemCount}
+        readyItemCount={readyItemCount}
+        isServingReady={serveReadyMutation.isPending}
         kitchenNote={kitchenNote}
         locale={locale}
         menuItems={menuItemById}
@@ -334,6 +360,7 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
         onRemove={removeItem}
         onSelect={(key) => setSelectedCartItemKey((current) => (current === key ? null : key))}
         onSubmit={() => submitOrderMutation.mutate()}
+        onServeReady={() => serveReadyMutation.mutate()}
       />
 
       <PosSettingsMenu

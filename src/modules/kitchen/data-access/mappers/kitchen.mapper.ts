@@ -1,13 +1,21 @@
 import type { KitchenItem, KitchenMonitorQueue, KitchenMonitorTicket, KitchenTicket } from 'modules/kitchen/domain';
 
 type KitchenItemDto = KitchenItem;
-type KitchenTicketDto = Omit<KitchenTicket, 'items'> & { items: KitchenItemDto[] };
+type KitchenTicketDto = Omit<KitchenTicket, 'items'> & {
+  items: KitchenItemDto[];
+  dispatch_number?: number;
+  is_addition?: boolean;
+  handed_off_at?: string | null;
+};
 type KitchenMonitorTicketDto = KitchenMonitorTicket;
 type KitchenMonitorQueueDto = Omit<KitchenMonitorQueue, 'monitorVariant'> & { monitorVariant?: string };
 
 export function mapKitchenTicket(dto: KitchenTicketDto): KitchenTicket {
   return {
     ...dto,
+    dispatchNumber: dto.dispatchNumber ?? dto.dispatch_number ?? 1,
+    isAddition: dto.isAddition ?? dto.is_addition ?? false,
+    handedOffAt: dto.handedOffAt ?? dto.handed_off_at ?? null,
     items: dto.items.map((item) => ({ ...item })),
   };
 }

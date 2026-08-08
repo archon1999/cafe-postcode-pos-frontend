@@ -12,6 +12,8 @@ export type WaiterOrderItem = {
   prepStationName?: string | null;
   note?: string;
   modifiers?: PosOrderItemModifier[];
+  kitchenDispatched?: boolean;
+  kitchenDispatchNumber?: number | null;
 };
 
 export type WaiterOrder = {
@@ -33,6 +35,7 @@ export type WaiterOrder = {
   channel: string;
   items: WaiterOrderItem[];
   kitchenPrintDocuments?: string[];
+  kitchenDispatchCount?: number;
 };
 
 export type WaiterCreateOrderResponse = {

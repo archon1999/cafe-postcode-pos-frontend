@@ -49,6 +49,8 @@ type WaiterOrderItemDto = WaiterOrderItem & {
   base_unit_price?: number | string;
   unit_price?: number | string;
   modifiers?: Parameters<typeof mapPosOrderItemModifiers>[0];
+  kitchen_dispatched?: boolean;
+  kitchen_dispatch_number?: number | null;
 };
 type WaiterOrderDto = Omit<WaiterOrder, 'items' | 'displayName'> & {
   items: WaiterOrderItemDto[];
@@ -121,6 +123,8 @@ export function mapWaiterOrder(dto: WaiterOrderDto): WaiterOrder {
       baseUnitPrice: item.baseUnitPrice ?? item.base_unit_price,
       unitPrice: item.unitPrice ?? item.unit_price,
       modifiers: mapPosOrderItemModifiers(item.modifiers),
+      kitchenDispatched: item.kitchenDispatched ?? item.kitchen_dispatched ?? false,
+      kitchenDispatchNumber: item.kitchenDispatchNumber ?? item.kitchen_dispatch_number ?? null,
     })),
   };
 }

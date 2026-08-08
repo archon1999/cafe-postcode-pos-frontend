@@ -27,4 +27,5 @@ export interface WaiterRepository {
   removeOrderItem(itemId: string): Promise<void>;
   updateOrderNote(orderId: string, note: string): Promise<WaiterOrder>;
   submitOrder(orderId: string): Promise<WaiterOrder>;
+  serveReadyItems(orderId: string): Promise<WaiterOrder>;
 }

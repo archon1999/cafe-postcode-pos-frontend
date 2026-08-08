@@ -131,3 +131,28 @@ export function useSubmitWaiterOrderMutation(options: {
     },
   });
 }
+
+export function useServeReadyWaiterItemsMutation(options: {
+  orderId?: string;
+  sessionId: string | null;
+  onSuccess?: () => void;
+}) {
+  const { orderId, sessionId, onSuccess } = options;
+
+  return useMutation({
+    mutationFn: async () => {
+      if (!orderId) {
+        throw new Error('Current order is not available');
+      }
+      return waiterRepository.serveReadyItems(orderId);
+    },
+    onSuccess: () => {
+      invalidateQueriesInBackground([
+        waiterKeys.orders,
+        ...(sessionId ? [waiterKeys.sessionOrders(sessionId)] : []),
+        ['kitchen', 'queue'],
+      ]);
+      onSuccess?.();
+    },
+  });
+}
