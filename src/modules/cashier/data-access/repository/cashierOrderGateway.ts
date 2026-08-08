@@ -48,6 +48,20 @@ export const cashierOrderGateway = {
     });
   },
 
+  addOrderItems(orderId: string, items: Parameters<CashierRepository['addOrderItems']>[1]) {
+    return apiPost<Awaited<ReturnType<CashierRepository['addOrderItems']>>>(
+      `/pos/sales/orders/${orderId}/items/bulk/`,
+      {
+        items: items.map((item) => ({
+          catalogItem: item.catalogItemId,
+          quantity: item.quantity,
+          note: item.note,
+          ...(item.selectedModifiers?.length ? { selectedModifiers: item.selectedModifiers } : {}),
+        })),
+      },
+    );
+  },
+
   async scanOrderMarking(orderId: string, rawCode: string, mode: MarkingMode): Promise<OrderResponse> {
     const payload = await apiPost<{ order: OrderResponse }>(`/pos/sales/orders/${orderId}/scan-marking/`, {
       rawCode,

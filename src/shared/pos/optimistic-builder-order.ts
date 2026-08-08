@@ -44,6 +44,7 @@ export type PendingAddOperation<TMenuItem extends BuilderMenuItemLike> = {
   menuItem: TMenuItem;
   note: string;
   selectedModifiers?: PosModifierSelection[];
+  quantity?: number;
   canceled: boolean;
 };
 
@@ -111,14 +112,15 @@ function createOptimisticItem<TMenuItem extends BuilderMenuItemLike, TItem exten
   );
   const unitPrice = toMoneyNumber(operation.menuItem.price) + modifierDelta;
 
+  const quantity = Math.max(1, Number(operation.quantity ?? 1));
   return {
     id: operation.tempItemId,
     catalogItem: operation.menuItem.id,
     catalogItemName: operation.menuItem.name,
-    quantity: 1,
+    quantity,
     baseUnitPrice: toMoneyNumber(operation.menuItem.price),
     unitPrice,
-    lineTotal: unitPrice,
+    lineTotal: unitPrice * quantity,
     status: 'new',
     prepStationName: operation.menuItem.prepStationName,
     note: operation.note || undefined,

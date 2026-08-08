@@ -4,11 +4,13 @@ import {
   aggregateCashierCartItemsByStation,
   type CashierMenuCategory,
   type CashierMenuItem,
+  type CashierMenuItemGroup,
 } from 'modules/cashier/domain';
 import type { PosLocale } from 'shared/locale/copy';
 import { formatCompactMoney } from 'shared/pos/utils';
 
 import { CashierMenuItemCard } from './CashierMenuItemCard';
+import { CashierMenuItemGroupCard } from './CashierMenuItemGroupCard';
 
 type CashierBuilderMenuPanelProps = {
   category?: CashierMenuCategory;
@@ -21,6 +23,7 @@ type CashierBuilderMenuPanelProps = {
   total?: number | string | null;
   billsLabel: string;
   onAdd: (menuItem: CashierMenuItem) => void;
+  onOpenGroup: (group: CashierMenuItemGroup) => void;
   onCartOpen: () => void;
   onRemove: (itemId: string) => void;
 };
@@ -36,6 +39,7 @@ export function CashierBuilderMenuPanel({
   total,
   billsLabel,
   onAdd,
+  onOpenGroup,
   onCartOpen,
   onRemove,
 }: CashierBuilderMenuPanelProps) {
@@ -67,22 +71,39 @@ export function CashierBuilderMenuPanel({
           },
           gap: { xs: 1.1, md: 1.2, xl: 1.4 },
         }}>
-        {(category?.items ?? []).map((menuItem) => (
-          <CashierMenuItemCard
-            key={menuItem.id}
-            item={menuItem}
+        {(category?.itemGroups ?? []).map((group) => (
+          <CashierMenuItemGroupCard
+            key={`group-${group.id}`}
+            group={group}
             locale={locale}
             menuLabel={menuLabel}
-            selectedCount={itemCounts.get(menuItem.id) ?? 0}
-            onAdd={() => onAdd(menuItem)}
-            onRemove={() => {
-              const latestItemId = latestItemIds.get(menuItem.id);
-              if (latestItemId) {
-                onRemove(latestItemId);
-              }
-            }}
+            selectedCount={group.members.reduce((sum, member) => sum + (itemCounts.get(member.item.id) ?? 0), 0)}
+            onOpen={() => onOpenGroup(group)}
           />
         ))}
+        {(category?.items ?? [])
+          .filter(
+            (menuItem) =>
+              !(category?.itemGroups ?? []).some((group) =>
+                group.members.some((member) => member.item.id === menuItem.id),
+              ),
+          )
+          .map((menuItem) => (
+            <CashierMenuItemCard
+              key={menuItem.id}
+              item={menuItem}
+              locale={locale}
+              menuLabel={menuLabel}
+              selectedCount={itemCounts.get(menuItem.id) ?? 0}
+              onAdd={() => onAdd(menuItem)}
+              onRemove={() => {
+                const latestItemId = latestItemIds.get(menuItem.id);
+                if (latestItemId) {
+                  onRemove(latestItemId);
+                }
+              }}
+            />
+          ))}
       </Box>
 
       {isMobile ? (

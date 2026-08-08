@@ -12,9 +12,26 @@ type CashierMenuItemDto = CashierMenuItem & {
   image_url?: string | null;
   modifier_groups?: Parameters<typeof mapPosModifierGroups>[0];
 };
-type CashierMenuCategoryDto = Omit<CashierMenuCategory, 'items'> & {
+type CashierMenuItemGroupDto = {
+  id: string;
+  name: string;
+  description?: string | null;
+  sortOrder?: number;
+  sort_order?: number;
+  members: Array<{
+    id: string;
+    variantName?: string;
+    variant_name?: string;
+    sortOrder?: number;
+    sort_order?: number;
+    item: CashierMenuItemDto;
+  }>;
+};
+type CashierMenuCategoryDto = Omit<CashierMenuCategory, 'items' | 'itemGroups'> & {
   image_url?: string | null;
   items: CashierMenuItemDto[];
+  itemGroups?: CashierMenuItemGroupDto[];
+  item_groups?: CashierMenuItemGroupDto[];
 };
 type CashierMarkingDto = NonNullable<CashierOrderItem['markings']>[number] & {
   raw_code?: string;
@@ -43,13 +60,26 @@ type CashierPaymentResponseDto = CashierPaymentResponse;
 type CashierCreateOrderResponseDto = CashierCreateOrderResponse;
 
 export function mapCashierMenuCategory(dto: CashierMenuCategoryDto): CashierMenuCategory {
+  const mapItem = (item: CashierMenuItemDto): CashierMenuItem => ({
+    ...item,
+    imageUrl: item.imageUrl ?? item.image_url ?? null,
+    modifierGroups: mapPosModifierGroups(item.modifierGroups ?? item.modifier_groups),
+  });
   return {
     ...dto,
     imageUrl: dto.imageUrl ?? dto.image_url ?? null,
-    items: dto.items.map((item) => ({
-      ...item,
-      imageUrl: item.imageUrl ?? item.image_url ?? null,
-      modifierGroups: mapPosModifierGroups(item.modifierGroups ?? item.modifier_groups),
+    items: dto.items.map(mapItem),
+    itemGroups: (dto.itemGroups ?? dto.item_groups ?? []).map((group) => ({
+      id: group.id,
+      name: group.name,
+      description: group.description,
+      sortOrder: Number(group.sortOrder ?? group.sort_order ?? 0),
+      members: group.members.map((member) => ({
+        id: member.id,
+        variantName: member.variantName ?? member.variant_name ?? '',
+        sortOrder: Number(member.sortOrder ?? member.sort_order ?? 0),
+        item: mapItem(member.item),
+      })),
     })),
   };
 }

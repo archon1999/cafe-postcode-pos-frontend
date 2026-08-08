@@ -23,6 +23,7 @@ import {
   type CashierBuilderOrderChannel,
   type CashierMenuCategory,
   type CashierMenuItem,
+  type CashierMenuItemGroup,
 } from 'modules/cashier/domain';
 import { requestEdgePrintDocuments } from 'modules/edge-printing/application';
 import { getApiErrorMessage } from 'shared/api/errorMessage';
@@ -40,6 +41,7 @@ import { CashierBuilderDesktopCart, CashierBuilderMobileCart } from './CashierBu
 import { CashierBuilderHeader } from './CashierBuilderHeader';
 import { CashierBuilderMenuPanel } from './CashierBuilderMenuPanel';
 import { CashierDeliveryDetailsDialog } from './CashierDeliveryDetailsDialog';
+import { CashierItemGroupConfiguratorDialog } from './CashierItemGroupConfiguratorDialog';
 import { useCashierBuilderActions } from './useCashierBuilderActions';
 
 const EMPTY_CATEGORIES: CashierMenuCategory[] = [];
@@ -76,6 +78,7 @@ export function CashierBuilderPageContent() {
     item: CashierMenuItem;
     initialSelections?: PosModifierSelection[];
   } | null>(null);
+  const [configuringGroup, setConfiguringGroup] = useState<CashierMenuItemGroup | null>(null);
   const noteOrderIdRef = useRef<string | null>(null);
 
   const menuQuery = useCashierMenuQuery();
@@ -85,7 +88,7 @@ export function CashierBuilderPageContent() {
     () => editOrderQuery.data ?? getCurrentCashierBuilderOrder(ordersQuery.data, session?.user.id),
     [editOrderQuery.data, ordersQuery.data, session?.user.id],
   );
-  const { currentOrder, addItem, removeItem, hasPendingOperations } = useOptimisticBuilderOrder({
+  const { currentOrder, addItem, addItems, removeItem, hasPendingOperations } = useOptimisticBuilderOrder({
     baseOrder: serverOrder,
     canonicalQueryKey: editOrderId ? cashierKeys.paymentOrder(editOrderId) : cashierKeys.builderOrders,
     canonicalQueryFn: async () =>
@@ -112,6 +115,16 @@ export function CashierBuilderPageContent() {
         : getCurrentCashierBuilderOrder(orders, session?.user.id),
     addOrderItem: (orderId, menuItem, note, selectedModifiers) =>
       cashierRepository.addOrderItem(orderId, menuItem.id, note, selectedModifiers),
+    addOrderItems: (orderId, items) =>
+      cashierRepository.addOrderItems(
+        orderId,
+        items.map((item) => ({
+          catalogItemId: item.menuItem.id,
+          quantity: item.quantity,
+          note: item.note,
+          selectedModifiers: item.selectedModifiers,
+        })),
+      ),
     syncErrorMessage: copy.itemSyncFailed,
   });
 
@@ -317,6 +330,7 @@ export function CashierBuilderPageContent() {
           total={currentOrder?.total}
           billsLabel={copy.bills}
           onAdd={requestAddItem}
+          onOpenGroup={setConfiguringGroup}
           onCartOpen={() => setCartOpen(true)}
           onRemove={removeItem}
         />
@@ -425,6 +439,32 @@ export function CashierBuilderPageContent() {
           }}
         />
       ) : null}
+
+      <CashierItemGroupConfiguratorDialog
+        group={configuringGroup}
+        locale={locale}
+        copy={{
+          addToOrder: copy.modifierAddToOrder,
+          free: copy.modifierFree,
+          optional: copy.modifierOptional,
+          required: copy.modifierRequired,
+          selectOne: copy.modifierSelectOne,
+          selectUpTo: copy.modifierSelectUpTo,
+          selectedCount: copy.selectedCount,
+        }}
+        onClose={() => setConfiguringGroup(null)}
+        onConfirm={(lines) => {
+          addItems(
+            lines.map((line) => ({
+              menuItem: line.item,
+              quantity: line.quantity,
+              note: kitchenNote,
+              selectedModifiers: line.selections,
+            })),
+          );
+          setConfiguringGroup(null);
+        }}
+      />
 
       <PosSettingsMenu
         anchorEl={settingsAnchor}

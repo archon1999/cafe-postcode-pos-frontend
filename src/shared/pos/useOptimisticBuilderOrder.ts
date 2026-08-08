@@ -39,6 +39,15 @@ type UseOptimisticBuilderOrderOptions<
     note: string,
     selectedModifiers?: PosModifierSelection[],
   ) => Promise<{ kitchenPrintDocuments?: string[] } | void>;
+  addOrderItems?: (
+    orderId: string,
+    items: Array<{
+      menuItem: TMenuItem;
+      quantity: number;
+      note: string;
+      selectedModifiers?: PosModifierSelection[];
+    }>,
+  ) => Promise<{ kitchenPrintDocuments?: string[] } | void>;
   onPrintDocuments?: (documentIds: string[]) => void;
   resetKey?: unknown;
   syncErrorMessage: string;
@@ -69,6 +78,7 @@ export function useOptimisticBuilderOrder<
     resetKey,
     selectCurrentOrder,
     addOrderItem,
+    addOrderItems,
     syncErrorMessage,
   } = options;
   const [resolvedBaseOrder, setResolvedBaseOrder] = useState<TOrder | undefined>(baseOrder);
@@ -238,6 +248,85 @@ export function useOptimisticBuilderOrder<
     [refreshCurrentOrder, removeOrderItem, settleRemoveOperation, syncErrorMessage],
   );
 
+  const runBatchAddOperation = useCallback(
+    async (opIds: string[]) => {
+      const queuedOperations = opIds
+        .map((opId) => getPendingAddById(opId))
+        .filter((operation): operation is PendingAddOperation<TMenuItem> => Boolean(operation && !operation.canceled));
+      if (!queuedOperations.length || !addOrderItems) {
+        opIds.forEach(settleAddOperation);
+        return;
+      }
+
+      let createdOrderId: string | null = null;
+      try {
+        let orderId = resolvedOrderIdRef.current;
+        if (!orderId) {
+          orderId = await createOrder(queuedOperations[0].note);
+          resolvedOrderIdRef.current = orderId;
+          createdOrderId = orderId;
+        }
+
+        const operationsBeforeAdd = queuedOperations.filter(
+          (operation) => !getPendingAddById(operation.opId)?.canceled,
+        );
+        if (!operationsBeforeAdd.length) return;
+        const mutationResult = await addOrderItems(
+          orderId,
+          operationsBeforeAdd.map((operation) => ({
+            menuItem: operation.menuItem,
+            quantity: Math.max(1, Number(operation.quantity ?? 1)),
+            note: operation.note,
+            selectedModifiers: operation.selectedModifiers,
+          })),
+        );
+        if (mutationResult?.kitchenPrintDocuments?.length) {
+          onPrintDocuments?.(mutationResult.kitchenPrintDocuments);
+        }
+
+        let refreshedOrder = await refreshCurrentOrder();
+        for (const operation of operationsBeforeAdd) {
+          if (!getPendingAddById(operation.opId)?.canceled) continue;
+          const createdItem = findLatestOrderItem(refreshedOrder?.items, {
+            catalogItemId: operation.menuItem.id,
+            note: operation.note,
+            modifiers: selectedModifierOptions(
+              operation.menuItem.modifierGroups ?? [],
+              operation.selectedModifiers ?? [],
+            ).map(({ group, option }) => ({
+              optionId: option.id,
+              groupName: group.name,
+              optionName: option.name,
+              priceDelta: option.priceDelta,
+            })),
+          });
+          if (createdItem) {
+            await removeOrderItem(createdItem.id);
+            refreshedOrder = await refreshCurrentOrder();
+          }
+        }
+      } catch {
+        if (!createdOrderId || resolvedBaseOrder) {
+          await refreshCurrentOrder().catch(() => undefined);
+        }
+        toast.error(syncErrorMessage);
+      } finally {
+        opIds.forEach(settleAddOperation);
+      }
+    },
+    [
+      addOrderItems,
+      createOrder,
+      getPendingAddById,
+      onPrintDocuments,
+      refreshCurrentOrder,
+      removeOrderItem,
+      resolvedBaseOrder,
+      settleAddOperation,
+      syncErrorMessage,
+    ],
+  );
+
   const addItem = useCallback(
     (menuItem: TMenuItem, note: string, selectedModifiers: PosModifierSelection[] = []) => {
       const opId = createOperationId();
@@ -250,6 +339,38 @@ export function useOptimisticBuilderOrder<
       enqueue(() => runAddOperation(opId));
     },
     [enqueue, runAddOperation],
+  );
+
+  const addItems = useCallback(
+    (
+      items: Array<{ menuItem: TMenuItem; quantity: number; note: string; selectedModifiers?: PosModifierSelection[] }>,
+    ) => {
+      if (!addOrderItems) {
+        for (const item of items) {
+          for (let index = 0; index < item.quantity; index += 1) {
+            addItem(item.menuItem, item.note, item.selectedModifiers);
+          }
+        }
+        return;
+      }
+
+      const operations: PendingAddOperation<TMenuItem>[] = items
+        .filter((item) => item.quantity > 0)
+        .map((item) => ({
+          opId: createOperationId(),
+          tempItemId: createOperationId(),
+          menuItem: item.menuItem,
+          note: item.note,
+          quantity: item.quantity,
+          selectedModifiers: item.selectedModifiers,
+          canceled: false,
+        }));
+      if (!operations.length) return;
+      pendingAddsRef.current = [...pendingAddsRef.current, ...operations];
+      setPendingAdds((current) => [...current, ...operations]);
+      enqueue(() => runBatchAddOperation(operations.map((operation) => operation.opId)));
+    },
+    [addItem, addOrderItems, enqueue, runBatchAddOperation],
   );
 
   const removeItem = useCallback(
@@ -308,6 +429,7 @@ export function useOptimisticBuilderOrder<
 
   return {
     addItem,
+    addItems,
     currentOrder: optimisticOrder,
     hasPendingOperations: pendingAdds.length > 0 || pendingRemoves.length > 0,
     removeItem,

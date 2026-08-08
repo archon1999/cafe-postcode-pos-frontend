@@ -18,4 +18,20 @@ export type CashierMenuCategory = {
   name: string;
   imageUrl?: string | null;
   items: CashierMenuItem[];
+  itemGroups?: CashierMenuItemGroup[];
+};
+
+export type CashierMenuItemGroupMember = {
+  id: string;
+  variantName: string;
+  sortOrder: number;
+  item: CashierMenuItem;
+};
+
+export type CashierMenuItemGroup = {
+  id: string;
+  name: string;
+  description?: string | null;
+  sortOrder: number;
+  members: CashierMenuItemGroupMember[];
 };
