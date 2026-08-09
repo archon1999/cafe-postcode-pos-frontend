@@ -22,7 +22,4 @@ export type KitchenTicket = {
   items: KitchenItem[];
   createdAt?: string;
   canAnnounce?: boolean;
-  dispatchNumber?: number;
-  isAddition?: boolean;
-  handedOffAt?: string | null;
 };

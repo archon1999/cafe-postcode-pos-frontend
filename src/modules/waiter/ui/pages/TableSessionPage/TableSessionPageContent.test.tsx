@@ -8,7 +8,6 @@ import { TableSessionPageContent } from './TableSessionPageContent';
 
 const navigateMock = vi.fn();
 const submitMutateMock = vi.fn();
-const serveReadyMutateMock = vi.fn();
 const useWaiterMenuQueryMock = vi.fn();
 const useOptimisticBuilderOrderMock = vi.fn();
 const canAccessTableSessionMenuMock = vi.fn();
@@ -46,10 +45,6 @@ vi.mock('modules/waiter/application', () => ({
     isPending: false,
     mutate: submitMutateMock,
     mutateAsync: vi.fn(),
-  }),
-  useServeReadyWaiterItemsMutation: () => ({
-    isPending: false,
-    mutate: serveReadyMutateMock,
   }),
   useWaiterMenuQuery: (...args: unknown[]) => useWaiterMenuQueryMock(...args),
   useWaiterTableSessionQuery: () => ({
@@ -128,7 +123,6 @@ describe('TableSessionPageContent', () => {
   beforeEach(() => {
     navigateMock.mockReset();
     submitMutateMock.mockReset();
-    serveReadyMutateMock.mockReset();
     canAccessTableSessionMenuMock.mockReset();
     canAccessTableSessionMenuMock.mockReturnValue(true);
     useWaiterMenuQueryMock.mockReset();
@@ -154,18 +148,7 @@ describe('TableSessionPageContent', () => {
         vatEnabled: true,
         vatPercent: 12,
         vatAmount: 3536,
-        items: [
-          {
-            id: 'order-item-1',
-            catalogItem: 'item-1',
-            catalogItemName: 'Osh',
-            quantity: 1,
-            lineTotal: 30000,
-            status: 'new',
-            prepStationName: 'Issiq oshxona',
-            kitchenDispatched: false,
-          },
-        ],
+        items: [],
         channel: 'hall',
       },
       addItem: vi.fn(),
@@ -179,7 +162,7 @@ describe('TableSessionPageContent', () => {
 
     expect(screen.queryByRole('button', { name: 'Yopish' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Chekni chiqarish' })).toBeNull();
-    const submitButtons = screen.getAllByRole('button', { name: /Saqlash/ });
+    const submitButtons = screen.getAllByRole('button', { name: 'Saqlash' });
     expect(submitButtons.length).toBeGreaterThan(0);
 
     fireEvent.click(submitButtons[0]);
@@ -262,45 +245,12 @@ describe('TableSessionPageContent', () => {
 
     render(<TableSessionPageContent sessionId="session-1" mode="hall" />);
 
-    const submitButtons = screen.getAllByRole('button', { name: /Saqlash/ });
+    const submitButtons = screen.getAllByRole('button', { name: 'Saqlash' });
     expect(
       submitButtons.some(
         (button) => button.hasAttribute('disabled') || button.getAttribute('aria-disabled') === 'true',
       ),
     ).toBe(true);
     expect(screen.queryByRole('button', { name: 'Chekni chiqarish' })).toBeNull();
-  });
-
-  it('lets the waiter mark ready dispatched items as served', () => {
-    useOptimisticBuilderOrderMock.mockReturnValue({
-      currentOrder: {
-        id: 'order-1',
-        orderNumber: 101,
-        total: 33000,
-        subtotal: 30000,
-        serviceFeePercent: 10,
-        items: [
-          {
-            id: 'ready-item',
-            catalogItem: 'item-1',
-            catalogItemName: 'Osh',
-            quantity: 1,
-            lineTotal: 30000,
-            status: 'done',
-            prepStationName: 'Issiq oshxona',
-            kitchenDispatched: true,
-          },
-        ],
-        channel: 'hall',
-      },
-      addItem: vi.fn(),
-      removeItem: vi.fn(),
-      hasPendingOperations: false,
-    });
-
-    render(<TableSessionPageContent sessionId="session-1" mode="hall" />);
-    fireEvent.click(screen.getAllByRole('button', { name: /Tayyorlarini stolga berdim/ })[0]);
-
-    expect(serveReadyMutateMock).toHaveBeenCalledTimes(1);
   });
 });

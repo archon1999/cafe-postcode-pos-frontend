@@ -13,8 +13,6 @@ export type AggregatedWaiterCartItem = {
   status: string;
   itemIds: string[];
   modifiers?: WaiterOrderItem['modifiers'];
-  kitchenDispatched: boolean;
-  kitchenDispatchNumber?: number | null;
 };
 
 export function getDefaultWaiterMenuCategory(categories: WaiterMenuCategory[]) {
@@ -47,7 +45,6 @@ export function aggregateWaiterCartItemsByStation(items: WaiterOrderItem[] | und
         item.note ?? '',
         ...(modifierSignature ? [modifierSignature] : []),
         item.status,
-        item.kitchenDispatched ? `dispatch-${item.kitchenDispatchNumber ?? 'sent'}` : 'draft',
         item.prepStationName ?? stationName,
       ].join('::');
       const existing = itemMap.get(key);
@@ -68,8 +65,6 @@ export function aggregateWaiterCartItemsByStation(items: WaiterOrderItem[] | und
         quantity: Number(item.quantity ?? 0),
         lineTotal: Number(item.lineTotal ?? 0),
         status: item.status,
-        kitchenDispatched: Boolean(item.kitchenDispatched),
-        kitchenDispatchNumber: item.kitchenDispatchNumber,
         itemIds: [item.id],
         ...(item.modifiers?.length ? { modifiers: item.modifiers } : {}),
       });

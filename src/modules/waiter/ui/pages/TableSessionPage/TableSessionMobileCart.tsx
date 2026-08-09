@@ -1,4 +1,4 @@
-import { Box, Button, Divider, Drawer, Stack, TextField, Typography } from '@mui/material';
+import { Box, Divider, Drawer, Stack, TextField, Typography } from '@mui/material';
 
 import { formatCompactMoney } from 'shared/pos/utils';
 import { PosIconAction, PosOrderChannelSegment } from 'shared/ui/pos-primitives';
@@ -60,14 +60,6 @@ export function TableSessionMobileCart({
               onSelect={props.onSelect}
               selectedItemKey={props.selectedItemKey}
               variant="mobile"
-              getStatusLabel={(item) => {
-                if (!item.kitchenDispatched) return props.copy.kitchenDraft;
-                if (item.status === 'cooking') return props.copy.kitchenCooking;
-                if (item.status === 'done') return props.copy.kitchenReady;
-                if (item.status === 'served') return props.copy.kitchenServed;
-                if (item.status === 'cancelled') return props.copy.kitchenCancelled;
-                return props.copy.kitchenQueued;
-              }}
             />
           </Stack>
         </Box>
@@ -111,13 +103,6 @@ export function TableSessionMobileCart({
           <Stack direction="row" spacing={1}>
             <TableSessionActions {...props} />
           </Stack>
-          {!props.isTakeawayMode && props.readyItemCount > 0 ? (
-            <Button variant="outlined" color="success" disabled={props.isServingReady} onClick={props.onServeReady}>
-              {props.isServingReady
-                ? props.copy.servingReadyItems
-                : `${props.copy.serveReadyItems} · ${props.readyItemCount}`}
-            </Button>
-          ) : null}
         </Stack>
       </Stack>
     </Drawer>

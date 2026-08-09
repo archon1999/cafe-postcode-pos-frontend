@@ -122,7 +122,6 @@ function createOptimisticItem<TMenuItem extends BuilderMenuItemLike, TItem exten
     unitPrice,
     lineTotal: unitPrice * quantity,
     status: 'new',
-    kitchenDispatched: false,
     prepStationName: operation.menuItem.prepStationName,
     note: operation.note || undefined,
     modifiers,

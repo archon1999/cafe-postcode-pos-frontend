@@ -20,8 +20,6 @@ export type PosCartItem = {
   markingScannedCount?: number;
   markingMissingCount?: number;
   modifiers?: PosOrderItemModifier[];
-  kitchenDispatched?: boolean;
-  kitchenDispatchNumber?: number | null;
 };
 
 export type PosCartMenuItem = {
@@ -41,7 +39,6 @@ export type PosCartItemGroupsProps<TMenuItem extends PosCartMenuItem> = {
   onSelect: (key: string) => void;
   selectedItemKey: string | null;
   variant: 'desktop' | 'mobile';
-  getStatusLabel?: (item: PosCartItem) => string | null;
 };
 
 function activationHandler(onActivate: () => void) {
@@ -61,14 +58,12 @@ function CartItemActions<TMenuItem extends PosCartMenuItem>({
   onAdd,
   onRemove,
   variant,
-  canRemove,
 }: {
   item: PosCartItem;
   menuItems: ReadonlyMap<string, TMenuItem>;
   onAdd: (item: TMenuItem, sourceItem: PosCartItem) => void;
   onRemove: (itemId: string) => void;
   variant: PosCartItemGroupsProps<TMenuItem>['variant'];
-  canRemove: boolean;
 }) {
   const removeLatest = () => onRemove(item.itemIds[item.itemIds.length - 1]);
   const addAnother = () => {
@@ -92,7 +87,6 @@ function CartItemActions<TMenuItem extends PosCartMenuItem>({
           backgroundColor: 'var(--pos-menu-item-price-bg)',
         })}>
         <Button
-          disabled={!canRemove}
           variant="contained"
           onClick={(event) => {
             event.stopPropagation();
@@ -146,12 +140,11 @@ function CartItemActions<TMenuItem extends PosCartMenuItem>({
       <Box
         component="button"
         type="button"
-        disabled={!canRemove}
         onClick={(event) => {
           event.stopPropagation();
           removeLatest();
         }}
-        sx={(theme) => ({ ...actionSx(theme), ...(!canRemove ? { opacity: 0.38, cursor: 'not-allowed' } : {}) })}>
+        sx={actionSx}>
         <Icon icon="solar:minus-circle-bold" width={22} />
       </Box>
       <Box
@@ -179,7 +172,6 @@ export function PosCartItemGroups<TMenuItem extends PosCartMenuItem>({
   onSelect,
   selectedItemKey,
   variant,
-  getStatusLabel,
 }: PosCartItemGroupsProps<TMenuItem>) {
   const mobile = variant === 'mobile';
 
@@ -191,7 +183,6 @@ export function PosCartItemGroups<TMenuItem extends PosCartMenuItem>({
       {items.map((item) => {
         const selected = selectedItemKey === item.key;
         const actionsVisible = selected && item.status !== 'cancelled' && menuItems.has(item.catalogItem);
-        const statusLabel = getStatusLabel?.(item);
 
         return (
           <Box
@@ -238,11 +229,6 @@ export function PosCartItemGroups<TMenuItem extends PosCartMenuItem>({
                     {item.note}
                   </Typography>
                 ) : null}
-                {statusLabel ? (
-                  <Typography variant={mobile ? 'caption' : 'body2'} color="primary.main" sx={{ fontWeight: 700 }}>
-                    {statusLabel}
-                  </Typography>
-                ) : null}
                 {item.modifiers?.map((modifier) => (
                   <Stack
                     key={`${modifier.groupName}-${modifier.optionName}`}
@@ -274,14 +260,7 @@ export function PosCartItemGroups<TMenuItem extends PosCartMenuItem>({
               </Typography>
             </Stack>
             {actionsVisible ? (
-              <CartItemActions
-                item={item}
-                menuItems={menuItems}
-                onAdd={onAdd}
-                onRemove={onRemove}
-                variant={variant}
-                canRemove={item.kitchenDispatched !== true}
-              />
+              <CartItemActions item={item} menuItems={menuItems} onAdd={onAdd} onRemove={onRemove} variant={variant} />
             ) : null}
           </Box>
         );
