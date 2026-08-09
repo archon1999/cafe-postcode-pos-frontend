@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PosProductConfiguratorDialog } from './PosProductConfiguratorDialog';
 
@@ -33,6 +33,16 @@ const copy = {
   selectUpTo: '{{count}} tagacha tanlang',
   selectedCount: '{{count}} ta',
 };
+
+beforeEach(() => {
+  vi.useFakeTimers();
+});
+
+afterEach(() => {
+  cleanup();
+  vi.runOnlyPendingTimers();
+  vi.useRealTimers();
+});
 
 describe('PosProductConfiguratorDialog', () => {
   it('enforces required choices and confirms the paid option with backend identifiers', () => {
