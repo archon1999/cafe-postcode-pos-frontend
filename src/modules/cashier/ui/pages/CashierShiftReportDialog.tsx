@@ -94,12 +94,20 @@ function PosReport({ locale, report }: { locale: PosLocale; report: Record<strin
           value={`${numberOf(report, 'OrdersCount', 'ordersCount')} / ${numberOf(report, 'PaymentsCount', 'paymentsCount', 'TotalSaleCount', 'totalSaleCount')}`}
         />
         <ReportMetric
-          label={copy.reportCashTurnover}
-          value={formatCompactMoney(reportMoney(report, 'TotalCash', 'totalCash'), locale)}
+          label={copy.reportCashPrecheck}
+          value={formatCompactMoney(reportMoney(report, 'TotalCash', 'totalCash', 'Precheck'), locale)}
         />
         <ReportMetric
-          label={copy.reportCardTurnover}
-          value={formatCompactMoney(reportMoney(report, 'TotalCard', 'totalCard'), locale)}
+          label={copy.reportCashReceipt}
+          value={formatCompactMoney(reportMoney(report, 'TotalCash', 'totalCash', 'Receipt'), locale)}
+        />
+        <ReportMetric
+          label={copy.reportCardPrecheck}
+          value={formatCompactMoney(reportMoney(report, 'TotalCard', 'totalCard', 'Precheck'), locale)}
+        />
+        <ReportMetric
+          label={copy.reportCardReceipt}
+          value={formatCompactMoney(reportMoney(report, 'TotalCard', 'totalCard', 'Receipt'), locale)}
         />
         <ReportMetric
           label={copy.reportQrTurnover}
