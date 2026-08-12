@@ -56,6 +56,10 @@ vi.mock('modules/cashier/application', () => ({
           cashDifferenceAmount: 0,
           cashTotal: 50000,
           cardTotal: 0,
+          cashPrecheckTotal: 18000,
+          cashReceiptTotal: 32000,
+          cardPrecheckTotal: 0,
+          cardReceiptTotal: 0,
           qrTotal: 0,
           refundTotal: 0,
           expenseTotal: 0,
@@ -128,10 +132,16 @@ describe('CashierShiftPage report printing', () => {
     expect(screen.queryByLabelText('Izoh')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Ishni davom ettirish' })).toBeNull();
     expect(screen.getByText('Sotuv')).toBeTruthy();
+    expect(screen.getByText('Naqd — prechek')).toBeTruthy();
+    expect(screen.getByText('Naqd — chek')).toBeTruthy();
+    expect(screen.getByText('Karta — prechek')).toBeTruthy();
+    expect(screen.getByText('Karta — chek')).toBeTruthy();
     expect(screen.getByText('Qaytarish')).toBeTruthy();
     expect(screen.getByText('Birinchi chek')).toBeTruthy();
     expect(screen.getByText('Oxirgi chek')).toBeTruthy();
-    expect(screen.getAllByText(/50.000 so'm/)).toHaveLength(3);
+    expect(screen.getAllByText(/50.000 so'm/)).toHaveLength(2);
+    expect(screen.getByText(/18\s000 so'm/)).toBeTruthy();
+    expect(screen.getByText(/32\s000 so'm/)).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Chek chiqarish' }));
 

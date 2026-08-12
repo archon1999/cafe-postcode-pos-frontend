@@ -69,6 +69,10 @@ export type CashShiftSummary = {
   cashDifferenceAmount: number;
   cashTotal: number;
   cardTotal: number;
+  cashPrecheckTotal?: number;
+  cashReceiptTotal?: number;
+  cardPrecheckTotal?: number;
+  cardReceiptTotal?: number;
   qrTotal: number;
   refundTotal: number;
   expenseTotal: number;

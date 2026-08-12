@@ -26,8 +26,10 @@ export function CashierShiftTotals({ locale, shift }: ShiftTotalsProps) {
   const refundTotal = Number(shift.refundTotal ?? 0);
   const saleRows = [
     [copy.reportSales, Number(shift.saleCount ?? shift.receiptCount ?? 0), false],
-    [copy.reportCash, Number(shift.cashTotal ?? 0), true],
-    [copy.reportCard, Number(shift.cardTotal ?? 0), true],
+    [copy.reportCashPrecheck, Number(shift.cashPrecheckTotal ?? 0), true],
+    [copy.reportCashReceipt, Number(shift.cashReceiptTotal ?? 0), true],
+    [copy.reportCardPrecheck, Number(shift.cardPrecheckTotal ?? 0), true],
+    [copy.reportCardReceipt, Number(shift.cardReceiptTotal ?? 0), true],
     ...(Number(shift.qrTotal ?? 0) > 0 ? ([[copy.qr, Number(shift.qrTotal), true]] as const) : []),
     ...(Number(shift.vatSaleTotal ?? 0) > 0 ? ([[copy.reportVat, Number(shift.vatSaleTotal), true]] as const) : []),
     [copy.shiftReportTotal, saleTotal, true],
