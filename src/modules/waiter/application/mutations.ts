@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 
-import { requestEdgePrintDocuments } from 'modules/edge-printing/application';
+import { enqueueEdgePrintDocuments, requestEdgePrintDocuments } from 'modules/edge-printing/application';
 import { invalidateQueriesInBackground } from 'shared/api/query-client';
 
 import { waiterRepository } from '../data-access';
@@ -129,5 +129,30 @@ export function useSubmitWaiterOrderMutation(options: {
       ]);
       onSuccess?.();
     },
+  });
+}
+
+export function usePrintWaiterPrecheckMutation(options: {
+  orderId?: string;
+  orderNote: string;
+  onSuccess?: () => void;
+}) {
+  const { orderId, orderNote, onSuccess } = options;
+
+  return useMutation({
+    mutationFn: async () => {
+      if (!orderId) {
+        throw new Error('Current order is not available');
+      }
+
+      await waiterRepository.updateOrderNote(orderId, orderNote);
+      const response = await waiterRepository.createPrecheckPrintDocument(orderId);
+      const { errors } = await enqueueEdgePrintDocuments([response.printDocument]);
+      if (errors.length) {
+        throw errors[0];
+      }
+      return response;
+    },
+    onSuccess,
   });
 }

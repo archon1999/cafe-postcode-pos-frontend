@@ -88,3 +88,7 @@ export type CashierOrder = {
 export type CashierCreateOrderResponse = {
   id: string;
 };
+
+export type CashierPrecheckPrintDocumentResponse = {
+  printDocument: string;
+};

@@ -11,8 +11,13 @@ type RetryFiscalPaymentResponse = Awaited<ReturnType<CashierRepository['retryFis
 type RefundReason = Exclude<Parameters<CashierRepository['refundPayment']>[1], undefined>;
 type RefundPaymentResponse = Awaited<ReturnType<CashierRepository['refundPayment']>>;
 type PaymentPrintDocumentResponse = Awaited<ReturnType<CashierRepository['ensurePaymentPrintDocument']>>;
+type PrecheckPrintDocumentResponse = Awaited<ReturnType<CashierRepository['createPrecheckPrintDocument']>>;
 
 export const cashierPaymentGateway = {
+  createPrecheckPrintDocument(orderId: string) {
+    return apiPost<PrecheckPrintDocumentResponse>(`/pos/billing/orders/${orderId}/precheck/print-document/`);
+  },
+
   async payOrder(
     orderId: string,
     method: PayOrderMethod,

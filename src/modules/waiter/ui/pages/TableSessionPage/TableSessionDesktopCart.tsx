@@ -16,6 +16,8 @@ export type TableSessionDesktopCartProps = {
   groups: PosCartItemGroupsProps<WaiterMenuItem>['groups'];
   isSubmitDisabled: boolean;
   isSubmitting: boolean;
+  isPrecheckDisabled: boolean;
+  isPrintingPrecheck: boolean;
   isTakeawayMode: boolean;
   kitchenNote: string;
   locale: PosLocale;
@@ -36,6 +38,7 @@ export type TableSessionDesktopCartProps = {
   onAdd: PosCartItemGroupsProps<WaiterMenuItem>['onAdd'];
   onCheckout: () => void;
   onKitchenNoteChange: (value: string) => void;
+  onPrintPrecheck: () => void;
   onRemove: (itemId: string) => void;
   onSelect: (key: string) => void;
   onSubmit: () => void;
@@ -44,9 +47,23 @@ export type TableSessionDesktopCartProps = {
 export function TableSessionActions(props: TableSessionDesktopCartProps) {
   if (!props.isTakeawayMode) {
     return (
-      <Button variant="contained" sx={{ flex: 1 }} disabled={props.isSubmitDisabled} onClick={props.onSubmit}>
-        {props.isSubmitting ? props.copy.processing : props.copy.sendOrder}
-      </Button>
+      <>
+        <Button
+          variant="contained"
+          sx={(theme) => ({
+            flex: 1,
+            backgroundImage: 'none',
+            backgroundColor: theme.palette.mode === 'dark' ? '#464646' : '#d7cebf',
+            color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
+          })}
+          disabled={props.isPrecheckDisabled}
+          onClick={props.onPrintPrecheck}>
+          {props.isPrintingPrecheck ? props.copy.processing : props.copy.printPrecheck}
+        </Button>
+        <Button variant="contained" sx={{ flex: 1.15 }} disabled={props.isSubmitDisabled} onClick={props.onSubmit}>
+          {props.isSubmitting ? props.copy.processing : props.copy.sendOrder}
+        </Button>
+      </>
     );
   }
 

@@ -38,3 +38,7 @@ export type WaiterOrder = {
 export type WaiterCreateOrderResponse = {
   id: string;
 };
+
+export type WaiterPrecheckPrintDocumentResponse = {
+  printDocument: string;
+};

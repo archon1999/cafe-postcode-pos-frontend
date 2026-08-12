@@ -10,6 +10,7 @@ import {
   useCashierOpenChecksQuery,
   useCashierRefundMutation,
   useCashierUpdateOrderDisplayNameMutation,
+  usePrintCashierPrecheckMutation,
 } from 'modules/cashier/application';
 import {
   aggregateCashierOrderItems,
@@ -64,6 +65,9 @@ export function OpenChecksPageContent() {
   const [fiscalPage, setFiscalPage] = useState(1);
   const refundMutation = useCashierRefundMutation();
   const ensurePrintDocumentMutation = useCashierEnsurePaymentPrintDocumentMutation();
+  const printPrecheckMutation = usePrintCashierPrecheckMutation({
+    onSuccess: () => toast.success(copy.receiptPrinted),
+  });
   const updateOrderDisplayNameMutation = useCashierUpdateOrderDisplayNameMutation({
     onSuccess: () => {
       setRenameOrder(null);
@@ -157,6 +161,14 @@ export function OpenChecksPageContent() {
       latestSucceededPayment={latestSucceededPayment}
       locale={locale}
       onPay={() => navigate(`/cashier/payment?orderId=${selectedOrder.id}`)}
+      onPrintPrecheck={() => {
+        if (printPrecheckMutation.isPending) {
+          return;
+        }
+        printPrecheckMutation.mutate(selectedOrder.id, {
+          onError: (error) => toast.error(error instanceof Error ? error.message : copy.receiptUnavailable),
+        });
+      }}
       onRefund={() => {
         if (!latestSucceededPayment?.id || refundMutation.isPending) {
           return;
@@ -195,6 +207,8 @@ export function OpenChecksPageContent() {
         retryReceiptFlow.retry(latestSucceededPayment.id);
       }}
       order={selectedOrder}
+      precheckAvailable={canOperatePayments}
+      precheckPending={printPrecheckMutation.isPending}
       refundAvailable={canRefund}
       reprintAvailable={canReprint}
       retryFiscalAvailable={canRetryFiscal}

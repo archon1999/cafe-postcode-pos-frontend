@@ -21,10 +21,13 @@ export function OpenChecksDetail({
   latestSucceededPayment,
   locale,
   onPay,
+  onPrintPrecheck,
   onRefund,
   onReprint,
   onRetryFiscal,
   order,
+  precheckAvailable,
+  precheckPending,
   refundAvailable,
   reprintAvailable,
   retryFiscalAvailable,
@@ -35,10 +38,13 @@ export function OpenChecksDetail({
   latestSucceededPayment: CashierPayment | undefined;
   locale: PosLocale;
   onPay: () => void;
+  onPrintPrecheck: () => void;
   onRefund: () => void;
   onReprint: () => void;
   onRetryFiscal: () => void;
   order: CashierOrder;
+  precheckAvailable: boolean;
+  precheckPending: boolean;
   refundAvailable: boolean;
   reprintAvailable: boolean;
   retryFiscalAvailable: boolean;
@@ -217,7 +223,20 @@ export function OpenChecksDetail({
         </Stack>
         {selectedTab === 'open' ? (
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.1}>
-            <Button variant="contained" size="large" sx={{ flex: 1.15 }} onClick={onPay}>
+            <Button
+              variant="contained"
+              size="large"
+              disabled={!precheckAvailable || precheckPending}
+              sx={(theme) => ({
+                flex: 1,
+                backgroundImage: 'none',
+                backgroundColor: 'var(--pos-secondary-action-bg)',
+                color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
+              })}
+              onClick={onPrintPrecheck}>
+              {precheckPending ? copy.processing : copy.printPrecheck}
+            </Button>
+            <Button variant="contained" size="large" sx={{ flex: 1.15 }} disabled={precheckPending} onClick={onPay}>
               {copy.pay}
             </Button>
           </Stack>

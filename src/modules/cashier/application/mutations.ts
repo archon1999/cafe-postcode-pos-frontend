@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 
-import { requestEdgePrintDocuments } from 'modules/edge-printing/application';
+import { enqueueEdgePrintDocuments, requestEdgePrintDocuments } from 'modules/edge-printing/application';
 import { invalidateQueriesInBackground } from 'shared/api/query-client';
 import type { PosModifierSelection } from 'shared/pos/modifiers';
 
@@ -167,6 +167,20 @@ export function useCashierPaymentMutation(options: {
       ]);
       onSuccess?.();
     },
+  });
+}
+
+export function usePrintCashierPrecheckMutation(options?: { onSuccess?: () => void }) {
+  return useMutation({
+    mutationFn: async (orderId: string) => {
+      const response = await cashierRepository.createPrecheckPrintDocument(orderId);
+      const { errors } = await enqueueEdgePrintDocuments([response.printDocument]);
+      if (errors.length) {
+        throw errors[0];
+      }
+      return response;
+    },
+    onSuccess: () => options?.onSuccess?.(),
   });
 }
 

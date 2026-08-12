@@ -15,6 +15,7 @@ const addPaymentOrderItemMutateAsyncMock = vi.fn();
 const removePaymentOrderItemMutateAsyncMock = vi.fn();
 const updateDisplayNameMutateAsyncMock = vi.fn();
 const paymentMutateAsyncMock = vi.fn();
+const printPrecheckMutateMock = vi.fn();
 const requestEdgePrintDocumentsMock = vi.hoisted(() => vi.fn());
 const clipboardWriteTextMock = vi.fn();
 let orderChannelMock = 'takeaway';
@@ -81,6 +82,10 @@ vi.mock('modules/cashier/application', () => ({
   useCashierPaymentMutation: () => ({
     ...paymentMutationStateMock,
     mutateAsync: paymentMutateAsyncMock,
+  }),
+  usePrintCashierPrecheckMutation: () => ({
+    isPending: false,
+    mutate: printPrecheckMutateMock,
   }),
   useCashierOrderScanMutation: () => ({
     isPending: false,
@@ -177,6 +182,7 @@ describe('PaymentPageContent', () => {
     removePaymentOrderItemMutateAsyncMock.mockReset();
     updateDisplayNameMutateAsyncMock.mockReset();
     paymentMutateAsyncMock.mockReset();
+    printPrecheckMutateMock.mockReset();
     requestEdgePrintDocumentsMock.mockClear();
     clipboardWriteTextMock.mockReset();
     Object.defineProperty(navigator, 'clipboard', {
@@ -744,7 +750,7 @@ describe('PaymentPageContent', () => {
     expect(clipboardWriteTextMock).toHaveBeenCalledWith(expect.stringContaining('"path": "/transaction"'));
   });
 
-  it('characterizes Prechek as a permitted non-fiscal close intent', async () => {
+  it('keeps the permitted non-fiscal payment as a separate ordinary receipt action', async () => {
     canSkipFiscalReceiptsMock.mockReturnValue(true);
     paymentMutateAsyncMock.mockResolvedValueOnce({
       order: {
@@ -766,7 +772,7 @@ describe('PaymentPageContent', () => {
     });
 
     render(<PaymentPageContent orderId="order-1" />);
-    fireEvent.click(screen.getByRole('button', { name: 'Prechek' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Oddiy chek' }));
 
     await waitFor(() => {
       expect(paymentMutateAsyncMock).toHaveBeenCalledTimes(1);
@@ -777,6 +783,19 @@ describe('PaymentPageContent', () => {
       });
     });
     expect(await screen.findByText('Chek tayyor')).toBeTruthy();
+  });
+
+  it('prints a precheck without starting payment or closing the order', () => {
+    render(<PaymentPageContent orderId="order-1" />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Prechek' }));
+
+    expect(printPrecheckMutateMock).toHaveBeenCalledWith(
+      'order-1',
+      expect.objectContaining({ onError: expect.any(Function) }),
+    );
+    expect(paymentMutateAsyncMock).not.toHaveBeenCalled();
+    expect(navigateMock).not.toHaveBeenCalled();
   });
 
   it('characterizes the submit guard as one mutation while payment is pending', async () => {

@@ -5,15 +5,18 @@ import { formatCompactMoney } from 'shared/pos/utils';
 
 type PaymentCheckoutSummaryProps = {
   canDisableFiscalRegistration: boolean;
+  canPrintPrecheck: boolean;
   canSubmitPayment: boolean;
   copy: ReturnType<typeof getPosCopy>;
   currentShiftOpen: boolean;
   grandTotal: number | string | undefined;
   isPaymentProcessing: boolean;
+  isPrintingPrecheck: boolean;
   locale: PosLocale;
   markingCheckEnabled: boolean;
   markingMissingCount: number;
   onPay: (registerFiscal: boolean) => void;
+  onPrintPrecheck: () => void;
   remainingTotal: number;
   selectedCashDeskName?: string;
   serviceFee: number | string | undefined;
@@ -27,15 +30,18 @@ type PaymentCheckoutSummaryProps = {
 
 export function PaymentCheckoutSummary({
   canDisableFiscalRegistration,
+  canPrintPrecheck,
   canSubmitPayment,
   copy,
   currentShiftOpen,
   grandTotal,
   isPaymentProcessing,
+  isPrintingPrecheck,
   locale,
   markingCheckEnabled,
   markingMissingCount,
   onPay,
+  onPrintPrecheck,
   remainingTotal,
   selectedCashDeskName,
   serviceFee,
@@ -116,6 +122,20 @@ export function PaymentCheckoutSummary({
           {copy.openShiftBeforePayment}
         </Typography>
       ) : null}
+
+      <Button
+        variant="contained"
+        size="large"
+        fullWidth
+        disabled={!canPrintPrecheck}
+        sx={(theme) => ({
+          backgroundImage: 'none',
+          backgroundColor: 'var(--pos-secondary-action-bg)',
+          color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
+        })}
+        onClick={onPrintPrecheck}>
+        {isPrintingPrecheck ? copy.processing : copy.printPrecheck}
+      </Button>
 
       <Stack direction="row" spacing={1}>
         <Box component="span" sx={{ display: 'inline-flex', flex: '1 1 50%', minWidth: 0 }}>

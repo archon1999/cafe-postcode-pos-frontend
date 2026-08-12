@@ -4,6 +4,7 @@ import type {
   WaiterCreateOrderResponse,
   WaiterMenuCategory,
   WaiterOrder,
+  WaiterPrecheckPrintDocumentResponse,
   WaiterRepository,
   WaiterSessionResponse,
 } from 'modules/waiter/domain';
@@ -96,6 +97,10 @@ class WaiterRepositoryImpl implements WaiterRepository {
 
   async submitOrder(orderId: string) {
     return apiPost<WaiterOrder>(`/pos/sales/orders/${orderId}/submit/`);
+  }
+
+  async createPrecheckPrintDocument(orderId: string) {
+    return apiPost<WaiterPrecheckPrintDocumentResponse>(`/pos/billing/orders/${orderId}/precheck/print-document/`);
   }
 }
 

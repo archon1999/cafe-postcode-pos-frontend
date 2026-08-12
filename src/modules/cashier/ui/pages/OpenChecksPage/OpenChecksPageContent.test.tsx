@@ -15,6 +15,7 @@ const retryFiscalMutateMock = vi.fn();
 const closedRefetchMock = vi.fn();
 const fiscalClosedRefetchMock = vi.fn();
 const ensurePrintDocumentMutateAsyncMock = vi.fn();
+const printPrecheckMutateMock = vi.fn();
 const requestEdgePrintDocumentsMock = vi.hoisted(() => vi.fn());
 const refundMutateAsyncMock = vi.fn();
 let openOrdersState: Array<Record<string, unknown>> = [];
@@ -78,6 +79,10 @@ vi.mock('modules/cashier/application', () => ({
   useCashierEnsurePaymentPrintDocumentMutation: () => ({
     isPending: false,
     mutateAsync: ensurePrintDocumentMutateAsyncMock,
+  }),
+  usePrintCashierPrecheckMutation: () => ({
+    isPending: false,
+    mutate: printPrecheckMutateMock,
   }),
   useCashierUpdateOrderDisplayNameMutation: (options?: { onSuccess?: (orderId: string) => void }) => ({
     isPending: false,
@@ -166,6 +171,7 @@ describe('OpenChecksPageContent', () => {
     closedRefetchMock.mockReset();
     fiscalClosedRefetchMock.mockReset();
     ensurePrintDocumentMutateAsyncMock.mockReset();
+    printPrecheckMutateMock.mockReset();
     ensurePrintDocumentMutateAsyncMock.mockResolvedValue({
       receipt: { id: 'receipt-materialized', printDocument: 'document-materialized' },
     });
@@ -201,6 +207,18 @@ describe('OpenChecksPageContent', () => {
     render(<OpenChecksPageContent />);
 
     expect(screen.queryByRole('button', { name: "Menyuga o'tish" })).toBeNull();
+  });
+
+  it('prints an open check precheck without navigating to payment', () => {
+    render(<OpenChecksPageContent />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Prechek' }));
+
+    expect(printPrecheckMutateMock).toHaveBeenCalledWith(
+      'order-1',
+      expect.objectContaining({ onError: expect.any(Function) }),
+    );
+    expect(navigateMock).not.toHaveBeenCalled();
   });
 
   it('shows duplicate products as one quantity row in all three tabs', () => {
@@ -244,7 +262,7 @@ describe('OpenChecksPageContent', () => {
     render(<OpenChecksPageContent />);
     expect(screen.getAllByText('Cola (x2)')).toHaveLength(1);
 
-    fireEvent.click(screen.getByRole('button', { name: /Precheklar/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Oddiy cheklar/ }));
     expect(screen.getAllByText('Cola (x2)')).toHaveLength(1);
 
     fireEvent.click(screen.getByRole('button', { name: /Cheklar/ }));
@@ -279,7 +297,7 @@ describe('OpenChecksPageContent', () => {
 
     expect(screen.queryByRole('button', { name: "Menyuga o'tish" })).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: /Precheklar/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Oddiy cheklar/ }));
 
     expect(screen.queryByRole('button', { name: "Menyuga o'tish" })).toBeNull();
   });
@@ -324,8 +342,8 @@ describe('OpenChecksPageContent', () => {
     ]);
 
     render(<OpenChecksPageContent />);
-    fireEvent.click(screen.getByRole('button', { name: /Precheklar/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Prechekni qayta chiqarish' }));
+    fireEvent.click(screen.getByRole('button', { name: /Oddiy cheklar/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Oddiy chekni qayta chiqarish' }));
 
     await waitFor(() => {
       expect(ensurePrintDocumentMutateAsyncMock).toHaveBeenCalledWith('payment-6');
@@ -407,7 +425,7 @@ describe('OpenChecksPageContent', () => {
     ]);
 
     render(<OpenChecksPageContent />);
-    fireEvent.click(screen.getByRole('button', { name: /Precheklar/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Oddiy cheklar/ }));
 
     const issueFiscalButton = screen.getByRole('button', { name: 'Chek chiqarish' }) as HTMLButtonElement;
     expect(issueFiscalButton.disabled).toBe(false);
@@ -459,7 +477,7 @@ describe('OpenChecksPageContent', () => {
     ]);
 
     render(<OpenChecksPageContent />);
-    fireEvent.click(screen.getByRole('button', { name: /Precheklar/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Oddiy cheklar/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Chek chiqarish' }));
 
     expect(await screen.findByText('Chek tayyor')).toBeTruthy();
@@ -501,7 +519,7 @@ describe('OpenChecksPageContent', () => {
     ]);
 
     render(<OpenChecksPageContent />);
-    fireEvent.click(screen.getByRole('button', { name: /Precheklar/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Oddiy cheklar/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Chek chiqarish' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Yakunlash' }));
     fireEvent.click(await screen.findByRole('button', { name: "Yo'q" }));

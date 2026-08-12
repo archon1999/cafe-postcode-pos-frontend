@@ -16,6 +16,7 @@ import {
   useCashierContextQuery,
   useCashierOrderScanMutation,
   useCashierPaymentOrderQuery,
+  usePrintCashierPrecheckMutation,
 } from 'modules/cashier/application';
 import {
   aggregateCashierOrderItems,
@@ -70,6 +71,9 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   const scanMarkingMutation = useCashierOrderScanMutation({
     orderId: normalizedOrderId,
     mode: 'remove',
+  });
+  const printPrecheckMutation = usePrintCashierPrecheckMutation({
+    onSuccess: () => toast.success(copy.receiptPrinted),
   });
   const selectedCashDesk = useMemo(() => {
     const cashDesks = cashierContextQuery.data?.availableCashDesks ?? [];
@@ -194,7 +198,11 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
       isPaymentAmountValid &&
       (isSplitPayment ? pendingSplitTotal <= remainingTotal : paymentAmount <= remainingTotal) &&
       isSplitPaymentValid &&
-      !isPaymentProcessing,
+      !isPaymentProcessing &&
+      !printPrecheckMutation.isPending,
+  );
+  const canPrintPrecheck = Boolean(
+    normalizedOrderId && canProcessPayments && !isPaymentProcessing && !printPrecheckMutation.isPending,
   );
   const serviceFeePercent = Number(orderQuery.data?.serviceFeePercent ?? 0);
   const serviceFeeAmount = Number(orderQuery.data?.serviceFee ?? 0);
@@ -301,15 +309,25 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
 
             <PaymentCheckoutSummary
               canDisableFiscalRegistration={canDisableFiscalRegistration}
+              canPrintPrecheck={canPrintPrecheck}
               canSubmitPayment={canSubmitPayment}
               copy={copy}
               currentShiftOpen={Boolean(cashierContextQuery.data?.currentShift)}
               grandTotal={orderQuery.data?.total}
               isPaymentProcessing={isPaymentProcessing}
+              isPrintingPrecheck={printPrecheckMutation.isPending}
               locale={locale}
               markingCheckEnabled={markingCheckEnabled}
               markingMissingCount={markingMissingCount}
               onPay={(registerFiscal) => void paymentSubmission.submitPayment(registerFiscal)}
+              onPrintPrecheck={() => {
+                if (!normalizedOrderId || !canPrintPrecheck) {
+                  return;
+                }
+                printPrecheckMutation.mutate(normalizedOrderId, {
+                  onError: (error) => toast.error(error instanceof Error ? error.message : copy.receiptUnavailable),
+                });
+              }}
               remainingTotal={remainingTotal}
               selectedCashDeskName={selectedCashDesk?.name}
               serviceFee={orderQuery.data?.serviceFee}

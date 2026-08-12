@@ -6,6 +6,7 @@ import type {
   WaiterCreateOrderResponse,
   WaiterMenuCategory,
   WaiterOrder,
+  WaiterPrecheckPrintDocumentResponse,
   WaiterSessionResponse,
 } from '../entities';
 
@@ -27,4 +28,5 @@ export interface WaiterRepository {
   removeOrderItem(itemId: string): Promise<void>;
   updateOrderNote(orderId: string, note: string): Promise<WaiterOrder>;
   submitOrder(orderId: string): Promise<WaiterOrder>;
+  createPrecheckPrintDocument(orderId: string): Promise<WaiterPrecheckPrintDocumentResponse>;
 }

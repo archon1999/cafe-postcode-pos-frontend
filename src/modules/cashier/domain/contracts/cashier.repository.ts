@@ -8,6 +8,7 @@ import type {
   CashierMenuCategory,
   CashierOrder,
   CashierPaymentResponse,
+  CashierPrecheckPrintDocumentResponse,
   CashierShiftCloseResponse,
   CashierShiftReportResponse,
   CashExpense,
@@ -102,6 +103,7 @@ export interface CashierRepository {
       registerFiscal?: boolean;
     },
   ): Promise<CashierPaymentResponse>;
+  createPrecheckPrintDocument(orderId: string): Promise<CashierPrecheckPrintDocumentResponse>;
   retryFiscalPayment(paymentId: string): Promise<{
     payment: unknown;
     receipt: CashierReceipt | null;

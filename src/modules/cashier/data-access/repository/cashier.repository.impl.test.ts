@@ -49,6 +49,7 @@ describe('cashier repository transport contract', () => {
 
   it('exposes the exact payment gateway function references', () => {
     expect(cashierRepository.payOrder).toBe(cashierPaymentGateway.payOrder);
+    expect(cashierRepository.createPrecheckPrintDocument).toBe(cashierPaymentGateway.createPrecheckPrintDocument);
     expect(cashierRepository.retryFiscalPayment).toBe(cashierPaymentGateway.retryFiscalPayment);
     expect(cashierRepository.refundPayment).toBe(cashierPaymentGateway.refundPayment);
     expect(cashierRepository.ensurePaymentPrintDocument).toBe(cashierPaymentGateway.ensurePaymentPrintDocument);
@@ -143,6 +144,14 @@ describe('cashier repository transport contract', () => {
     expect(result.order.orderNumber).toBe(77);
     expect(result.payment).toBe(response.payment);
     expect(result.receipt).toBe(response.receipt);
+  });
+
+  it('creates an order precheck print document without sending payment data', async () => {
+    const response = { printDocument: 'precheck-document-1' };
+    apiPostMock.mockResolvedValueOnce(response);
+
+    await expect(cashierRepository.createPrecheckPrintDocument('order-1')).resolves.toBe(response);
+    expect(apiPostMock).toHaveBeenCalledWith('/pos/billing/orders/order-1/precheck/print-document/');
   });
 
   it('forwards every explicit payment option without changing its value', async () => {

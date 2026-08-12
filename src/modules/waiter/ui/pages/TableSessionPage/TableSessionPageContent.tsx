@@ -14,6 +14,7 @@ import { requestEdgePrintDocuments } from 'modules/edge-printing/application';
 import {
   useCurrentWaiterOrder,
   useCurrentWaiterTakeawayOrder,
+  usePrintWaiterPrecheckMutation,
   useSubmitWaiterOrderMutation,
   useWaiterMenuQuery,
   useWaiterTableSessionQuery,
@@ -150,6 +151,11 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
       setCartOpen(false);
     },
   });
+  const printPrecheckMutation = usePrintWaiterPrecheckMutation({
+    orderId: currentOrder?.id,
+    orderNote: kitchenNote,
+    onSuccess: () => toast.success(copy.receiptPrinted),
+  });
 
   const categories = useMemo(() => menuQuery.data ?? [], [menuQuery.data]);
   const defaultCategory = useMemo(() => getDefaultWaiterMenuCategory(categories), [categories]);
@@ -186,6 +192,17 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
   );
   const canTakePayment = canAccessCashierPayments(session?.user);
   const isSubmitDisabled = !currentOrder || submitOrderMutation.isPending || hasPendingOperations;
+  const isPrecheckDisabled =
+    !currentOrder || printPrecheckMutation.isPending || submitOrderMutation.isPending || hasPendingOperations;
+
+  const handlePrintPrecheck = () => {
+    if (isPrecheckDisabled) {
+      return;
+    }
+    printPrecheckMutation.mutate(undefined, {
+      onError: (error) => toast.error(error instanceof Error ? error.message : copy.receiptUnavailable),
+    });
+  };
 
   const handleTakeawayCheckout = async () => {
     if (!currentOrder || submitOrderMutation.isPending || hasPendingOperations) {
@@ -267,6 +284,8 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
           groups={groupedOrderItems}
           isSubmitDisabled={isSubmitDisabled}
           isSubmitting={submitOrderMutation.isPending}
+          isPrecheckDisabled={isPrecheckDisabled}
+          isPrintingPrecheck={printPrecheckMutation.isPending}
           isTakeawayMode={isTakeawayMode}
           kitchenNote={kitchenNote}
           locale={locale}
@@ -292,6 +311,7 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
             setOrderSent(false);
             setKitchenNote(value);
           }}
+          onPrintPrecheck={handlePrintPrecheck}
           onRemove={removeItem}
           onSelect={(key) => setSelectedCartItemKey((current) => (current === key ? null : key))}
           onSubmit={() => submitOrderMutation.mutate()}
@@ -307,6 +327,8 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
         groups={groupedOrderItems}
         isSubmitDisabled={isSubmitDisabled}
         isSubmitting={submitOrderMutation.isPending}
+        isPrecheckDisabled={isPrecheckDisabled}
+        isPrintingPrecheck={printPrecheckMutation.isPending}
         isTakeawayMode={isTakeawayMode}
         kitchenNote={kitchenNote}
         locale={locale}
@@ -331,6 +353,7 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
           setOrderSent(false);
           setKitchenNote(value);
         }}
+        onPrintPrecheck={handlePrintPrecheck}
         onRemove={removeItem}
         onSelect={(key) => setSelectedCartItemKey((current) => (current === key ? null : key))}
         onSubmit={() => submitOrderMutation.mutate()}

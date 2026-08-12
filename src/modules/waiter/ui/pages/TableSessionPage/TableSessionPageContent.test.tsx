@@ -8,6 +8,7 @@ import { TableSessionPageContent } from './TableSessionPageContent';
 
 const navigateMock = vi.fn();
 const submitMutateMock = vi.fn();
+const printPrecheckMutateMock = vi.fn();
 const useWaiterMenuQueryMock = vi.fn();
 const useOptimisticBuilderOrderMock = vi.fn();
 const canAccessTableSessionMenuMock = vi.fn();
@@ -41,6 +42,10 @@ vi.mock('modules/auth', () => ({
 vi.mock('modules/waiter/application', () => ({
   useCurrentWaiterOrder: () => ({ currentOrder: undefined }),
   useCurrentWaiterTakeawayOrder: () => ({ currentOrder: undefined }),
+  usePrintWaiterPrecheckMutation: () => ({
+    isPending: false,
+    mutate: printPrecheckMutateMock,
+  }),
   useSubmitWaiterOrderMutation: () => ({
     isPending: false,
     mutate: submitMutateMock,
@@ -123,6 +128,7 @@ describe('TableSessionPageContent', () => {
   beforeEach(() => {
     navigateMock.mockReset();
     submitMutateMock.mockReset();
+    printPrecheckMutateMock.mockReset();
     canAccessTableSessionMenuMock.mockReset();
     canAccessTableSessionMenuMock.mockReturnValue(true);
     useWaiterMenuQueryMock.mockReset();
@@ -157,16 +163,20 @@ describe('TableSessionPageContent', () => {
     });
   });
 
-  it('submits hall orders without exposing a waiter receipt action', () => {
+  it('shows a waiter precheck action next to save without replacing order submission', () => {
     render(<TableSessionPageContent sessionId="session-1" mode="hall" />);
 
     expect(screen.queryByRole('button', { name: 'Yopish' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Chekni chiqarish' })).toBeNull();
+    const precheckButtons = screen.getAllByRole('button', { name: 'Prechek' });
     const submitButtons = screen.getAllByRole('button', { name: 'Saqlash' });
+    expect(precheckButtons.length).toBeGreaterThan(0);
     expect(submitButtons.length).toBeGreaterThan(0);
 
+    fireEvent.click(precheckButtons[0]);
     fireEvent.click(submitButtons[0]);
 
+    expect(printPrecheckMutateMock).toHaveBeenCalledTimes(1);
     expect(submitMutateMock).toHaveBeenCalledTimes(1);
   });
 
@@ -251,6 +261,10 @@ describe('TableSessionPageContent', () => {
         (button) => button.hasAttribute('disabled') || button.getAttribute('aria-disabled') === 'true',
       ),
     ).toBe(true);
-    expect(screen.queryByRole('button', { name: 'Chekni chiqarish' })).toBeNull();
+    expect(
+      screen
+        .getAllByRole('button', { name: 'Prechek' })
+        .some((button) => button.hasAttribute('disabled') || button.getAttribute('aria-disabled') === 'true'),
+    ).toBe(true);
   });
 });
