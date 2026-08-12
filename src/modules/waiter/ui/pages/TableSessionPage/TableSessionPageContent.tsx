@@ -149,6 +149,9 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
     onSuccess: () => {
       setOrderSent(true);
       setCartOpen(false);
+      if (!isTakeawayMode) {
+        void navigate('/waiter/halls', { replace: true });
+      }
     },
   });
   const printPrecheckMutation = usePrintWaiterPrecheckMutation({

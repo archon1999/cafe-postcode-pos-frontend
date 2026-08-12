@@ -12,6 +12,7 @@ const printPrecheckMutateMock = vi.fn();
 const useWaiterMenuQueryMock = vi.fn();
 const useOptimisticBuilderOrderMock = vi.fn();
 const canAccessTableSessionMenuMock = vi.fn();
+let submitMutationOptions: { onSuccess?: () => void } | undefined;
 
 vi.mock('react-router', () => ({
   useNavigate: () => navigateMock,
@@ -46,11 +47,14 @@ vi.mock('modules/waiter/application', () => ({
     isPending: false,
     mutate: printPrecheckMutateMock,
   }),
-  useSubmitWaiterOrderMutation: () => ({
-    isPending: false,
-    mutate: submitMutateMock,
-    mutateAsync: vi.fn(),
-  }),
+  useSubmitWaiterOrderMutation: (options: { onSuccess?: () => void }) => {
+    submitMutationOptions = options;
+    return {
+      isPending: false,
+      mutate: submitMutateMock,
+      mutateAsync: vi.fn(),
+    };
+  },
   useWaiterMenuQuery: (...args: unknown[]) => useWaiterMenuQueryMock(...args),
   useWaiterTableSessionQuery: () => ({
     data: { guestCount: 2, tableName: 'VIP stol', tableNumber: 7 },
@@ -128,6 +132,7 @@ describe('TableSessionPageContent', () => {
   beforeEach(() => {
     navigateMock.mockReset();
     submitMutateMock.mockReset();
+    submitMutationOptions = undefined;
     printPrecheckMutateMock.mockReset();
     canAccessTableSessionMenuMock.mockReset();
     canAccessTableSessionMenuMock.mockReturnValue(true);
@@ -185,6 +190,15 @@ describe('TableSessionPageContent', () => {
 
     expect(canAccessTableSessionMenuMock).toHaveBeenCalledWith(expect.objectContaining({ id: 'user-1' }));
     expect(useWaiterMenuQueryMock).toHaveBeenCalledWith({ enabled: true });
+  });
+
+  it('returns the waiter to halls after a hall order is saved successfully', () => {
+    submitMutateMock.mockImplementation(() => submitMutationOptions?.onSuccess?.());
+    render(<TableSessionPageContent sessionId="session-1" mode="hall" />);
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Saqlash' })[0]);
+
+    expect(navigateMock).toHaveBeenCalledWith('/waiter/halls', { replace: true });
   });
 
   it('shows the table number and the three-channel segment with hall active', () => {
