@@ -1,6 +1,6 @@
 import { Box, Stack, alpha, useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 
@@ -58,6 +58,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [settingsAnchor, setSettingsAnchor] = useState<HTMLElement | null>(null);
+  const [totalOverrideReason, setTotalOverrideReason] = useState('');
   const canProcessPayments = canManageCashierPayments(session?.user);
   const canViewShift = canViewCashShift(session?.user);
   const canDisableFiscalRegistration = canSkipFiscalReceipts(session?.user);
@@ -80,14 +81,17 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     const activeCashDeskId = cashierContextQuery.data?.currentShift?.cashDesk;
     return cashDesks.find((cashDesk) => cashDesk.id === activeCashDeskId) ?? cashDesks[0] ?? null;
   }, [cashierContextQuery.data?.availableCashDesks, cashierContextQuery.data?.currentShift?.cashDesk]);
+  const paidTotal = useMemo(
+    () =>
+      (orderQuery.data?.payments ?? [])
+        .filter((payment) => payment.status === 'succeeded')
+        .reduce((sum, payment) => sum + Number(payment.amount ?? 0), 0),
+    [orderQuery.data?.payments],
+  );
   const remainingTotal = useMemo(() => {
     const total = Number(orderQuery.data?.total ?? 0);
-    const paidTotal = (orderQuery.data?.payments ?? [])
-      .filter((payment) => payment.status === 'succeeded')
-      .reduce((sum, payment) => sum + Number(payment.amount ?? 0), 0);
-
     return Math.max(total - paidTotal, 0);
-  }, [orderQuery.data?.payments, orderQuery.data?.total]);
+  }, [orderQuery.data?.total, paidTotal]);
   const {
     method,
     amount,
@@ -111,6 +115,15 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     cashLabel: copy.cash,
     cardLabel: copy.card,
   });
+  const calculatedTotal = Number(orderQuery.data?.calculatedTotal ?? orderQuery.data?.total ?? 0);
+  const totalEditable = Boolean(orderQuery.data?.paymentTotalEditable && paidTotal === 0);
+  const isTotalOverridden = totalEditable && paymentAmount !== calculatedTotal;
+  const isTotalOverrideReasonValid = !isTotalOverridden || Boolean(totalOverrideReason.trim());
+  const effectiveRemainingTotal = totalEditable ? paymentAmount : remainingTotal;
+
+  useEffect(() => {
+    setTotalOverrideReason(orderQuery.data?.totalOverrideReason ?? '');
+  }, [orderQuery.data?.id, orderQuery.data?.totalOverrideReason]);
   const aggregatedOrderItems = useMemo(
     () => aggregateCashierOrderItems(orderQuery.data?.items),
     [orderQuery.data?.items],
@@ -182,6 +195,8 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     paymentAmount,
     paymentFailedMessage: copy.paymentFailed,
     splitParts,
+    finalTotal: totalEditable ? paymentAmount : undefined,
+    totalOverrideReason: totalOverrideReason.trim(),
     onPaymentComplete: handleSuccessfulPaymentResponse,
     onManualPaymentComplete: setReceiptData,
     setAmount,
@@ -196,8 +211,9 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
       cashierContextQuery.data?.currentShift &&
       (!markingCheckEnabled || markingMissingCount === 0) &&
       isPaymentAmountValid &&
-      (isSplitPayment ? pendingSplitTotal <= remainingTotal : paymentAmount <= remainingTotal) &&
+      (isSplitPayment ? pendingSplitTotal <= effectiveRemainingTotal : paymentAmount <= effectiveRemainingTotal) &&
       isSplitPaymentValid &&
+      isTotalOverrideReasonValid &&
       !isPaymentProcessing &&
       !printPrecheckMutation.isPending,
   );
@@ -305,6 +321,11 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
               splitPaymentTitle={splitPaymentTitle}
               splitTotal={splitTotal}
               splitValidationMessage={splitValidationMessage}
+              calculatedTotal={calculatedTotal}
+              totalEditable={totalEditable}
+              totalOverrideReason={totalOverrideReason}
+              totalOverrideReasonValid={isTotalOverrideReasonValid}
+              onTotalOverrideReasonChange={setTotalOverrideReason}
             />
 
             <PaymentCheckoutSummary
@@ -313,7 +334,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
               canSubmitPayment={canSubmitPayment}
               copy={copy}
               currentShiftOpen={Boolean(cashierContextQuery.data?.currentShift)}
-              grandTotal={orderQuery.data?.total}
+              grandTotal={totalEditable ? paymentAmount : orderQuery.data?.total}
               isPaymentProcessing={isPaymentProcessing}
               isPrintingPrecheck={printPrecheckMutation.isPending}
               locale={locale}
@@ -328,7 +349,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
                   onError: (error) => toast.error(error instanceof Error ? error.message : copy.receiptUnavailable),
                 });
               }}
-              remainingTotal={remainingTotal}
+              remainingTotal={effectiveRemainingTotal}
               selectedCashDeskName={selectedCashDesk?.name}
               serviceFee={orderQuery.data?.serviceFee}
               serviceFeeLabel={serviceFeeLabel}

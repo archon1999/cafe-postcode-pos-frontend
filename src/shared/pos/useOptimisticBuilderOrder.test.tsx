@@ -19,6 +19,7 @@ type TestMenuItem = {
   name: string;
   prepStationName?: string | null;
   price: number | string;
+  saleUnit?: 'piece' | 'kg';
 };
 
 type TestOrderItem = {
@@ -429,5 +430,67 @@ describe('useOptimisticBuilderOrder', () => {
 
     expect(result.current.currentOrder?.items.map((item) => item.catalogItem)).toEqual(['menu-2']);
     expect(result.current.currentOrder?.total).toBe(19800);
+  });
+
+  it('preserves sub-kilogram quantities when adding items in a batch', async () => {
+    const baseOrder = createOrder({ items: [], subtotal: 0, serviceFee: 0, total: 0 });
+    let canonicalOrders = [baseOrder];
+    const addOrderItems = vi.fn(
+      async (_orderId: string, items: Array<{ menuItem: TestMenuItem; quantity: number; note: string }>) => {
+        const [{ menuItem, quantity }] = items;
+        canonicalOrders = [
+          createOrder({
+            items: [
+              createOrderItem({
+                catalogItem: menuItem.id,
+                catalogItemName: menuItem.name,
+                quantity,
+                lineTotal: Number(menuItem.price) * quantity,
+              }),
+            ],
+            subtotal: Number(menuItem.price) * quantity,
+            serviceFee: 0,
+            total: Number(menuItem.price) * quantity,
+          }),
+        ];
+      },
+    );
+
+    const { result } = renderHook(() =>
+      useOptimisticBuilderOrder<TestMenuItem, TestOrderItem, TestOrder, TestOrder[]>({
+        baseOrder,
+        canonicalQueryKey: ['test', 'orders'],
+        canonicalQueryFn: async () => canonicalOrders,
+        channel: 'hall',
+        createOrder: async () => baseOrder.id,
+        defaultServiceFeePercent: 0,
+        removeOrderItem: async () => undefined,
+        selectCurrentOrder: (orders) => orders[0],
+        addOrderItem: async () => undefined,
+        addOrderItems,
+        syncErrorMessage: 'sync failed',
+      }),
+    );
+
+    act(() => {
+      result.current.addItems([
+        {
+          menuItem: createMenuItem({ id: 'fish', name: 'Fish', price: 100000, saleUnit: 'kg' }),
+          quantity: 0.1,
+          note: '',
+        },
+      ]);
+    });
+
+    expect(result.current.currentOrder?.items[0]?.quantity).toBe(0.1);
+    expect(result.current.currentOrder?.items[0]?.lineTotal).toBe(10000);
+
+    await waitFor(() => {
+      expect(result.current.hasPendingOperations).toBe(false);
+    });
+
+    expect(addOrderItems).toHaveBeenCalledWith(baseOrder.id, [expect.objectContaining({ quantity: 0.1 })]);
+    expect(result.current.currentOrder?.items[0]?.quantity).toBe(0.1);
+    expect(result.current.currentOrder?.items[0]?.lineTotal).toBe(10000);
   });
 });

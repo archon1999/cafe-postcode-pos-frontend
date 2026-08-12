@@ -8,6 +8,7 @@ export type WaiterMenuItem = {
   kind: string;
   prepStationName?: string | null;
   price: number | string;
+  saleUnit?: 'piece' | 'kg';
   modifierGroups?: PosModifierGroup[];
 };
 

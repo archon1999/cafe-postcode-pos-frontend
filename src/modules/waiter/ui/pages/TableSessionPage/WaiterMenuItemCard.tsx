@@ -263,6 +263,11 @@ export function WaiterMenuItemCard({
               <Box component="span" sx={{ fontSize: { xs: 13.5, md: 16 }, lineHeight: 1, fontWeight: 700 }}>
                 {displayPriceParts.currency}
               </Box>
+              {menuItem.saleUnit === 'kg' ? (
+                <Box component="span" sx={{ fontSize: { xs: 12, md: 14 }, color: 'text.secondary' }}>
+                  / {copy.kilogramUnit}
+                </Box>
+              ) : null}
             </Typography>
           </Box>
         </Stack>

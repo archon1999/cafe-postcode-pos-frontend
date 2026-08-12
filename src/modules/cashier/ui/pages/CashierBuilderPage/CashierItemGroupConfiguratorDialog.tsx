@@ -1,5 +1,16 @@
 import { Icon } from '@iconify/react';
-import { Box, Button, Dialog, DialogContent, IconButton, Stack, Typography, alpha, useMediaQuery } from '@mui/material';
+import {
+  Box,
+  Button,
+  Dialog,
+  DialogContent,
+  IconButton,
+  Stack,
+  TextField,
+  Typography,
+  alpha,
+  useMediaQuery,
+} from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
 
 import type { CashierMenuItem, CashierMenuItemGroup } from 'modules/cashier/domain';
@@ -74,6 +85,12 @@ export function CashierItemGroupConfiguratorDialog({ group, locale, onClose, onC
       current.map((line) => (line.key === key ? { ...line, quantity: Math.max(0, line.quantity + delta) } : line)),
     );
   };
+  const setQuantity = (key: string, value: string) => {
+    const normalized = value.replace(',', '.');
+    if (normalized && !/^\d*(?:\.\d{0,3})?$/.test(normalized)) return;
+    const quantity = Math.max(0, Number(normalized || 0));
+    setLines((current) => current.map((line) => (line.key === key ? { ...line, quantity } : line)));
+  };
 
   return (
     <>
@@ -135,7 +152,9 @@ export function CashierItemGroupConfiguratorDialog({ group, locale, onClose, onC
                     </Stack>
                     {memberQuantity > 0 ? (
                       <Typography color="primary.main" fontWeight={850}>
-                        {formatPosCopy(posCopy.selectedCount, { count: memberQuantity })}
+                        {member.item.saleUnit === 'kg'
+                          ? `${memberQuantity} kg`
+                          : formatPosCopy(posCopy.selectedCount, { count: memberQuantity })}
                       </Typography>
                     ) : null}
                   </Stack>
@@ -170,21 +189,42 @@ export function CashierItemGroupConfiguratorDialog({ group, locale, onClose, onC
                               {formatCompactMoney(unitPrice, locale)}
                             </Typography>
                           </Stack>
-                          <CounterButton
-                            icon="solar:minus-circle-bold"
-                            disabled={!line.quantity}
-                            onClick={() => changeQuantity(line.key, -1)}
-                          />
-                          <Typography
-                            sx={{
-                              width: 28,
-                              textAlign: 'center',
-                              fontWeight: 900,
-                              fontVariantNumeric: 'tabular-nums',
-                            }}>
-                            {line.quantity}
-                          </Typography>
-                          <CounterButton icon="solar:add-circle-bold" onClick={() => changeQuantity(line.key, 1)} />
+                          {line.item.saleUnit === 'kg' ? (
+                            <TextField
+                              size="small"
+                              value={line.quantity || ''}
+                              onChange={(event) => setQuantity(line.key, event.target.value)}
+                              placeholder="0"
+                              slotProps={{
+                                htmlInput: {
+                                  inputMode: 'decimal',
+                                  'aria-label': `${line.label} ${copy.kilogramUnit}`,
+                                },
+                              }}
+                              sx={{ width: 104, '& input': { textAlign: 'center', fontWeight: 850 } }}
+                              InputProps={{
+                                endAdornment: <Typography variant="caption">{copy.kilogramUnit}</Typography>,
+                              }}
+                            />
+                          ) : (
+                            <>
+                              <CounterButton
+                                icon="solar:minus-circle-bold"
+                                disabled={!line.quantity}
+                                onClick={() => changeQuantity(line.key, -1)}
+                              />
+                              <Typography
+                                sx={{
+                                  width: 28,
+                                  textAlign: 'center',
+                                  fontWeight: 900,
+                                  fontVariantNumeric: 'tabular-nums',
+                                }}>
+                                {line.quantity}
+                              </Typography>
+                              <CounterButton icon="solar:add-circle-bold" onClick={() => changeQuantity(line.key, 1)} />
+                            </>
+                          )}
                         </Stack>
                       );
                     })}
@@ -221,7 +261,9 @@ export function CashierItemGroupConfiguratorDialog({ group, locale, onClose, onC
               }
               sx={{ minHeight: 58, borderRadius: '16px', fontWeight: 850 }}>
               {totalQuantity
-                ? `${totalQuantity} ta qo‘shish · ${formatCompactMoney(totalPrice, locale)}`
+                ? `${selectedLines.some((line) => line.item.saleUnit === 'kg') ? selectedLines.length : totalQuantity} ${
+                    selectedLines.some((line) => line.item.saleUnit === 'kg') ? 'tur' : 'ta'
+                  } qo‘shish · ${formatCompactMoney(totalPrice, locale)}`
                 : 'Miqdorni tanlang'}
             </Button>
           </Box>

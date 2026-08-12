@@ -6,7 +6,8 @@ import { useNavigate } from 'react-router';
 import { usePosSession } from 'modules/auth';
 import { getPosCopy } from 'shared/locale/copy';
 import type { PosModifierSelection } from 'shared/pos/modifiers';
-import { PosBuilderPageSkeleton, PosProductConfiguratorDialog } from 'shared/ui/pos-primitives';
+import { addPosQuantities } from 'shared/pos/utils';
+import { PosBuilderPageSkeleton, PosProductConfiguratorDialog, PosWeightedItemDialog } from 'shared/ui/pos-primitives';
 
 import {
   aggregateSummaryItems,
@@ -30,6 +31,7 @@ export function PriceHiddenCatalogContent<TMenuItem extends CatalogMenuItemLike>
   hasPendingOperations,
   returnPath,
   addItem,
+  addItems,
   removeItem,
 }: {
   categories: CatalogCategoryLike<TMenuItem>[];
@@ -38,6 +40,14 @@ export function PriceHiddenCatalogContent<TMenuItem extends CatalogMenuItemLike>
   hasPendingOperations: boolean;
   returnPath: string;
   addItem: (menuItem: TMenuItem, note: string, selectedModifiers?: PosModifierSelection[]) => void;
+  addItems: (
+    items: Array<{
+      menuItem: TMenuItem;
+      quantity: number;
+      note: string;
+      selectedModifiers?: PosModifierSelection[];
+    }>,
+  ) => void;
   removeItem: (itemId: string) => void;
 }) {
   const navigate = useNavigate();
@@ -48,6 +58,10 @@ export function PriceHiddenCatalogContent<TMenuItem extends CatalogMenuItemLike>
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [isSelectionDialogOpen, setSelectionDialogOpen] = useState(false);
   const [configuringItem, setConfiguringItem] = useState<TMenuItem | null>(null);
+  const [weighingItem, setWeighingItem] = useState<{
+    item: TMenuItem;
+    selections: PosModifierSelection[];
+  } | null>(null);
 
   const defaultCategory = useMemo(() => getDefaultCategory(categories), [categories]);
   const selectedCategory = categories.find((category) => category.id === selectedCategoryId) ?? defaultCategory;
@@ -57,10 +71,14 @@ export function PriceHiddenCatalogContent<TMenuItem extends CatalogMenuItemLike>
     [categories],
   );
   const selectedItems = useMemo(() => aggregateSummaryItems(orderItems, copy.menu), [copy.menu, orderItems]);
-  const selectedCount = selectedItems.reduce((sum, item) => sum + item.quantity, 0);
+  const selectedCount = selectedItems.reduce((sum, item) => addPosQuantities(sum, item.quantity), 0);
   const requestAdd = (item: TMenuItem) => {
     if (item.modifierGroups?.length) {
       setConfiguringItem(item);
+      return;
+    }
+    if (item.saleUnit === 'kg') {
+      setWeighingItem({ item, selections: [] });
       return;
     }
     addItem(item, '');
@@ -140,8 +158,32 @@ export function PriceHiddenCatalogContent<TMenuItem extends CatalogMenuItemLike>
           }}
           onClose={() => setConfiguringItem(null)}
           onConfirm={(item, selections) => {
-            addItem(item, '', selections);
+            if (item.saleUnit === 'kg') {
+              setWeighingItem({ item, selections });
+            } else {
+              addItem(item, '', selections);
+            }
             setConfiguringItem(null);
+          }}
+        />
+      ) : null}
+      {weighingItem ? (
+        <PosWeightedItemDialog
+          item={weighingItem.item}
+          selections={weighingItem.selections}
+          locale={locale}
+          showPrice={false}
+          onClose={() => setWeighingItem(null)}
+          onConfirm={(quantity) => {
+            addItems([
+              {
+                menuItem: weighingItem.item,
+                quantity,
+                note: '',
+                selectedModifiers: weighingItem.selections,
+              },
+            ]);
+            setWeighingItem(null);
           }}
         />
       ) : null}

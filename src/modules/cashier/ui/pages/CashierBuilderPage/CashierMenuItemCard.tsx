@@ -4,7 +4,7 @@ import type { KeyboardEvent } from 'react';
 
 import type { CashierMenuItem } from 'modules/cashier/domain';
 import { resolveApiBaseUrl } from 'shared/api/apiUrl';
-import type { PosLocale } from 'shared/locale/copy';
+import { getPosCopy, type PosLocale } from 'shared/locale/copy';
 import { formatMoneyParts } from 'shared/pos/utils';
 
 type CashierMenuItemCardProps = {
@@ -37,6 +37,7 @@ export function CashierMenuItemCard({
   onRemove,
 }: CashierMenuItemCardProps) {
   const imageUrl = resolveImageUrl(item.imageUrl);
+  const copy = getPosCopy(locale);
   const price = formatMoneyParts(Number(item.price ?? 0), locale);
   const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key !== 'Enter' && event.key !== ' ') {
@@ -185,6 +186,11 @@ export function CashierMenuItemCard({
               <Box component="span" sx={{ fontSize: { xs: 13.5, md: 16 }, lineHeight: 1, fontWeight: 700 }}>
                 {price.currency}
               </Box>
+              {item.saleUnit === 'kg' ? (
+                <Box component="span" sx={{ fontSize: { xs: 12, md: 14 }, color: 'text.secondary' }}>
+                  / {copy.kilogramUnit}
+                </Box>
+              ) : null}
             </Typography>
           </Box>
         </Stack>

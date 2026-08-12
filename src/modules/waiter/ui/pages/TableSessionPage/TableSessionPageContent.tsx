@@ -33,7 +33,13 @@ import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { getPosCopy } from 'shared/locale/copy';
 import { selectionsFromOrderModifiers, type PosModifierSelection } from 'shared/pos/modifiers';
 import { useOptimisticBuilderOrder } from 'shared/pos/useOptimisticBuilderOrder';
-import { PosBuilderPageSkeleton, PosProductConfiguratorDialog, PosSettingsMenu } from 'shared/ui/pos-primitives';
+import { addPosQuantities } from 'shared/pos/utils';
+import {
+  PosBuilderPageSkeleton,
+  PosProductConfiguratorDialog,
+  PosSettingsMenu,
+  PosWeightedItemDialog,
+} from 'shared/ui/pos-primitives';
 import type { PosCartItem } from 'shared/ui/pos-primitives/PosCartItemGroups';
 
 import { TableSessionDesktopCart } from './TableSessionDesktopCart';
@@ -69,6 +75,10 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
     item: WaiterMenuItem;
     initialSelections?: PosModifierSelection[];
   } | null>(null);
+  const [weighingItem, setWeighingItem] = useState<{
+    item: WaiterMenuItem;
+    selections: PosModifierSelection[];
+  } | null>(null);
   const noteOrderIdRef = useRef<string | null>(null);
   const canViewMenu = isTakeawayMode
     ? canAccessTakeawayBuilder(session?.user)
@@ -80,7 +90,7 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
   const takeawayOrderQuery = useCurrentWaiterTakeawayOrder(session?.user.id);
   const serverOrder = isTakeawayMode ? takeawayOrderQuery.currentOrder : hallOrderQuery.currentOrder;
   const currentOperatorName = session?.user.fullName ?? '';
-  const { currentOrder, addItem, removeItem, hasPendingOperations } = useOptimisticBuilderOrder({
+  const { currentOrder, addItem, addItems, removeItem, hasPendingOperations } = useOptimisticBuilderOrder({
     baseOrder: serverOrder,
     canonicalQueryKey: waiterKeys.orders,
     canonicalQueryFn: () => waiterRepository.getOrders(),
@@ -113,6 +123,16 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
         : orders.find((order) => order.tableSession === sessionId && !['closed', 'cancelled'].includes(order.status)),
     addOrderItem: (orderId, menuItem, note, selectedModifiers) =>
       waiterRepository.addOrderItem(orderId, menuItem.id, note, selectedModifiers),
+    addOrderItems: (orderId, items) =>
+      waiterRepository.addOrderItems(
+        orderId,
+        items.map((item) => ({
+          catalogItemId: item.menuItem.id,
+          quantity: item.quantity,
+          note: item.note,
+          selectedModifiers: item.selectedModifiers,
+        })),
+      ),
     syncErrorMessage: copy.itemSyncFailed,
   });
 
@@ -182,6 +202,10 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
       });
       return;
     }
+    if (menuItem.saleUnit === 'kg') {
+      setWeighingItem({ item: menuItem, selections: [] });
+      return;
+    }
     addItem(menuItem, kitchenNote);
   };
   const categoryTabs = useMemo(
@@ -189,7 +213,10 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
       categories.map((category) => ({
         value: category.id,
         label: category.name,
-        count: category.items.reduce((total, menuItem) => total + (menuItemMeta.countMap.get(menuItem.id) ?? 0), 0),
+        count: category.items.reduce(
+          (total, menuItem) => addPosQuantities(total, menuItemMeta.countMap.get(menuItem.id)),
+          0,
+        ),
       })),
     [categories, menuItemMeta.countMap],
   );
@@ -394,8 +421,31 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
           }}
           onClose={() => setConfiguringItem(null)}
           onConfirm={(menuItem, selections) => {
-            addItem(menuItem, kitchenNote, selections);
+            if (menuItem.saleUnit === 'kg') {
+              setWeighingItem({ item: menuItem, selections });
+            } else {
+              addItem(menuItem, kitchenNote, selections);
+            }
             setConfiguringItem(null);
+          }}
+        />
+      ) : null}
+      {weighingItem ? (
+        <PosWeightedItemDialog
+          item={weighingItem.item}
+          selections={weighingItem.selections}
+          locale={locale}
+          onClose={() => setWeighingItem(null)}
+          onConfirm={(quantity) => {
+            addItems([
+              {
+                menuItem: weighingItem.item,
+                quantity,
+                note: kitchenNote,
+                selectedModifiers: weighingItem.selections,
+              },
+            ]);
+            setWeighingItem(null);
           }}
         />
       ) : null}

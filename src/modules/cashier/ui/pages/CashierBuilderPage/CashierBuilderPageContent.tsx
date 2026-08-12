@@ -34,6 +34,7 @@ import { selectionsFromOrderModifiers, type PosModifierSelection } from 'shared/
 import { isTemporaryBuilderId } from 'shared/pos/optimistic-builder-order';
 import { useOptimisticBuilderOrder } from 'shared/pos/useOptimisticBuilderOrder';
 import { useScannerInput } from 'shared/pos/useScannerInput';
+import { addPosQuantities } from 'shared/pos/utils';
 import { PosBuilderPageSkeleton, PosProductConfiguratorDialog, PosSettingsMenu } from 'shared/ui/pos-primitives';
 import type { PosCartItem } from 'shared/ui/pos-primitives/PosCartItemGroups';
 
@@ -42,6 +43,7 @@ import { CashierBuilderHeader } from './CashierBuilderHeader';
 import { CashierBuilderMenuPanel } from './CashierBuilderMenuPanel';
 import { CashierDeliveryDetailsDialog } from './CashierDeliveryDetailsDialog';
 import { CashierItemGroupConfiguratorDialog } from './CashierItemGroupConfiguratorDialog';
+import { CashierWeightDialog } from './CashierWeightDialog';
 import { useCashierBuilderActions } from './useCashierBuilderActions';
 
 const EMPTY_CATEGORIES: CashierMenuCategory[] = [];
@@ -79,6 +81,10 @@ export function CashierBuilderPageContent() {
     initialSelections?: PosModifierSelection[];
   } | null>(null);
   const [configuringGroup, setConfiguringGroup] = useState<CashierMenuItemGroup | null>(null);
+  const [weighingItem, setWeighingItem] = useState<{
+    item: CashierMenuItem;
+    selections: PosModifierSelection[];
+  } | null>(null);
   const noteOrderIdRef = useRef<string | null>(null);
 
   const menuQuery = useCashierMenuQuery();
@@ -187,7 +193,7 @@ export function CashierBuilderPageContent() {
       }
 
       const count = Number(item.quantity ?? 0);
-      countMap.set(item.catalogItem, (countMap.get(item.catalogItem) ?? 0) + count);
+      countMap.set(item.catalogItem, addPosQuantities(countMap.get(item.catalogItem), count));
       latestItemMap.set(item.catalogItem, item.id);
     }
 
@@ -203,6 +209,10 @@ export function CashierBuilderPageContent() {
       });
       return;
     }
+    if (menuItem.saleUnit === 'kg') {
+      setWeighingItem({ item: menuItem, selections: [] });
+      return;
+    }
     addItem(menuItem, kitchenNote);
   };
   const categoryTabs = useMemo(
@@ -210,7 +220,10 @@ export function CashierBuilderPageContent() {
       categories.map((category) => ({
         value: category.id,
         label: category.name,
-        count: category.items.reduce((total, menuItem) => total + (menuItemMeta.countMap.get(menuItem.id) ?? 0), 0),
+        count: category.items.reduce(
+          (total, menuItem) => addPosQuantities(total, menuItemMeta.countMap.get(menuItem.id)),
+          0,
+        ),
       })),
     [categories, menuItemMeta.countMap],
   );
@@ -434,7 +447,11 @@ export function CashierBuilderPageContent() {
           }}
           onClose={() => setConfiguringItem(null)}
           onConfirm={(menuItem, selections) => {
-            addItem(menuItem, kitchenNote, selections);
+            if (menuItem.saleUnit === 'kg') {
+              setWeighingItem({ item: menuItem, selections });
+            } else {
+              addItem(menuItem, kitchenNote, selections);
+            }
             setConfiguringItem(null);
           }}
         />
@@ -465,6 +482,26 @@ export function CashierBuilderPageContent() {
           setConfiguringGroup(null);
         }}
       />
+
+      {weighingItem ? (
+        <CashierWeightDialog
+          item={weighingItem.item}
+          selections={weighingItem.selections}
+          locale={locale}
+          onClose={() => setWeighingItem(null)}
+          onConfirm={(quantity) => {
+            addItems([
+              {
+                menuItem: weighingItem.item,
+                quantity,
+                note: kitchenNote,
+                selectedModifiers: weighingItem.selections,
+              },
+            ]);
+            setWeighingItem(null);
+          }}
+        />
+      ) : null}
 
       <PosSettingsMenu
         anchorEl={settingsAnchor}

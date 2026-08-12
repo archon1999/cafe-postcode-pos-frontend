@@ -6,6 +6,7 @@ export type BuilderMenuItemLike = {
   name: string;
   prepStationName?: string | null;
   price: number | string;
+  saleUnit?: 'piece' | 'kg';
   modifierGroups?: import('./modifiers').PosModifierGroup[];
 };
 
@@ -14,6 +15,7 @@ export type BuilderOrderItemLike = {
   catalogItem: string;
   catalogItemName: string;
   quantity: number | string;
+  saleUnit?: 'piece' | 'kg';
   lineTotal: number | string;
   status: string;
   prepStationName?: string | null;
@@ -112,15 +114,16 @@ function createOptimisticItem<TMenuItem extends BuilderMenuItemLike, TItem exten
   );
   const unitPrice = toMoneyNumber(operation.menuItem.price) + modifierDelta;
 
-  const quantity = Math.max(1, Number(operation.quantity ?? 1));
+  const quantity = Math.max(operation.menuItem.saleUnit === 'kg' ? 0.001 : 1, Number(operation.quantity ?? 1));
   return {
     id: operation.tempItemId,
     catalogItem: operation.menuItem.id,
     catalogItemName: operation.menuItem.name,
     quantity,
+    saleUnit: operation.menuItem.saleUnit ?? 'piece',
     baseUnitPrice: toMoneyNumber(operation.menuItem.price),
     unitPrice,
-    lineTotal: unitPrice * quantity,
+    lineTotal: Math.round(unitPrice * quantity),
     status: 'new',
     prepStationName: operation.menuItem.prepStationName,
     note: operation.note || undefined,

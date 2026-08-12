@@ -137,6 +137,8 @@ export function useCashierPaymentMutation(options: {
       manualCardOverride?: boolean;
       manualCardReason?: string;
       registerFiscal?: boolean;
+      finalTotal?: number;
+      totalOverrideReason?: string;
     }) => {
       if (!orderId) {
         throw new Error('Order id is missing');
@@ -148,6 +150,8 @@ export function useCashierPaymentMutation(options: {
         manualCardOverride: payload.manualCardOverride,
         manualCardReason: payload.manualCardReason,
         registerFiscal: payload.registerFiscal,
+        finalTotal: payload.finalTotal,
+        totalOverrideReason: payload.totalOverrideReason,
       });
       requestEdgePrintDocuments(
         response.kitchenPrintDocuments ?? response.order.kitchenPrintDocuments ?? [],

@@ -178,6 +178,28 @@ describe('cashier repository transport contract', () => {
     expect(result.order.orderNumber).toBe(78);
   });
 
+  it('sends the cashier final total and its audit reason only when provided', async () => {
+    const response = paymentResponse(79);
+    apiPostMock.mockResolvedValueOnce(response);
+
+    await cashierRepository.payOrder('order-3', 'cash', 50_000, {
+      finalTotal: 50_000,
+      totalOverrideReason: 'Kelishilgan narx',
+    });
+
+    expect(apiPostMock).toHaveBeenCalledWith('/pos/billing/orders/order-3/pay/', {
+      method: 'cash',
+      amount: 50_000,
+      cashAmount: undefined,
+      cardAmount: undefined,
+      registerFiscal: true,
+      manualCardOverride: false,
+      manualCardReason: '',
+      finalTotal: 50_000,
+      totalOverrideReason: 'Kelishilgan narx',
+    });
+  });
+
   it('retries fiscal registration through the payment-scoped endpoint and returns the response by identity', async () => {
     const response = { payment: { id: 'payment-1' }, receipt: null, result: { success: false } };
     apiPostMock.mockResolvedValueOnce(response);

@@ -5,6 +5,7 @@ export type WaiterOrderItem = {
   catalogItem: string;
   catalogItemName: string;
   quantity: number | string;
+  saleUnit?: 'piece' | 'kg';
   lineTotal: number | string;
   baseUnitPrice?: number | string;
   unitPrice?: number | string;

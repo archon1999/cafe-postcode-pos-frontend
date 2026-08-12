@@ -36,6 +36,7 @@ type RestaurantContextCompat = PosRestaurantContext & {
   vat_enabled?: boolean;
   vat_percent?: number | string;
   marking_check_enabled?: boolean;
+  payment_total_mode?: 'fixed' | 'cashier_editable';
 };
 
 type LegacySessionPayload = Omit<PosSessionPayload, 'user' | 'tariff' | 'roleCodes'> & {
@@ -69,6 +70,7 @@ function normalizeRestaurantContext(rawContext: RestaurantContextCompat | PosRes
   const vatPercent = rawContext.vatPercent ?? (rawContext as RestaurantContextCompat).vat_percent;
   const markingCheckEnabled =
     rawContext.markingCheckEnabled ?? (rawContext as RestaurantContextCompat).marking_check_enabled;
+  const paymentTotalMode = rawContext.paymentTotalMode ?? (rawContext as RestaurantContextCompat).payment_total_mode;
 
   if (phone !== undefined) context.phone = phone;
   if (social !== undefined) context.social = social;
@@ -79,6 +81,7 @@ function normalizeRestaurantContext(rawContext: RestaurantContextCompat | PosRes
   if (vatEnabled !== undefined) context.vatEnabled = vatEnabled;
   if (vatPercent !== undefined) context.vatPercent = vatPercent;
   if (markingCheckEnabled !== undefined) context.markingCheckEnabled = markingCheckEnabled;
+  if (paymentTotalMode !== undefined) context.paymentTotalMode = paymentTotalMode;
 
   return context;
 }

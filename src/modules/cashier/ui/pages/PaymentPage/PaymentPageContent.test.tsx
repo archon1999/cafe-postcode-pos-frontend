@@ -21,6 +21,7 @@ const clipboardWriteTextMock = vi.fn();
 let orderChannelMock = 'takeaway';
 let orderTableSessionMock: string | null = null;
 let enabledPaymentMethodsMock: Array<'cash' | 'card' | 'mixed'> = ['cash'];
+let paymentTotalEditableMock = false;
 let paymentMutationStateMock = {
   isPending: false,
   isError: false,
@@ -108,6 +109,8 @@ vi.mock('modules/cashier/application', () => ({
       vatPercent: 12,
       vatAmount: 3214,
       total: 30000,
+      calculatedTotal: 30000,
+      paymentTotalEditable: paymentTotalEditableMock,
       openedByName: 'Ali',
       items: [
         {
@@ -198,6 +201,7 @@ describe('PaymentPageContent', () => {
     orderChannelMock = 'takeaway';
     orderTableSessionMock = null;
     enabledPaymentMethodsMock = ['cash'];
+    paymentTotalEditableMock = false;
     canAddCashierPaymentOrderItemsMock.mockReturnValue(true);
     canAccessWaiterTablesMock.mockReturnValue(false);
     canRemoveCashierPaymentOrderItemsMock.mockReturnValue(false);
@@ -315,6 +319,44 @@ describe('PaymentPageContent', () => {
     expect(screen.getByRole('button', { name: 'Karta' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Aralash' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'QR' })).toBeNull();
+  });
+
+  it('requires a reason and sends a cashier-edited final total without changing calculated total', async () => {
+    paymentTotalEditableMock = true;
+    paymentMutateAsyncMock.mockResolvedValueOnce({
+      order: {
+        orderNumber: 101,
+        status: 'closed',
+        items: [],
+        subtotal: 30000,
+        calculatedTotal: 30000,
+        total: 15000,
+        note: '',
+      },
+      payment: { method: 'cash', amount: 15000, paidAt: '2026-08-12T12:00:00Z' },
+      receipt: { id: 'receipt-override', payload: {} },
+    });
+
+    render(<PaymentPageContent orderId="order-1" />);
+    fireEvent.change(screen.getByLabelText("Yakuniy to'lov summasi"), { target: { value: '15000' } });
+
+    const submit = screen.getByRole('button', { name: 'Chek' }) as HTMLButtonElement;
+    expect(submit.disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText("O'zgartirish sababi"), {
+      target: { value: 'Mijoz bilan kelishilgan narx' },
+    });
+    fireEvent.click(submit);
+
+    await waitFor(() => {
+      expect(paymentMutateAsyncMock).toHaveBeenCalledWith({
+        method: 'cash',
+        amount: 15000,
+        registerFiscal: true,
+        finalTotal: 15000,
+        totalOverrideReason: 'Mijoz bilan kelishilgan narx',
+      });
+    });
+    expect(screen.getByText('Hisoblangan summa')).toBeTruthy();
   });
 
   it('submits split payment parts sequentially with the selected fiscal intent', async () => {

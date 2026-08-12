@@ -5,6 +5,7 @@ export type CashierOrderItem = {
   catalogItem: string;
   catalogItemName: string;
   quantity: number | string;
+  saleUnit?: 'piece' | 'kg';
   lineTotal: number | string;
   baseUnitPrice?: number | string;
   unitPrice?: number | string;
@@ -41,6 +42,11 @@ export type CashierOrder = {
   vatPercent?: number | string;
   vatAmount?: number | string;
   total: number | string;
+  calculatedTotal?: number | string;
+  totalOverride?: number | string | null;
+  totalOverrideReason?: string;
+  totalOverriddenAt?: string | null;
+  paymentTotalEditable?: boolean;
   note: string;
   channel: string;
   items: CashierOrderItem[];

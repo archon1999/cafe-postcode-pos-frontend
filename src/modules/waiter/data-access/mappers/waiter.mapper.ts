@@ -14,6 +14,7 @@ import { mapPosModifierGroups, mapPosOrderItemModifiers } from 'shared/pos/modif
 
 type WaiterMenuItemDto = WaiterMenuItem & {
   image_url?: string | null;
+  sale_unit?: 'piece' | 'kg';
   modifier_groups?: Parameters<typeof mapPosModifierGroups>[0];
 };
 type WaiterMenuCategoryDto = Omit<WaiterMenuCategory, 'items'> & {
@@ -48,6 +49,7 @@ type TableSessionDto = Omit<TableSession, 'tableNumber'> & {
 type WaiterOrderItemDto = WaiterOrderItem & {
   base_unit_price?: number | string;
   unit_price?: number | string;
+  sale_unit?: 'piece' | 'kg';
   modifiers?: Parameters<typeof mapPosOrderItemModifiers>[0];
 };
 type WaiterOrderDto = Omit<WaiterOrder, 'items' | 'displayName'> & {
@@ -65,6 +67,7 @@ export function mapWaiterMenuCategory(dto: WaiterMenuCategoryDto): WaiterMenuCat
     items: dto.items.map((item) => ({
       ...item,
       imageUrl: item.imageUrl ?? item.image_url ?? null,
+      saleUnit: item.saleUnit ?? item.sale_unit ?? 'piece',
       modifierGroups: mapPosModifierGroups(item.modifierGroups ?? item.modifier_groups),
     })),
   };
@@ -120,6 +123,7 @@ export function mapWaiterOrder(dto: WaiterOrderDto): WaiterOrder {
       ...item,
       baseUnitPrice: item.baseUnitPrice ?? item.base_unit_price,
       unitPrice: item.unitPrice ?? item.unit_price,
+      saleUnit: item.saleUnit ?? item.sale_unit ?? 'piece',
       modifiers: mapPosOrderItemModifiers(item.modifiers),
     })),
   };

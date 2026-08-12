@@ -87,6 +87,17 @@ class WaiterRepositoryImpl implements WaiterRepository {
     });
   }
 
+  async addOrderItems(orderId: string, items: Parameters<WaiterRepository['addOrderItems']>[1]) {
+    return apiPost<Awaited<ReturnType<WaiterRepository['addOrderItems']>>>(`/pos/sales/orders/${orderId}/items/bulk/`, {
+      items: items.map((item) => ({
+        catalogItem: item.catalogItemId,
+        quantity: item.quantity,
+        note: item.note,
+        ...(item.selectedModifiers?.length ? { selectedModifiers: item.selectedModifiers } : {}),
+      })),
+    });
+  }
+
   async removeOrderItem(itemId: string) {
     await apiDelete(`/pos/sales/orders/items/${itemId}/`);
   }

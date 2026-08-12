@@ -30,6 +30,15 @@ export function formatCompactMoney(value: number | string | null | undefined, lo
   return formatMoney(value, locale);
 }
 
+export function normalizePosQuantity(value: number | string | null | undefined) {
+  const numericValue = Number(value ?? 0);
+  return Number.isFinite(numericValue) ? Number(numericValue.toFixed(3)) : 0;
+}
+
+export function addPosQuantities(left: number | string | null | undefined, right: number | string | null | undefined) {
+  return normalizePosQuantity(normalizePosQuantity(left) + normalizePosQuantity(right));
+}
+
 export function formatTime(value: string | null | undefined, locale: PosLocale) {
   if (!value) {
     return '--:--';

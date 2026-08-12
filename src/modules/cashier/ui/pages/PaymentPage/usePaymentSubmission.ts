@@ -12,6 +12,8 @@ type PaymentCommand = {
   registerFiscal: boolean;
   manualCardOverride?: boolean;
   manualCardReason?: string;
+  finalTotal?: number;
+  totalOverrideReason?: string;
 };
 
 type Options = {
@@ -21,6 +23,8 @@ type Options = {
   paymentAmount: number;
   paymentFailedMessage: string;
   splitParts: SplitPaymentPart[] | null;
+  finalTotal?: number;
+  totalOverrideReason?: string;
   onPaymentComplete: (response: CashierPaymentResponse, paidAmount: number) => void;
   onManualPaymentComplete: (response: CashierPaymentResponse) => void;
   setAmount: (value: string) => void;
@@ -34,6 +38,8 @@ export function usePaymentSubmission({
   paymentAmount,
   paymentFailedMessage,
   splitParts,
+  finalTotal,
+  totalOverrideReason,
   onPaymentComplete,
   onManualPaymentComplete,
   setAmount,
@@ -79,12 +85,20 @@ export function usePaymentSubmission({
     const parts = splitParts.map((part) => ({ ...part, amount: Number(part.amount || 0) }));
     const payableParts = parts.filter((part) => part.status !== 'paid');
     const paidPartIds = new Set(parts.filter((part) => part.status === 'paid').map((part) => part.id));
+    const canApplyTotalOverride = paidPartIds.size === 0;
     let latestResponse: CashierPaymentResponse | null = null;
     let paidAmount = 0;
 
-    for (const part of payableParts) {
+    for (const [index, part] of payableParts.entries()) {
       try {
-        latestResponse = await executePayment({ method: part.method, amount: part.amount, registerFiscal });
+        latestResponse = await executePayment({
+          method: part.method,
+          amount: part.amount,
+          registerFiscal,
+          ...(canApplyTotalOverride && index === 0 && finalTotal !== undefined
+            ? { finalTotal, totalOverrideReason }
+            : {}),
+        });
         paidAmount += part.amount;
         paidPartIds.add(part.id);
       } catch (error) {
@@ -110,7 +124,12 @@ export function usePaymentSubmission({
       if (splitParts) {
         await submitSplitPayment(registerFiscal);
       } else {
-        const response = await executePayment({ method, amount: paymentAmount, registerFiscal });
+        const response = await executePayment({
+          method,
+          amount: paymentAmount,
+          registerFiscal,
+          ...(finalTotal !== undefined ? { finalTotal, totalOverrideReason } : {}),
+        });
         onPaymentComplete(response, paymentAmount);
       }
     } catch (error) {
@@ -130,6 +149,7 @@ export function usePaymentSubmission({
         registerFiscal: pendingRegisterFiscal,
         manualCardOverride: true,
         manualCardReason: cardFailureMessage,
+        ...(finalTotal !== undefined ? { finalTotal, totalOverrideReason } : {}),
       });
       setCardFailureOpen(false);
       onManualPaymentComplete(response);

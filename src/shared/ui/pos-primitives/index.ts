@@ -8,3 +8,4 @@ export * from './PosCartItemGroups';
 export * from './PosSectionTabs';
 export * from './PosSettingsMenu';
 export * from './PosProductConfiguratorDialog';
+export * from './PosWeightedItemDialog';

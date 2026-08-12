@@ -1,4 +1,5 @@
 import { orderItemModifierSignature } from 'shared/pos/modifiers';
+import { addPosQuantities, normalizePosQuantity } from 'shared/pos/utils';
 
 import type { CashierBuilderOrderChannel, CashierMenuCategory, CashierOrder, CashierOrderItem } from '../entities';
 
@@ -50,7 +51,7 @@ function getCashierOrderItemMarkingScannedCount(item: CashierOrderItem) {
 }
 
 export function getCashierOrderItemsTotalQuantity(items: CashierOrderItem[] | undefined) {
-  return (items ?? []).reduce((sum, item) => sum + Number(item.quantity ?? 0), 0);
+  return (items ?? []).reduce((sum, item) => addPosQuantities(sum, item.quantity), 0);
 }
 
 export function getCashierOrderMissingMarkingCount(items: CashierOrderItem[] | undefined) {
@@ -80,7 +81,7 @@ export function aggregateCashierCartItemsByStation(items: CashierOrderItem[] | u
       const existing = aggregatedMap.get(aggregationKey);
 
       if (existing) {
-        existing.quantity += Number(item.quantity ?? 0);
+        existing.quantity = addPosQuantities(existing.quantity, item.quantity);
         existing.lineTotal += Number(item.lineTotal ?? 0);
         existing.itemIds.push(item.id);
         existing.id = item.id;
@@ -96,7 +97,7 @@ export function aggregateCashierCartItemsByStation(items: CashierOrderItem[] | u
         catalogItem: item.catalogItem,
         catalogItemName: item.catalogItemName,
         note: item.note,
-        quantity: Number(item.quantity ?? 0),
+        quantity: normalizePosQuantity(item.quantity),
         lineTotal: Number(item.lineTotal ?? 0),
         status: item.status,
         itemIds: [item.id],
@@ -127,14 +128,14 @@ export function aggregateCashierOrderItems(items: CashierOrderItem[] | undefined
     const existing = aggregatedItemMap.get(aggregationKey);
 
     if (existing) {
-      existing.quantity = Number(existing.quantity ?? 0) + Number(item.quantity ?? 0);
+      existing.quantity = addPosQuantities(existing.quantity, item.quantity);
       existing.lineTotal = Number(existing.lineTotal ?? 0) + Number(item.lineTotal ?? 0);
       continue;
     }
 
     aggregatedItemMap.set(aggregationKey, {
       ...item,
-      quantity: Number(item.quantity ?? 0),
+      quantity: normalizePosQuantity(item.quantity),
       lineTotal: Number(item.lineTotal ?? 0),
       key: aggregationKey,
     });

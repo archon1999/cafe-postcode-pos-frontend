@@ -1,4 +1,5 @@
 import { orderItemModifierSignature } from 'shared/pos/modifiers';
+import { addPosQuantities, normalizePosQuantity } from 'shared/pos/utils';
 
 import type { WaiterMenuCategory, WaiterOrder, WaiterOrderItem } from '../entities';
 
@@ -49,7 +50,7 @@ export function aggregateWaiterCartItemsByStation(items: WaiterOrderItem[] | und
       ].join('::');
       const existing = itemMap.get(key);
       if (existing) {
-        existing.quantity += Number(item.quantity ?? 0);
+        existing.quantity = addPosQuantities(existing.quantity, item.quantity);
         existing.lineTotal += Number(item.lineTotal ?? 0);
         existing.itemIds.push(item.id);
         existing.id = item.id;
@@ -62,7 +63,7 @@ export function aggregateWaiterCartItemsByStation(items: WaiterOrderItem[] | und
         catalogItem: item.catalogItem,
         catalogItemName: item.catalogItemName,
         note: item.note,
-        quantity: Number(item.quantity ?? 0),
+        quantity: normalizePosQuantity(item.quantity),
         lineTotal: Number(item.lineTotal ?? 0),
         status: item.status,
         itemIds: [item.id],
@@ -82,7 +83,7 @@ export function getWaiterOrderItemMeta(items: WaiterOrderItem[] | undefined) {
     if (item.status === 'cancelled') {
       continue;
     }
-    countMap.set(item.catalogItem, (countMap.get(item.catalogItem) ?? 0) + Number(item.quantity ?? 0));
+    countMap.set(item.catalogItem, addPosQuantities(countMap.get(item.catalogItem), item.quantity));
     latestItemMap.set(item.catalogItem, item.id);
   }
 

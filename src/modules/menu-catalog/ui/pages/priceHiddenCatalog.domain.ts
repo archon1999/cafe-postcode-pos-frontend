@@ -4,6 +4,7 @@ import type { CashierBuilderOrderChannel } from 'modules/cashier/domain';
 import { resolveApiBaseUrl } from 'shared/api/apiUrl';
 import type { PosModifierGroup, PosOrderItemModifier } from 'shared/pos/modifiers';
 import { orderItemModifierSignature } from 'shared/pos/modifiers';
+import { addPosQuantities, normalizePosQuantity } from 'shared/pos/utils';
 
 export type CatalogMenuItemLike = {
   id: string;
@@ -12,6 +13,7 @@ export type CatalogMenuItemLike = {
   imageUrl?: string | null;
   prepStationName?: string | null;
   price: number | string;
+  saleUnit?: 'piece' | 'kg';
   modifierGroups?: PosModifierGroup[];
 };
 
@@ -109,8 +111,7 @@ export function buildOrderItemMeta(items: CatalogOrderItemLike[] | undefined) {
       continue;
     }
 
-    const count = Number(item.quantity ?? 0);
-    countMap.set(item.catalogItem, (countMap.get(item.catalogItem) ?? 0) + count);
+    countMap.set(item.catalogItem, addPosQuantities(countMap.get(item.catalogItem), item.quantity));
     latestItemMap.set(item.catalogItem, item.id);
   }
 
@@ -132,7 +133,7 @@ export function aggregateSummaryItems(items: CatalogOrderItemLike[] | undefined,
     const existing = itemMap.get(aggregationKey);
 
     if (existing) {
-      existing.quantity += Number(item.quantity ?? 0);
+      existing.quantity = addPosQuantities(existing.quantity, item.quantity);
       existing.itemIds.push(item.id);
       continue;
     }
@@ -141,7 +142,7 @@ export function aggregateSummaryItems(items: CatalogOrderItemLike[] | undefined,
       key: aggregationKey,
       catalogItem: item.catalogItem,
       catalogItemName: item.catalogItemName,
-      quantity: Number(item.quantity ?? 0),
+      quantity: normalizePosQuantity(item.quantity),
       status: item.status,
       note: item.note,
       itemIds: [item.id],

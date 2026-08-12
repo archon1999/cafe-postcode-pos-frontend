@@ -1,5 +1,5 @@
 import { Icon } from '@iconify/react';
-import { Button, IconButton, MenuItem, Stack, TextField, Tooltip, Typography, alpha } from '@mui/material';
+import { Box, Button, IconButton, MenuItem, Stack, TextField, Tooltip, Typography, alpha } from '@mui/material';
 
 import type { PaymentMethod } from 'modules/cashier/domain';
 import { getPosCopy, type PosLocale } from 'shared/locale/copy';
@@ -26,6 +26,11 @@ type PaymentMethodEditorProps = {
   splitPaymentTitle: string;
   splitTotal: number;
   splitValidationMessage: string;
+  calculatedTotal: number;
+  totalEditable: boolean;
+  totalOverrideReason: string;
+  totalOverrideReasonValid: boolean;
+  onTotalOverrideReasonChange: (value: string) => void;
 };
 
 export function PaymentMethodEditor({
@@ -47,7 +52,13 @@ export function PaymentMethodEditor({
   splitPaymentTitle,
   splitTotal,
   splitValidationMessage,
+  calculatedTotal,
+  totalEditable,
+  totalOverrideReason,
+  totalOverrideReasonValid,
+  onTotalOverrideReasonChange,
 }: PaymentMethodEditorProps) {
+  const isTotalOverridden = totalEditable && Number(amount || 0) !== calculatedTotal;
   return (
     <>
       <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
@@ -77,8 +88,10 @@ export function PaymentMethodEditor({
       <Stack direction="row" spacing={1} alignItems="flex-start">
         <Tooltip title={!isPaymentAmountValid ? copy.zeroAmountNotAllowed : ''} arrow>
           <TextField
-            label={copy.total}
+            label={totalEditable ? copy.finalPaymentTotal : copy.total}
             value={amount}
+            type="number"
+            slotProps={{ htmlInput: { min: 1, step: 1 } }}
             onChange={(event) => onAmountChange(event.target.value)}
             error={!isPaymentAmountValid}
             fullWidth
@@ -100,6 +113,36 @@ export function PaymentMethodEditor({
           </IconButton>
         </Tooltip>
       </Stack>
+
+      {totalEditable ? (
+        <Box
+          sx={(theme) => ({
+            borderRadius: '10px',
+            p: 1.4,
+            bgcolor: alpha(theme.palette.text.primary, 0.045),
+          })}>
+          <Stack spacing={1.2}>
+            <Stack direction="row" justifyContent="space-between" spacing={2}>
+              <Typography color="text.secondary">{copy.calculatedTotal}</Typography>
+              <Typography fontWeight={800}>{formatCompactMoney(calculatedTotal, locale)}</Typography>
+            </Stack>
+            {isTotalOverridden ? (
+              <TextField
+                label={copy.totalOverrideReason}
+                value={totalOverrideReason}
+                onChange={(event) => onTotalOverrideReasonChange(event.target.value)}
+                error={!totalOverrideReasonValid}
+                helperText={!totalOverrideReasonValid ? copy.totalOverrideReasonRequired : copy.totalOverrideHint}
+                fullWidth
+              />
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                {copy.totalOverrideHint}
+              </Typography>
+            )}
+          </Stack>
+        </Box>
+      ) : null}
 
       {splitParts ? (
         <Stack

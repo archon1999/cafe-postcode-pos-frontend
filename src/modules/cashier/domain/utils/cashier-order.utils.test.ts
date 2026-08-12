@@ -111,6 +111,21 @@ describe('cashier cart aggregation', () => {
       [undefined, 'cancelled', 1],
     ]);
   });
+
+  it('normalizes sub-kilogram sums to three decimal places', () => {
+    const weightedItems = [0.1, 0.25, 0.999, 1.4].map((quantity, index) => ({
+      ...items[0]!,
+      id: `weighted-${index}`,
+      catalogItem: 'weighted-item',
+      catalogItemName: 'Weighted item',
+      quantity,
+      lineTotal: Math.round(quantity * 100000),
+    }));
+
+    expect(aggregateCashierCartItemsByStation(weightedItems, 'Menyu')[0][1][0].quantity).toBe(2.749);
+    expect(aggregateCashierOrderItems(weightedItems)[0].quantity).toBe(2.749);
+    expect(getCashierOrderItemsTotalQuantity(weightedItems)).toBe(2.749);
+  });
 });
 
 describe('cashier order display helpers', () => {

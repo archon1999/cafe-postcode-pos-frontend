@@ -275,7 +275,7 @@ export function useOptimisticBuilderOrder<
           orderId,
           operationsBeforeAdd.map((operation) => ({
             menuItem: operation.menuItem,
-            quantity: Math.max(1, Number(operation.quantity ?? 1)),
+            quantity: Math.max(operation.menuItem.saleUnit === 'kg' ? 0.001 : 1, Number(operation.quantity ?? 1)),
             note: operation.note,
             selectedModifiers: operation.selectedModifiers,
           })),

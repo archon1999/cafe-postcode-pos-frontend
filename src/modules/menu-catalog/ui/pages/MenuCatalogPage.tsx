@@ -29,7 +29,7 @@ function WaiterMenuCatalogPage({ sessionId }: { sessionId: string | null }) {
   const menuQuery = useWaiterMenuQuery({ enabled: canViewMenu && Boolean(sessionId) });
   const orderQuery = useCurrentWaiterOrder(sessionId);
   const copy = getPosCopy(locale);
-  const { currentOrder, addItem, removeItem, hasPendingOperations } = useOptimisticBuilderOrder<
+  const { currentOrder, addItem, addItems, removeItem, hasPendingOperations } = useOptimisticBuilderOrder<
     WaiterMenuItem,
     WaiterOrderItem,
     NonNullable<typeof orderQuery.currentOrder>,
@@ -52,6 +52,16 @@ function WaiterMenuCatalogPage({ sessionId }: { sessionId: string | null }) {
       orders.find((order) => order.tableSession === sessionId && !['closed', 'cancelled'].includes(order.status)),
     addOrderItem: (orderId, menuItem, note, selectedModifiers) =>
       waiterRepository.addOrderItem(orderId, menuItem.id, note, selectedModifiers),
+    addOrderItems: (orderId, items) =>
+      waiterRepository.addOrderItems(
+        orderId,
+        items.map((item) => ({
+          catalogItemId: item.menuItem.id,
+          quantity: item.quantity,
+          note: item.note,
+          selectedModifiers: item.selectedModifiers,
+        })),
+      ),
     syncErrorMessage: copy.itemSyncFailed,
   });
 
@@ -67,6 +77,7 @@ function WaiterMenuCatalogPage({ sessionId }: { sessionId: string | null }) {
       hasPendingOperations={hasPendingOperations}
       returnPath={`/waiter/table-session?sessionId=${encodeURIComponent(sessionId)}`}
       addItem={addItem}
+      addItems={addItems}
       removeItem={removeItem}
     />
   );
@@ -82,7 +93,7 @@ function CashierMenuCatalogPage({ channel }: { channel: CashierBuilderOrderChann
     [ordersQuery.data, session?.user.id],
   );
   const copy = getPosCopy(locale);
-  const { currentOrder, addItem, removeItem, hasPendingOperations } = useOptimisticBuilderOrder({
+  const { currentOrder, addItem, addItems, removeItem, hasPendingOperations } = useOptimisticBuilderOrder({
     baseOrder: serverOrder,
     canonicalQueryKey: cashierKeys.builderOrders,
     canonicalQueryFn: () => cashierRepository.getOpenOrders(),
@@ -100,6 +111,16 @@ function CashierMenuCatalogPage({ channel }: { channel: CashierBuilderOrderChann
     selectCurrentOrder: (orders) => getCurrentCashierBuilderOrder(orders, session?.user.id),
     addOrderItem: (orderId, menuItem, note, selectedModifiers) =>
       cashierRepository.addOrderItem(orderId, menuItem.id, note, selectedModifiers),
+    addOrderItems: (orderId, items) =>
+      cashierRepository.addOrderItems(
+        orderId,
+        items.map((item) => ({
+          catalogItemId: item.menuItem.id,
+          quantity: item.quantity,
+          note: item.note,
+          selectedModifiers: item.selectedModifiers,
+        })),
+      ),
     syncErrorMessage: copy.itemSyncFailed,
   });
 
@@ -115,6 +136,7 @@ function CashierMenuCatalogPage({ channel }: { channel: CashierBuilderOrderChann
       hasPendingOperations={hasPendingOperations}
       returnPath={`/cashier/builder?channel=${channel}`}
       addItem={addItem}
+      addItems={addItems}
       removeItem={removeItem}
     />
   );
