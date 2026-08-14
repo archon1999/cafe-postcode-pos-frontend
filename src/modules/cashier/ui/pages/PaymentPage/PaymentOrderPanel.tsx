@@ -3,6 +3,7 @@ import { Box, IconButton, Stack, Typography, alpha } from '@mui/material';
 
 import type { AggregatedCashierOrderItem, CashierOrder } from 'modules/cashier/domain';
 import { formatPosCopy, getPosCopy, type PosLocale } from 'shared/locale/copy';
+import { getPosOrderLocationLabel, getPosTableNumberLabel } from 'shared/pos/orderLocation';
 import { formatCompactMoney } from 'shared/pos/utils';
 
 type PaymentOrderPanelProps = {
@@ -31,7 +32,7 @@ function orderAvatar(order?: CashierOrder) {
   if (order?.channel === 'takeaway') {
     return 'TG';
   }
-  return order?.tableName?.match(/\d+/)?.[0] ?? '0';
+  return getPosTableNumberLabel(order);
 }
 
 function orderLocation(order: CashierOrder | undefined, copy: ReturnType<typeof getPosCopy>) {
@@ -41,7 +42,7 @@ function orderLocation(order: CashierOrder | undefined, copy: ReturnType<typeof 
   if (order?.channel === 'takeaway') {
     return copy.takeawayLabel;
   }
-  return order?.hallName ?? copy.hallLabel;
+  return getPosOrderLocationLabel(order) || copy.hallLabel;
 }
 
 export function PaymentOrderPanel({

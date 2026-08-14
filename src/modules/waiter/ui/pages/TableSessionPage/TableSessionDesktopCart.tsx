@@ -21,6 +21,7 @@ export type TableSessionDesktopCartProps = {
   isTakeawayMode: boolean;
   kitchenNote: string;
   locale: PosLocale;
+  locationLabel: string;
   menuItems: ReadonlyMap<string, WaiterMenuItem>;
   operatorName: string;
   orderLabel: string;
@@ -122,6 +123,11 @@ export function TableSessionDesktopCart(props: TableSessionDesktopCartProps) {
               <Typography variant="body1" color="text.secondary">
                 {props.copy.orders}: {props.orderLabel}
               </Typography>
+              {props.locationLabel ? (
+                <Typography variant="body2" color="text.secondary" noWrap title={props.locationLabel}>
+                  {props.locationLabel}
+                </Typography>
+              ) : null}
               <Stack direction="row" spacing={1.4} alignItems="center" useFlexGap flexWrap="wrap">
                 <Stack direction="row" spacing={0.7} alignItems="center" minWidth={0}>
                   <Icon icon="solar:user-rounded-bold-duotone" width={18} />

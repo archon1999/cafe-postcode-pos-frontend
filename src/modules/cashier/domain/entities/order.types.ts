@@ -52,7 +52,10 @@ export type CashierOrder = {
   items: CashierOrderItem[];
   tableSession?: string | null;
   tableName?: string | null;
+  tableNumber?: number | null;
   hallName?: string | null;
+  zoneName?: string | null;
+  showZoneName?: boolean;
   guestCount?: number;
   deliveryPhone?: string | null;
   deliveryAddress?: string | null;

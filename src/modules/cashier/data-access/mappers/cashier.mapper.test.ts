@@ -19,6 +19,25 @@ describe('mapCashierOrder', () => {
     expect(order.orderNumber).toBe(19);
   });
 
+  it('maps backend table and zone context', () => {
+    const order = mapCashierOrder({
+      id: 'order-zone',
+      order_number: 21,
+      status: 'open',
+      subtotal: 10000,
+      serviceFee: 0,
+      total: 10000,
+      note: '',
+      channel: 'hall',
+      table_number: 23,
+      zone_name: 'VIP kabina',
+      show_zone_name: true,
+      items: [],
+    });
+
+    expect(order).toMatchObject({ tableNumber: 23, zoneName: 'VIP kabina', showZoneName: true });
+  });
+
   it('maps weighted quantities and cashier total override fields', () => {
     const order = mapCashierOrder({
       id: 'order-2',

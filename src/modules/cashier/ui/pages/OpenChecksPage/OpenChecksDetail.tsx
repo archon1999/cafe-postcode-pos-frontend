@@ -7,6 +7,7 @@ import {
 } from 'modules/cashier/domain';
 import type { CashierCheckStatus, CashierOrder } from 'modules/cashier/domain/entities/order.types';
 import { type PosLocale, formatPosCopy, getPosCopy } from 'shared/locale/copy';
+import { getPosTableNumberLabel, getPosZoneContextLabel } from 'shared/pos/orderLocation';
 import { formatCompactMoney, formatTime } from 'shared/pos/utils';
 
 type CashierPayment = NonNullable<CashierOrder['payments']>[number];
@@ -86,11 +87,7 @@ export function OpenChecksDetail({
               fontSize: 30,
               fontWeight: 700,
             }}>
-            {order.channel === 'delivery'
-              ? 'YD'
-              : order.channel === 'takeaway'
-                ? 'TG'
-                : (order.tableName?.match(/\d+/)?.[0] ?? '0')}
+            {order.channel === 'delivery' ? 'YD' : order.channel === 'takeaway' ? 'TG' : getPosTableNumberLabel(order)}
           </Box>
 
           <Stack spacing={0.25}>
@@ -98,6 +95,11 @@ export function OpenChecksDetail({
             <Typography variant="body2" color="text.secondary">
               {copy.orders}: {getCashierOrderNumberLabel(order)}
             </Typography>
+            {getPosZoneContextLabel(order) ? (
+              <Typography variant="body2" color="text.secondary" noWrap title={getPosZoneContextLabel(order)}>
+                {getPosZoneContextLabel(order)}
+              </Typography>
+            ) : null}
             <Typography variant="body2" color="text.secondary">
               {order.channel === 'delivery'
                 ? copy.deliveryLabel

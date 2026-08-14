@@ -32,6 +32,7 @@ import { refreshTransportAndReload } from 'shared/api/transportResolver';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { getPosCopy } from 'shared/locale/copy';
 import { selectionsFromOrderModifiers, type PosModifierSelection } from 'shared/pos/modifiers';
+import { getPosOrderLocationLabel, getPosTableNumberLabel } from 'shared/pos/orderLocation';
 import { useOptimisticBuilderOrder } from 'shared/pos/useOptimisticBuilderOrder';
 import { addPosQuantities } from 'shared/pos/utils';
 import {
@@ -158,9 +159,8 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
   const shouldShowVat = vatEnabled && vatPercent > 0;
   const vatLabel = `${copy.vat} (${formatPercent(vatPercent)}%)`;
   const orderModeMeta = isTakeawayMode ? `${1} ${copy.guests}` : `${sessionQuery.data?.guestCount ?? 0} ${copy.guests}`;
-  const tableNumberLabel = sessionQuery.data?.tableNumber
-    ? String(sessionQuery.data.tableNumber)
-    : (sessionQuery.data?.tableName?.match(/\d+/)?.[0] ?? '0');
+  const tableNumberLabel = getPosTableNumberLabel(sessionQuery.data);
+  const tableLocationLabel = isTakeawayMode ? '' : getPosOrderLocationLabel(sessionQuery.data);
   const submitOrderMutation = useSubmitWaiterOrderMutation({
     orderId: currentOrder?.id,
     sessionId,
@@ -319,6 +319,7 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
           isTakeawayMode={isTakeawayMode}
           kitchenNote={kitchenNote}
           locale={locale}
+          locationLabel={tableLocationLabel}
           menuItems={menuItemById}
           operatorName={
             isTakeawayMode ? currentOperatorName : (sessionQuery.data?.assignedWaiterName ?? currentOperatorName)
@@ -362,6 +363,7 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
         isTakeawayMode={isTakeawayMode}
         kitchenNote={kitchenNote}
         locale={locale}
+        locationLabel={tableLocationLabel}
         menuItems={menuItemById}
         operatorName=""
         orderLabel={formatWaiterOrderLabel(currentOrder)}

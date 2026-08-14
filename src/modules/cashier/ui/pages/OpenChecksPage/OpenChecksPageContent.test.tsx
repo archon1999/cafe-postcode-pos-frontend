@@ -191,6 +191,9 @@ describe('OpenChecksPageContent', () => {
         items: [],
         tableSession: 'session-1',
         tableName: 'Stol 7',
+        tableNumber: 7,
+        zoneName: 'VIP kabina',
+        showZoneName: true,
         guestCount: 3,
         openedByName: 'Ali',
         createdAt: '2026-04-18T10:00:00Z',
@@ -207,6 +210,7 @@ describe('OpenChecksPageContent', () => {
     render(<OpenChecksPageContent />);
 
     expect(screen.queryByRole('button', { name: "Menyuga o'tish" })).toBeNull();
+    expect(screen.getAllByText('VIP kabina').length).toBeGreaterThan(0);
   });
 
   it('prints an open check precheck without navigating to payment', () => {

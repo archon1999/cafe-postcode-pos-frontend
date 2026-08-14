@@ -57,7 +57,14 @@ vi.mock('modules/waiter/application', () => ({
   },
   useWaiterMenuQuery: (...args: unknown[]) => useWaiterMenuQueryMock(...args),
   useWaiterTableSessionQuery: () => ({
-    data: { guestCount: 2, tableName: 'VIP stol', tableNumber: 7 },
+    data: {
+      guestCount: 2,
+      tableName: 'VIP stol',
+      tableNumber: 7,
+      hallName: 'VIP zal',
+      zoneName: 'VIP kabina',
+      showZoneName: true,
+    },
   }),
   waiterKeys: {
     orders: ['waiter', 'orders'],
@@ -205,6 +212,7 @@ describe('TableSessionPageContent', () => {
     render(<TableSessionPageContent sessionId="session-1" mode="hall" />);
 
     expect(screen.getByText('7')).toBeTruthy();
+    expect(screen.getByText('VIP kabina · VIP zal')).toBeTruthy();
     expect(screen.getByText('Zal').getAttribute('aria-current')).toBe('true');
     expect(screen.getByText('Soboy')).toBeTruthy();
     expect(screen.getByText('Dostavka')).toBeTruthy();

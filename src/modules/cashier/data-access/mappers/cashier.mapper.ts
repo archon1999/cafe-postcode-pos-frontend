@@ -62,6 +62,9 @@ type CashierOrderDto = Omit<CashierOrder, 'items' | 'orderNumber' | 'displayName
   total_override_reason?: string;
   total_overridden_at?: string | null;
   payment_total_editable?: boolean;
+  table_number?: number | null;
+  zone_name?: string | null;
+  show_zone_name?: boolean;
 };
 type CashierPaymentResponseDto = CashierPaymentResponse;
 type CashierCreateOrderResponseDto = CashierCreateOrderResponse;
@@ -108,6 +111,9 @@ export function mapCashierOrder(dto: CashierOrderDto): CashierOrder {
     totalOverrideReason: dto.totalOverrideReason ?? dto.total_override_reason ?? '',
     totalOverriddenAt: dto.totalOverriddenAt ?? dto.total_overridden_at ?? null,
     paymentTotalEditable: dto.paymentTotalEditable ?? dto.payment_total_editable ?? false,
+    tableNumber: dto.tableNumber ?? dto.table_number ?? null,
+    zoneName: dto.zoneName ?? dto.zone_name ?? null,
+    showZoneName: dto.showZoneName ?? dto.show_zone_name ?? false,
     items: dto.items.map((item) => ({
       ...item,
       markingRequiredCount: item.markingRequiredCount ?? item.marking_required_count,

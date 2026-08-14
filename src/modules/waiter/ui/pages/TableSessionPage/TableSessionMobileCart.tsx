@@ -32,6 +32,11 @@ export function TableSessionMobileCart({
             <Typography variant="body2" color="text.secondary">
               {props.copy.orders}: {props.orderLabel}
             </Typography>
+            {props.locationLabel ? (
+              <Typography variant="body2" color="text.secondary" noWrap title={props.locationLabel}>
+                {props.locationLabel}
+              </Typography>
+            ) : null}
           </Stack>
           <PosIconAction icon="solar:close-circle-bold-duotone" onClick={onClose} />
         </Stack>

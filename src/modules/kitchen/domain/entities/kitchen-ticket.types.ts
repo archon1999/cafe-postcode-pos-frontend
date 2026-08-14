@@ -18,6 +18,9 @@ export type KitchenTicket = {
   status: KitchenTicketStatus;
   hallName: string | null;
   tableName: string | null;
+  tableNumber?: number | null;
+  zoneName?: string | null;
+  showZoneName?: boolean;
   waiterName?: string | null;
   items: KitchenItem[];
   createdAt?: string;

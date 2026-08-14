@@ -1,4 +1,5 @@
 import type { KitchenTicket } from 'modules/kitchen/domain';
+import { getPosOrderLocationLabel } from 'shared/pos/orderLocation';
 
 type KitchenTicketContextCopy = {
   deliverySwitch: string;
@@ -7,7 +8,7 @@ type KitchenTicketContextCopy = {
 };
 
 export function getKitchenTicketContextLabel(ticket: KitchenTicket, copy: KitchenTicketContextCopy) {
-  const hallLocation = [ticket.hallName, ticket.tableName].filter(Boolean).join(', ');
+  const hallLocation = getPosOrderLocationLabel(ticket, { includeTable: true, separator: ', ' });
 
   if (ticket.channel === 'hall') {
     return hallLocation || copy.hallLabel;

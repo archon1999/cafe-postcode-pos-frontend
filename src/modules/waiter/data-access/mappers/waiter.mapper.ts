@@ -45,6 +45,8 @@ type HallDto = Omit<Hall, 'tables'> & { tables: DiningTableDto[] };
 type TableSessionDto = Omit<TableSession, 'tableNumber'> & {
   tableNumber?: number;
   table_number?: number;
+  zone_name?: string | null;
+  show_zone_name?: boolean;
 };
 type WaiterOrderItemDto = WaiterOrderItem & {
   base_unit_price?: number | string;
@@ -112,6 +114,8 @@ export function mapTableSession(dto: TableSessionDto): TableSession {
   return {
     ...dto,
     tableNumber: dto.tableNumber ?? dto.table_number,
+    zoneName: dto.zoneName ?? dto.zone_name ?? null,
+    showZoneName: dto.showZoneName ?? dto.show_zone_name ?? false,
   };
 }
 

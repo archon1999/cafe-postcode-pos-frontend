@@ -103,6 +103,11 @@ vi.mock('modules/cashier/application', () => ({
       displayName: 'VIP mijoz',
       channel: orderChannelMock,
       tableSession: orderTableSessionMock,
+      tableName: 'V1-1',
+      tableNumber: 1,
+      hallName: 'VIP 1',
+      zoneName: 'VIP zona',
+      showZoneName: true,
       subtotal: 30000,
       serviceFee: 0,
       vatEnabled: true,
@@ -220,6 +225,15 @@ describe('PaymentPageContent', () => {
     render(<PaymentPageContent orderId="order-1" />);
 
     expect(screen.queryByRole('button', { name: "Yana qo'shish" })).toBeNull();
+  });
+
+  it('shows zone and hall context for a multi-zone table order', () => {
+    orderChannelMock = 'hall';
+    orderTableSessionMock = 'table-session-1';
+
+    render(<PaymentPageContent orderId="order-1" />);
+
+    expect(screen.getByText('VIP zona · VIP 1')).toBeTruthy();
   });
 
   it('adds one more of the same product from the payment detail list', () => {

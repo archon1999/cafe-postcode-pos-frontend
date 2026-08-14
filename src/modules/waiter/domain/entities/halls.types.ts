@@ -65,6 +65,8 @@ export type TableSession = {
   tableName: string;
   tableNumber?: number;
   hallName: string;
+  zoneName?: string | null;
+  showZoneName?: boolean;
   guestCount: number;
   status: string;
   assignedWaiterName?: string | null;

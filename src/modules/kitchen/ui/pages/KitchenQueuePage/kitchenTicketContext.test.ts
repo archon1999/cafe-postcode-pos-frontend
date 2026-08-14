@@ -40,6 +40,33 @@ describe('getKitchenTicketContextLabel', () => {
     expect(getKitchenTicketContextLabel(ticket({ channel: 'hall' }), copy)).toBe('Zal');
   });
 
+  it('adds the zone only when the restaurant has multiple zones', () => {
+    expect(
+      getKitchenTicketContextLabel(
+        ticket({
+          channel: 'hall',
+          zoneName: 'VIP kabina',
+          showZoneName: true,
+          hallName: 'VIP zal',
+          tableName: 'Stol 23',
+        }),
+        copy,
+      ),
+    ).toBe('VIP kabina, VIP zal, Stol 23');
+    expect(
+      getKitchenTicketContextLabel(
+        ticket({
+          channel: 'hall',
+          zoneName: 'Asosiy zona',
+          showZoneName: false,
+          hallName: 'Asosiy zal',
+          tableName: 'Stol 23',
+        }),
+        copy,
+      ),
+    ).toBe('Asosiy zal, Stol 23');
+  });
+
   it('uses the same display number as the receipt and falls back for old tickets', () => {
     expect(getKitchenTicketDisplayNumber(ticket({ displayName: '27', orderNumber: 1831 }))).toBe('27');
     expect(getKitchenTicketDisplayNumber(ticket({ displayName: '', orderNumber: 1831 }))).toBe('1831');

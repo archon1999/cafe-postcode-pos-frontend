@@ -5,6 +5,7 @@ import { useRef, useState, type KeyboardEvent, type TouchEvent } from 'react';
 import { getCashierOrderDisplayName, getCashierOrderNumberLabel } from 'modules/cashier/domain';
 import type { CashierCheckStatus, CashierOrder } from 'modules/cashier/domain/entities/order.types';
 import { type PosLocale, getPosCopy } from 'shared/locale/copy';
+import { getPosTableNumberLabel, getPosZoneContextLabel } from 'shared/pos/orderLocation';
 import { formatCompactMoney, formatTime } from 'shared/pos/utils';
 
 export function OpenChecksList({
@@ -156,7 +157,7 @@ export function OpenChecksList({
                     ? 'YD'
                     : order.channel === 'takeaway'
                       ? 'TG'
-                      : (order.tableName?.match(/\d+/)?.[0] ?? '0')}
+                      : getPosTableNumberLabel(order)}
                 </Box>
                 <Stack spacing={0.4}>
                   <Stack direction="row" spacing={0.75} alignItems="center">
@@ -176,6 +177,11 @@ export function OpenChecksList({
                   {order.displayName?.trim() ? (
                     <Typography variant="body2" color="text.secondary">
                       {copy.orders}: {getCashierOrderNumberLabel(order)}
+                    </Typography>
+                  ) : null}
+                  {getPosZoneContextLabel(order) ? (
+                    <Typography variant="body2" color="text.secondary" noWrap title={getPosZoneContextLabel(order)}>
+                      {getPosZoneContextLabel(order)}
                     </Typography>
                   ) : null}
                   <Typography variant="body2" color="text.secondary">
