@@ -6,9 +6,9 @@ import {
   groupCashierOrderItemsByStation,
 } from 'modules/cashier/domain';
 import type { CashierCheckStatus, CashierOrder } from 'modules/cashier/domain/entities/order.types';
-import { type PosLocale, formatPosCopy, getPosCopy } from 'shared/locale/copy';
+import { type PosLocale, getPosCopy } from 'shared/locale/copy';
 import { getPosTableNumberLabel, getPosZoneContextLabel } from 'shared/pos/orderLocation';
-import { formatCompactMoney, formatTime } from 'shared/pos/utils';
+import { formatCompactMoney, formatPosItemQuantityLabel, formatTime } from 'shared/pos/utils';
 
 type CashierPayment = NonNullable<CashierOrder['payments']>[number];
 
@@ -156,7 +156,7 @@ export function OpenChecksDetail({
                           textDecoration: item.status === 'cancelled' ? 'line-through' : 'none',
                           opacity: item.status === 'cancelled' ? 0.72 : 1,
                         }}>
-                        {formatPosCopy(copy.itemQuantityLabel, { name: item.catalogItemName, quantity: item.quantity })}
+                        {formatPosItemQuantityLabel(item.catalogItemName, item.quantity, item.saleUnit, locale)}
                       </Typography>
                       {item.status === 'cancelled' ? (
                         <Typography variant="caption" sx={{ color: 'error.main', fontWeight: 700 }}>

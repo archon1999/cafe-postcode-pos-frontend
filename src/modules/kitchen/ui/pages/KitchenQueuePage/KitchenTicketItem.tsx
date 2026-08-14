@@ -2,7 +2,8 @@ import { Icon } from '@iconify/react';
 import { alpha, Box, Button, Stack, Typography } from '@mui/material';
 
 import type { KitchenItem, KitchenItemStatus } from 'modules/kitchen/domain';
-import { formatPosCopy, type getPosCopy } from 'shared/locale/copy';
+import { type PosLocale, type getPosCopy } from 'shared/locale/copy';
+import { formatPosItemQuantityLabel } from 'shared/pos/utils';
 
 import type { KitchenQueueTab } from './KitchenQueueHeader';
 
@@ -19,6 +20,7 @@ type KitchenTicketItemProps = {
   copy: ReturnType<typeof getPosCopy>;
   isSelected: boolean;
   item: KitchenItem;
+  locale: PosLocale;
   onSelect: (itemId: string) => void;
   onUpdateStatus: (itemId: string, status: KitchenItemStatus) => void;
   selectedTab: KitchenQueueTab;
@@ -30,6 +32,7 @@ export function KitchenTicketItem({
   copy,
   isSelected,
   item,
+  locale,
   onSelect,
   onUpdateStatus,
   selectedTab,
@@ -73,10 +76,7 @@ export function KitchenTicketItem({
           sx={{ cursor: selectedTab === 'active' ? 'pointer' : 'default' }}>
           <Stack spacing={0.35} sx={{ pr: 1 }}>
             <Typography sx={{ fontSize: 14.5, fontWeight: 700, lineHeight: 1.2 }}>
-              {formatPosCopy(copy.itemQuantityLabel, {
-                name: item.catalogItemName,
-                quantity: item.quantity,
-              })}
+              {formatPosItemQuantityLabel(item.catalogItemName, item.quantity, item.saleUnit, locale)}
             </Typography>
             {item.note ? (
               <Typography variant="body2" color="text.secondary" sx={{ fontSize: 12.5 }}>

@@ -29,6 +29,7 @@ export type CatalogOrderItemLike = {
   catalogItem: string;
   catalogItemName: string;
   quantity: number | string;
+  saleUnit?: 'piece' | 'kg';
   status: string;
   prepStationName?: string | null;
   note?: string | null;
@@ -40,6 +41,7 @@ export type CatalogSummaryItem = {
   catalogItem: string;
   catalogItemName: string;
   quantity: number;
+  saleUnit?: 'piece' | 'kg';
   status: string;
   note?: string | null;
   itemIds: string[];
@@ -143,6 +145,7 @@ export function aggregateSummaryItems(items: CatalogOrderItemLike[] | undefined,
       catalogItem: item.catalogItem,
       catalogItemName: item.catalogItemName,
       quantity: normalizePosQuantity(item.quantity),
+      saleUnit: item.saleUnit ?? 'piece',
       status: item.status,
       note: item.note,
       itemIds: [item.id],

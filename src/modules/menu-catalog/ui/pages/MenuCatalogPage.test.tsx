@@ -186,7 +186,7 @@ describe('MenuCatalogPage', () => {
     expect(screen.getAllByText('Burger').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Cheese and tomato').length).toBeGreaterThan(0);
     expect(screen.getByAltText('Burgers')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: /Tanlov oynasi 2/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Tanlov oynasi 1/ }));
     expect(screen.getAllByText('x2').length).toBeGreaterThan(0);
     expect(screen.queryByText(/99\s?000/)).toBeNull();
     expect(screen.queryByText(/so'm/)).toBeNull();

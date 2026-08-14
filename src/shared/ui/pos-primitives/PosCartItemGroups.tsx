@@ -4,7 +4,7 @@ import type { KeyboardEvent } from 'react';
 
 import { formatPosCopy, type PosLocale } from 'shared/locale/copy';
 import type { PosOrderItemModifier } from 'shared/pos/modifiers';
-import { formatCompactMoney } from 'shared/pos/utils';
+import { formatCompactMoney, formatPosItemQuantityLabel } from 'shared/pos/utils';
 
 export type PosCartItem = {
   key: string;
@@ -13,6 +13,7 @@ export type PosCartItem = {
   catalogItemName: string;
   note?: string | null;
   quantity: number;
+  saleUnit?: 'piece' | 'kg';
   lineTotal: number;
   status: string;
   itemIds: string[];
@@ -163,7 +164,6 @@ function CartItemActions<TMenuItem extends PosCartMenuItem>({
 
 export function PosCartItemGroups<TMenuItem extends PosCartMenuItem>({
   groups,
-  itemQuantityLabel,
   locale,
   markingProgressLabel,
   menuItems,
@@ -219,10 +219,7 @@ export function PosCartItemGroups<TMenuItem extends PosCartMenuItem>({
                 <Typography
                   variant={mobile ? 'subtitle2' : 'subtitle1'}
                   sx={item.status === 'cancelled' ? { textDecoration: 'line-through', opacity: 0.68 } : undefined}>
-                  {formatPosCopy(itemQuantityLabel, {
-                    name: item.catalogItemName,
-                    quantity: item.quantity,
-                  })}
+                  {formatPosItemQuantityLabel(item.catalogItemName, item.quantity, item.saleUnit, locale)}
                 </Typography>
                 {item.note ? (
                   <Typography variant={mobile ? 'caption' : 'body2'} color="text.secondary">

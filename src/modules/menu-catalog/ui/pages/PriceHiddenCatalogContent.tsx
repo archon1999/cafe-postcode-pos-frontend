@@ -6,7 +6,6 @@ import { useNavigate } from 'react-router';
 import { usePosSession } from 'modules/auth';
 import { getPosCopy } from 'shared/locale/copy';
 import type { PosModifierSelection } from 'shared/pos/modifiers';
-import { addPosQuantities } from 'shared/pos/utils';
 import { PosBuilderPageSkeleton, PosProductConfiguratorDialog, PosWeightedItemDialog } from 'shared/ui/pos-primitives';
 
 import {
@@ -71,7 +70,7 @@ export function PriceHiddenCatalogContent<TMenuItem extends CatalogMenuItemLike>
     [categories],
   );
   const selectedItems = useMemo(() => aggregateSummaryItems(orderItems, copy.menu), [copy.menu, orderItems]);
-  const selectedCount = selectedItems.reduce((sum, item) => addPosQuantities(sum, item.quantity), 0);
+  const selectedCount = selectedItems.length;
   const requestAdd = (item: TMenuItem) => {
     if (item.modifierGroups?.length) {
       setConfiguringItem(item);
@@ -119,12 +118,14 @@ export function PriceHiddenCatalogContent<TMenuItem extends CatalogMenuItemLike>
         countMap={countMap}
         latestItemMap={latestItemMap}
         hasPendingOperations={hasPendingOperations}
+        locale={locale}
         noProductsLabel={copy.noProducts}
         onAdd={(item) => requestAdd(item)}
         onRemove={removeItem}
       />
       <PriceHiddenSelectionDialog
         copy={copy}
+        locale={locale}
         open={isSelectionDialogOpen}
         selectedCount={selectedCount}
         selectedItems={selectedItems}
@@ -136,6 +137,7 @@ export function PriceHiddenCatalogContent<TMenuItem extends CatalogMenuItemLike>
               selectedCount={countMap.get(catalogItemId) ?? 0}
               latestItemId={latestItemMap.get(catalogItemId)}
               disabled={hasPendingOperations}
+              locale={locale}
               onAdd={(selectedItem) => requestAdd(selectedItem)}
               onRemove={removeItem}
             />

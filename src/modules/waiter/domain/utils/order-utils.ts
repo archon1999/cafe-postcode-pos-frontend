@@ -10,6 +10,7 @@ export type AggregatedWaiterCartItem = {
   catalogItemName: string;
   note?: string | null;
   quantity: number;
+  saleUnit?: 'piece' | 'kg';
   lineTotal: number;
   status: string;
   itemIds: string[];
@@ -64,6 +65,7 @@ export function aggregateWaiterCartItemsByStation(items: WaiterOrderItem[] | und
         catalogItemName: item.catalogItemName,
         note: item.note,
         quantity: normalizePosQuantity(item.quantity),
+        saleUnit: item.saleUnit ?? 'piece',
         lineTotal: Number(item.lineTotal ?? 0),
         status: item.status,
         itemIds: [item.id],

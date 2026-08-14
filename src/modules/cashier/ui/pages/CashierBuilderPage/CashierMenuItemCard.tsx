@@ -5,7 +5,7 @@ import type { KeyboardEvent } from 'react';
 import type { CashierMenuItem } from 'modules/cashier/domain';
 import { resolveApiBaseUrl } from 'shared/api/apiUrl';
 import { getPosCopy, type PosLocale } from 'shared/locale/copy';
-import { formatMoneyParts } from 'shared/pos/utils';
+import { formatMoneyParts, formatPosQuantity } from 'shared/pos/utils';
 
 type CashierMenuItemCardProps = {
   item: CashierMenuItem;
@@ -216,7 +216,7 @@ export function CashierMenuItemCard({
             lineHeight: 1,
             boxShadow: '0 6px 14px rgba(0,0,0,0.22)',
           })}>
-          {selectedCount}
+          {formatPosQuantity(selectedCount, item.saleUnit, locale)}
         </Box>
       ) : null}
     </Box>

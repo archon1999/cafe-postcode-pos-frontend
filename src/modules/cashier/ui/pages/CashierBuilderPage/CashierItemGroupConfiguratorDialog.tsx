@@ -22,7 +22,7 @@ import {
   selectedModifierOptions,
   type PosModifierSelection,
 } from 'shared/pos/modifiers';
-import { formatCompactMoney } from 'shared/pos/utils';
+import { formatCompactMoney, formatPosQuantity } from 'shared/pos/utils';
 import { PosProductConfiguratorDialog } from 'shared/ui/pos-primitives';
 
 export type CashierGroupOrderLine = {
@@ -153,7 +153,7 @@ export function CashierItemGroupConfiguratorDialog({ group, locale, onClose, onC
                     {memberQuantity > 0 ? (
                       <Typography color="primary.main" fontWeight={850}>
                         {member.item.saleUnit === 'kg'
-                          ? `${memberQuantity} kg`
+                          ? formatPosQuantity(memberQuantity, member.item.saleUnit, locale)
                           : formatPosCopy(posCopy.selectedCount, { count: memberQuantity })}
                       </Typography>
                     ) : null}

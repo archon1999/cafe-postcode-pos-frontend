@@ -2,12 +2,14 @@ import { Icon } from '@iconify/react';
 import { Dialog, DialogContent, DialogTitle, Divider, IconButton, Stack, Typography } from '@mui/material';
 import type { ReactNode } from 'react';
 
-import { formatPosCopy, type getPosCopy } from 'shared/locale/copy';
+import { formatPosCopy, type PosLocale, type getPosCopy } from 'shared/locale/copy';
+import { formatPosQuantity, formatPosQuantityNumber } from 'shared/pos/utils';
 
 import type { CatalogSummaryItem } from './priceHiddenCatalog.domain';
 
 export function PriceHiddenSelectionDialog({
   copy,
+  locale,
   open,
   selectedCount,
   selectedItems,
@@ -15,6 +17,7 @@ export function PriceHiddenSelectionDialog({
   onClose,
 }: {
   copy: ReturnType<typeof getPosCopy>;
+  locale: PosLocale;
   open: boolean;
   selectedCount: number;
   selectedItems: CatalogSummaryItem[];
@@ -80,7 +83,11 @@ export function PriceHiddenSelectionDialog({
                   ) : null}
                 </Stack>
                 <Typography variant="h6" sx={{ minWidth: 42, color: '#d4df36', textAlign: 'right', fontWeight: 900 }}>
-                  {formatPosCopy(copy.quantityOnlyLabel, { quantity: item.quantity })}
+                  {item.saleUnit === 'kg'
+                    ? formatPosQuantity(item.quantity, item.saleUnit, locale)
+                    : formatPosCopy(copy.quantityOnlyLabel, {
+                        quantity: formatPosQuantityNumber(item.quantity, item.saleUnit, locale),
+                      })}
                 </Typography>
                 {renderControls(item.catalogItem)}
               </Stack>

@@ -2,7 +2,7 @@ import { Box, Stack, Typography } from '@mui/material';
 
 import type { CashierMenuItemGroup } from 'modules/cashier/domain';
 import { formatPosCopy, getPosCopy, type PosLocale } from 'shared/locale/copy';
-import { formatMoneyParts } from 'shared/pos/utils';
+import { formatMoneyParts, formatPosQuantity } from 'shared/pos/utils';
 
 type Props = {
   group: CashierMenuItemGroup;
@@ -16,6 +16,7 @@ export function CashierMenuItemGroupCard({ group, locale, menuLabel, selectedCou
   const copy = getPosCopy(locale);
   const minimumPrice = Math.min(...group.members.map((member) => Number(member.item.price || 0)));
   const price = formatMoneyParts(Number.isFinite(minimumPrice) ? minimumPrice : 0, locale);
+  const groupSaleUnit = group.members.every((member) => member.item.saleUnit === 'kg') ? 'kg' : 'piece';
 
   return (
     <Box
@@ -143,7 +144,7 @@ export function CashierMenuItemGroupCard({ group, locale, menuLabel, selectedCou
             lineHeight: 1,
             boxShadow: '0 6px 14px rgba(0,0,0,0.22)',
           })}>
-          {selectedCount}
+          {formatPosQuantity(selectedCount, groupSaleUnit, locale)}
         </Box>
       ) : null}
     </Box>

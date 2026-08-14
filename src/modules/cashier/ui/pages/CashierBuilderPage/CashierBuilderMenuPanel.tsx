@@ -7,7 +7,7 @@ import {
   type CashierMenuItemGroup,
 } from 'modules/cashier/domain';
 import type { PosLocale } from 'shared/locale/copy';
-import { formatCompactMoney } from 'shared/pos/utils';
+import { addPosQuantities, formatCompactMoney } from 'shared/pos/utils';
 
 import { CashierMenuItemCard } from './CashierMenuItemCard';
 import { CashierMenuItemGroupCard } from './CashierMenuItemGroupCard';
@@ -77,7 +77,7 @@ export function CashierBuilderMenuPanel({
             group={group}
             locale={locale}
             menuLabel={menuLabel}
-            selectedCount={group.members.reduce((sum, member) => sum + (itemCounts.get(member.item.id) ?? 0), 0)}
+            selectedCount={getGroupSelectedCount(group, itemCounts)}
             onOpen={() => onOpenGroup(group)}
           />
         ))}
@@ -137,4 +137,14 @@ export function CashierBuilderMenuPanel({
       ) : null}
     </Stack>
   );
+}
+
+function getGroupSelectedCount(group: CashierMenuItemGroup, itemCounts: Map<string, number>) {
+  const saleUnits = new Set(group.members.map((member) => member.item.saleUnit ?? 'piece'));
+
+  if (saleUnits.size > 1) {
+    return group.members.filter((member) => (itemCounts.get(member.item.id) ?? 0) > 0).length;
+  }
+
+  return group.members.reduce((total, member) => addPosQuantities(total, itemCounts.get(member.item.id)), 0);
 }

@@ -70,6 +70,7 @@ describe('cashier cart aggregation', () => {
       catalogItemName: 'Cola',
       note: undefined,
       quantity: 3,
+      saleUnit: 'piece',
       lineTotal: 36000,
       status: 'active',
       itemIds: ['line-1', 'line-2'],

@@ -5,12 +5,21 @@ const localeMap: Record<PosLocale, string> = {
   'uz-crl': 'uz-Cyrl-UZ',
   ru: 'ru-RU',
 };
+const quantityNumberLocale = 'ru-RU';
 const TASHKENT_TIMEZONE = 'Asia/Tashkent';
 
 const currencyLabelMap: Record<PosLocale, string> = {
   uz: "so'm",
   'uz-crl': 'сўм',
   ru: 'сум',
+};
+
+export type PosSaleUnit = 'piece' | 'kg';
+
+const kilogramLabelMap: Record<PosLocale, string> = {
+  uz: 'kg',
+  'uz-crl': 'кг',
+  ru: 'кг',
 };
 
 export function formatMoney(value: number | string | null | undefined, locale: PosLocale) {
@@ -37,6 +46,38 @@ export function normalizePosQuantity(value: number | string | null | undefined) 
 
 export function addPosQuantities(left: number | string | null | undefined, right: number | string | null | undefined) {
   return normalizePosQuantity(normalizePosQuantity(left) + normalizePosQuantity(right));
+}
+
+export function formatPosQuantityNumber(
+  value: number | string | null | undefined,
+  saleUnit: PosSaleUnit | undefined,
+  _locale: PosLocale,
+) {
+  return new Intl.NumberFormat(quantityNumberLocale, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: saleUnit === 'kg' ? 3 : 0,
+  }).format(normalizePosQuantity(value));
+}
+
+export function formatPosQuantity(
+  value: number | string | null | undefined,
+  saleUnit: PosSaleUnit | undefined,
+  locale: PosLocale,
+) {
+  const formatted = formatPosQuantityNumber(value, saleUnit, locale);
+
+  return saleUnit === 'kg' ? `${formatted} ${kilogramLabelMap[locale]}` : formatted;
+}
+
+export function formatPosItemQuantityLabel(
+  name: string,
+  value: number | string | null | undefined,
+  saleUnit: PosSaleUnit | undefined,
+  locale: PosLocale,
+) {
+  const quantity = formatPosQuantity(value, saleUnit, locale);
+
+  return saleUnit === 'kg' ? `${name} (${quantity})` : `${name} (x${quantity})`;
 }
 
 export function formatTime(value: string | null | undefined, locale: PosLocale) {

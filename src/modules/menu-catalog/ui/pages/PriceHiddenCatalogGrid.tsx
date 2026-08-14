@@ -1,6 +1,9 @@
 import { Icon } from '@iconify/react';
 import { Box, IconButton, Stack, Typography } from '@mui/material';
 
+import type { PosLocale } from 'shared/locale/copy';
+import { formatPosQuantity } from 'shared/pos/utils';
+
 import { createActionKeyHandler, resolveMenuItemImageUrl, type CatalogMenuItemLike } from './priceHiddenCatalog.domain';
 
 type ItemActionProps<TMenuItem extends CatalogMenuItemLike> = {
@@ -8,6 +11,7 @@ type ItemActionProps<TMenuItem extends CatalogMenuItemLike> = {
   selectedCount: number;
   latestItemId?: string;
   disabled: boolean;
+  locale: PosLocale;
   onAdd: (item: TMenuItem, note: string) => void;
   onRemove: (itemId: string) => void;
 };
@@ -17,6 +21,7 @@ export function PriceHiddenItemControls<TMenuItem extends CatalogMenuItemLike>({
   selectedCount,
   latestItemId,
   disabled,
+  locale,
   onAdd,
   onRemove,
 }: ItemActionProps<TMenuItem>) {
@@ -52,7 +57,7 @@ export function PriceHiddenItemControls<TMenuItem extends CatalogMenuItemLike>({
           fontSize: 18,
           fontWeight: 900,
         }}>
-        {selectedCount}
+        {formatPosQuantity(selectedCount, item.saleUnit, locale)}
       </Box>
       <IconButton
         aria-label={`Add one ${item.name}`}
@@ -109,6 +114,7 @@ type PriceHiddenCatalogGridProps<TMenuItem extends CatalogMenuItemLike> = {
   countMap: Map<string, number>;
   latestItemMap: Map<string, string>;
   hasPendingOperations: boolean;
+  locale: PosLocale;
   noProductsLabel: string;
   onAdd: (item: TMenuItem, note: string) => void;
   onRemove: (itemId: string) => void;
@@ -119,6 +125,7 @@ export function PriceHiddenCatalogGrid<TMenuItem extends CatalogMenuItemLike>({
   countMap,
   latestItemMap,
   hasPendingOperations,
+  locale,
   noProductsLabel,
   onAdd,
   onRemove,
@@ -200,7 +207,7 @@ export function PriceHiddenCatalogGrid<TMenuItem extends CatalogMenuItemLike>({
                           fontWeight: 900,
                           boxShadow: '0 10px 22px rgba(0,0,0,0.32)',
                         }}>
-                        {selectedCount}
+                        {formatPosQuantity(selectedCount, item.saleUnit, locale)}
                       </Box>
                     ) : null}
                   </Box>
@@ -246,6 +253,7 @@ export function PriceHiddenCatalogGrid<TMenuItem extends CatalogMenuItemLike>({
                     selectedCount={selectedCount}
                     latestItemId={latestItemMap.get(item.id)}
                     disabled={hasPendingOperations}
+                    locale={locale}
                     onAdd={onAdd}
                     onRemove={onRemove}
                   />

@@ -173,6 +173,7 @@ export function KitchenQueuePageContent() {
                           copy={copy}
                           isSelected={selectedItemId === item.id}
                           item={item}
+                          locale={locale}
                           onSelect={(itemId) =>
                             setSelectedItemId((currentValue) => (currentValue === itemId ? null : itemId))
                           }

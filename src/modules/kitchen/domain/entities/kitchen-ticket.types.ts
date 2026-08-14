@@ -4,6 +4,7 @@ export type KitchenItem = {
   id: string;
   catalogItemName: string;
   quantity: number | string;
+  saleUnit?: 'piece' | 'kg';
   lineTotal: number | string;
   note?: string;
   status: KitchenItemStatus;

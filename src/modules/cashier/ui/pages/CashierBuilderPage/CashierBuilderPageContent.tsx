@@ -220,10 +220,7 @@ export function CashierBuilderPageContent() {
       categories.map((category) => ({
         value: category.id,
         label: category.name,
-        count: category.items.reduce(
-          (total, menuItem) => addPosQuantities(total, menuItemMeta.countMap.get(menuItem.id)),
-          0,
-        ),
+        count: category.items.filter((menuItem) => (menuItemMeta.countMap.get(menuItem.id) ?? 0) > 0).length,
       })),
     [categories, menuItemMeta.countMap],
   );

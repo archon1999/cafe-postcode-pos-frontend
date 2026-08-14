@@ -2,9 +2,9 @@ import { Icon } from '@iconify/react';
 import { Box, IconButton, Stack, Typography, alpha } from '@mui/material';
 
 import type { AggregatedCashierOrderItem, CashierOrder } from 'modules/cashier/domain';
-import { formatPosCopy, getPosCopy, type PosLocale } from 'shared/locale/copy';
+import { getPosCopy, type PosLocale } from 'shared/locale/copy';
 import { getPosOrderLocationLabel, getPosTableNumberLabel } from 'shared/pos/orderLocation';
-import { formatCompactMoney } from 'shared/pos/utils';
+import { formatCompactMoney, formatPosItemQuantityLabel } from 'shared/pos/utils';
 
 type PaymentOrderPanelProps = {
   addingItemId: string | null;
@@ -125,10 +125,7 @@ export function PaymentOrderPanel({
                       textDecoration: item.status === 'cancelled' ? 'line-through' : 'none',
                       opacity: item.status === 'cancelled' ? 0.72 : 1,
                     }}>
-                    {formatPosCopy(copy.itemQuantityLabel, {
-                      name: item.catalogItemName,
-                      quantity: item.quantity,
-                    })}
+                    {formatPosItemQuantityLabel(item.catalogItemName, item.quantity, item.saleUnit, locale)}
                   </Typography>
                   {item.note ? (
                     <Typography variant="body2" color="text.secondary">

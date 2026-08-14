@@ -1,8 +1,6 @@
 import { Icon } from '@iconify/react';
 import { Box, IconButton, Stack, Typography } from '@mui/material';
 
-import { addPosQuantities } from 'shared/pos/utils';
-
 import {
   resolveCategoryImageUrl,
   type CatalogCategoryLike,
@@ -149,10 +147,9 @@ export function PriceHiddenCategorySidebar<TMenuItem extends CatalogMenuItemLike
         }}>
         {categories.map((category) => {
           const isActive = category.id === selectedCategoryId;
-          const categorySelectedCount = category.items.reduce(
-            (total, menuItem) => addPosQuantities(total, countMap.get(menuItem.id)),
-            0,
-          );
+          const categorySelectedCount = category.items.filter(
+            (menuItem) => (countMap.get(menuItem.id) ?? 0) > 0,
+          ).length;
           return (
             <Box
               key={category.id}

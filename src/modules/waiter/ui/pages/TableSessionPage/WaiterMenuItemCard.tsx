@@ -4,7 +4,7 @@ import { Box, Stack, Typography, alpha } from '@mui/material';
 import type { WaiterMenuItem } from 'modules/waiter/domain';
 import { resolveApiBaseUrl } from 'shared/api/apiUrl';
 import { getPosCopy, type PosLocale } from 'shared/locale/copy';
-import { formatMoneyParts } from 'shared/pos/utils';
+import { formatMoneyParts, formatPosQuantity } from 'shared/pos/utils';
 
 function resolveMenuItemImageUrl(imageUrl?: string | null) {
   if (!imageUrl) {
@@ -293,7 +293,7 @@ export function WaiterMenuItemCard({
             lineHeight: 1,
             boxShadow: '0 6px 14px rgba(0,0,0,0.22)',
           })}>
-          {selectedCountForMenuItem}
+          {formatPosQuantity(selectedCountForMenuItem, menuItem.saleUnit, locale)}
         </Box>
       ) : null}
     </Box>
