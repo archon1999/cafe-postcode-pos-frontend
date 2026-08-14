@@ -11,7 +11,12 @@ import {
   type CashierMenuItem,
   type CashierOrderItem,
 } from 'modules/cashier/domain';
-import { useCurrentWaiterOrder, useWaiterMenuQuery, waiterKeys } from 'modules/waiter/application';
+import {
+  useCurrentWaiterOrder,
+  useWaiterMenuQuery,
+  useWaiterTableSessionQuery,
+  waiterKeys,
+} from 'modules/waiter/application';
 import { waiterRepository } from 'modules/waiter/data-access';
 import type { WaiterMenuCategory, WaiterMenuItem, WaiterOrderItem } from 'modules/waiter/domain';
 import { getPosCopy } from 'shared/locale/copy';
@@ -28,6 +33,7 @@ function WaiterMenuCatalogPage({ sessionId }: { sessionId: string | null }) {
   const canViewMenu = canAccessTableSessionMenu(session?.user);
   const menuQuery = useWaiterMenuQuery({ enabled: canViewMenu && Boolean(sessionId) });
   const orderQuery = useCurrentWaiterOrder(sessionId);
+  const tableSessionQuery = useWaiterTableSessionQuery(sessionId);
   const copy = getPosCopy(locale);
   const { currentOrder, addItem, addItems, removeItem, hasPendingOperations } = useOptimisticBuilderOrder<
     WaiterMenuItem,
@@ -43,8 +49,9 @@ function WaiterMenuCatalogPage({ sessionId }: { sessionId: string | null }) {
       const response = await waiterRepository.createOrder(sessionId as string, note);
       return response.id;
     },
-    defaultServiceFeeEnabled: Boolean(session?.restaurantContext?.serviceFeeEnabled),
-    defaultServiceFeePercent: Number(session?.restaurantContext?.serviceFeePercent ?? 0),
+    defaultServiceFeeEnabled: Boolean(tableSessionQuery.data?.serviceFeeComponents?.length),
+    defaultServiceFeePercent: Number(tableSessionQuery.data?.serviceFeePercent ?? 0),
+    defaultServiceFeeComponents: tableSessionQuery.data?.serviceFeeComponents,
     defaultVatEnabled: Boolean(session?.restaurantContext?.vatEnabled),
     defaultVatPercent: session?.restaurantContext?.vatPercent ?? 0,
     removeOrderItem: (itemId) => waiterRepository.removeOrderItem(itemId),

@@ -8,6 +8,7 @@ import {
 import type { CashierCheckStatus, CashierOrder } from 'modules/cashier/domain/entities/order.types';
 import { type PosLocale, getPosCopy } from 'shared/locale/copy';
 import { getPosTableNumberLabel, getPosZoneContextLabel } from 'shared/pos/orderLocation';
+import { buildServiceFeeRows } from 'shared/pos/service-fees';
 import { formatCompactMoney, formatPosItemQuantityLabel, formatTime } from 'shared/pos/utils';
 
 type CashierPayment = NonNullable<CashierOrder['payments']>[number];
@@ -56,6 +57,11 @@ export function OpenChecksDetail({
   const serviceFeeEnabled = Boolean(order.serviceFeeEnabled ?? serviceFeePercent > 0);
   const shouldShowServiceFee = serviceFeeEnabled && (serviceFeePercent > 0 || serviceFeeAmount > 0);
   const serviceFeeLabel = `${copy.serviceFee} (${serviceFeePercent}%)`;
+  const serviceFeeRows = buildServiceFeeRows(order.serviceFeeComponents, {
+    restaurant: copy.restaurantServiceFee,
+    hall: copy.hallServiceFee,
+    table: copy.tableServiceFee,
+  });
   const vatEnabled = Boolean(order.vatEnabled);
   const vatPercent = Number(order.vatPercent ?? 0);
   const vatAmount = Number(order.vatAmount ?? 0);
@@ -197,7 +203,17 @@ export function OpenChecksDetail({
             {formatCompactMoney(order.subtotal, locale)}
           </Typography>
         </Stack>
-        {shouldShowServiceFee ? (
+        {serviceFeeRows.map((row) => (
+          <Stack key={row.scope} direction="row" justifyContent="space-between">
+            <Typography variant="body1" color="text.secondary">
+              {row.label}:
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              {formatCompactMoney(row.amount, locale)}
+            </Typography>
+          </Stack>
+        ))}
+        {shouldShowServiceFee && !serviceFeeRows.length ? (
           <Stack direction="row" justifyContent="space-between">
             <Typography variant="body1" color="text.secondary">
               {serviceFeeLabel}:

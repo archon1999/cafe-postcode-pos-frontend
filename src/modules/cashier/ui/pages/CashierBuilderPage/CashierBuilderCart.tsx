@@ -2,6 +2,7 @@ import { Box, Button, Divider, Drawer, Stack, TextField, Typography, alpha, useM
 
 import type { CashierMenuItem } from 'modules/cashier/domain';
 import type { PosLocale, getPosCopy } from 'shared/locale/copy';
+import type { PosServiceFeeRow } from 'shared/pos/service-fees';
 import { PosIconAction, PosOrderChannelSegment } from 'shared/ui/pos-primitives';
 import type { PosCartItemGroupsProps } from 'shared/ui/pos-primitives/PosCartItemGroups';
 import { PosCartItemGroups } from 'shared/ui/pos-primitives/PosCartItemGroups';
@@ -25,6 +26,7 @@ type CartProps = {
   selectedItemKey: string | null;
   serviceFee: number | string | undefined;
   serviceFeeLabel: string;
+  serviceFeeRows?: PosServiceFeeRow[];
   showMissingMarkings: boolean;
   showServiceFee: boolean;
   showVat: boolean;
@@ -123,6 +125,7 @@ function CartFooter(props: CartProps & { compact?: boolean; dense?: boolean }) {
         subtotal={props.subtotal}
         serviceFee={props.serviceFee}
         serviceFeeLabel={props.serviceFeeLabel}
+        serviceFeeRows={props.serviceFeeRows}
         showServiceFee={props.showServiceFee}
         vatAmount={props.vatAmount}
         vatLabel={props.vatLabel}

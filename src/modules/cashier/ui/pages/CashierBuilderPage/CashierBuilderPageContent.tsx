@@ -32,6 +32,7 @@ import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { getPosCopy } from 'shared/locale/copy';
 import { selectionsFromOrderModifiers, type PosModifierSelection } from 'shared/pos/modifiers';
 import { isTemporaryBuilderId } from 'shared/pos/optimistic-builder-order';
+import { buildServiceFeeRows } from 'shared/pos/service-fees';
 import { useOptimisticBuilderOrder } from 'shared/pos/useOptimisticBuilderOrder';
 import { useScannerInput } from 'shared/pos/useScannerInput';
 import { addPosQuantities } from 'shared/pos/utils';
@@ -229,6 +230,11 @@ export function CashierBuilderPageContent() {
   const serviceFeeEnabled = Boolean(currentOrder?.serviceFeeEnabled);
   const shouldShowServiceFee = serviceFeeEnabled && (serviceFeePercent > 0 || serviceFeeAmount > 0);
   const serviceFeeLabel = `${copy.serviceFee} (${serviceFeePercent}%)`;
+  const serviceFeeRows = buildServiceFeeRows(currentOrder?.serviceFeeComponents, {
+    restaurant: copy.restaurantServiceFee,
+    hall: copy.hallServiceFee,
+    table: copy.tableServiceFee,
+  });
   const vatEnabled = Boolean(currentOrder?.vatEnabled);
   const vatPercent = Number(currentOrder?.vatPercent ?? 0);
   const vatAmount = Number(currentOrder?.vatAmount ?? 0);
@@ -360,6 +366,7 @@ export function CashierBuilderPageContent() {
           selectedItemKey={selectedCartItemKey}
           serviceFee={currentOrder?.serviceFee}
           serviceFeeLabel={serviceFeeLabel}
+          serviceFeeRows={serviceFeeRows}
           showMissingMarkings={hasMissingMarkings}
           showServiceFee={shouldShowServiceFee}
           showVat={shouldShowVat}
@@ -394,6 +401,7 @@ export function CashierBuilderPageContent() {
         selectedItemKey={selectedCartItemKey}
         serviceFee={currentOrder?.serviceFee}
         serviceFeeLabel={serviceFeeLabel}
+        serviceFeeRows={serviceFeeRows}
         showMissingMarkings={hasMissingMarkings}
         showServiceFee={shouldShowServiceFee}
         showVat={shouldShowVat}

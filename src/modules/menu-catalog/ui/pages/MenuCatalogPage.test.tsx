@@ -80,6 +80,13 @@ vi.mock('modules/waiter/application', () => ({
       },
     ],
   }),
+  useWaiterTableSessionQuery: () => ({
+    data: {
+      id: 'session-1',
+      serviceFeePercent: 0,
+      serviceFeeComponents: [],
+    },
+  }),
   waiterKeys: {
     orders: ['waiter', 'orders'],
   },

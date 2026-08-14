@@ -33,6 +33,7 @@ import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { getPosCopy } from 'shared/locale/copy';
 import { selectionsFromOrderModifiers, type PosModifierSelection } from 'shared/pos/modifiers';
 import { getPosOrderLocationLabel, getPosTableNumberLabel } from 'shared/pos/orderLocation';
+import { buildServiceFeeRows, type PosServiceFeeComponent } from 'shared/pos/service-fees';
 import { useOptimisticBuilderOrder } from 'shared/pos/useOptimisticBuilderOrder';
 import {
   PosBuilderPageSkeleton,
@@ -89,6 +90,17 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
   const hallOrderQuery = useCurrentWaiterOrder(sessionId);
   const takeawayOrderQuery = useCurrentWaiterTakeawayOrder(session?.user.id);
   const serverOrder = isTakeawayMode ? takeawayOrderQuery.currentOrder : hallOrderQuery.currentOrder;
+  const restaurantServiceFeeComponents: PosServiceFeeComponent[] = session?.restaurantContext?.serviceFeeEnabled
+    ? [
+        {
+          scope: 'restaurant',
+          percent: session.restaurantContext.serviceFeePercent ?? 0,
+        },
+      ]
+    : [];
+  const defaultServiceFeeComponents = isTakeawayMode
+    ? restaurantServiceFeeComponents
+    : (sessionQuery.data?.serviceFeeComponents ?? []);
   const currentOperatorName = session?.user.fullName ?? '';
   const { currentOrder, addItem, addItems, removeItem, hasPendingOperations } = useOptimisticBuilderOrder({
     baseOrder: serverOrder,
@@ -101,8 +113,12 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
         : await waiterRepository.createOrder(sessionId as string, note);
       return response.id;
     },
-    defaultServiceFeeEnabled: Boolean(session?.restaurantContext?.serviceFeeEnabled),
-    defaultServiceFeePercent: Number(session?.restaurantContext?.serviceFeePercent ?? 0),
+    defaultServiceFeeEnabled: defaultServiceFeeComponents.length > 0,
+    defaultServiceFeePercent: defaultServiceFeeComponents.reduce(
+      (sum, component) => sum + Number(component.percent),
+      0,
+    ),
+    defaultServiceFeeComponents,
     defaultVatEnabled: Boolean(session?.restaurantContext?.vatEnabled),
     defaultVatPercent: session?.restaurantContext?.vatPercent ?? 0,
     removeOrderItem: (itemId) => waiterRepository.removeOrderItem(itemId),
@@ -145,13 +161,20 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
     setKitchenNote(currentOrder?.note ?? '');
   }, [currentOrder?.id, currentOrder?.note]);
 
+  const activeServiceFeeComponents = currentOrder?.serviceFeeComponents ?? defaultServiceFeeComponents;
   const serviceFeePercent = Number(
-    currentOrder?.serviceFeePercent ?? session?.restaurantContext?.serviceFeePercent ?? 0,
+    currentOrder?.serviceFeePercent ??
+      activeServiceFeeComponents.reduce((sum, component) => sum + Number(component.percent), 0),
   );
   const serviceFeeAmount = Number(currentOrder?.serviceFee ?? 0);
-  const serviceFeeEnabled = Boolean(currentOrder?.serviceFeeEnabled ?? session?.restaurantContext?.serviceFeeEnabled);
+  const serviceFeeEnabled = Boolean(currentOrder?.serviceFeeEnabled ?? activeServiceFeeComponents.length > 0);
   const shouldShowServiceFee = serviceFeeEnabled && (serviceFeePercent > 0 || serviceFeeAmount > 0);
   const serviceFeeLabel = `${copy.serviceFee} (${serviceFeePercent}%)`;
+  const serviceFeeRows = buildServiceFeeRows(activeServiceFeeComponents, {
+    restaurant: copy.restaurantServiceFee,
+    hall: copy.hallServiceFee,
+    table: copy.tableServiceFee,
+  });
   const vatEnabled = Boolean(currentOrder?.vatEnabled);
   const vatPercent = Number(currentOrder?.vatPercent ?? 0);
   const vatAmount = Number(currentOrder?.vatAmount ?? 0);
@@ -326,6 +349,7 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
           selectedItemKey={selectedCartItemKey}
           serviceFee={currentOrder?.serviceFee}
           serviceFeeLabel={serviceFeeLabel}
+          serviceFeeRows={serviceFeeRows}
           showServiceFee={shouldShowServiceFee}
           showVat={shouldShowVat}
           subtotal={currentOrder?.subtotal}
@@ -368,6 +392,7 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
         selectedItemKey={selectedCartItemKey}
         serviceFee={currentOrder?.serviceFee}
         serviceFeeLabel={serviceFeeLabel}
+        serviceFeeRows={serviceFeeRows}
         showServiceFee={shouldShowServiceFee}
         showVat={shouldShowVat}
         subtotal={currentOrder?.subtotal}

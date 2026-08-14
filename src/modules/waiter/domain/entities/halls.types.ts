@@ -1,3 +1,5 @@
+import type { PosServiceFeeComponent } from 'shared/pos/service-fees';
+
 export type ActiveSessionServiceState = 'new' | 'cooking' | 'done' | 'pending_payment' | string;
 export type DiningTableStatus = 'available' | 'occupied' | 'reserved' | 'blocked';
 export type DiningTableShapeVariant =
@@ -70,6 +72,8 @@ export type TableSession = {
   guestCount: number;
   status: string;
   assignedWaiterName?: string | null;
+  serviceFeePercent?: number | string;
+  serviceFeeComponents?: PosServiceFeeComponent[];
 };
 
 export type WaiterSessionResponse = {

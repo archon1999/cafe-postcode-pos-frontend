@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { queryClient } from 'shared/api/query-client';
 import type { PosModifierSelection } from 'shared/pos/modifiers';
 import { selectedModifierOptions } from 'shared/pos/modifiers';
+import type { PosServiceFeeComponent } from 'shared/pos/service-fees';
 
 import {
   createTemporaryBuilderId,
@@ -29,6 +30,7 @@ type UseOptimisticBuilderOrderOptions<
   createOrder: (note: string) => Promise<string>;
   defaultServiceFeeEnabled?: boolean;
   defaultServiceFeePercent: number;
+  defaultServiceFeeComponents?: PosServiceFeeComponent[];
   defaultVatEnabled?: boolean;
   defaultVatPercent?: number | string;
   removeOrderItem: (itemId: string) => Promise<void>;
@@ -71,6 +73,7 @@ export function useOptimisticBuilderOrder<
     createOrder,
     defaultServiceFeeEnabled,
     defaultServiceFeePercent,
+    defaultServiceFeeComponents,
     defaultVatEnabled,
     defaultVatPercent,
     removeOrderItem,
@@ -404,6 +407,7 @@ export function useOptimisticBuilderOrder<
       channel,
       defaultServiceFeeEnabled,
       defaultServiceFeePercent,
+      defaultServiceFeeComponents,
       defaultVatEnabled,
       defaultVatPercent,
       pendingAdds,
@@ -420,6 +424,7 @@ export function useOptimisticBuilderOrder<
     channel,
     defaultServiceFeeEnabled,
     defaultServiceFeePercent,
+    defaultServiceFeeComponents,
     defaultVatEnabled,
     defaultVatPercent,
     pendingAdds,

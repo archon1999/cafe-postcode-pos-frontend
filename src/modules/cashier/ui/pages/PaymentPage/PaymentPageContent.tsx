@@ -29,6 +29,7 @@ import { POS_CONTEXT_POLL_INTERVAL_MS } from 'shared/api/polling';
 import { refreshTransportAndReload } from 'shared/api/transportResolver';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { getPosCopy } from 'shared/locale/copy';
+import { buildServiceFeeRows } from 'shared/pos/service-fees';
 import { useScannerInput } from 'shared/pos/useScannerInput';
 import { PosSettingsMenu } from 'shared/ui/pos-primitives';
 
@@ -225,6 +226,11 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   const serviceFeeEnabled = Boolean(orderQuery.data?.serviceFeeEnabled ?? serviceFeePercent > 0);
   const shouldShowServiceFee = serviceFeeEnabled && (serviceFeePercent > 0 || serviceFeeAmount > 0);
   const serviceFeeLabel = `${copy.serviceFee} (${serviceFeePercent}%)`;
+  const serviceFeeRows = buildServiceFeeRows(orderQuery.data?.serviceFeeComponents, {
+    restaurant: copy.restaurantServiceFee,
+    hall: copy.hallServiceFee,
+    table: copy.tableServiceFee,
+  });
   const vatEnabled = Boolean(orderQuery.data?.vatEnabled);
   const vatPercent = Number(orderQuery.data?.vatPercent ?? 0);
   const vatAmount = Number(orderQuery.data?.vatAmount ?? 0);
@@ -353,6 +359,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
               selectedCashDeskName={selectedCashDesk?.name}
               serviceFee={orderQuery.data?.serviceFee}
               serviceFeeLabel={serviceFeeLabel}
+              serviceFeeRows={serviceFeeRows}
               shouldShowServiceFee={shouldShowServiceFee}
               shouldShowVat={shouldShowVat}
               subtotal={orderQuery.data?.subtotal}

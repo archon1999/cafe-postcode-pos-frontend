@@ -1,6 +1,7 @@
 import { Box, Button, Stack, Tooltip, Typography } from '@mui/material';
 
 import { formatPosCopy, getPosCopy, type PosLocale } from 'shared/locale/copy';
+import type { PosServiceFeeRow } from 'shared/pos/service-fees';
 import { formatCompactMoney } from 'shared/pos/utils';
 
 type PaymentCheckoutSummaryProps = {
@@ -21,6 +22,7 @@ type PaymentCheckoutSummaryProps = {
   selectedCashDeskName?: string;
   serviceFee: number | string | undefined;
   serviceFeeLabel: string;
+  serviceFeeRows?: PosServiceFeeRow[];
   shouldShowServiceFee: boolean;
   shouldShowVat: boolean;
   subtotal: number | string | undefined;
@@ -46,6 +48,7 @@ export function PaymentCheckoutSummary({
   selectedCashDeskName,
   serviceFee,
   serviceFeeLabel,
+  serviceFeeRows,
   shouldShowServiceFee,
   shouldShowVat,
   subtotal,
@@ -63,7 +66,17 @@ export function PaymentCheckoutSummary({
             {formatCompactMoney(subtotal, locale)}
           </Typography>
         </Stack>
-        {shouldShowServiceFee ? (
+        {serviceFeeRows?.map((row) => (
+          <Stack key={row.scope} direction="row" justifyContent="space-between">
+            <Typography variant="body1" color="text.secondary">
+              {row.label}:
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              {formatCompactMoney(row.amount, locale)}
+            </Typography>
+          </Stack>
+        ))}
+        {shouldShowServiceFee && !serviceFeeRows?.length ? (
           <Stack direction="row" justifyContent="space-between">
             <Typography variant="body1" color="text.secondary">
               {serviceFeeLabel}:

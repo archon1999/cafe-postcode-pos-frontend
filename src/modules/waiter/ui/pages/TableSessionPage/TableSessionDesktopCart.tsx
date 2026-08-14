@@ -3,6 +3,7 @@ import { Box, Button, Divider, Stack, TextField, Typography, alpha } from '@mui/
 
 import type { WaiterMenuItem } from 'modules/waiter/domain';
 import type { PosLocale, getPosCopy } from 'shared/locale/copy';
+import type { PosServiceFeeRow } from 'shared/pos/service-fees';
 import { formatCompactMoney } from 'shared/pos/utils';
 import { PosOrderChannelSegment } from 'shared/ui/pos-primitives';
 import type { PosCartItemGroupsProps } from 'shared/ui/pos-primitives/PosCartItemGroups';
@@ -30,6 +31,7 @@ export type TableSessionDesktopCartProps = {
   selectedItemKey: string | null;
   serviceFee: number | string | undefined;
   serviceFeeLabel: string;
+  serviceFeeRows?: PosServiceFeeRow[];
   showServiceFee: boolean;
   showVat: boolean;
   subtotal: number | string | undefined;
@@ -210,7 +212,17 @@ export function TableSessionDesktopCart(props: TableSessionDesktopCartProps) {
             {formatCompactMoney(props.subtotal, props.locale)}
           </Typography>
         </Stack>
-        {props.showServiceFee ? (
+        {props.serviceFeeRows?.map((row) => (
+          <Stack key={row.scope} direction="row" justifyContent="space-between">
+            <Typography variant="body1" color="text.secondary">
+              {row.label}:
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              {formatCompactMoney(row.amount, props.locale)}
+            </Typography>
+          </Stack>
+        ))}
+        {props.showServiceFee && !props.serviceFeeRows?.length ? (
           <Stack direction="row" justifyContent="space-between">
             <Typography variant="body1" color="text.secondary">
               {props.serviceFeeLabel}:

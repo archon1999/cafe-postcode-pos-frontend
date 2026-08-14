@@ -1,6 +1,7 @@
 import { Stack, Typography } from '@mui/material';
 
 import type { PosLocale, getPosCopy } from 'shared/locale/copy';
+import type { PosServiceFeeRow } from 'shared/pos/service-fees';
 import { formatCompactMoney } from 'shared/pos/utils';
 
 type Props = {
@@ -10,6 +11,7 @@ type Props = {
   subtotal: number | string | undefined;
   serviceFee: number | string | undefined;
   serviceFeeLabel: string;
+  serviceFeeRows?: PosServiceFeeRow[];
   showServiceFee: boolean;
   vatAmount: number;
   vatLabel: string;
@@ -24,6 +26,7 @@ export function CashierOrderTotals({
   subtotal,
   serviceFee,
   serviceFeeLabel,
+  serviceFeeRows,
   showServiceFee,
   vatAmount,
   vatLabel,
@@ -43,7 +46,18 @@ export function CashierOrderTotals({
           {formatCompactMoney(subtotal, locale)}
         </Typography>
       </Stack>
-      {showServiceFee ? (
+      {serviceFeeRows?.map((row) => (
+        <Stack key={row.scope} direction="row" justifyContent="space-between">
+          <Typography variant={rowVariant} color="text.secondary">
+            {row.label}
+            {compact ? '' : ':'}
+          </Typography>
+          <Typography variant={rowVariant} color={compact ? undefined : 'text.secondary'}>
+            {formatCompactMoney(row.amount, locale)}
+          </Typography>
+        </Stack>
+      ))}
+      {showServiceFee && !serviceFeeRows?.length ? (
         <Stack direction="row" justifyContent="space-between">
           <Typography variant={rowVariant} color="text.secondary">
             {serviceFeeLabel}

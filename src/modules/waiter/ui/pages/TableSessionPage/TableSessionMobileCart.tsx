@@ -83,7 +83,15 @@ export function TableSessionMobileCart({
             </Typography>
             <Typography variant="body2">{formatCompactMoney(props.subtotal, props.locale)}</Typography>
           </Stack>
-          {props.showServiceFee ? (
+          {props.serviceFeeRows?.map((row) => (
+            <Stack key={row.scope} direction="row" justifyContent="space-between">
+              <Typography variant="body2" color="text.secondary">
+                {row.label}
+              </Typography>
+              <Typography variant="body2">{formatCompactMoney(row.amount, props.locale)}</Typography>
+            </Stack>
+          ))}
+          {props.showServiceFee && !props.serviceFeeRows?.length ? (
             <Stack direction="row" justifyContent="space-between">
               <Typography variant="body2" color="text.secondary">
                 {props.serviceFeeLabel}

@@ -1,4 +1,5 @@
 import type { PosOrderItemModifier } from 'shared/pos/modifiers';
+import type { PosServiceFeeComponent } from 'shared/pos/service-fees';
 
 export type CashierOrderItem = {
   id: string;
@@ -38,6 +39,7 @@ export type CashierOrder = {
   serviceFee: number | string;
   serviceFeeEnabled?: boolean;
   serviceFeePercent?: number | string;
+  serviceFeeComponents?: PosServiceFeeComponent[];
   vatEnabled?: boolean;
   vatPercent?: number | string;
   vatAmount?: number | string;

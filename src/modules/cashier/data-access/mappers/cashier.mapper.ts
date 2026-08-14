@@ -7,6 +7,7 @@ import type {
   CashierPaymentResponse,
 } from 'modules/cashier/domain';
 import { mapPosModifierGroups, mapPosOrderItemModifiers } from 'shared/pos/modifiers';
+import { normalizeServiceFeeComponents } from 'shared/pos/service-fees';
 
 type CashierMenuItemDto = CashierMenuItem & {
   image_url?: string | null;
@@ -65,6 +66,7 @@ type CashierOrderDto = Omit<CashierOrder, 'items' | 'orderNumber' | 'displayName
   table_number?: number | null;
   zone_name?: string | null;
   show_zone_name?: boolean;
+  service_fee_components?: CashierOrder['serviceFeeComponents'];
 };
 type CashierPaymentResponseDto = CashierPaymentResponse;
 type CashierCreateOrderResponseDto = CashierCreateOrderResponse;
@@ -114,6 +116,7 @@ export function mapCashierOrder(dto: CashierOrderDto): CashierOrder {
     tableNumber: dto.tableNumber ?? dto.table_number ?? null,
     zoneName: dto.zoneName ?? dto.zone_name ?? null,
     showZoneName: dto.showZoneName ?? dto.show_zone_name ?? false,
+    serviceFeeComponents: normalizeServiceFeeComponents(dto.serviceFeeComponents ?? dto.service_fee_components),
     items: dto.items.map((item) => ({
       ...item,
       markingRequiredCount: item.markingRequiredCount ?? item.marking_required_count,

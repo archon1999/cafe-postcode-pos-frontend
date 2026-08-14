@@ -1,5 +1,6 @@
 import type { PosModifierSelection, PosOrderItemModifier } from './modifiers';
 import { modifierPriceDelta, orderItemModifierSignature, selectedModifierOptions } from './modifiers';
+import type { PosServiceFeeComponent } from './service-fees';
 
 export type BuilderMenuItemLike = {
   id: string;
@@ -31,6 +32,7 @@ export type BuilderOrderLike<TItem extends BuilderOrderItemLike = BuilderOrderIt
   serviceFee: number | string;
   serviceFeeEnabled?: boolean;
   serviceFeePercent?: number | string;
+  serviceFeeComponents?: PosServiceFeeComponent[];
   vatEnabled?: boolean;
   vatPercent?: number | string;
   vatAmount?: number | string;
@@ -64,6 +66,7 @@ type DeriveOptimisticBuilderOrderOptions<
   channel: string;
   defaultServiceFeeEnabled?: boolean;
   defaultServiceFeePercent: number;
+  defaultServiceFeeComponents?: PosServiceFeeComponent[];
   defaultVatEnabled?: boolean;
   defaultVatPercent?: number | string;
   pendingAdds: PendingAddOperation<TMenuItem>[];
@@ -141,6 +144,7 @@ export function deriveOptimisticBuilderOrder<
     channel,
     defaultServiceFeeEnabled,
     defaultServiceFeePercent,
+    defaultServiceFeeComponents,
     defaultVatEnabled = false,
     defaultVatPercent = 0,
     pendingAdds,
@@ -156,12 +160,6 @@ export function deriveOptimisticBuilderOrder<
     return undefined;
   }
 
-  const serviceFeeEnabled = Boolean(
-    baseOrder?.serviceFeeEnabled ?? defaultServiceFeeEnabled ?? defaultServiceFeePercent > 0,
-  );
-  const serviceFeePercent = serviceFeeEnabled
-    ? toMoneyNumber(baseOrder?.serviceFeePercent ?? defaultServiceFeePercent)
-    : 0;
   const vatEnabled = Boolean(baseOrder?.vatEnabled ?? defaultVatEnabled);
   const vatPercent = toMoneyNumber(baseOrder?.vatPercent ?? defaultVatPercent);
   const subtotal = roundMoney(
@@ -173,7 +171,26 @@ export function deriveOptimisticBuilderOrder<
       return sum + toMoneyNumber(item.lineTotal);
     }, 0),
   );
-  const serviceFee = roundMoney((subtotal * serviceFeePercent) / 100);
+  const configuredServiceFeeComponents = baseOrder?.serviceFeeComponents ?? defaultServiceFeeComponents;
+  const legacyServiceFeeEnabled = Boolean(
+    baseOrder?.serviceFeeEnabled ?? defaultServiceFeeEnabled ?? defaultServiceFeePercent > 0,
+  );
+  const legacyServiceFeePercent = legacyServiceFeeEnabled
+    ? toMoneyNumber(baseOrder?.serviceFeePercent ?? defaultServiceFeePercent)
+    : 0;
+  const serviceFeeComponents = (
+    configuredServiceFeeComponents ??
+    (legacyServiceFeePercent > 0 ? [{ scope: 'restaurant' as const, percent: legacyServiceFeePercent }] : [])
+  )
+    .filter((component) => toMoneyNumber(component.percent) > 0)
+    .map((component) => ({
+      ...component,
+      percent: toMoneyNumber(component.percent),
+      amount: Math.round((subtotal * toMoneyNumber(component.percent)) / 100),
+    }));
+  const serviceFeePercent = serviceFeeComponents.reduce((sum, component) => sum + toMoneyNumber(component.percent), 0);
+  const serviceFee = serviceFeeComponents.reduce((sum, component) => sum + toMoneyNumber(component.amount), 0);
+  const serviceFeeEnabled = serviceFeeComponents.length > 0;
   const total = roundMoney(subtotal + serviceFee);
   const vatAmount = vatEnabled ? includedVatAmount(total, vatPercent) : 0;
 
@@ -185,6 +202,7 @@ export function deriveOptimisticBuilderOrder<
       serviceFee,
       serviceFeeEnabled,
       serviceFeePercent,
+      serviceFeeComponents,
       vatEnabled,
       vatPercent: vatEnabled ? vatPercent : 0,
       vatAmount,
@@ -200,6 +218,7 @@ export function deriveOptimisticBuilderOrder<
     serviceFee,
     serviceFeeEnabled,
     serviceFeePercent,
+    serviceFeeComponents,
     vatEnabled,
     vatPercent: vatEnabled ? vatPercent : 0,
     vatAmount,

@@ -215,4 +215,47 @@ describe('optimistic builder order', () => {
     expect(takeawayOrder?.serviceFeePercent).toBe(0);
     expect(takeawayOrder?.total).toBe(10000);
   });
+
+  it('calculates restaurant, hall, and table fees independently', () => {
+    const order = deriveOptimisticBuilderOrder<TestMenuItem, TestOrderItem, TestOrder>({
+      baseOrder: undefined,
+      channel: 'hall',
+      defaultServiceFeePercent: 15,
+      defaultServiceFeeComponents: [
+        { scope: 'restaurant', percent: 10 },
+        { scope: 'hall', percent: 3 },
+        { scope: 'table', percent: 2 },
+      ],
+      pendingAdds: [createPendingAdd({ menuItem: createMenuItem({ price: 30000 }) })],
+      pendingRemoves: [],
+      tempOrderId: 'temp-stacked-fee-order',
+    });
+
+    expect(order?.serviceFeePercent).toBe(15);
+    expect(order?.serviceFee).toBe(4500);
+    expect(order?.total).toBe(34500);
+    expect(order?.serviceFeeComponents?.map(({ scope, amount }) => [scope, amount])).toEqual([
+      ['restaurant', 3000],
+      ['hall', 900],
+      ['table', 600],
+    ]);
+  });
+
+  it('applies a table fee even when the restaurant fee is disabled', () => {
+    const order = deriveOptimisticBuilderOrder<TestMenuItem, TestOrderItem, TestOrder>({
+      baseOrder: undefined,
+      channel: 'hall',
+      defaultServiceFeeEnabled: false,
+      defaultServiceFeePercent: 0,
+      defaultServiceFeeComponents: [{ scope: 'table', percent: 5 }],
+      pendingAdds: [createPendingAdd({ menuItem: createMenuItem({ price: 30000 }) })],
+      pendingRemoves: [],
+      tempOrderId: 'temp-table-fee-order',
+    });
+
+    expect(order?.serviceFeeEnabled).toBe(true);
+    expect(order?.serviceFeePercent).toBe(5);
+    expect(order?.serviceFee).toBe(1500);
+    expect(order?.total).toBe(31500);
+  });
 });

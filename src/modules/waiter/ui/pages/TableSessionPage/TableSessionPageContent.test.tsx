@@ -10,6 +10,7 @@ const navigateMock = vi.fn();
 const submitMutateMock = vi.fn();
 const printPrecheckMutateMock = vi.fn();
 const useWaiterMenuQueryMock = vi.fn();
+const useWaiterTableSessionQueryMock = vi.fn();
 const useOptimisticBuilderOrderMock = vi.fn();
 const canAccessTableSessionMenuMock = vi.fn();
 let submitMutationOptions: { onSuccess?: () => void } | undefined;
@@ -56,16 +57,7 @@ vi.mock('modules/waiter/application', () => ({
     };
   },
   useWaiterMenuQuery: (...args: unknown[]) => useWaiterMenuQueryMock(...args),
-  useWaiterTableSessionQuery: () => ({
-    data: {
-      guestCount: 2,
-      tableName: 'VIP stol',
-      tableNumber: 7,
-      hallName: 'VIP zal',
-      zoneName: 'VIP kabina',
-      showZoneName: true,
-    },
-  }),
+  useWaiterTableSessionQuery: (...args: unknown[]) => useWaiterTableSessionQueryMock(...args),
   waiterKeys: {
     orders: ['waiter', 'orders'],
   },
@@ -153,6 +145,17 @@ describe('TableSessionPageContent', () => {
           items: [{ id: 'item-1', name: 'Osh', price: 30000, prepStationName: 'Issiq oshxona' }],
         },
       ],
+    });
+    useWaiterTableSessionQueryMock.mockReset();
+    useWaiterTableSessionQueryMock.mockReturnValue({
+      data: {
+        guestCount: 2,
+        tableName: 'VIP stol',
+        tableNumber: 7,
+        hallName: 'VIP zal',
+        zoneName: 'VIP kabina',
+        showZoneName: true,
+      },
     });
     useOptimisticBuilderOrderMock.mockReset();
     useOptimisticBuilderOrderMock.mockReturnValue({
@@ -257,6 +260,36 @@ describe('TableSessionPageContent', () => {
     expect(screen.getAllByText('QQS (12%):').length).toBeGreaterThan(0);
     expect(screen.getAllByText(/3\s536 so'm/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/33\s000 so'm/).length).toBeGreaterThan(0);
+  });
+
+  it('shows all configured service fee rows before the first item creates an order', () => {
+    useWaiterTableSessionQueryMock.mockReturnValue({
+      data: {
+        guestCount: 2,
+        tableName: 'VIP stol',
+        tableNumber: 7,
+        hallName: 'VIP zal',
+        zoneName: 'VIP kabina',
+        showZoneName: true,
+        serviceFeeComponents: [
+          { scope: 'restaurant', percent: 10 },
+          { scope: 'hall', percent: 3 },
+          { scope: 'table', percent: 2 },
+        ],
+      },
+    });
+    useOptimisticBuilderOrderMock.mockReturnValue({
+      currentOrder: undefined,
+      addItem: vi.fn(),
+      removeItem: vi.fn(),
+      hasPendingOperations: false,
+    });
+
+    render(<TableSessionPageContent sessionId="session-1" mode="hall" />);
+
+    expect(screen.getAllByText('Restoran xizmat haqi (10%):').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Zal xizmat haqi (3%):').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Stol xizmat haqi (2%):').length).toBeGreaterThan(0);
   });
 
   it('disables hall submission while optimistic sync is pending', () => {

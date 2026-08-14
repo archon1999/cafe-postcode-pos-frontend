@@ -11,6 +11,7 @@ import type {
   WaiterSessionResponse,
 } from 'modules/waiter/domain';
 import { mapPosModifierGroups, mapPosOrderItemModifiers } from 'shared/pos/modifiers';
+import { normalizeServiceFeeComponents } from 'shared/pos/service-fees';
 
 type WaiterMenuItemDto = WaiterMenuItem & {
   image_url?: string | null;
@@ -47,6 +48,8 @@ type TableSessionDto = Omit<TableSession, 'tableNumber'> & {
   table_number?: number;
   zone_name?: string | null;
   show_zone_name?: boolean;
+  service_fee_percent?: number | string;
+  service_fee_components?: TableSession['serviceFeeComponents'];
 };
 type WaiterOrderItemDto = WaiterOrderItem & {
   base_unit_price?: number | string;
@@ -58,6 +61,7 @@ type WaiterOrderDto = Omit<WaiterOrder, 'items' | 'displayName'> & {
   items: WaiterOrderItemDto[];
   displayName?: string | null;
   display_name?: string | null;
+  service_fee_components?: WaiterOrder['serviceFeeComponents'];
 };
 type WaiterSessionResponseDto = WaiterSessionResponse;
 type WaiterCreateOrderResponseDto = WaiterCreateOrderResponse;
@@ -116,6 +120,8 @@ export function mapTableSession(dto: TableSessionDto): TableSession {
     tableNumber: dto.tableNumber ?? dto.table_number,
     zoneName: dto.zoneName ?? dto.zone_name ?? null,
     showZoneName: dto.showZoneName ?? dto.show_zone_name ?? false,
+    serviceFeePercent: dto.serviceFeePercent ?? dto.service_fee_percent ?? 0,
+    serviceFeeComponents: normalizeServiceFeeComponents(dto.serviceFeeComponents ?? dto.service_fee_components),
   };
 }
 
@@ -123,6 +129,7 @@ export function mapWaiterOrder(dto: WaiterOrderDto): WaiterOrder {
   return {
     ...dto,
     displayName: dto.displayName ?? dto.display_name ?? null,
+    serviceFeeComponents: normalizeServiceFeeComponents(dto.serviceFeeComponents ?? dto.service_fee_components),
     items: dto.items.map((item) => ({
       ...item,
       baseUnitPrice: item.baseUnitPrice ?? item.base_unit_price,
