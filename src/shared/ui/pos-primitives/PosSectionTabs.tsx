@@ -1,5 +1,6 @@
-import { Box, Button, Stack, alpha } from '@mui/material';
-import { useEffect, useRef } from 'react';
+import { Icon } from '@iconify/react';
+import { Box, Button, IconButton, Stack, alpha } from '@mui/material';
+import { useEffect, useRef, type WheelEvent } from 'react';
 
 type PosSectionTabItem = { value: string; label: string; count?: number };
 
@@ -17,6 +18,19 @@ export function PosSectionTabs({
   const railRef = useRef<HTMLDivElement | null>(null);
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
+  const scrollRail = (direction: -1 | 1) => {
+    const rail = railRef.current;
+    if (!rail) return;
+    rail.scrollLeft += direction * Math.max(rail.clientWidth * 0.75, 320);
+  };
+
+  const handleWheel = (event: WheelEvent<HTMLDivElement>) => {
+    const rail = railRef.current;
+    if (!rail || rail.scrollWidth <= rail.clientWidth || Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+    event.preventDefault();
+    rail.scrollLeft += event.deltaY;
+  };
+
   useEffect(() => {
     if (!scrollable) {
       return;
@@ -24,7 +38,7 @@ export function PosSectionTabs({
 
     const activeTab = tabRefs.current[value];
     if (activeTab) {
-      activeTab.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      activeTab.scrollIntoView?.({ behavior: 'smooth', inline: 'center', block: 'nearest' });
     }
   }, [scrollable, value]);
 
@@ -63,9 +77,25 @@ export function PosSectionTabs({
   }
 
   return (
-    <Stack direction="row" alignItems="center" sx={{ minWidth: 0, flex: 1 }}>
+    <Stack direction="row" alignItems="center" spacing={0.6} sx={{ minWidth: 0, flex: 1 }}>
+      <IconButton
+        aria-label="Oldingi kategoriyalar"
+        onClick={() => scrollRail(-1)}
+        sx={{
+          flexShrink: 0,
+          width: { xs: 38, md: 42 },
+          height: { xs: 38, md: 42 },
+          color: 'text.primary',
+          backgroundColor: 'var(--pos-tab-idle-bg)',
+          '&:hover': { backgroundColor: 'var(--pos-tab-idle-hover-bg)' },
+        }}>
+        <Icon icon="solar:alt-arrow-left-bold" width={20} />
+      </IconButton>
       <Box
         ref={railRef}
+        role="region"
+        aria-label="Kategoriyalar"
+        onWheel={handleWheel}
         sx={(theme) => ({
           flex: 1,
           minWidth: 0,
@@ -98,7 +128,7 @@ export function PosSectionTabs({
           },
         })}>
         <Stack direction="row" spacing={1.5} sx={{ width: 'max-content', minWidth: '100%' }}>
-          {items.map((item) => {
+          {items.map((item, index) => {
             const isActive = item.value === value;
 
             return (
@@ -127,7 +157,7 @@ export function PosSectionTabs({
                     backgroundColor: isActive ? 'var(--pos-tab-active-hover-bg)' : 'var(--pos-tab-idle-hover-bg)',
                   },
                 }}>
-                {item.label}
+                {item.label.trim() || `#${index + 1}`}
                 {(item.count ?? 0) > 0 ? (
                   <Box
                     sx={(theme) => ({
@@ -159,6 +189,19 @@ export function PosSectionTabs({
           })}
         </Stack>
       </Box>
+      <IconButton
+        aria-label="Keyingi kategoriyalar"
+        onClick={() => scrollRail(1)}
+        sx={{
+          flexShrink: 0,
+          width: { xs: 38, md: 42 },
+          height: { xs: 38, md: 42 },
+          color: 'text.primary',
+          backgroundColor: 'var(--pos-tab-idle-bg)',
+          '&:hover': { backgroundColor: 'var(--pos-tab-idle-hover-bg)' },
+        }}>
+        <Icon icon="solar:alt-arrow-right-bold" width={20} />
+      </IconButton>
     </Stack>
   );
 }
