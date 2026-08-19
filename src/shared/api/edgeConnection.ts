@@ -1,7 +1,8 @@
 export const EDGE_ORIGIN_STORAGE_KEY = 'cafe-pos.edge-origin';
-export const EDGE_TOKEN_STORAGE_KEY = 'cafe-pos.edge-token';
+export const LEGACY_EDGE_MIGRATION_CREDENTIAL_STORAGE_KEY = 'cafe-pos.edge-token';
 export const TRANSPORT_STORAGE_KEY = 'cafe-pos.transport';
 export const DEFAULT_EDGE_ORIGIN = 'http://127.0.0.1:18181';
+export const EDGE_TERMINAL_ID_STORAGE_KEY = 'cafe-pos.terminal-id';
 
 export type PosTransportMode = 'remote' | 'router' | 'local';
 
@@ -9,9 +10,9 @@ export type PosTransportConnection = {
   mode: PosTransportMode;
   restaurantId: string;
   origin?: string;
-  token?: string;
   protocolVersion?: number;
   backendOnline?: boolean;
+  secureChannel?: boolean;
   selectedAt: string;
 };
 
@@ -31,6 +32,19 @@ export function normalizeEdgeOrigin(value: string) {
   return parsed.origin;
 }
 
+export function readOrCreateEdgeTerminalIdentity() {
+  if (typeof window === 'undefined') return { terminalId: '', terminalName: 'POS terminal' };
+  let terminalId = window.localStorage.getItem(EDGE_TERMINAL_ID_STORAGE_KEY)?.trim() || '';
+  if (!terminalId) {
+    terminalId = `pos-${globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`}`;
+    window.localStorage.setItem(EDGE_TERMINAL_ID_STORAGE_KEY, terminalId);
+  }
+  return {
+    terminalId,
+    terminalName: navigator.userAgent.includes('Windows') ? 'Windows POS' : 'POS terminal',
+  };
+}
+
 export function isLoopbackEdgeOrigin(value?: string) {
   if (!value) return false;
   try {
@@ -39,6 +53,11 @@ export function isLoopbackEdgeOrigin(value?: string) {
   } catch {
     return false;
   }
+}
+
+function storedLegacyEdgeMigrationCredential() {
+  if (typeof window === 'undefined') return '';
+  return window.localStorage.getItem(LEGACY_EDGE_MIGRATION_CREDENTIAL_STORAGE_KEY)?.trim() ?? '';
 }
 
 export function readTransportConnection(): PosTransportConnection | null {
@@ -51,7 +70,18 @@ export function readTransportConnection(): PosTransportConnection | null {
     if (!['remote', 'router', 'local'].includes(connection.mode) || !connection.restaurantId) throw new Error();
     if (connection.mode !== 'remote') {
       connection.origin = normalizeEdgeOrigin(connection.origin || '');
-      if (!connection.token && !isLoopbackEdgeOrigin(connection.origin)) throw new Error();
+      const legacyToken = (connection as PosTransportConnection & { token?: unknown }).token;
+      if (typeof legacyToken === 'string' && legacyToken.trim()) {
+        window.localStorage.setItem(LEGACY_EDGE_MIGRATION_CREDENTIAL_STORAGE_KEY, legacyToken.trim());
+      }
+      delete (connection as PosTransportConnection & { token?: unknown }).token;
+      if (
+        !connection.secureChannel &&
+        !storedLegacyEdgeMigrationCredential() &&
+        !isLoopbackEdgeOrigin(connection.origin)
+      ) {
+        throw new Error();
+      }
     }
     return connection;
   } catch {
@@ -72,10 +102,9 @@ export function persistTransportConnection(
   window.localStorage.setItem(TRANSPORT_STORAGE_KEY, JSON.stringify(normalized));
   if (normalized.mode === 'remote') {
     window.localStorage.removeItem(EDGE_ORIGIN_STORAGE_KEY);
-    window.localStorage.removeItem(EDGE_TOKEN_STORAGE_KEY);
+    window.localStorage.removeItem(LEGACY_EDGE_MIGRATION_CREDENTIAL_STORAGE_KEY);
   } else {
     window.localStorage.setItem(EDGE_ORIGIN_STORAGE_KEY, normalized.origin || '');
-    window.localStorage.setItem(EDGE_TOKEN_STORAGE_KEY, normalized.token || '');
   }
 }
 
@@ -104,29 +133,39 @@ export function readStoredEdgeOrigin() {
   }
 }
 
-export function readEdgeToken() {
-  const active = readTransportConnection();
-  if (active?.mode === 'remote') return '';
-  if (active?.token) return active.token;
-  const configured = configuredValue(import.meta.env.VITE_EDGE_TOKEN);
-  if (configured) return configured;
+export function readLegacyEdgeMigrationCredential() {
   if (typeof window === 'undefined') return '';
-  return window.localStorage.getItem(EDGE_TOKEN_STORAGE_KEY)?.trim() ?? '';
+  const active = readTransportConnection();
+  if (active?.mode === 'remote' || active?.secureChannel) return '';
+  return storedLegacyEdgeMigrationCredential();
 }
 
-export function persistEdgeConnection(origin: string, token: string, restaurantId = '') {
+export function markEdgeConnectionSecure(origin: string) {
+  if (typeof window === 'undefined') return;
+  const current = readTransportConnection();
+  if (
+    current &&
+    current.mode !== 'remote' &&
+    normalizeEdgeOrigin(current.origin || '') === normalizeEdgeOrigin(origin)
+  ) {
+    persistTransportConnection({ ...current, secureChannel: true });
+  }
+  window.localStorage.removeItem(LEGACY_EDGE_MIGRATION_CREDENTIAL_STORAGE_KEY);
+}
+
+export function persistLegacyEdgeMigrationCredential(origin: string, credential: string, restaurantId = '') {
   if (typeof window === 'undefined') return;
   window.localStorage.setItem(EDGE_ORIGIN_STORAGE_KEY, normalizeEdgeOrigin(origin));
-  window.localStorage.setItem(EDGE_TOKEN_STORAGE_KEY, token.trim());
+  window.localStorage.setItem(LEGACY_EDGE_MIGRATION_CREDENTIAL_STORAGE_KEY, credential.trim());
   if (restaurantId) {
-    persistTransportConnection({ mode: 'router', restaurantId, origin, token, backendOnline: true });
+    persistTransportConnection({ mode: 'router', restaurantId, origin, backendOnline: true });
   }
 }
 
 export function clearEdgeConnection() {
   if (typeof window === 'undefined') return;
   window.localStorage.removeItem(EDGE_ORIGIN_STORAGE_KEY);
-  window.localStorage.removeItem(EDGE_TOKEN_STORAGE_KEY);
+  window.localStorage.removeItem(LEGACY_EDGE_MIGRATION_CREDENTIAL_STORAGE_KEY);
   window.localStorage.removeItem(TRANSPORT_STORAGE_KEY);
 }
 

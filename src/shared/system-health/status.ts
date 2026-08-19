@@ -1,5 +1,13 @@
 import type { EdgeSystemStatus, SystemHealthTone } from './types';
 
+export function quarantinedOutboxCount(sync: EdgeSystemStatus['sync']): number {
+  return sync.quarantinedOutbox ?? sync.failedOutbox ?? 0;
+}
+
+export function actionRequiredOutboxCount(sync: EdgeSystemStatus['sync']): number {
+  return sync.actionRequiredOutbox ?? 0;
+}
+
 export function deriveSystemHealthTone(
   status: EdgeSystemStatus | undefined,
   agentRequestFailed = false,
@@ -11,8 +19,11 @@ export function deriveSystemHealthTone(
   if (!status) {
     return 'checking';
   }
-  if (!options?.ignoreSync && status.sync.failedOutbox > 0) {
+  if (!options?.ignoreSync && quarantinedOutboxCount(status.sync) > 0) {
     return 'error';
+  }
+  if (!options?.ignoreSync && actionRequiredOutboxCount(status.sync) > 0) {
+    return 'warning';
   }
   if ((status.fiscal.configured && !status.fiscal.online) || (status.marta.configured && !status.marta.online)) {
     return 'warning';

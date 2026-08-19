@@ -36,7 +36,12 @@ import { buildServiceFeeRows } from 'shared/pos/service-fees';
 import { useOptimisticBuilderOrder } from 'shared/pos/useOptimisticBuilderOrder';
 import { useScannerInput } from 'shared/pos/useScannerInput';
 import { addPosQuantities } from 'shared/pos/utils';
-import { PosBuilderPageSkeleton, PosProductConfiguratorDialog, PosSettingsMenu } from 'shared/ui/pos-primitives';
+import {
+  PosBuilderPageSkeleton,
+  PosProductConfiguratorDialog,
+  PosServicePriceDialog,
+  PosSettingsMenu,
+} from 'shared/ui/pos-primitives';
 import type { PosCartItem } from 'shared/ui/pos-primitives/PosCartItemGroups';
 
 import { CashierBuilderDesktopCart, CashierBuilderMobileCart } from './CashierBuilderCart';
@@ -86,6 +91,10 @@ export function CashierBuilderPageContent() {
     item: CashierMenuItem;
     selections: PosModifierSelection[];
   } | null>(null);
+  const [pricingService, setPricingService] = useState<{
+    item: CashierMenuItem;
+    selections: PosModifierSelection[];
+  } | null>(null);
   const noteOrderIdRef = useRef<string | null>(null);
 
   const menuQuery = useCashierMenuQuery();
@@ -110,6 +119,11 @@ export function CashierBuilderPageContent() {
     defaultVatEnabled: Boolean(session?.restaurantContext?.vatEnabled),
     defaultVatPercent: session?.restaurantContext?.vatPercent ?? 0,
     removeOrderItem: (itemId) => cashierRepository.removeOrderItem(itemId),
+    onOrderRemoved: () => {
+      if (editOrderId) {
+        void navigate('/cashier/open-checks', { replace: true });
+      }
+    },
     onPrintDocuments: (documentIds) => {
       requestEdgePrintDocuments(documentIds, (error) =>
         toast.error(error instanceof Error ? error.message : 'Oshxona chekini chiqarib bo‘lmadi'),
@@ -120,8 +134,8 @@ export function CashierBuilderPageContent() {
       editOrderId
         ? orders.find((order) => order.id === editOrderId)
         : getCurrentCashierBuilderOrder(orders, session?.user.id),
-    addOrderItem: (orderId, menuItem, note, selectedModifiers) =>
-      cashierRepository.addOrderItem(orderId, menuItem.id, note, selectedModifiers),
+    addOrderItem: (orderId, menuItem, note, selectedModifiers, manualPrice) =>
+      cashierRepository.addOrderItem(orderId, menuItem.id, note, selectedModifiers, manualPrice),
     addOrderItems: (orderId, items) =>
       cashierRepository.addOrderItems(
         orderId,
@@ -130,6 +144,7 @@ export function CashierBuilderPageContent() {
           quantity: item.quantity,
           note: item.note,
           selectedModifiers: item.selectedModifiers,
+          manualPrice: item.manualPrice,
         })),
       ),
     syncErrorMessage: copy.itemSyncFailed,
@@ -161,7 +176,14 @@ export function CashierBuilderPageContent() {
         const orderId =
           currentOrder?.id ??
           (await cashierRepository.createBuilderOrder({ channel: builderChannel, note: kitchenNote })).id;
-        const updatedOrder = await cashierRepository.scanOrderMarking(orderId, rawCode, 'add');
+        const { order: updatedOrder, kitchenPrintDocuments } = await cashierRepository.scanOrderMarking(
+          orderId,
+          rawCode,
+          'add',
+        );
+        requestEdgePrintDocuments(kitchenPrintDocuments, (error) =>
+          toast.error(error instanceof Error ? error.message : 'Oshxona chekini chiqarib bo‘lmadi'),
+        );
         await ordersQuery.refetch();
         const quantityAfterScan = getCashierOrderItemsTotalQuantity(updatedOrder.items);
         setScanToast(
@@ -208,6 +230,10 @@ export function CashierBuilderPageContent() {
           ? selectionsFromOrderModifiers(menuItem.modifierGroups, sourceItem.modifiers)
           : undefined,
       });
+      return;
+    }
+    if (menuItem.itemType === 'service') {
+      setPricingService({ item: menuItem, selections: [] });
       return;
     }
     if (menuItem.saleUnit === 'kg') {
@@ -452,7 +478,9 @@ export function CashierBuilderPageContent() {
           }}
           onClose={() => setConfiguringItem(null)}
           onConfirm={(menuItem, selections) => {
-            if (menuItem.saleUnit === 'kg') {
+            if (menuItem.itemType === 'service') {
+              setPricingService({ item: menuItem, selections });
+            } else if (menuItem.saleUnit === 'kg') {
               setWeighingItem({ item: menuItem, selections });
             } else {
               addItem(menuItem, kitchenNote, selections);
@@ -504,6 +532,18 @@ export function CashierBuilderPageContent() {
               },
             ]);
             setWeighingItem(null);
+          }}
+        />
+      ) : null}
+
+      {pricingService ? (
+        <PosServicePriceDialog
+          item={pricingService.item}
+          locale={locale}
+          onClose={() => setPricingService(null)}
+          onConfirm={(manualPrice) => {
+            addItem(pricingService.item, kitchenNote, pricingService.selections, manualPrice);
+            setPricingService(null);
           }}
         />
       ) : null}

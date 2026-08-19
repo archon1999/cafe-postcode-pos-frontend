@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import QRCode from 'qrcode';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { kitchenRepository, persistTvMonitorDevice, readTvMonitorDevice } from 'modules/kitchen/data-access';
+import { kitchenRepository } from 'modules/kitchen/data-access';
 
 import { TvMonitorPage } from './TvMonitorPage';
 
@@ -48,12 +49,22 @@ class MockAudio extends EventTarget {
   }
 }
 
+const activeDevice = {
+  id: 'device-1',
+  type: 'TV_MONITOR' as const,
+  name: 'Kitchen TV',
+  status: 'ACTIVE' as const,
+  leaseExpiresAt: '2099-01-01T00:00:00Z',
+};
+
 describe('TvMonitorPage', () => {
   beforeEach(() => {
     window.localStorage.clear();
     delete window.CafePostcodeTv;
     audioInstances.length = 0;
     vi.stubGlobal('Audio', MockAudio);
+    vi.spyOn(kitchenRepository, 'bootstrapTvMonitor').mockResolvedValue({ status: 'unpaired' });
+    vi.spyOn(kitchenRepository, 'forgetTvMonitorDevice').mockResolvedValue();
     vi.spyOn(kitchenRepository, 'reportTvMonitorDiagnostic').mockResolvedValue();
   });
 
@@ -63,17 +74,21 @@ describe('TvMonitorPage', () => {
     vi.unstubAllGlobals();
   });
 
-  it('stores the device permanently after the manager claims the QR pairing', async () => {
+  it('uses the backend fragment QR and starts signed queue polling after approval', async () => {
     const onQueueSuccess = vi.fn();
     window.CafePostcodeTv = { onQueueSuccess };
+    const claimUrl = 'https://admin.cafe-postcode.uz/pair#v=1&pairingId=pairing-1&claimToken=one-time-claim';
     vi.spyOn(kitchenRepository, 'createTvMonitorPairing').mockResolvedValue({
       id: 'pairing-1',
-      pollToken: 'device-token',
-      claimToken: 'claim-token',
+      pollToken: 'poll-secret',
+      claimUrl,
+      displayCode: '482913',
       expiresAt: '2099-01-01T00:00:00Z',
+      status: 'pending',
     });
     vi.spyOn(kitchenRepository, 'getTvMonitorPairingStatus').mockResolvedValue({
       status: 'paired',
+      device: activeDevice,
       restaurantContext: {
         restaurantId: 'restaurant-1',
         restaurantName: 'Qamish',
@@ -81,6 +96,7 @@ describe('TvMonitorPage', () => {
       },
     });
     vi.spyOn(kitchenRepository, 'getTvMonitorQueue').mockResolvedValue({
+      announcements: [],
       monitorVariant: 'light_compact',
       preparing: [],
       recentlyDone: [],
@@ -89,31 +105,29 @@ describe('TvMonitorPage', () => {
     render(<TvMonitorPage />);
 
     expect((await screen.findByTestId('paired-monitor')).textContent).toBe('Qamish');
-    await waitFor(() =>
-      expect(readTvMonitorDevice()).toEqual({
-        token: 'device-token',
-        restaurantId: 'restaurant-1',
-        restaurantName: 'Qamish',
-        posMonitorVariant: 'light_compact',
-      }),
-    );
-    expect(kitchenRepository.getTvMonitorQueue).toHaveBeenCalledWith('device-token');
-    expect(onQueueSuccess).toHaveBeenCalled();
+    expect(QRCode.toDataURL).toHaveBeenCalledWith(claimUrl, expect.objectContaining({ errorCorrectionLevel: 'M' }));
+    expect(kitchenRepository.getTvMonitorPairingStatus).toHaveBeenCalledWith('pairing-1', 'poll-secret');
+    await waitFor(() => expect(kitchenRepository.getTvMonitorQueue).toHaveBeenCalledWith());
+    await waitFor(() => expect(onQueueSuccess).toHaveBeenCalled());
     expect((await screen.findByTestId('tv-monitor-diagnostics')).textContent).toContain('ONLINE');
     await waitFor(() =>
       expect(kitchenRepository.reportTvMonitorDiagnostic).toHaveBeenCalledWith(
-        'device-token',
         expect.objectContaining({ event: 'queue_success' }),
       ),
     );
   });
 
-  it('unlocks browser audio with one explicit TV interaction', async () => {
-    persistTvMonitorDevice({
-      token: 'browser-device-token',
-      restaurantId: 'restaurant-1',
-      restaurantName: 'New York',
-      posMonitorVariant: 'default',
+  it('restores an already paired device and unlocks browser audio with one interaction', async () => {
+    vi.mocked(kitchenRepository.bootstrapTvMonitor).mockResolvedValue({
+      status: 'paired',
+      device: {
+        deviceId: activeDevice.id,
+        deviceStatus: activeDevice.status,
+        leaseExpiresAt: activeDevice.leaseExpiresAt,
+        restaurantId: 'restaurant-1',
+        restaurantName: 'New York',
+        posMonitorVariant: 'default',
+      },
     });
     vi.spyOn(kitchenRepository, 'getTvMonitorQueue').mockResolvedValue({
       monitorVariant: 'default',
@@ -140,7 +154,6 @@ describe('TvMonitorPage', () => {
     expect(screen.getByTestId('paired-monitor').getAttribute('data-audio-enabled')).toBe('true');
     await waitFor(() =>
       expect(kitchenRepository.reportTvMonitorDiagnostic).toHaveBeenCalledWith(
-        'browser-device-token',
         expect.objectContaining({ event: 'announcement_play_ended' }),
       ),
     );

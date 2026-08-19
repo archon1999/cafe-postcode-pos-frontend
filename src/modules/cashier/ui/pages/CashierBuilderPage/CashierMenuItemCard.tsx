@@ -180,13 +180,21 @@ export function CashierMenuItemCard({
                 fontWeight: 800,
                 whiteSpace: 'nowrap',
               }}>
-              <Box component="span" sx={{ fontSize: { xs: 20, md: 24 }, lineHeight: 1, fontWeight: 900 }}>
-                {price.amount}
-              </Box>
-              <Box component="span" sx={{ fontSize: { xs: 13.5, md: 16 }, lineHeight: 1, fontWeight: 700 }}>
-                {price.currency}
-              </Box>
-              {item.saleUnit === 'kg' ? (
+              {item.itemType === 'service' ? (
+                <Box component="span" sx={{ fontSize: { xs: 13, md: 14 }, color: 'text.secondary' }}>
+                  {copy.priceOnSelection}
+                </Box>
+              ) : (
+                <>
+                  <Box component="span" sx={{ fontSize: { xs: 20, md: 24 }, lineHeight: 1, fontWeight: 900 }}>
+                    {price.amount}
+                  </Box>
+                  <Box component="span" sx={{ fontSize: { xs: 13.5, md: 16 }, lineHeight: 1, fontWeight: 700 }}>
+                    {price.currency}
+                  </Box>
+                </>
+              )}
+              {item.itemType !== 'service' && item.saleUnit === 'kg' ? (
                 <Box component="span" sx={{ fontSize: { xs: 12, md: 14 }, color: 'text.secondary' }}>
                   / {copy.kilogramUnit}
                 </Box>

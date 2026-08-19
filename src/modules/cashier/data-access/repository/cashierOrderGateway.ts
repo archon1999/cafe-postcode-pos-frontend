@@ -8,7 +8,9 @@ type CreateOrderResponse = Awaited<ReturnType<CashierRepository['createBuilderOr
 type OrderChannel = Parameters<CashierRepository['updateOrderChannel']>[1];
 type OrderResponse = Awaited<ReturnType<CashierRepository['updateOrderChannel']>>;
 type AddOrderItemResponse = Awaited<ReturnType<CashierRepository['addOrderItem']>>;
+type RemoveOrderItemResponse = Awaited<ReturnType<CashierRepository['removeOrderItem']>>;
 type MarkingMode = Parameters<CashierRepository['scanOrderMarking']>[2];
+type ScanOrderMarkingResponse = Awaited<ReturnType<CashierRepository['scanOrderMarking']>>;
 type DeliveryDetails = Parameters<CashierRepository['updateOrderDeliveryDetails']>[1];
 
 async function createBuilderOrder(payload: CreateBuilderOrderPayload): Promise<CreateOrderResponse> {
@@ -39,11 +41,13 @@ export const cashierOrderGateway = {
     catalogItemId: string,
     note: string,
     selectedModifiers: Parameters<CashierRepository['addOrderItem']>[3] = [],
+    manualPrice?: number,
   ) {
     return apiPost<AddOrderItemResponse>(`/pos/sales/orders/${orderId}/items/`, {
       catalogItem: catalogItemId,
       quantity: 1,
       note,
+      ...(manualPrice !== undefined ? { manualPrice } : {}),
       ...(selectedModifiers.length ? { selectedModifiers } : {}),
     });
   },
@@ -56,22 +60,33 @@ export const cashierOrderGateway = {
           catalogItem: item.catalogItemId,
           quantity: item.quantity,
           note: item.note,
+          ...(item.manualPrice !== undefined ? { manualPrice: item.manualPrice } : {}),
           ...(item.selectedModifiers?.length ? { selectedModifiers: item.selectedModifiers } : {}),
         })),
       },
     );
   },
 
-  async scanOrderMarking(orderId: string, rawCode: string, mode: MarkingMode): Promise<OrderResponse> {
-    const payload = await apiPost<{ order: OrderResponse }>(`/pos/sales/orders/${orderId}/scan-marking/`, {
-      rawCode,
-      mode,
-    });
-    return mapCashierOrder(payload.order);
+  async scanOrderMarking(orderId: string, rawCode: string, mode: MarkingMode): Promise<ScanOrderMarkingResponse> {
+    const payload = await apiPost<{ order: OrderResponse; kitchenPrintDocuments?: string[] }>(
+      `/pos/sales/orders/${orderId}/scan-marking/`,
+      {
+        rawCode,
+        mode,
+      },
+    );
+    return {
+      order: mapCashierOrder(payload.order),
+      kitchenPrintDocuments: payload.kitchenPrintDocuments ?? [],
+    };
   },
 
-  async removeOrderItem(itemId: string) {
-    await apiDelete(`/pos/sales/orders/items/${itemId}/`);
+  async removeOrderItem(itemId: string): Promise<RemoveOrderItemResponse> {
+    const payload = await apiDelete<Partial<RemoveOrderItemResponse> | undefined>(`/pos/sales/orders/items/${itemId}/`);
+    return {
+      kitchenPrintDocuments: payload?.kitchenPrintDocuments ?? [],
+      ...(payload?.orderRemoved ? { orderRemoved: true } : {}),
+    };
   },
 
   async updateOrderNote(orderId: string, note: string): Promise<OrderResponse> {

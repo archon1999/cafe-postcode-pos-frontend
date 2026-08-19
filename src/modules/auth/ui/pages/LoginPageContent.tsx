@@ -19,12 +19,13 @@ const PIN_LENGTH = 4;
 export function LoginPageContent() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { locale, restaurantContext, setLocale, setRestaurantContext, setSession, themeMode, setThemeMode } =
+  const { authState, locale, restaurantContext, setLocale, setSession, themeMode, setThemeMode, unlockSession } =
     usePosSession();
   const copy = getPosCopy(locale);
   const [pin, setPin] = useState('');
   const [toastOpen, setToastOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [unlockPending, setUnlockPending] = useState(false);
   const authBackgroundImage = resolvePosAuthBackgroundImage(restaurantContext);
 
   if (restaurantContext?.restaurantId) {
@@ -57,22 +58,11 @@ export function LoginPageContent() {
     },
   });
 
-  const handleRestaurantSignOut = () => {
-    if (loginMutation.isPending) {
-      return;
-    }
-
-    setPin('');
-    setToastOpen(false);
-    setErrorMessage('');
-    setSession(null);
-    setRestaurantContext(null);
-    void navigate(`/restaurant-login${location.search}`, { replace: true });
-  };
+  const isPending = loginMutation.isPending || unlockPending;
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (loginMutation.isPending) {
+      if (isPending) {
         return;
       }
 
@@ -87,17 +77,43 @@ export function LoginPageContent() {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [loginMutation.isPending]);
+  }, [isPending]);
 
   useEffect(() => {
-    if (pin.length === PIN_LENGTH && !loginMutation.isPending) {
+    if (pin.length === PIN_LENGTH && !isPending) {
       if (!restaurantContext) {
-        void navigate('/restaurant-login', { replace: true });
+        void navigate('/device-pairing', { replace: true });
         return;
       }
-      loginMutation.mutate({ pin, restaurantId: restaurantContext.restaurantId });
+      if (authState === 'LOCKED') {
+        setUnlockPending(true);
+        void unlockSession(pin)
+          .then((response) => {
+            setToastOpen(false);
+            setErrorMessage('');
+            void navigate(resolveAuthNextPath(location.search, getPosHomePath(response)), { replace: true });
+          })
+          .catch((error: unknown) => {
+            setPin('');
+            setErrorMessage(error instanceof Error ? error.message : copy.invalidPin);
+            setToastOpen(true);
+          })
+          .finally(() => setUnlockPending(false));
+        return;
+      }
+      loginMutation.mutate({ pin });
     }
-  }, [loginMutation, navigate, pin, restaurantContext]);
+  }, [
+    authState,
+    copy.invalidPin,
+    isPending,
+    location.search,
+    loginMutation,
+    navigate,
+    pin,
+    restaurantContext,
+    unlockSession,
+  ]);
 
   useEffect(() => {
     if (!toastOpen) {
@@ -234,7 +250,7 @@ export function LoginPageContent() {
                   key={key + index}
                   variant="contained"
                   onClick={() => {
-                    if (loginMutation.isPending) {
+                    if (isPending) {
                       return;
                     }
 
@@ -260,11 +276,7 @@ export function LoginPageContent() {
             })}
           </Box>
 
-          <Stack
-            direction={{ xs: 'column', sm: 'row' }}
-            spacing={1.1}
-            justifyContent="space-between"
-            alignItems={{ xs: 'stretch', sm: 'center' }}>
+          <Stack spacing={1.1} justifyContent="space-between">
             <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
               {(['uz', 'uz-crl', 'ru'] as const).map((currentLocale) => (
                 <Button
@@ -284,20 +296,6 @@ export function LoginPageContent() {
                   {localeLabels[currentLocale]}
                 </Button>
               ))}
-
-              <Button
-                variant="contained"
-                disabled={loginMutation.isPending}
-                onClick={handleRestaurantSignOut}
-                startIcon={<Icon icon="solar:logout-3-bold-duotone" width={18} />}
-                sx={(theme) => ({
-                  minWidth: 112,
-                  backgroundImage: 'none',
-                  backgroundColor: theme.palette.mode === 'dark' ? '#25272b' : alpha('#ece4d7', 0.9),
-                  color: 'text.primary',
-                })}>
-                {copy.signOut}
-              </Button>
             </Stack>
 
             {toastOpen ? (

@@ -19,10 +19,7 @@ describe('CashierWeightDialog', () => {
         item={{
           id: 'fish-1',
           name: 'Baliq',
-          kind: 'product',
-          prepStationName: 'Oshxona',
           price: 100000,
-          saleUnit: 'kg',
         }}
         selections={[]}
         locale="uz"
@@ -43,10 +40,7 @@ describe('CashierWeightDialog', () => {
         item={{
           id: 'fish-1',
           name: 'Baliq',
-          kind: 'product',
-          prepStationName: 'Oshxona',
           price: 100000,
-          saleUnit: 'kg',
         }}
         selections={[]}
         locale="uz"

@@ -47,6 +47,40 @@ describe('deriveSystemHealthTone', () => {
     ).toBe('error');
   });
 
+  it('uses warning for operations that need an operator decision', () => {
+    expect(
+      deriveSystemHealthTone(
+        status({
+          sync: {
+            ready: true,
+            pendingOutbox: 0,
+            failedOutbox: 1,
+            actionRequiredOutbox: 1,
+            quarantinedOutbox: 0,
+            schemaVersion: 1,
+          },
+        }),
+      ),
+    ).toBe('warning');
+  });
+
+  it('uses error only for quarantined operations when lifecycle counters are present', () => {
+    expect(
+      deriveSystemHealthTone(
+        status({
+          sync: {
+            ready: true,
+            pendingOutbox: 0,
+            failedOutbox: 1,
+            actionRequiredOutbox: 2,
+            quarantinedOutbox: 1,
+            schemaVersion: 1,
+          },
+        }),
+      ),
+    ).toBe('error');
+  });
+
   it('ignores sync failures, pending operations, and readiness for badge tone', () => {
     expect(
       deriveSystemHealthTone(

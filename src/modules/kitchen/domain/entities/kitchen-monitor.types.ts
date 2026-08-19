@@ -31,8 +31,10 @@ export type KitchenMonitorQueue = {
 export type TvMonitorPairingSession = {
   id: string;
   pollToken: string;
-  claimToken: string;
+  claimUrl: string;
+  displayCode: string;
   expiresAt: string;
+  status: 'pending' | 'rejected' | 'expired';
 };
 
 export type TvMonitorRestaurantContext = {
@@ -43,16 +45,29 @@ export type TvMonitorRestaurantContext = {
 
 export type TvMonitorPairingStatus =
   | { status: 'pending'; expiresAt: string }
-  | { status: 'paired'; restaurantContext: TvMonitorRestaurantContext };
+  | { status: 'rejected' | 'expired' }
+  | { status: 'paired'; device: TvMonitorDevice; restaurantContext: TvMonitorRestaurantContext };
+
+export type TvMonitorDevice = {
+  id: string;
+  type: 'TV_MONITOR';
+  name: string;
+  status: 'ACTIVE' | 'REVOKED';
+  leaseExpiresAt: string;
+  pairedAt?: string;
+  lastSeenAt?: string | null;
+};
 
 export type TvMonitorDeviceRegistration = TvMonitorRestaurantContext & {
-  token: string;
+  deviceId: string;
+  deviceStatus: TvMonitorDevice['status'];
+  leaseExpiresAt: string;
 };
 
-export type TvMonitorPairingClaimResult = {
-  status: 'paired';
-  restaurantName: string;
-};
+export type TvMonitorBootstrapResult =
+  | { status: 'paired'; device: TvMonitorDeviceRegistration }
+  | { status: 'pairing'; pairing: TvMonitorPairingSession }
+  | { status: 'unpaired' };
 
 export type TvMonitorDiagnosticEvent =
   | 'page_loaded'

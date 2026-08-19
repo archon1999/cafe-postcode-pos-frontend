@@ -1,5 +1,5 @@
-import { apiPost } from 'shared/api/client';
-import { readEdgeOrigin, readEdgeToken, readTransportConnection } from 'shared/api/edgeConnection';
+import { apiGet, apiPost } from 'shared/api/client';
+import { readTransportConnection } from 'shared/api/edgeConnection';
 
 import { EdgePrintError, type EdgePrintIntent, type EdgePrintJob, type EdgePrintRepository } from '../../domain';
 
@@ -10,47 +10,20 @@ function createOperationId(documentId: string) {
   return `pos:${documentId}:${randomId}`;
 }
 
-async function edgeRequest(path: string, init?: RequestInit): Promise<EdgePrintResponse> {
-  const controller = new AbortController();
-  const timeout = globalThis.setTimeout(() => controller.abort(), 15_000);
-  const token = readEdgeToken();
-  try {
-    const response = await fetch(`${readEdgeOrigin()}${path}`, {
-      ...init,
-      signal: controller.signal,
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-        ...(token ? { 'X-Edge-Token': token } : {}),
-        ...init?.headers,
-      },
-    });
-    const body = (await response.json().catch(() => ({}))) as EdgePrintResponse;
-    if (!response.ok && !body.job) {
-      throw new EdgePrintError(body.error || `Local Edge HTTP ${response.status}`, 'EDGE_REJECTED');
-    }
-    return body;
-  } catch (error) {
-    if (error instanceof EdgePrintError) throw error;
-    throw new EdgePrintError(
-      error instanceof Error && error.name === 'AbortError'
-        ? 'Local Edge javob berish vaqti tugadi.'
-        : 'Local Edge bilan bog‘lanib bo‘lmadi.',
-      'EDGE_UNAVAILABLE',
-    );
-  } finally {
-    globalThis.clearTimeout(timeout);
-  }
-}
-
 export class EdgePrintRepositoryImpl implements EdgePrintRepository {
   async print(intent: EdgePrintIntent) {
     const operationId = intent.operationId || createOperationId(intent.documentId);
     const payload = { operationId, documentId: intent.documentId, copies: intent.copies ?? 1 };
-    const response =
-      readTransportConnection()?.mode === 'remote'
+    const isRemote = readTransportConnection()?.mode === 'remote';
+    let response: EdgePrintResponse;
+    try {
+      response = isRemote
         ? await apiPost<EdgePrintResponse>('/pos/printing/jobs/', payload)
-        : await edgeRequest('/v1/print-jobs', { method: 'POST', body: JSON.stringify(payload) });
+        : await apiPost<EdgePrintResponse>('/print-jobs', payload, { timeout: 15_000 });
+    } catch (error) {
+      if (isRemote || error instanceof EdgePrintError) throw error;
+      throw new EdgePrintError('Local Agent bilan bog\u2018lanib bo\u2018lmadi.', 'EDGE_UNAVAILABLE');
+    }
     if (!response.job) {
       throw new EdgePrintError(response.error || 'Local Agent print job qaytarmadi.', 'EDGE_REJECTED');
     }
@@ -71,7 +44,7 @@ export class EdgePrintRepositoryImpl implements EdgePrintRepository {
     if (readTransportConnection()?.mode === 'remote') {
       throw new EdgePrintError('Remote print job shu request ichida yakunlanadi.', 'EDGE_UNAVAILABLE');
     }
-    const response = await edgeRequest(`/v1/print-jobs/${encodeURIComponent(operationId)}`);
+    const response = await apiGet<EdgePrintResponse>(`/print-jobs/${encodeURIComponent(operationId)}`);
     if (!response.job) throw new EdgePrintError(response.error || 'Print job topilmadi.', 'EDGE_REJECTED');
     return response.job;
   }

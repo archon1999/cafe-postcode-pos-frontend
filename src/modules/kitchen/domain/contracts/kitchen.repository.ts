@@ -3,7 +3,7 @@ import type {
   KitchenMonitorQueue,
   KitchenTicket,
   KitchenTicketStatus,
-  TvMonitorPairingClaimResult,
+  TvMonitorBootstrapResult,
   TvMonitorDiagnostic,
   TvMonitorPairingSession,
   TvMonitorPairingStatus,
@@ -12,11 +12,12 @@ import type {
 export interface KitchenRepository {
   getQueue(): Promise<KitchenTicket[]>;
   getMonitorQueue(restaurantId: string): Promise<KitchenMonitorQueue>;
+  bootstrapTvMonitor(): Promise<TvMonitorBootstrapResult>;
   createTvMonitorPairing(): Promise<TvMonitorPairingSession>;
   getTvMonitorPairingStatus(pairingId: string, pollToken: string): Promise<TvMonitorPairingStatus>;
-  claimTvMonitorPairing(pairingId: string, claimToken: string): Promise<TvMonitorPairingClaimResult>;
-  getTvMonitorQueue(token: string): Promise<KitchenMonitorQueue>;
-  reportTvMonitorDiagnostic(token: string, diagnostic: TvMonitorDiagnostic): Promise<void>;
+  getTvMonitorQueue(): Promise<KitchenMonitorQueue>;
+  reportTvMonitorDiagnostic(diagnostic: TvMonitorDiagnostic): Promise<void>;
+  forgetTvMonitorDevice(): Promise<void>;
   replayTicketAnnouncement(ticketId: string): Promise<void>;
   updateTicketStatus(ticketId: string, status: KitchenTicketStatus): Promise<void>;
   updateItemStatus(itemId: string, status: KitchenItemStatus): Promise<void>;

@@ -16,8 +16,16 @@ type PaymentCommand = {
   totalOverrideReason?: string;
 };
 
+type FailedPaymentAttempt = PaymentCommand & {
+  splitPartId?: string;
+};
+
+type PaymentFailure = {
+  attempt: FailedPaymentAttempt;
+  error: unknown;
+};
+
 type Options = {
-  amount: string;
   method: PaymentMethod;
   orderId: string | null;
   paymentAmount: number;
@@ -26,13 +34,11 @@ type Options = {
   finalTotal?: number;
   totalOverrideReason?: string;
   onPaymentComplete: (response: CashierPaymentResponse, paidAmount: number) => void;
-  onManualPaymentComplete: (response: CashierPaymentResponse) => void;
   setAmount: (value: string) => void;
   setSplitParts: Dispatch<SetStateAction<SplitPaymentPart[] | null>>;
 };
 
 export function usePaymentSubmission({
-  amount,
   method,
   orderId,
   paymentAmount,
@@ -41,7 +47,6 @@ export function usePaymentSubmission({
   finalTotal,
   totalOverrideReason,
   onPaymentComplete,
-  onManualPaymentComplete,
   setAmount,
   setSplitParts,
 }: Options) {
@@ -52,16 +57,16 @@ export function usePaymentSubmission({
   const [cardFailureOpen, setCardFailureOpen] = useState(false);
   const [cardFailureMessage, setCardFailureMessage] = useState('');
   const [cardFailureDebugJson, setCardFailureDebugJson] = useState('');
+  const [failedPaymentAttempt, setFailedPaymentAttempt] = useState<FailedPaymentAttempt | null>(null);
 
-  const usesCard = method === 'card' || splitParts?.some((part) => part.method === 'card');
-
-  const reportError = (error: unknown, fallback = paymentFailedMessage, showCardFailure = false) => {
+  const reportError = (error: unknown, fallback = paymentFailedMessage, failedAttempt?: FailedPaymentAttempt) => {
     const detail = getMutationErrorDetail(error) || fallback;
     setErrorMessage(detail);
     setErrorToastOpen(true);
-    if (showCardFailure && usesCard) {
+    if (failedAttempt?.method === 'card') {
       setCardFailureMessage(detail);
       setCardFailureDebugJson(getMartaNon2xxDebugJson(error));
+      setFailedPaymentAttempt(failedAttempt);
       setCardFailureOpen(true);
     }
   };
@@ -74,14 +79,14 @@ export function usePaymentSubmission({
 
   useEffect(() => {
     if (paymentMutation.isError) {
-      reportError(paymentMutation.error, paymentFailedMessage, true);
+      reportError(paymentMutation.error, paymentFailedMessage);
     }
     // Mutation state is the trigger; the other values describe that state.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paymentMutation.isError, paymentMutation.error]);
 
-  const submitSplitPayment = async (registerFiscal: boolean) => {
-    if (!splitParts) return;
+  const submitSplitPayment = async (registerFiscal: boolean): Promise<PaymentFailure | null> => {
+    if (!splitParts) return null;
     const parts = splitParts.map((part) => ({ ...part, amount: Number(part.amount || 0) }));
     const payableParts = parts.filter((part) => part.status !== 'paid');
     const paidPartIds = new Set(parts.filter((part) => part.status === 'paid').map((part) => part.id));
@@ -90,15 +95,16 @@ export function usePaymentSubmission({
     let paidAmount = 0;
 
     for (const [index, part] of payableParts.entries()) {
+      const command: PaymentCommand = {
+        method: part.method,
+        amount: part.amount,
+        registerFiscal,
+        ...(canApplyTotalOverride && index === 0 && finalTotal !== undefined
+          ? { finalTotal, totalOverrideReason }
+          : {}),
+      };
       try {
-        latestResponse = await executePayment({
-          method: part.method,
-          amount: part.amount,
-          registerFiscal,
-          ...(canApplyTotalOverride && index === 0 && finalTotal !== undefined
-            ? { finalTotal, totalOverrideReason }
-            : {}),
-        });
+        latestResponse = await executePayment(command);
         paidAmount += part.amount;
         paidPartIds.add(part.id);
       } catch (error) {
@@ -109,52 +115,77 @@ export function usePaymentSubmission({
         }));
         setSplitParts(preservedParts);
         setAmount(String(preservedParts.reduce((sum, part) => sum + Number(part.amount || 0), 0)));
-        throw error;
+        return { attempt: { ...command, splitPartId: part.id }, error };
       }
     }
 
     if (latestResponse) onPaymentComplete(latestResponse, paidAmount);
+    return null;
   };
 
   const submitPayment = async (registerFiscal: boolean) => {
     if (isSubmitting) return;
     setIsSubmitting(true);
     setPendingRegisterFiscal(registerFiscal);
+    setFailedPaymentAttempt(null);
     try {
       if (splitParts) {
-        await submitSplitPayment(registerFiscal);
+        const failure = await submitSplitPayment(registerFiscal);
+        if (failure) reportError(failure.error, paymentFailedMessage, failure.attempt);
       } else {
-        const response = await executePayment({
+        const command: FailedPaymentAttempt = {
           method,
           amount: paymentAmount,
           registerFiscal,
           ...(finalTotal !== undefined ? { finalTotal, totalOverrideReason } : {}),
-        });
-        onPaymentComplete(response, paymentAmount);
+        };
+        try {
+          const response = await executePayment(command);
+          onPaymentComplete(response, paymentAmount);
+        } catch (error) {
+          reportError(error, paymentFailedMessage, command);
+        }
       }
     } catch (error) {
-      reportError(error, paymentFailedMessage, true);
+      reportError(error, paymentFailedMessage);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const completeCardManually = async () => {
-    if (method !== 'card' || isSubmitting) return;
+    const attempt = failedPaymentAttempt;
+    if (attempt?.method !== 'card' || isSubmitting) return;
     setIsSubmitting(true);
     try {
       const response = await executePayment({
         method: 'card',
-        amount: Number(amount || 0),
-        registerFiscal: pendingRegisterFiscal,
+        amount: attempt.amount,
+        registerFiscal: attempt.registerFiscal,
         manualCardOverride: true,
         manualCardReason: cardFailureMessage,
-        ...(finalTotal !== undefined ? { finalTotal, totalOverrideReason } : {}),
+        ...(attempt.finalTotal !== undefined
+          ? { finalTotal: attempt.finalTotal, totalOverrideReason: attempt.totalOverrideReason }
+          : {}),
       });
+      let hasPendingSplitParts = false;
+      if (attempt.splitPartId) {
+        hasPendingSplitParts = Boolean(
+          splitParts?.some((part) => part.id !== attempt.splitPartId && part.status !== 'paid'),
+        );
+        setSplitParts(
+          (parts) =>
+            parts?.map((part) => (part.id === attempt.splitPartId ? { ...part, status: 'paid' as const } : part)) ??
+            null,
+        );
+      }
       setCardFailureOpen(false);
-      onManualPaymentComplete(response);
+      setFailedPaymentAttempt(null);
+      if (!hasPendingSplitParts) {
+        onPaymentComplete(response, attempt.amount);
+      }
     } catch (error) {
-      reportError(error);
+      reportError(error, paymentFailedMessage, attempt);
     } finally {
       setIsSubmitting(false);
     }
@@ -166,9 +197,13 @@ export function usePaymentSubmission({
 
   return {
     cardFailureDebugJson,
+    cardFailureMethod: failedPaymentAttempt?.method ?? null,
     cardFailureMessage,
     cardFailureOpen,
-    closeCardFailure: () => setCardFailureOpen(false),
+    closeCardFailure: () => {
+      setCardFailureOpen(false);
+      setFailedPaymentAttempt(null);
+    },
     completeCardManually,
     copyCardFailureDebug,
     errorMessage,

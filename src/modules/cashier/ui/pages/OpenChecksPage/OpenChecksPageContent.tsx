@@ -28,6 +28,11 @@ import { PosOpenChecksSkeleton, PosSettingsMenu } from 'shared/ui/pos-primitives
 import { OpenChecksDetail } from './OpenChecksDetail';
 import { RenameOpenCheckDialog, RetryFiscalReceiptDialogs } from './OpenChecksDialogs';
 import { OpenChecksHeader, OpenChecksListPanel, OpenChecksMobileDetail } from './OpenChecksPageChrome';
+import {
+  deriveSucceededPaymentMethod,
+  selectLatestSucceededPayment,
+  selectLatestUnrefundedSucceededPayment,
+} from './openChecksPayments';
 import { useRetryFiscalReceiptFlow } from './useRetryFiscalReceiptFlow';
 type ChecksQueryData = { orders?: CashierOrder[]; count?: number; numPages?: number } | CashierOrder[] | undefined;
 type MutationErrorPayload = {
@@ -41,6 +46,18 @@ function getChecksOrders(data: ChecksQueryData) {
 
 function getChecksCount(data: ChecksQueryData) {
   return Array.isArray(data) ? data.length : (data?.count ?? data?.orders?.length ?? 0);
+}
+
+function getExistingReprintDocument(order: CashierOrder | undefined, paymentId: string | undefined) {
+  const printableReceipts = (order?.receipts ?? []).filter(
+    (receipt) => receipt.kind !== 'refund' && Boolean(receipt.printDocument),
+  );
+
+  return (
+    printableReceipts.find((receipt) => receipt.payment === paymentId)?.printDocument ??
+    printableReceipts.find((receipt) => !receipt.payment)?.printDocument ??
+    null
+  );
 }
 
 export function OpenChecksPageContent() {
@@ -107,11 +124,22 @@ export function OpenChecksPageContent() {
     () => groupCashierOrderItemsByStation(aggregateCashierOrderItems(selectedOrder?.items), copy.menu),
     [copy.menu, selectedOrder?.items],
   );
-  const latestSucceededPayment = useMemo(() => {
-    const succeededPayments = [...(selectedOrder?.payments ?? [])].filter((payment) => payment.status === 'succeeded');
-
-    return succeededPayments[succeededPayments.length - 1];
-  }, [selectedOrder?.payments]);
+  const latestSucceededPayment = useMemo(
+    () => selectLatestSucceededPayment(selectedOrder?.payments),
+    [selectedOrder?.payments],
+  );
+  const latestRefundablePayment = useMemo(
+    () => selectLatestUnrefundedSucceededPayment(selectedOrder?.payments),
+    [selectedOrder?.payments],
+  );
+  const existingReprintDocument = useMemo(
+    () => getExistingReprintDocument(selectedOrder, latestSucceededPayment?.id),
+    [latestSucceededPayment?.id, selectedOrder],
+  );
+  const succeededPaymentMethod = useMemo(
+    () => deriveSucceededPaymentMethod(selectedOrder?.payments),
+    [selectedOrder?.payments],
+  );
   const retryReceiptFlow = useRetryFiscalReceiptFlow({
     copy,
     latestPayment: latestSucceededPayment,
@@ -122,9 +150,7 @@ export function OpenChecksPageContent() {
     },
     printDocuments: (documentIds) => requestEdgePrintDocuments(documentIds),
   });
-  const canRefund = Boolean(
-    selectedTab !== 'open' && latestSucceededPayment?.id && !latestSucceededPayment?.isRefunded && canOperatePayments,
-  );
+  const canRefund = Boolean(selectedTab !== 'open' && latestRefundablePayment?.id && canOperatePayments);
   const canReprint = Boolean(selectedTab !== 'open' && canOperatePayments && latestSucceededPayment?.id);
   const canRetryFiscal = Boolean(selectedTab === 'closed' && latestSucceededPayment?.id && canOperatePayments);
   const renameOrderNumberLabel = renameOrder ? getCashierOrderNumberLabel(renameOrder) : copy.orders;
@@ -158,7 +184,6 @@ export function OpenChecksPageContent() {
     <OpenChecksDetail
       copy={copy}
       groupedItems={groupedItems}
-      latestSucceededPayment={latestSucceededPayment}
       locale={locale}
       onPay={() => navigate(`/cashier/payment?orderId=${selectedOrder.id}`)}
       onPrintPrecheck={() => {
@@ -170,11 +195,11 @@ export function OpenChecksPageContent() {
         });
       }}
       onRefund={() => {
-        if (!latestSucceededPayment?.id || refundMutation.isPending) {
+        if (!latestRefundablePayment?.id || refundMutation.isPending) {
           return;
         }
         refundMutation
-          .mutateAsync({ paymentId: latestSucceededPayment.id })
+          .mutateAsync({ paymentId: latestRefundablePayment.id })
           .then((response) => {
             if (response.receipt?.printDocument) {
               requestEdgePrintDocuments([response.receipt.printDocument]);
@@ -188,15 +213,19 @@ export function OpenChecksPageContent() {
         if (ensurePrintDocumentMutation.isPending || !latestSucceededPayment?.id) {
           return;
         }
+        const handlePrintError = (error: unknown) =>
+          toast.info(error instanceof Error ? error.message : 'Printer so‘rovini yuborib bo‘lmadi');
+        if (existingReprintDocument) {
+          requestEdgePrintDocuments([existingReprintDocument], handlePrintError);
+          return;
+        }
         ensurePrintDocumentMutation
           .mutateAsync(latestSucceededPayment.id)
           .then((response) => {
             if (!response.receipt?.printDocument) {
               throw new Error('Chek uchun print hujjati tayyor emas');
             }
-            requestEdgePrintDocuments([response.receipt.printDocument], (error) =>
-              toast.info(error instanceof Error ? error.message : 'Printer so‘rovini yuborib bo‘lmadi'),
-            );
+            requestEdgePrintDocuments([response.receipt.printDocument], handlePrintError);
           })
           .catch((error) => toast.info(error instanceof Error ? error.message : 'Printer ishlamayapti'));
       }}
@@ -213,6 +242,7 @@ export function OpenChecksPageContent() {
       reprintAvailable={canReprint}
       retryFiscalAvailable={canRetryFiscal}
       selectedTab={selectedTab}
+      succeededPaymentMethod={succeededPaymentMethod}
     />
   ) : null;
 

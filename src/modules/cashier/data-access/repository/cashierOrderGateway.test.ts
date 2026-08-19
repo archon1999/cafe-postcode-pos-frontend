@@ -105,8 +105,24 @@ describe('cashier order mutation transport contract', () => {
     });
   });
 
-  it('scans a marking with the raw code and mode then maps the nested order', async () => {
-    apiPostMock.mockResolvedValueOnce({ order: orderResponse(82) });
+  it('sends a manually entered price for a service item', async () => {
+    apiPostMock.mockResolvedValueOnce({});
+
+    await cashierRepository.addOrderItem('order-1', 'service-1', '', [], 75000);
+
+    expect(apiPostMock).toHaveBeenCalledWith('/pos/sales/orders/order-1/items/', {
+      catalogItem: 'service-1',
+      quantity: 1,
+      note: '',
+      manualPrice: 75000,
+    });
+  });
+
+  it('scans a marking then preserves the mapped order and top-level kitchen print documents', async () => {
+    apiPostMock.mockResolvedValueOnce({
+      order: orderResponse(82),
+      kitchenPrintDocuments: ['cancel-old-line', 'dispatch-replacement-line'],
+    });
 
     const result = await cashierRepository.scanOrderMarking('order-1', '0101234567890121', 'attach');
 
@@ -114,14 +130,35 @@ describe('cashier order mutation transport contract', () => {
       rawCode: '0101234567890121',
       mode: 'attach',
     });
-    expect(result.orderNumber).toBe(82);
+    expect(result).toEqual({
+      order: expect.objectContaining({ orderNumber: 82 }),
+      kitchenPrintDocuments: ['cancel-old-line', 'dispatch-replacement-line'],
+    });
   });
 
   it('deletes an order item through the item-scoped endpoint', async () => {
-    apiDeleteMock.mockResolvedValueOnce({ ignored: true });
+    const response = { kitchenPrintDocuments: ['cancel-document-1'] };
+    apiDeleteMock.mockResolvedValueOnce(response);
 
-    await expect(cashierRepository.removeOrderItem('item-1')).resolves.toBeUndefined();
+    await expect(cashierRepository.removeOrderItem('item-1')).resolves.toEqual(response);
     expect(apiDeleteMock).toHaveBeenCalledWith('/pos/sales/orders/items/item-1/');
+  });
+
+  it('preserves the order removal signal from the delete response', async () => {
+    apiDeleteMock.mockResolvedValueOnce({ orderRemoved: true });
+
+    await expect(cashierRepository.removeOrderItem('last-item')).resolves.toEqual({
+      kitchenPrintDocuments: [],
+      orderRemoved: true,
+    });
+  });
+
+  it('normalizes a legacy empty delete response to no kitchen documents', async () => {
+    apiDeleteMock.mockResolvedValueOnce(undefined);
+
+    await expect(cashierRepository.removeOrderItem('draft-item')).resolves.toEqual({
+      kitchenPrintDocuments: [],
+    });
   });
 
   it('persists the order note before a printable document is created', async () => {

@@ -10,23 +10,45 @@ on:
       - develop
       - production
   workflow_dispatch:
+    inputs:
+      deploy_production:
+        description: Deploy the selected production revision after protected-environment approval
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+env:
+  VITE_API_BASE_URL: http://127.0.0.1:18181/v1
+  VITE_REMOTE_API_BASE_URL: https://cafe-postcode.uz/api/v1
+  VITE_API_TIMEOUT: "15000"
+  VITE_EDGE_BASE_URL: http://127.0.0.1:18181
+  VITE_CONTROL_APP_URL: https://admin.cafe-postcode.uz
+  VITE_APP_VERSION: ${{ github.sha }}
+  VITE_MONITOR_ANNOUNCEMENT_BASE_URL: /monitor-announcements/v1/uz/female
 
 jobs:
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
 
       - name: Install dependencies
-        run: npm ci --force
+        run: npm ci
+
+      - name: Audit dependency graph
+        run: npm audit --audit-level=high
 
       - name: Run lint
         run: npm run lint
@@ -41,16 +63,146 @@ jobs:
         run: npm run test:pwa
 
       - name: Build Docker image
-        run: docker build -t postcode/pos-frontend:ci .
+        run: |
+          docker build \
+            --build-arg VITE_API_BASE_URL \
+            --build-arg VITE_REMOTE_API_BASE_URL \
+            --build-arg VITE_API_TIMEOUT \
+            --build-arg VITE_EDGE_BASE_URL \
+            --build-arg VITE_CONTROL_APP_URL \
+            --build-arg VITE_APP_VERSION \
+            --build-arg VITE_MONITOR_ANNOUNCEMENT_BASE_URL \
+            -t postcode/pos-frontend:ci .
+
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    needs: verify
+    if: github.event_name == 'workflow_dispatch' && inputs.deploy_production && github.ref == 'refs/heads/production'
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+    outputs:
+      image_ref: ${{ steps.image_ref.outputs.value }}
+
+    steps:
+      - name: Checkout verified revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Re-verify release source
+        run: |
+          npm ci
+          npm audit --audit-level=high
+          npm run lint
+          npm test
+          npm run prod:build
+          npm run test:pwa
+
+      - name: Resolve immutable image name
+        id: image_name
+        shell: bash
+        run: echo "value=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/cafe-postcode-pos" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Authenticate to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish verified image once
+        id: build
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.image_name.outputs.value }}:${{ github.sha }}
+          build-args: |
+            VITE_API_BASE_URL=${{ env.VITE_API_BASE_URL }}
+            VITE_REMOTE_API_BASE_URL=${{ env.VITE_REMOTE_API_BASE_URL }}
+            VITE_API_TIMEOUT=${{ env.VITE_API_TIMEOUT }}
+            VITE_EDGE_BASE_URL=${{ env.VITE_EDGE_BASE_URL }}
+            VITE_CONTROL_APP_URL=${{ env.VITE_CONTROL_APP_URL }}
+            VITE_APP_VERSION=${{ env.VITE_APP_VERSION }}
+            VITE_MONITOR_ANNOUNCEMENT_BASE_URL=${{ env.VITE_MONITOR_ANNOUNCEMENT_BASE_URL }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: mode=max
+          sbom: true
+
+      - name: Record immutable image reference
+        id: image_ref
+        shell: bash
+        run: echo "value=${{ steps.image_name.outputs.value }}@${{ steps.build.outputs.digest }}" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke-test the exact published artifact
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          image='${{ steps.image_name.outputs.value }}@${{ steps.build.outputs.digest }}'
+          docker pull "$image"
+          container_id="$(docker run --detach --rm --publish 127.0.0.1:18080:80 "$image")"
+          trap 'docker rm --force "$container_id" >/dev/null 2>&1 || true' EXIT
+          for _ in $(seq 1 30); do
+            if curl --fail --silent --show-error http://127.0.0.1:18080/healthz >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs "$container_id"
+          exit 1
+
+      - name: Scan published image
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        with:
+          image-ref: ${{ steps.image_name.outputs.value }}@${{ steps.build.outputs.digest }}
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@f713795cb21599bc4e5c4b58cbad1da852d7eeb9 # v3
+
+      - name: Sign verified image digest with GitHub OIDC
+        shell: bash
+        run: cosign sign --yes '${{ steps.image_name.outputs.value }}@${{ steps.build.outputs.digest }}'
 
   deploy:
     runs-on: ubuntu-latest
-    needs: verify
-    if: github.event_name == 'push' && github.ref == 'refs/heads/production'
+    timeout-minutes: 45
+    needs:
+      - verify
+      - package
+    if: github.event_name == 'workflow_dispatch' && inputs.deploy_production && github.ref == 'refs/heads/production'
+    concurrency:
+      group: pos-frontend-production
+      cancel-in-progress: false
+    environment:
+      name: production
+    permissions:
+      contents: read
+      packages: read
 
     steps:
       - name: Deploy over SSH
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
+        env:
+          RELEASE_IMAGE: ${{ needs.package.outputs.image_ref }}
+          RELEASE_SHA: ${{ github.sha }}
+          RELEASE_IDENTITY: https://github.com/${{ github.repository }}/.github/workflows/deploy.yml@refs/heads/production
+          GHCR_USERNAME: ${{ github.actor }}
+          GHCR_TOKEN: ${{ github.token }}
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
@@ -60,12 +212,110 @@ jobs:
           timeout: 60s
           command_timeout: 40m
           script_stop: true
+          envs: RELEASE_IMAGE,RELEASE_SHA,RELEASE_IDENTITY,GHCR_USERNAME,GHCR_TOKEN
           script: |
-            set -e
+            set -Eeuo pipefail
             cd /home/postcode/pos-frontend
             test -f .env.production
-            git fetch origin production
-            git checkout production
-            git pull --ff-only origin production
-            docker compose --env-file .env.production up -d --build
+            test -z "$(git status --porcelain --untracked-files=normal)"
+            test -n "${RELEASE_IMAGE}"
+            test -n "${GHCR_USERNAME}"
+            test -n "${GHCR_TOKEN}"
+            release_sha="${RELEASE_SHA}"
+            umask 077
+            deploy_docker_config="$(mktemp -d)"
+            trap 'rm -rf -- "${deploy_docker_config}"' EXIT
+            export DOCKER_CONFIG="${deploy_docker_config}"
+            install -d -m 0700 /home/postcode/backups/deploy
+            deployment_id="$(date -u +'%Y%m%dT%H%M%SZ')_${release_sha}"
+            evidence_dir="/home/postcode/backups/deploy/pos_${deployment_id}"
+            install -d -m 0700 "${evidence_dir}"
+            previous_revision="$(git rev-parse HEAD)"
+            previous_container="$(docker compose --env-file .env.production ps -q frontend)"
+            previous_image_id=""
+            rollback_image=""
+            if [ -n "${previous_container}" ]; then
+              previous_image_id="$(docker inspect --format '{{.Image}}' "${previous_container}")"
+              rollback_image="postcode/pos-frontend:rollback-${deployment_id}"
+              docker image tag "${previous_image_id}" "${rollback_image}"
+              cp docker-compose.yml "${evidence_dir}/previous_docker-compose.yml"
+              printf 'services:\n  frontend:\n    image: "%s"\n' "${rollback_image}" \
+                > "${evidence_dir}/rollback-compose.yml"
+            fi
+            printf '%s\n' "${previous_revision}" > "${evidence_dir}/previous_revision"
+            printf '%s\n' "${previous_image_id}" > "${evidence_dir}/previous_image_id"
+            printf '%s\n' "${rollback_image}" > "${evidence_dir}/rollback_image"
+            printf '%s\n' "${RELEASE_IMAGE}" > "${evidence_dir}/release_image"
+            restore_source_on_error() {
+              rc=$?
+              trap - ERR
+              if ! git checkout --detach "${previous_revision}"; then
+                echo "CRITICAL: POS source revision recovery failed before service switch." >&2
+                exit 73
+              fi
+              exit "${rc}"
+            }
+            trap restore_source_on_error ERR
+            git fetch --prune origin production
+            git cat-file -e "${release_sha}^{commit}"
+            git merge-base --is-ancestor "${release_sha}" origin/production
+            git checkout --detach "${release_sha}"
+            printf '%s' "${GHCR_TOKEN}" | docker login ghcr.io --username "${GHCR_USERNAME}" --password-stdin
+            command -v cosign >/dev/null
+            cosign verify \
+              --certificate-identity "${RELEASE_IDENTITY}" \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+              "${RELEASE_IMAGE}" >/dev/null
+            docker pull "${RELEASE_IMAGE}"
+            export POS_FRONTEND_IMAGE="${RELEASE_IMAGE}"
+            docker compose --env-file .env.production config >/dev/null
+            switch_attempted=0
+            rollback_on_error() {
+              rc=$?
+              trap - ERR
+              if [ "${switch_attempted}" = "1" ] && [ -n "${rollback_image}" ]; then
+                echo "Release switch failed; restoring and verifying the previous POS image." >&2
+                if ! docker compose --project-directory . --env-file .env.production \
+                  -f "${evidence_dir}/previous_docker-compose.yml" \
+                  -f "${evidence_dir}/rollback-compose.yml" \
+                  up -d --no-build --wait --wait-timeout 180; then
+                  echo "CRITICAL: POS rollback container switch failed." >&2
+                  exit 70
+                fi
+                if ! docker compose --project-directory . --env-file .env.production \
+                  -f "${evidence_dir}/previous_docker-compose.yml" \
+                  -f "${evidence_dir}/rollback-compose.yml" \
+                  exec -T frontend wget -qO- http://127.0.0.1/healthz >/dev/null; then
+                  echo "CRITICAL: POS rollback health check failed." >&2
+                  exit 71
+                fi
+                rollback_container="$(docker compose --project-directory . --env-file .env.production \
+                  -f "${evidence_dir}/previous_docker-compose.yml" \
+                  -f "${evidence_dir}/rollback-compose.yml" ps -q frontend)"
+                if [ "$(docker inspect --format '{{.Image}}' "${rollback_container}")" != "${previous_image_id}" ]; then
+                  echo "CRITICAL: POS rollback image identity mismatch." >&2
+                  exit 72
+                fi
+              fi
+              if ! git checkout --detach "${previous_revision}"; then
+                echo "CRITICAL: POS source revision rollback failed." >&2
+                exit 73
+              fi
+              exit "${rc}"
+            }
+            trap rollback_on_error ERR
+            switch_attempted=1
+            docker compose --env-file .env.production up -d --no-build --wait --wait-timeout 180
             docker compose --env-file .env.production ps
+            docker compose --env-file .env.production exec -T frontend wget -qO- http://127.0.0.1/healthz >/dev/null
+            running_container="$(docker compose --env-file .env.production ps -q frontend)"
+            test "$(docker inspect --format '{{.Image}}' "${running_container}")" = \
+              "$(docker image inspect --format '{{.Id}}' "${RELEASE_IMAGE}")"
+            printf '%s\n' "${release_sha}" > /home/postcode/backups/deploy/.last_known_good_pos_revision.tmp
+            printf '%s\n' "${RELEASE_IMAGE}" > /home/postcode/backups/deploy/.last_known_good_pos_image.tmp
+            mv /home/postcode/backups/deploy/.last_known_good_pos_revision.tmp \
+              /home/postcode/backups/deploy/last_known_good_pos_revision
+            mv /home/postcode/backups/deploy/.last_known_good_pos_image.tmp \
+              /home/postcode/backups/deploy/last_known_good_pos_image
+            switch_attempted=0
+            trap - ERR

@@ -24,6 +24,7 @@ export interface WaiterRepository {
     catalogItemId: string,
     note: string,
     selectedModifiers?: PosModifierSelection[],
+    manualPrice?: number,
   ): Promise<{ kitchenPrintDocuments?: string[] }>;
   addOrderItems(
     orderId: string,
@@ -32,9 +33,10 @@ export interface WaiterRepository {
       quantity: number;
       note: string;
       selectedModifiers?: PosModifierSelection[];
+      manualPrice?: number;
     }>,
   ): Promise<{ kitchenPrintDocuments?: string[] }>;
-  removeOrderItem(itemId: string): Promise<void>;
+  removeOrderItem(itemId: string): Promise<{ kitchenPrintDocuments: string[]; orderRemoved?: boolean }>;
   updateOrderNote(orderId: string, note: string): Promise<WaiterOrder>;
   submitOrder(orderId: string): Promise<WaiterOrder>;
   createPrecheckPrintDocument(orderId: string): Promise<WaiterPrecheckPrintDocumentResponse>;

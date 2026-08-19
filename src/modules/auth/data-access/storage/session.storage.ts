@@ -50,7 +50,7 @@ type LegacySessionPayload = Omit<PosSessionPayload, 'user' | 'tariff' | 'roleCod
   tariff?: SessionCompatTariff | null;
 };
 
-function normalizeRestaurantContext(rawContext: RestaurantContextCompat | PosRestaurantContext | null) {
+export function normalizeRestaurantContext(rawContext: RestaurantContextCompat | PosRestaurantContext | null) {
   if (!rawContext) {
     return null;
   }
@@ -115,6 +115,7 @@ export function normalizeSessionPayload(
 
   return {
     token: payload.token,
+    ...(payload.lockedAt ? { lockedAt: payload.lockedAt } : {}),
     user: {
       id: rawUser.id,
       username: rawUser.username,
@@ -145,20 +146,20 @@ function readJson<T>(key: string): T | null {
 }
 
 export function readStoredSession() {
-  const persistedValue = localStorage.getItem(STORAGE_KEY);
-  const legacyTabValue = sessionStorage.getItem(STORAGE_KEY);
-  const rawValue = persistedValue ?? legacyTabValue;
+  const tabValue = sessionStorage.getItem(STORAGE_KEY);
+  const legacyPersistentValue = localStorage.getItem(STORAGE_KEY);
+  const rawValue = tabValue ?? legacyPersistentValue;
 
   if (!rawValue) return null;
 
   try {
     const normalizedValue = normalizeSessionPayload(JSON.parse(rawValue) as LegacySessionPayload);
 
-    if (!persistedValue && normalizedValue) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizedValue));
+    if (normalizedValue) {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(normalizedValue));
     }
 
-    sessionStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(STORAGE_KEY);
     return normalizedValue;
   } catch {
     localStorage.removeItem(STORAGE_KEY);
@@ -171,8 +172,8 @@ export function persistSession(value: PosSessionPayload | null) {
   const normalizedValue = normalizeSessionPayload(value);
 
   if (normalizedValue) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizedValue));
-    sessionStorage.removeItem(STORAGE_KEY);
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(normalizedValue));
+    localStorage.removeItem(STORAGE_KEY);
   } else {
     localStorage.removeItem(STORAGE_KEY);
     sessionStorage.removeItem(STORAGE_KEY);
@@ -189,6 +190,10 @@ export function persistRestaurantContext(value: PosRestaurantContext | null) {
   } else {
     localStorage.removeItem(RESTAURANT_CONTEXT_KEY);
   }
+}
+
+export function clearLegacyRestaurantContext() {
+  localStorage.removeItem(RESTAURANT_CONTEXT_KEY);
 }
 
 export function readStoredThemeMode(): PosThemeMode {

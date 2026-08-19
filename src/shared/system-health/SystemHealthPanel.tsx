@@ -20,7 +20,7 @@ import type { PosLocale } from '../locale/copy';
 
 import { getSystemHealthCopy } from './copy';
 import { useSystemHealthQuery } from './queries';
-import { deriveSystemHealthTone } from './status';
+import { actionRequiredOutboxCount, deriveSystemHealthTone, quarantinedOutboxCount } from './status';
 import type { EdgeSystemStatus, SystemHealthComponent } from './types';
 
 type ChipColor = 'default' | 'success' | 'warning' | 'error' | 'secondary';
@@ -94,8 +94,11 @@ export function SystemHealthPanel({
   const syncPresentation = useMemo(() => {
     if (agentRequestFailed) return { label: copy.unknown, color: 'default' as ChipColor };
     if (!status) return { label: copy.checking, color: 'default' as ChipColor };
-    if (status.sync.failedOutbox > 0)
-      return { label: `${copy.error}: ${status.sync.failedOutbox}`, color: 'error' as ChipColor };
+    const quarantined = quarantinedOutboxCount(status.sync);
+    const actionRequired = actionRequiredOutboxCount(status.sync);
+    if (quarantined > 0) return { label: `${copy.quarantined}: ${quarantined}`, color: 'error' as ChipColor };
+    if (actionRequired > 0)
+      return { label: `${copy.actionRequired}: ${actionRequired}`, color: 'warning' as ChipColor };
     if (status.backend.offlineMode) {
       const suffix = status.sync.pendingOutbox > 0 ? ` · ${status.sync.pendingOutbox} ${copy.queued}` : '';
       return { label: `${copy.offlineMode}${suffix}`, color: 'secondary' as ChipColor };
@@ -193,7 +196,9 @@ export function SystemHealthPanel({
               <Detail label={copy.lastSuccess} value={formatDate(status?.sync.lastSuccessAt, locale, copy.noData)} />
               <Detail label={copy.lastAttempt} value={formatDate(status?.sync.lastAttemptAt, locale, copy.noData)} />
               <Detail label={copy.pending} value={String(status?.sync.pendingOutbox ?? 0)} />
-              <Detail label={copy.failed} value={String(status?.sync.failedOutbox ?? 0)} />
+              <Detail label={copy.actionRequired} value={String(status ? actionRequiredOutboxCount(status.sync) : 0)} />
+              <Detail label={copy.quarantined} value={String(status ? quarantinedOutboxCount(status.sync) : 0)} />
+              <Detail label={copy.resolved} value={String(status?.sync.resolvedOutbox ?? 0)} />
               {status?.backend.detail ? (
                 <Typography variant="body2" color="warning.main" sx={{ overflowWrap: 'anywhere' }}>
                   {status.backend.detail}
@@ -241,12 +246,37 @@ export function SystemHealthPanel({
               </>
             ) : null}
 
-            {status?.sync.failedOperations?.length ? (
+            {status?.sync.actionRequiredOperations?.length ? (
               <>
                 <Divider />
                 <Stack spacing={1}>
-                  <Typography variant="subtitle2">{copy.failures}</Typography>
-                  {status.sync.failedOperations.map((failure) => (
+                  <Typography variant="subtitle2">{copy.actionItems}</Typography>
+                  {status.sync.actionRequiredOperations.map((failure) => (
+                    <Box key={failure.operationId} sx={{ p: 1.25, borderRadius: 1.5, bgcolor: 'warning.lighter' }}>
+                      <Typography variant="caption" sx={{ fontWeight: 800, overflowWrap: 'anywhere' }}>
+                        {failure.path} {failure.responseStatus ? `· HTTP ${failure.responseStatus}` : ''}
+                      </Typography>
+                      <Typography variant="body2" sx={{ mt: 0.4, overflowWrap: 'anywhere' }}>
+                        {failure.lastError}
+                      </Typography>
+                      {failure.resolutionHint ? (
+                        <Typography variant="caption" color="text.secondary" sx={{ mt: 0.4, display: 'block' }}>
+                          {failure.errorCode ? `${failure.errorCode} · ` : ''}
+                          {failure.resolutionHint}
+                        </Typography>
+                      ) : null}
+                    </Box>
+                  ))}
+                </Stack>
+              </>
+            ) : null}
+
+            {(status?.sync.quarantinedOperations ?? status?.sync.failedOperations)?.length ? (
+              <>
+                <Divider />
+                <Stack spacing={1}>
+                  <Typography variant="subtitle2">{copy.quarantinedItems}</Typography>
+                  {(status?.sync.quarantinedOperations ?? status?.sync.failedOperations ?? []).map((failure) => (
                     <Box key={failure.operationId} sx={{ p: 1.25, borderRadius: 1.5, bgcolor: 'error.lighter' }}>
                       <Typography variant="caption" sx={{ fontWeight: 800, overflowWrap: 'anywhere' }}>
                         {failure.path} {failure.responseStatus ? `· HTTP ${failure.responseStatus}` : ''}
@@ -254,6 +284,12 @@ export function SystemHealthPanel({
                       <Typography variant="body2" sx={{ mt: 0.4, overflowWrap: 'anywhere' }}>
                         {failure.lastError}
                       </Typography>
+                      {failure.resolutionHint ? (
+                        <Typography variant="caption" color="text.secondary" sx={{ mt: 0.4, display: 'block' }}>
+                          {failure.errorCode ? `${failure.errorCode} · ` : ''}
+                          {failure.resolutionHint}
+                        </Typography>
+                      ) : null}
                     </Box>
                   ))}
                 </Stack>

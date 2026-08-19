@@ -73,6 +73,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   const scanMarkingMutation = useCashierOrderScanMutation({
     orderId: normalizedOrderId,
     mode: 'remove',
+    onPrintError: (error) => toast.error(error instanceof Error ? error.message : 'Oshxona chekini chiqarib bo‘lmadi'),
   });
   const printPrecheckMutation = usePrintCashierPrecheckMutation({
     onSuccess: () => toast.success(copy.receiptPrinted),
@@ -151,6 +152,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     displayName: orderQuery.data?.displayName,
     isBuilderOrder,
     orderId: normalizedOrderId,
+    onPrintError: (error) => toast.error(error instanceof Error ? error.message : 'Oshxona chekini chiqarib bo‘lmadi'),
     renameFailedMessage: copy.renameOrderFailed,
     user: session?.user,
   });
@@ -190,7 +192,6 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     setAmount,
   });
   const paymentSubmission = usePaymentSubmission({
-    amount,
     method,
     orderId: normalizedOrderId,
     paymentAmount,
@@ -199,7 +200,6 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     finalTotal: totalEditable ? paymentAmount : undefined,
     totalOverrideReason: totalOverrideReason.trim(),
     onPaymentComplete: handleSuccessfulPaymentResponse,
-    onManualPaymentComplete: setReceiptData,
     setAmount,
     setSplitParts,
   });
@@ -374,9 +374,9 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
         copy={copy}
         debugJson={paymentSubmission.cardFailureDebugJson}
         failureMessage={paymentSubmission.cardFailureMessage}
+        failedMethod={paymentSubmission.cardFailureMethod}
         fullScreen={isMobile}
         isPaymentProcessing={isPaymentProcessing}
-        method={method}
         open={paymentSubmission.cardFailureOpen}
         onClose={paymentSubmission.closeCardFailure}
         onCopyDebug={() => void paymentSubmission.copyCardFailureDebug()}

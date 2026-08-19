@@ -33,13 +33,17 @@ type UseOptimisticBuilderOrderOptions<
   defaultServiceFeeComponents?: PosServiceFeeComponent[];
   defaultVatEnabled?: boolean;
   defaultVatPercent?: number | string;
-  removeOrderItem: (itemId: string) => Promise<void>;
+  removeOrderItem: (itemId: string) => Promise<{
+    kitchenPrintDocuments?: string[];
+    orderRemoved?: boolean;
+  } | void>;
   selectCurrentOrder: (data: TCanonicalData) => TOrder | undefined;
   addOrderItem: (
     orderId: string,
     menuItem: TMenuItem,
     note: string,
     selectedModifiers?: PosModifierSelection[],
+    manualPrice?: number,
   ) => Promise<{ kitchenPrintDocuments?: string[] } | void>;
   addOrderItems?: (
     orderId: string,
@@ -48,9 +52,11 @@ type UseOptimisticBuilderOrderOptions<
       quantity: number;
       note: string;
       selectedModifiers?: PosModifierSelection[];
+      manualPrice?: number;
     }>,
   ) => Promise<{ kitchenPrintDocuments?: string[] } | void>;
   onPrintDocuments?: (documentIds: string[]) => void;
+  onOrderRemoved?: () => void;
   resetKey?: unknown;
   syncErrorMessage: string;
 };
@@ -78,6 +84,7 @@ export function useOptimisticBuilderOrder<
     defaultVatPercent,
     removeOrderItem,
     onPrintDocuments,
+    onOrderRemoved,
     resetKey,
     selectCurrentOrder,
     addOrderItem,
@@ -135,6 +142,7 @@ export function useOptimisticBuilderOrder<
     const currentOrder = selectCurrentOrder(data);
 
     setResolvedBaseOrder(currentOrder);
+    resolvedOrderIdRef.current = currentOrder?.id ?? null;
     return currentOrder;
   }, [canonicalQueryFn, canonicalQueryKey, selectCurrentOrder]);
 
@@ -177,14 +185,13 @@ export function useOptimisticBuilderOrder<
           return;
         }
 
-        const mutationResult = operationBeforeAdd.selectedModifiers?.length
-          ? await addOrderItem(
-              orderId,
-              operationBeforeAdd.menuItem,
-              operationBeforeAdd.note,
-              operationBeforeAdd.selectedModifiers,
-            )
-          : await addOrderItem(orderId, operationBeforeAdd.menuItem, operationBeforeAdd.note);
+        const mutationResult = await addOrderItem(
+          orderId,
+          operationBeforeAdd.menuItem,
+          operationBeforeAdd.note,
+          operationBeforeAdd.selectedModifiers,
+          operationBeforeAdd.manualPrice,
+        );
         if (mutationResult?.kitchenPrintDocuments?.length) {
           onPrintDocuments?.(mutationResult.kitchenPrintDocuments);
         }
@@ -208,7 +215,10 @@ export function useOptimisticBuilderOrder<
           });
 
           if (createdItem) {
-            await removeOrderItem(createdItem.id);
+            const removalResult = await removeOrderItem(createdItem.id);
+            if (removalResult?.kitchenPrintDocuments?.length) {
+              onPrintDocuments?.(removalResult.kitchenPrintDocuments);
+            }
             await refreshCurrentOrder();
           }
         } else {
@@ -239,8 +249,19 @@ export function useOptimisticBuilderOrder<
   const runRemoveOperation = useCallback(
     async (operation: PendingRemoveOperation) => {
       try {
-        await removeOrderItem(operation.itemId);
-        await refreshCurrentOrder();
+        const mutationResult = await removeOrderItem(operation.itemId);
+        if (mutationResult?.kitchenPrintDocuments?.length) {
+          onPrintDocuments?.(mutationResult.kitchenPrintDocuments);
+        }
+        if (mutationResult?.orderRemoved) {
+          resolvedOrderIdRef.current = null;
+          tempOrderIdRef.current = null;
+          setResolvedBaseOrder(undefined);
+          await queryClient.invalidateQueries({ queryKey: canonicalQueryKey });
+          onOrderRemoved?.();
+        } else {
+          await refreshCurrentOrder();
+        }
       } catch {
         await refreshCurrentOrder().catch(() => undefined);
         toast.error(syncErrorMessage);
@@ -248,7 +269,15 @@ export function useOptimisticBuilderOrder<
         settleRemoveOperation(operation.opId);
       }
     },
-    [refreshCurrentOrder, removeOrderItem, settleRemoveOperation, syncErrorMessage],
+    [
+      canonicalQueryKey,
+      onOrderRemoved,
+      onPrintDocuments,
+      refreshCurrentOrder,
+      removeOrderItem,
+      settleRemoveOperation,
+      syncErrorMessage,
+    ],
   );
 
   const runBatchAddOperation = useCallback(
@@ -281,6 +310,7 @@ export function useOptimisticBuilderOrder<
             quantity: Math.max(operation.menuItem.saleUnit === 'kg' ? 0.001 : 1, Number(operation.quantity ?? 1)),
             note: operation.note,
             selectedModifiers: operation.selectedModifiers,
+            manualPrice: operation.manualPrice,
           })),
         );
         if (mutationResult?.kitchenPrintDocuments?.length) {
@@ -304,7 +334,10 @@ export function useOptimisticBuilderOrder<
             })),
           });
           if (createdItem) {
-            await removeOrderItem(createdItem.id);
+            const removalResult = await removeOrderItem(createdItem.id);
+            if (removalResult?.kitchenPrintDocuments?.length) {
+              onPrintDocuments?.(removalResult.kitchenPrintDocuments);
+            }
             refreshedOrder = await refreshCurrentOrder();
           }
         }
@@ -331,13 +364,13 @@ export function useOptimisticBuilderOrder<
   );
 
   const addItem = useCallback(
-    (menuItem: TMenuItem, note: string, selectedModifiers: PosModifierSelection[] = []) => {
+    (menuItem: TMenuItem, note: string, selectedModifiers: PosModifierSelection[] = [], manualPrice?: number) => {
       const opId = createOperationId();
       const tempItemId = createOperationId();
 
       setPendingAdds((current) => [
         ...current,
-        { opId, tempItemId, menuItem, note, selectedModifiers, canceled: false },
+        { opId, tempItemId, menuItem, note, selectedModifiers, manualPrice, canceled: false },
       ]);
       enqueue(() => runAddOperation(opId));
     },
@@ -346,12 +379,18 @@ export function useOptimisticBuilderOrder<
 
   const addItems = useCallback(
     (
-      items: Array<{ menuItem: TMenuItem; quantity: number; note: string; selectedModifiers?: PosModifierSelection[] }>,
+      items: Array<{
+        menuItem: TMenuItem;
+        quantity: number;
+        note: string;
+        selectedModifiers?: PosModifierSelection[];
+        manualPrice?: number;
+      }>,
     ) => {
       if (!addOrderItems) {
         for (const item of items) {
           for (let index = 0; index < item.quantity; index += 1) {
-            addItem(item.menuItem, item.note, item.selectedModifiers);
+            addItem(item.menuItem, item.note, item.selectedModifiers, item.manualPrice);
           }
         }
         return;
@@ -366,6 +405,7 @@ export function useOptimisticBuilderOrder<
           note: item.note,
           quantity: item.quantity,
           selectedModifiers: item.selectedModifiers,
+          manualPrice: item.manualPrice,
           canceled: false,
         }));
       if (!operations.length) return;

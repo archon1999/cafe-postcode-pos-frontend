@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -15,6 +15,9 @@ const submitOrderMutateAsyncMock = vi.fn();
 const updateOrderNoteMock = vi.fn();
 const updateOrderDeliveryDetailsMock = vi.fn();
 const updateOrderChannelMock = vi.fn();
+const scanOrderMarkingMock = vi.fn();
+const useScannerInputMock = vi.fn();
+const requestEdgePrintDocumentsMock = vi.hoisted(() => vi.fn());
 let searchParamsValue = '';
 let cachedSearchParamsValue = '';
 let cachedSearchParams = new URLSearchParams();
@@ -73,7 +76,7 @@ vi.mock('modules/cashier/data-access', () => ({
     createBuilderOrder: vi.fn(),
     addOrderItem: vi.fn(),
     removeOrderItem: vi.fn(),
-    scanOrderMarking: vi.fn(),
+    scanOrderMarking: (...args: unknown[]) => scanOrderMarkingMock(...args),
     updateOrderNote: (...args: unknown[]) => updateOrderNoteMock(...args),
     updateOrderChannel: (...args: unknown[]) => updateOrderChannelMock(...args),
     updateOrderDeliveryDetails: (...args: unknown[]) => updateOrderDeliveryDetailsMock(...args),
@@ -94,7 +97,11 @@ vi.mock('shared/pos/useOptimisticBuilderOrder', () => ({
 }));
 
 vi.mock('shared/pos/useScannerInput', () => ({
-  useScannerInput: vi.fn(),
+  useScannerInput: (...args: unknown[]) => useScannerInputMock(...args),
+}));
+
+vi.mock('modules/edge-printing/application', () => ({
+  requestEdgePrintDocuments: requestEdgePrintDocumentsMock,
 }));
 
 vi.mock('shared/ui/pos-primitives', () => ({
@@ -142,6 +149,9 @@ describe('CashierBuilderPageContent', () => {
     updateOrderDeliveryDetailsMock.mockResolvedValue({});
     updateOrderChannelMock.mockReset();
     updateOrderChannelMock.mockResolvedValue({ id: 'order-1', channel: 'hall' });
+    scanOrderMarkingMock.mockReset();
+    useScannerInputMock.mockReset();
+    requestEdgePrintDocumentsMock.mockReset();
     searchParamsValue = '';
     useCashierMenuQueryMock.mockReset();
     useCashierMenuQueryMock.mockReturnValue({
@@ -194,6 +204,31 @@ describe('CashierBuilderPageContent', () => {
     fireEvent.click(screen.getByRole('button', { name: 'solar:chef-hat-bold-duotone' }));
 
     expect(navigateMock).toHaveBeenCalledWith('/menu/catalog?source=cashier&channel=takeaway');
+  });
+
+  it('prints cancellation and replacement documents returned by a marking scan', async () => {
+    scanOrderMarkingMock.mockResolvedValue({
+      order: {
+        id: 'order-1',
+        items: [{ id: 'replacement-line', quantity: 2 }],
+      },
+      kitchenPrintDocuments: ['cancel-old-line', 'dispatch-replacement-line'],
+    });
+
+    render(<CashierBuilderPageContent />);
+    const latestScannerOptions = useScannerInputMock.mock.calls[useScannerInputMock.mock.calls.length - 1]?.[0] as {
+      onScan: (rawCode: string) => Promise<void>;
+    };
+
+    await act(async () => {
+      await latestScannerOptions.onScan('0101234567890121');
+    });
+
+    expect(scanOrderMarkingMock).toHaveBeenCalledWith('order-1', '0101234567890121', 'add');
+    expect(requestEdgePrintDocumentsMock).toHaveBeenCalledWith(
+      ['cancel-old-line', 'dispatch-replacement-line'],
+      expect.any(Function),
+    );
   });
 
   it('defaults to hall and renders all channel labels', () => {

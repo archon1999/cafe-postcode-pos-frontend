@@ -159,7 +159,13 @@ describe('useOptimisticBuilderOrder', () => {
     });
 
     expect(createRemoteOrder).toHaveBeenCalledTimes(1);
-    expect(addOrderItem).toHaveBeenCalledWith('order-12', expect.objectContaining({ id: 'menu-1' }), 'less sugar');
+    expect(addOrderItem).toHaveBeenCalledWith(
+      'order-12',
+      expect.objectContaining({ id: 'menu-1' }),
+      'less sugar',
+      [],
+      undefined,
+    );
     expect(result.current.currentOrder?.id).toBe('order-12');
     expect(result.current.currentOrder?.orderNumber).toBe(12);
   });
@@ -342,6 +348,73 @@ describe('useOptimisticBuilderOrder', () => {
 
     expect(removeOrderItem).toHaveBeenCalledTimes(1);
     expect(result.current.currentOrder).toBeUndefined();
+  });
+
+  it('forwards cancellation documents returned by an optimistic delete', async () => {
+    const baseOrder = createOrder({ tableSession: null, channel: 'takeaway' });
+    let canonicalOrders = [baseOrder];
+    const onPrintDocuments = vi.fn();
+    const removeOrderItem = vi.fn(async () => {
+      canonicalOrders = [];
+      return { kitchenPrintDocuments: ['cancel-document-1'] };
+    });
+    const { result } = renderHook(() =>
+      useOptimisticBuilderOrder<TestMenuItem, TestOrderItem, TestOrder, TestOrder[]>({
+        baseOrder,
+        canonicalQueryKey: ['test', 'orders'],
+        canonicalQueryFn: async () => canonicalOrders,
+        channel: 'takeaway',
+        createOrder: async () => baseOrder.id,
+        defaultServiceFeePercent: 0,
+        removeOrderItem,
+        onPrintDocuments,
+        selectCurrentOrder: (orders) => orders[0],
+        addOrderItem: async () => undefined,
+        syncErrorMessage: 'sync failed',
+      }),
+    );
+
+    act(() => {
+      result.current.removeItem('item-1');
+    });
+
+    await waitFor(() => {
+      expect(result.current.hasPendingOperations).toBe(false);
+    });
+
+    expect(removeOrderItem).toHaveBeenCalledTimes(1);
+    expect(onPrintDocuments).toHaveBeenCalledWith(['cancel-document-1']);
+    expect(result.current.currentOrder).toBeUndefined();
+  });
+
+  it('resets the removed order identity and notifies the editing flow', async () => {
+    const baseOrder = createOrder({ tableSession: null, channel: 'takeaway' });
+    const createRemoteOrder = vi.fn(async () => 'replacement-order');
+    const onOrderRemoved = vi.fn();
+    const { result } = renderHook(() =>
+      useOptimisticBuilderOrder<TestMenuItem, TestOrderItem, TestOrder, TestOrder[]>({
+        baseOrder,
+        canonicalQueryKey: ['test', 'orders'],
+        canonicalQueryFn: async () => [baseOrder],
+        channel: 'takeaway',
+        createOrder: createRemoteOrder,
+        defaultServiceFeePercent: 0,
+        removeOrderItem: async () => ({ orderRemoved: true }),
+        onOrderRemoved,
+        selectCurrentOrder: (orders) => orders[0],
+        addOrderItem: async () => undefined,
+        syncErrorMessage: 'sync failed',
+      }),
+    );
+
+    act(() => result.current.removeItem('item-1'));
+
+    await waitFor(() => expect(result.current.hasPendingOperations).toBe(false));
+    expect(result.current.currentOrder).toBeUndefined();
+    expect(onOrderRemoved).toHaveBeenCalledTimes(1);
+
+    act(() => result.current.addItem(createMenuItem({ id: 'menu-2' }), ''));
+    await waitFor(() => expect(createRemoteOrder).toHaveBeenCalledWith(''));
   });
 
   it('issues only one delete request per remove action in strict mode', async () => {

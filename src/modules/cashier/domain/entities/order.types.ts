@@ -77,9 +77,11 @@ export type CashierOrder = {
     refundsTotal?: number | string;
     isRefunded?: boolean;
     paidAt?: string | null;
+    createdAt?: string | null;
   }>;
   receipts?: Array<{
     id: string;
+    payment?: string | null;
     printDocument?: string | null;
     status: string;
     kind?: 'plain' | 'fiscal' | 'refund';
@@ -98,6 +100,11 @@ export type CashierOrder = {
 
 export type CashierCreateOrderResponse = {
   id: string;
+};
+
+export type CashierScanOrderMarkingResponse = {
+  order: CashierOrder;
+  kitchenPrintDocuments: string[];
 };
 
 export type CashierPrecheckPrintDocumentResponse = {

@@ -35,6 +35,7 @@ type InternalLine = CashierGroupOrderLine & {
   key: string;
   label: string;
   memberId: string;
+  quantityInput: string;
 };
 
 type Props = {
@@ -82,14 +83,21 @@ export function CashierItemGroupConfiguratorDialog({ group, locale, onClose, onC
 
   const changeQuantity = (key: string, delta: number) => {
     setLines((current) =>
-      current.map((line) => (line.key === key ? { ...line, quantity: Math.max(0, line.quantity + delta) } : line)),
+      current.map((line) => {
+        if (line.key !== key) return line;
+        const quantity = Math.max(0, line.quantity + delta);
+        return { ...line, quantity, quantityInput: quantity ? String(quantity) : '' };
+      }),
     );
   };
   const setQuantity = (key: string, value: string) => {
     const normalized = value.replace(',', '.');
     if (normalized && !/^\d*(?:\.\d{0,3})?$/.test(normalized)) return;
     const quantity = Math.max(0, Number(normalized || 0));
-    setLines((current) => current.map((line) => (line.key === key ? { ...line, quantity } : line)));
+    if (!Number.isFinite(quantity) || quantity > 999_999_999.999) return;
+    setLines((current) =>
+      current.map((line) => (line.key === key ? { ...line, quantity, quantityInput: value } : line)),
+    );
   };
 
   return (
@@ -192,18 +200,18 @@ export function CashierItemGroupConfiguratorDialog({ group, locale, onClose, onC
                           {line.item.saleUnit === 'kg' ? (
                             <TextField
                               size="small"
-                              value={line.quantity || ''}
+                              value={line.quantityInput}
                               onChange={(event) => setQuantity(line.key, event.target.value)}
                               placeholder="0"
                               slotProps={{
                                 htmlInput: {
                                   inputMode: 'decimal',
-                                  'aria-label': `${line.label} ${copy.kilogramUnit}`,
+                                  'aria-label': `${line.label} ${posCopy.kilogramUnit}`,
                                 },
                               }}
                               sx={{ width: 104, '& input': { textAlign: 'center', fontWeight: 850 } }}
                               InputProps={{
-                                endAdornment: <Typography variant="caption">{copy.kilogramUnit}</Typography>,
+                                endAdornment: <Typography variant="caption">{posCopy.kilogramUnit}</Typography>,
                               }}
                             />
                           ) : (
@@ -280,8 +288,12 @@ export function CashierItemGroupConfiguratorDialog({ group, locale, onClose, onC
             const key = `${customizing.memberId}:${selectionKey(selections)}`;
             setLines((current) => {
               const existing = current.find((line) => line.key === key);
-              if (existing)
-                return current.map((line) => (line.key === key ? { ...line, quantity: line.quantity + 1 } : line));
+              if (existing) {
+                const quantity = existing.quantity + 1;
+                return current.map((line) =>
+                  line.key === key ? { ...line, quantity, quantityInput: String(quantity) } : line,
+                );
+              }
               return [
                 ...current,
                 {
@@ -289,6 +301,7 @@ export function CashierItemGroupConfiguratorDialog({ group, locale, onClose, onC
                   memberId: customizing.memberId,
                   item,
                   quantity: 1,
+                  quantityInput: '1',
                   selections,
                   label: selectionLabel(item, selections),
                 },
@@ -322,7 +335,15 @@ function createLine(
   selections: PosModifierSelection[],
   label: string,
 ): InternalLine {
-  return { key: `${memberId}:${selectionKey(selections)}`, memberId, item, selections, label, quantity: 0 };
+  return {
+    key: `${memberId}:${selectionKey(selections)}`,
+    memberId,
+    item,
+    selections,
+    label,
+    quantity: 0,
+    quantityInput: '',
+  };
 }
 
 function selectionKey(selections: PosModifierSelection[]) {

@@ -7,5 +7,6 @@ export * from './PosOrderChannelSegment';
 export * from './PosCartItemGroups';
 export * from './PosSectionTabs';
 export * from './PosSettingsMenu';
+export * from './PosServicePriceDialog';
 export * from './PosProductConfiguratorDialog';
 export * from './PosWeightedItemDialog';

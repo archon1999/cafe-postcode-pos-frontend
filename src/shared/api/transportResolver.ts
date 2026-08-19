@@ -1,31 +1,27 @@
-import axios from 'axios';
-
 import { persistSession, readStoredSession } from 'modules/auth/data-access/storage/session.storage';
 import type { PosRestaurantContext } from 'modules/auth/domain';
 
-import { resolveRemoteApiBaseUrl } from './apiUrl';
+import { apiPostRemote } from './client';
 import {
   DEFAULT_EDGE_ORIGIN,
   isLoopbackEdgeOrigin,
   normalizeEdgeOrigin,
   persistTransportConnection,
+  readLegacyEdgeMigrationCredential,
+  readOrCreateEdgeTerminalIdentity,
   readTransportConnection,
   type PosTransportConnection,
   type PosTransportMode,
 } from './edgeConnection';
+import { ensureLocalAgentSecureChannel, readBoundedJSONResponse, type LocalAgentTrust } from './edgeSecureChannel';
 
-const TERMINAL_ID_KEY = 'cafe-pos.terminal-id';
 export const LOCAL_AGENT_PROTOCOL_VERSION = 1;
 
 type Coordinator = NonNullable<PosRestaurantContext['coordinator']>;
-type HealthResponse = { restaurantId?: string; backendOnline?: boolean; protocolVersion?: number };
-type StatusResponse = {
-  status?: { agent?: { protocolVersion?: number }; backend?: { online?: boolean }; sync?: { schemaVersion?: number } };
-};
-type EdgeCandidate = { origin: string; token?: string };
+type HealthResponse = { protocolVersion?: number };
+type EdgeCandidate = { origin: string; trust?: LocalAgentTrust; secureChannel?: boolean };
 type ProbeResult =
   | { status: 'selected'; connection: PosTransportConnection }
-  | { status: 'identity-mismatch' }
   | { status: 'incompatible'; protocolVersion: number }
   | { status: 'unavailable' };
 
@@ -52,21 +48,10 @@ function safeNormalizeEdgeOrigin(value: unknown) {
 }
 
 function terminalIdentity() {
-  let id = localStorage.getItem(TERMINAL_ID_KEY)?.trim() || '';
-  if (!id) {
-    id = `pos-${globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`}`;
-    localStorage.setItem(TERMINAL_ID_KEY, id);
-  }
-  return { terminalId: id, terminalName: navigator.userAgent.includes('Windows') ? 'Windows POS' : 'POS terminal' };
+  return readOrCreateEdgeTerminalIdentity();
 }
 
-async function edgeFetch<T>(
-  origin: string,
-  token: string | undefined,
-  path: string,
-  init?: RequestInit,
-  timeoutMs = 2_500,
-): Promise<T> {
+async function edgeFetch<T>(origin: string, path: string, init?: RequestInit, timeoutMs = 2_500): Promise<T> {
   const controller = new AbortController();
   const timeout = globalThis.setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -76,47 +61,34 @@ async function edgeFetch<T>(
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/json',
-        ...(token ? { 'X-Edge-Token': token } : {}),
         ...init?.headers,
       },
     });
     if (!response.ok) throw new Error(`Edge HTTP ${response.status}`);
-    return (await response.json()) as T;
+    return await readBoundedJSONResponse<T>(response, 64 * 1024);
   } finally {
     globalThis.clearTimeout(timeout);
   }
 }
 
-async function probe(origin: string, token: string | undefined, restaurantId: string): Promise<ProbeResult> {
+async function probe(origin: string, restaurantId: string, trust?: LocalAgentTrust): Promise<ProbeResult> {
   try {
-    const health = await edgeFetch<HealthResponse>(origin, token, '/health');
-    if (health.restaurantId !== restaurantId) return { status: 'identity-mismatch' };
+    const health = await edgeFetch<HealthResponse>(origin, '/health');
     const protocolVersion = health.protocolVersion ?? LOCAL_AGENT_PROTOCOL_VERSION;
     if (!Number.isInteger(protocolVersion) || protocolVersion !== LOCAL_AGENT_PROTOCOL_VERSION) {
       return { status: 'incompatible', protocolVersion };
     }
-    let backendOnline = health.backendOnline;
-    if (typeof backendOnline !== 'boolean') {
-      // Compatibility with agents released before the lightweight health signal.
-      const system = await edgeFetch<StatusResponse>(origin, token, '/v1/system/status', undefined, 7_000);
-      const statusProtocolVersion = system.status?.agent?.protocolVersion;
-      if (
-        statusProtocolVersion !== undefined &&
-        (!Number.isInteger(statusProtocolVersion) || statusProtocolVersion !== LOCAL_AGENT_PROTOCOL_VERSION)
-      ) {
-        return { status: 'incompatible', protocolVersion: statusProtocolVersion };
-      }
-      backendOnline = system.status?.backend?.online !== false;
-    }
+    if (!(await ensureLocalAgentSecureChannel(origin, readLegacyEdgeMigrationCredential(), true, trust, restaurantId)))
+      return { status: 'unavailable' };
     return {
       status: 'selected',
       connection: {
         mode: isLoopbackEdgeOrigin(origin) ? 'local' : 'router',
         restaurantId,
         origin: normalizeEdgeOrigin(origin),
-        ...(token ? { token } : {}),
+        secureChannel: true,
         protocolVersion,
-        backendOnline,
+        backendOnline: true,
         selectedAt: new Date().toISOString(),
       },
     };
@@ -125,34 +97,56 @@ async function probe(origin: string, token: string | undefined, restaurantId: st
   }
 }
 
+function coordinatorTrust(coordinator?: Coordinator | null): LocalAgentTrust | undefined {
+  if (
+    !coordinator?.restaurantId ||
+    !coordinator.agentDeviceId ||
+    coordinator.agentSigningPublicKeyAlgorithm !== 'ED25519' ||
+    !coordinator.agentSigningPublicKey ||
+    !/^[0-9a-f]{64}$/i.test(coordinator.agentSigningPublicKeyFingerprint || '')
+  ) {
+    return undefined;
+  }
+  return {
+    restaurantId: coordinator.restaurantId,
+    agentDeviceId: coordinator.agentDeviceId,
+    agentSigningPublicKeyAlgorithm: 'ED25519',
+    agentSigningPublicKey: coordinator.agentSigningPublicKey,
+    agentSigningPublicKeyFingerprint: coordinator.agentSigningPublicKeyFingerprint!,
+  };
+}
+
 function orderedEdgeCandidates(coordinator?: Coordinator | null) {
   const current = readTransportConnection();
   const candidates: EdgeCandidate[] = [{ origin: DEFAULT_EDGE_ORIGIN }];
 
   if (current && current.mode !== 'remote' && current.origin && current.origin !== DEFAULT_EDGE_ORIGIN) {
-    candidates.push({ origin: current.origin, token: current.token });
+    candidates.push({ origin: current.origin, secureChannel: current.secureChannel });
   }
 
-  if (coordinator?.edgeToken) {
+  if (coordinator) {
+    const trust = coordinatorTrust(coordinator);
     for (const origin of coordinator.coordinatorUrls || []) {
       const normalizedOrigin = safeNormalizeEdgeOrigin(origin);
       if (normalizedOrigin && normalizedOrigin !== DEFAULT_EDGE_ORIGIN) {
-        candidates.push({ origin: normalizedOrigin, token: coordinator.edgeToken });
+        candidates.push({ origin: normalizedOrigin, trust });
       }
     }
-    candidates.push({ origin: DEFAULT_EDGE_ORIGIN, token: coordinator.edgeToken });
-  }
-
-  if (current && current.mode !== 'remote' && current.origin && current.token) {
-    candidates.push({ origin: current.origin, token: current.token });
+    candidates.push({ origin: DEFAULT_EDGE_ORIGIN, trust });
   }
 
   const unique = new Set<string>();
   return candidates.filter((candidate) => {
     const origin = safeNormalizeEdgeOrigin(candidate.origin);
     if (!origin) return false;
-    if (!candidate.token && !isLoopbackEdgeOrigin(origin)) return false;
-    const key = `${origin}|${candidate.token || ''}`;
+    if (
+      !candidate.trust &&
+      !candidate.secureChannel &&
+      !readLegacyEdgeMigrationCredential() &&
+      !isLoopbackEdgeOrigin(origin)
+    )
+      return false;
+    const key = `${origin}|${candidate.trust?.agentDeviceId || ''}|${candidate.secureChannel ? 'secure' : ''}`;
     if (unique.has(key)) return false;
     unique.add(key);
     candidate.origin = origin;
@@ -164,7 +158,7 @@ async function selectCoordinator(restaurantId: string, coordinator?: Coordinator
   if (coordinator?.restaurantId && coordinator.restaurantId !== restaurantId) return null;
   let compatibilityError: LocalAgentCompatibilityError | null = null;
   for (const candidate of orderedEdgeCandidates(coordinator)) {
-    const result = await probe(candidate.origin, candidate.token, restaurantId);
+    const result = await probe(candidate.origin, restaurantId, candidate.trust);
     if (result.status === 'selected') return result.connection;
     if (result.status === 'incompatible') {
       compatibilityError = new LocalAgentCompatibilityError(result.protocolVersion);
@@ -172,59 +166,6 @@ async function selectCoordinator(restaurantId: string, coordinator?: Coordinator
   }
   if (compatibilityError) throw compatibilityError;
   return null;
-}
-
-async function resolveRestaurantFromLocalAgent(code: string, identity: ReturnType<typeof terminalIdentity>) {
-  let compatibilityError: LocalAgentCompatibilityError | null = null;
-  for (const candidate of orderedEdgeCandidates()) {
-    try {
-      const context = await edgeFetch<PosRestaurantContext>(
-        candidate.origin,
-        candidate.token,
-        '/v1/pos/auth/restaurant-code/',
-        { method: 'POST', body: JSON.stringify({ code, ...identity }) },
-      );
-      const result = await probe(candidate.origin, candidate.token, context.restaurantId);
-      if (result.status === 'identity-mismatch') continue;
-      if (result.status === 'incompatible') {
-        compatibilityError = new LocalAgentCompatibilityError(result.protocolVersion);
-        continue;
-      }
-      persistTransportConnection(
-        result.status === 'selected'
-          ? result.connection
-          : {
-              mode: 'local',
-              restaurantId: context.restaurantId,
-              origin: candidate.origin,
-              ...(candidate.token ? { token: candidate.token } : {}),
-              backendOnline: false,
-            },
-      );
-      return context;
-    } catch (error) {
-      if (error instanceof LocalAgentCompatibilityError) compatibilityError = error;
-      // Try the next local candidate, then the remote backend.
-    }
-  }
-  if (compatibilityError) throw compatibilityError;
-  return null;
-}
-
-export async function resolveRestaurantTransport(code: string): Promise<PosRestaurantContext> {
-  const identity = terminalIdentity();
-  const localContext = await resolveRestaurantFromLocalAgent(code, identity);
-  if (localContext) return localContext;
-
-  const response = await axios.post<PosRestaurantContext>(
-    `${resolveRemoteApiBaseUrl()}/pos/auth/restaurant-code/`,
-    { code, ...identity },
-    { timeout: 8_000 },
-  );
-  const context = response.data;
-  const edge = await selectCoordinator(context.restaurantId, context.coordinator);
-  persistTransportConnection(edge || { mode: 'remote', restaurantId: context.restaurantId, backendOnline: true });
-  return context;
 }
 
 export async function refreshTransportMode() {
@@ -235,21 +176,24 @@ export async function refreshTransportMode() {
     const session = readStoredSession();
     if (session?.token) {
       try {
-        const response = await axios.post<{ restaurantId: string; coordinator?: Coordinator | null }>(
-          `${resolveRemoteApiBaseUrl()}/pos/auth/transport/`,
+        const response = await apiPostRemote<{ restaurantId: string; coordinator?: Coordinator | null }>(
+          '/pos/auth/transport/',
           terminalIdentity(),
-          { timeout: 8_000, headers: { Authorization: `Token ${session.token}` } },
+          { timeout: 8_000 },
         );
-        if (response.data.restaurantId === current.restaurantId) {
-          next = await selectCoordinator(current.restaurantId, response.data.coordinator);
+        if (response.restaurantId === current.restaurantId) {
+          next = await selectCoordinator(current.restaurantId, response.coordinator);
         }
       } catch (error) {
         if (error instanceof LocalAgentCompatibilityError) throw error;
         next = null;
       }
     }
-  } else if (current.origin && (current.token || isLoopbackEdgeOrigin(current.origin))) {
-    const result = await probe(current.origin, current.token, current.restaurantId);
+  } else if (
+    current.origin &&
+    (current.secureChannel || readLegacyEdgeMigrationCredential() || isLoopbackEdgeOrigin(current.origin))
+  ) {
+    const result = await probe(current.origin, current.restaurantId);
     if (result.status === 'incompatible') throw new LocalAgentCompatibilityError(result.protocolVersion);
     next = result.status === 'selected' ? result.connection : null;
   }

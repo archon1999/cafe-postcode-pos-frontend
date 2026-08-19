@@ -11,7 +11,7 @@ import { getPosTableNumberLabel, getPosZoneContextLabel } from 'shared/pos/order
 import { buildServiceFeeRows } from 'shared/pos/service-fees';
 import { formatCompactMoney, formatPosItemQuantityLabel, formatTime } from 'shared/pos/utils';
 
-type CashierPayment = NonNullable<CashierOrder['payments']>[number];
+type CashierPaymentMethod = NonNullable<CashierOrder['payments']>[number]['method'];
 
 function formatPercent(value: number) {
   return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/\.?0+$/, '');
@@ -20,7 +20,6 @@ function formatPercent(value: number) {
 export function OpenChecksDetail({
   copy,
   groupedItems,
-  latestSucceededPayment,
   locale,
   onPay,
   onPrintPrecheck,
@@ -34,10 +33,10 @@ export function OpenChecksDetail({
   reprintAvailable,
   retryFiscalAvailable,
   selectedTab,
+  succeededPaymentMethod,
 }: {
   copy: ReturnType<typeof getPosCopy>;
   groupedItems: ReturnType<typeof groupCashierOrderItemsByStation>;
-  latestSucceededPayment: CashierPayment | undefined;
   locale: PosLocale;
   onPay: () => void;
   onPrintPrecheck: () => void;
@@ -51,6 +50,7 @@ export function OpenChecksDetail({
   reprintAvailable: boolean;
   retryFiscalAvailable: boolean;
   selectedTab: CashierCheckStatus;
+  succeededPaymentMethod: CashierPaymentMethod | undefined;
 }) {
   const serviceFeePercent = Number(order.serviceFeePercent ?? 0);
   const serviceFeeAmount = Number(order.serviceFee ?? 0);
@@ -135,7 +135,13 @@ export function OpenChecksDetail({
                   {copy.receiptMethod}
                 </Typography>
                 <Typography variant="body2">
-                  {latestSucceededPayment?.method === 'card' ? copy.card : copy.cash}
+                  {succeededPaymentMethod === 'mixed'
+                    ? copy.mixed
+                    : succeededPaymentMethod === 'card'
+                      ? copy.card
+                      : succeededPaymentMethod === 'qr'
+                        ? copy.qr
+                        : copy.cash}
                 </Typography>
               </Stack>
             </Stack>

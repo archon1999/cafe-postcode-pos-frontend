@@ -38,6 +38,7 @@ import { useOptimisticBuilderOrder } from 'shared/pos/useOptimisticBuilderOrder'
 import {
   PosBuilderPageSkeleton,
   PosProductConfiguratorDialog,
+  PosServicePriceDialog,
   PosSettingsMenu,
   PosWeightedItemDialog,
 } from 'shared/ui/pos-primitives';
@@ -77,6 +78,10 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
     initialSelections?: PosModifierSelection[];
   } | null>(null);
   const [weighingItem, setWeighingItem] = useState<{
+    item: WaiterMenuItem;
+    selections: PosModifierSelection[];
+  } | null>(null);
+  const [pricingService, setPricingService] = useState<{
     item: WaiterMenuItem;
     selections: PosModifierSelection[];
   } | null>(null);
@@ -137,8 +142,8 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
               order.openedBy === session?.user.id,
           )
         : orders.find((order) => order.tableSession === sessionId && !['closed', 'cancelled'].includes(order.status)),
-    addOrderItem: (orderId, menuItem, note, selectedModifiers) =>
-      waiterRepository.addOrderItem(orderId, menuItem.id, note, selectedModifiers),
+    addOrderItem: (orderId, menuItem, note, selectedModifiers, manualPrice) =>
+      waiterRepository.addOrderItem(orderId, menuItem.id, note, selectedModifiers, manualPrice),
     addOrderItems: (orderId, items) =>
       waiterRepository.addOrderItems(
         orderId,
@@ -147,6 +152,7 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
           quantity: item.quantity,
           note: item.note,
           selectedModifiers: item.selectedModifiers,
+          manualPrice: item.manualPrice,
         })),
       ),
     syncErrorMessage: copy.itemSyncFailed,
@@ -222,6 +228,10 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
           ? selectionsFromOrderModifiers(menuItem.modifierGroups, sourceItem.modifiers)
           : undefined,
       });
+      return;
+    }
+    if (menuItem.itemType === 'service') {
+      setPricingService({ item: menuItem, selections: [] });
       return;
     }
     if (menuItem.saleUnit === 'kg') {
@@ -444,12 +454,25 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
           }}
           onClose={() => setConfiguringItem(null)}
           onConfirm={(menuItem, selections) => {
-            if (menuItem.saleUnit === 'kg') {
+            if (menuItem.itemType === 'service') {
+              setPricingService({ item: menuItem, selections });
+            } else if (menuItem.saleUnit === 'kg') {
               setWeighingItem({ item: menuItem, selections });
             } else {
               addItem(menuItem, kitchenNote, selections);
             }
             setConfiguringItem(null);
+          }}
+        />
+      ) : null}
+      {pricingService ? (
+        <PosServicePriceDialog
+          item={pricingService.item}
+          locale={locale}
+          onClose={() => setPricingService(null)}
+          onConfirm={(manualPrice) => {
+            addItem(pricingService.item, kitchenNote, pricingService.selections, manualPrice);
+            setPricingService(null);
           }}
         />
       ) : null}

@@ -78,11 +78,13 @@ class WaiterRepositoryImpl implements WaiterRepository {
     catalogItemId: string,
     note: string,
     selectedModifiers: Parameters<WaiterRepository['addOrderItem']>[3] = [],
+    manualPrice?: number,
   ) {
     return apiPost<{ kitchenPrintDocuments?: string[] }>(`/pos/sales/orders/${orderId}/items/`, {
       catalogItem: catalogItemId,
       quantity: 1,
       note,
+      ...(manualPrice !== undefined ? { manualPrice } : {}),
       ...(selectedModifiers.length ? { selectedModifiers } : {}),
     });
   }
@@ -93,13 +95,20 @@ class WaiterRepositoryImpl implements WaiterRepository {
         catalogItem: item.catalogItemId,
         quantity: item.quantity,
         note: item.note,
+        ...(item.manualPrice !== undefined ? { manualPrice: item.manualPrice } : {}),
         ...(item.selectedModifiers?.length ? { selectedModifiers: item.selectedModifiers } : {}),
       })),
     });
   }
 
   async removeOrderItem(itemId: string) {
-    await apiDelete(`/pos/sales/orders/items/${itemId}/`);
+    const payload = await apiDelete<{ kitchenPrintDocuments?: string[]; orderRemoved?: boolean } | undefined>(
+      `/pos/sales/orders/items/${itemId}/`,
+    );
+    return {
+      kitchenPrintDocuments: payload?.kitchenPrintDocuments ?? [],
+      ...(payload?.orderRemoved ? { orderRemoved: true } : {}),
+    };
   }
 
   async updateOrderNote(orderId: string, note: string) {

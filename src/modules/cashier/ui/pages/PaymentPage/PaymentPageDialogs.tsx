@@ -22,7 +22,7 @@ type CardFailureDialogProps = {
   failureMessage: string;
   fullScreen: boolean;
   isPaymentProcessing: boolean;
-  method: PaymentMethod;
+  failedMethod: PaymentMethod | null;
   open: boolean;
   onClose: () => void;
   onCopyDebug: () => void;
@@ -36,7 +36,7 @@ export function CardFailureDialog({
   failureMessage,
   fullScreen,
   isPaymentProcessing,
-  method,
+  failedMethod,
   open,
   onClose,
   onCopyDebug,
@@ -87,7 +87,7 @@ export function CardFailureDialog({
         <Button variant="contained" onClick={onRetry} disabled={isPaymentProcessing}>
           {copy.retryFiscal}
         </Button>
-        {method === 'card' ? (
+        {failedMethod === 'card' ? (
           <Button variant="contained" onClick={onManualComplete} disabled={isPaymentProcessing}>
             {copy.manualCard}
           </Button>

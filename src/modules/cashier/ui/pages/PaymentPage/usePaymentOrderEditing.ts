@@ -15,6 +15,7 @@ type PaymentOrderEditingOptions = {
   displayName?: string | null;
   isBuilderOrder: boolean;
   orderId: string | null;
+  onPrintError: (error: unknown) => void;
   renameFailedMessage: string;
   user: Parameters<typeof canAddCashierPaymentOrderItems>[0];
 };
@@ -23,6 +24,7 @@ export function usePaymentOrderEditing({
   displayName,
   isBuilderOrder,
   orderId,
+  onPrintError,
   renameFailedMessage,
   user,
 }: PaymentOrderEditingOptions) {
@@ -38,6 +40,7 @@ export function usePaymentOrderEditing({
   });
   const removeMutation = useRemoveCashierPaymentOrderItemMutation({
     orderId,
+    onPrintError,
     onSuccess: () => setRemovingItemId(null),
   });
   const renameMutation = useCashierUpdateOrderDisplayNameMutation({

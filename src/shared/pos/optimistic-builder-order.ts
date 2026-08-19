@@ -7,6 +7,7 @@ export type BuilderMenuItemLike = {
   name: string;
   prepStationName?: string | null;
   price: number | string;
+  itemType?: 'product' | 'service';
   saleUnit?: 'piece' | 'kg';
   modifierGroups?: import('./modifiers').PosModifierGroup[];
 };
@@ -48,6 +49,7 @@ export type PendingAddOperation<TMenuItem extends BuilderMenuItemLike> = {
   menuItem: TMenuItem;
   note: string;
   selectedModifiers?: PosModifierSelection[];
+  manualPrice?: number;
   quantity?: number;
   canceled: boolean;
 };
@@ -115,7 +117,8 @@ function createOptimisticItem<TMenuItem extends BuilderMenuItemLike, TItem exten
       sortOrder: index,
     }),
   );
-  const unitPrice = toMoneyNumber(operation.menuItem.price) + modifierDelta;
+  const baseUnitPrice = operation.manualPrice ?? toMoneyNumber(operation.menuItem.price);
+  const unitPrice = baseUnitPrice + modifierDelta;
 
   const quantity = Math.max(operation.menuItem.saleUnit === 'kg' ? 0.001 : 1, Number(operation.quantity ?? 1));
   return {
@@ -124,7 +127,7 @@ function createOptimisticItem<TMenuItem extends BuilderMenuItemLike, TItem exten
     catalogItemName: operation.menuItem.name,
     quantity,
     saleUnit: operation.menuItem.saleUnit ?? 'piece',
-    baseUnitPrice: toMoneyNumber(operation.menuItem.price),
+    baseUnitPrice,
     unitPrice,
     lineTotal: Math.round(unitPrice * quantity),
     status: 'new',
@@ -178,10 +181,12 @@ export function deriveOptimisticBuilderOrder<
   const legacyServiceFeePercent = legacyServiceFeeEnabled
     ? toMoneyNumber(baseOrder?.serviceFeePercent ?? defaultServiceFeePercent)
     : 0;
-  const serviceFeeComponents = (
-    configuredServiceFeeComponents ??
-    (legacyServiceFeePercent > 0 ? [{ scope: 'restaurant' as const, percent: legacyServiceFeePercent }] : [])
-  )
+  const sourceServiceFeeComponents = configuredServiceFeeComponents?.length
+    ? configuredServiceFeeComponents
+    : legacyServiceFeePercent > 0
+      ? [{ scope: 'restaurant' as const, percent: legacyServiceFeePercent }]
+      : [];
+  const serviceFeeComponents = sourceServiceFeeComponents
     .filter((component) => toMoneyNumber(component.percent) > 0)
     .map((component) => ({
       ...component,

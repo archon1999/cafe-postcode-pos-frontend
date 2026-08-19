@@ -4,10 +4,11 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
   EDGE_ORIGIN_STORAGE_KEY,
+  LEGACY_EDGE_MIGRATION_CREDENTIAL_STORAGE_KEY,
   ignoreMismatchedAgent,
   normalizeEdgeOrigin,
   persistTransportConnection,
-  readEdgeToken,
+  readLegacyEdgeMigrationCredential,
   readStoredEdgeOrigin,
   readTransportConnection,
 } from './edgeConnection';
@@ -45,13 +46,14 @@ describe('edge connection origin migration', () => {
       mode: 'router',
       restaurantId: 'restaurant-x',
       origin: 'http://192.168.1.20:18181',
-      token: 'ept_x',
+      secureChannel: true,
     });
+    window.localStorage.setItem(LEGACY_EDGE_MIGRATION_CREDENTIAL_STORAGE_KEY, 'ept_x');
 
     ignoreMismatchedAgent('restaurant-y');
 
     expect(readTransportConnection()).toMatchObject({ mode: 'remote', restaurantId: 'restaurant-y' });
     expect(readStoredEdgeOrigin()).toBe('');
-    expect(readEdgeToken()).toBe('');
+    expect(readLegacyEdgeMigrationCredential()).toBe('');
   });
 });

@@ -31,9 +31,15 @@ describe('service fee presentation', () => {
       { scope: 'table', source_name: 'VIP-1', percent: '5.00', amount: 1500 },
     ]);
 
-    expect(components[0]?.sourceName).toBe('VIP-1');
+    expect(components?.[0]?.sourceName).toBe('VIP-1');
     expect(buildServiceFeeRows(components, labels)).toEqual([
       { scope: 'table', label: 'Stol xizmati (5%)', amount: 1500 },
     ]);
+  });
+
+  it('preserves an absent component list for legacy fee fallback', () => {
+    expect(normalizeServiceFeeComponents(undefined)).toBeUndefined();
+    expect(normalizeServiceFeeComponents(null)).toBeUndefined();
+    expect(normalizeServiceFeeComponents([])).toEqual([]);
   });
 });

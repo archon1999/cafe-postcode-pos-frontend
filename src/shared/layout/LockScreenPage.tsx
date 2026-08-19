@@ -9,7 +9,7 @@ import { formatDateLabel } from '../pos/utils';
 
 export function LockScreenPage() {
   const navigate = useNavigate();
-  const { locale, session, setSession } = usePosSession();
+  const { changeUser, locale, session } = usePosSession();
   const copy = getPosCopy(locale);
   const [currentTime, setCurrentTime] = useState(() => new Date());
 
@@ -53,8 +53,7 @@ export function LockScreenPage() {
             variant="contained"
             onClick={(event) => {
               event.stopPropagation();
-              setSession(null);
-              void navigate('/pin-login', { replace: true });
+              void changeUser().then(() => navigate('/pin-login', { replace: true }));
             }}
             sx={{
               backgroundColor: 'rgba(255,255,255,0.18)',

@@ -11,6 +11,7 @@ import { normalizeServiceFeeComponents } from 'shared/pos/service-fees';
 
 type CashierMenuItemDto = CashierMenuItem & {
   image_url?: string | null;
+  item_type?: 'product' | 'service';
   sale_unit?: 'piece' | 'kg';
   modifier_groups?: Parameters<typeof mapPosModifierGroups>[0];
 };
@@ -75,6 +76,7 @@ export function mapCashierMenuCategory(dto: CashierMenuCategoryDto): CashierMenu
   const mapItem = (item: CashierMenuItemDto): CashierMenuItem => ({
     ...item,
     imageUrl: item.imageUrl ?? item.image_url ?? null,
+    itemType: item.itemType ?? item.item_type ?? 'product',
     saleUnit: item.saleUnit ?? item.sale_unit ?? 'piece',
     modifierGroups: mapPosModifierGroups(item.modifierGroups ?? item.modifier_groups),
   });

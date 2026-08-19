@@ -123,6 +123,26 @@ describe('optimistic builder order', () => {
     expect(order?.total).toBe(12000);
   });
 
+  it('uses the entered service price for optimistic totals', () => {
+    const order = deriveOptimisticBuilderOrder<TestMenuItem, TestOrderItem, TestOrder>({
+      baseOrder: undefined,
+      channel: 'takeaway',
+      defaultServiceFeePercent: 0,
+      pendingAdds: [
+        createPendingAdd({
+          menuItem: createMenuItem({ itemType: 'service', price: 0 }),
+          manualPrice: 75000,
+        }),
+      ],
+      pendingRemoves: [],
+      tempOrderId: 'temp-service-order',
+    });
+
+    expect(order?.items[0]).toMatchObject({ baseUnitPrice: 75000, unitPrice: 75000, lineTotal: 75000 });
+    expect(order?.subtotal).toBe(75000);
+    expect(order?.total).toBe(75000);
+  });
+
   it('keeps all counter channels table-less and distinct', () => {
     for (const channel of ['hall', 'takeaway', 'delivery']) {
       const order = deriveOptimisticBuilderOrder<TestMenuItem, TestOrderItem, TestOrder>({
@@ -214,6 +234,22 @@ describe('optimistic builder order', () => {
     expect(hallOrder?.vatAmount).toBe(1179);
     expect(takeawayOrder?.serviceFeePercent).toBe(0);
     expect(takeawayOrder?.total).toBe(10000);
+  });
+
+  it('falls back to the legacy percentage when the component list is empty', () => {
+    const order = deriveOptimisticBuilderOrder<TestMenuItem, TestOrderItem, TestOrder>({
+      baseOrder: createOrder({ serviceFeeEnabled: true, serviceFeePercent: 10, serviceFeeComponents: [] }),
+      channel: 'hall',
+      defaultServiceFeePercent: 0,
+      pendingAdds: [createPendingAdd({ menuItem: createMenuItem({ id: 'menu-2', price: 18000 }) })],
+      pendingRemoves: [],
+      tempOrderId: null,
+    });
+
+    expect(order?.serviceFeePercent).toBe(10);
+    expect(order?.serviceFee).toBe(3000);
+    expect(order?.total).toBe(33000);
+    expect(order?.serviceFeeComponents).toEqual([{ scope: 'restaurant', percent: 10, amount: 3000 }]);
   });
 
   it('calculates restaurant, hall, and table fees independently', () => {

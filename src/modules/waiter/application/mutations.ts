@@ -86,12 +86,18 @@ export function useAddWaiterOrderItemMutation(options: {
   });
 }
 
-export function useRemoveWaiterOrderItemMutation(options: { sessionId: string | null; onSuccess?: () => void }) {
-  const { sessionId, onSuccess } = options;
+export function useRemoveWaiterOrderItemMutation(options: {
+  sessionId: string | null;
+  onSuccess?: () => void;
+  onPrintError?: (error: unknown) => void;
+}) {
+  const { sessionId, onSuccess, onPrintError } = options;
 
   return useMutation({
     mutationFn: async (itemId: string) => {
-      await waiterRepository.removeOrderItem(itemId);
+      const result = await waiterRepository.removeOrderItem(itemId);
+      requestEdgePrintDocuments(result.kitchenPrintDocuments, onPrintError);
+      return result;
     },
     onSuccess: () => {
       invalidateQueriesInBackground([waiterKeys.orders, ...(sessionId ? [waiterKeys.sessionOrders(sessionId)] : [])]);

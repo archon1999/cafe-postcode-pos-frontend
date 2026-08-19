@@ -17,6 +17,10 @@ export type SystemHealthComponent = {
 export type EdgeSyncFailure = {
   operationId: string;
   path: string;
+  status?: 'action_required' | 'quarantined' | 'failed' | string;
+  failureClass?: string;
+  errorCode?: string;
+  resolutionHint?: string;
   lastError: string;
   responseStatus?: number;
   updatedAt?: string;
@@ -42,6 +46,11 @@ export type EdgeSystemStatus = {
     lastError?: string;
     pendingOutbox: number;
     failedOutbox: number;
+    actionRequiredOutbox?: number;
+    quarantinedOutbox?: number;
+    resolvedOutbox?: number;
+    actionRequiredOperations?: EdgeSyncFailure[];
+    quarantinedOperations?: EdgeSyncFailure[];
     failedOperations?: EdgeSyncFailure[];
     schemaVersion: number;
     restaurantId?: string;

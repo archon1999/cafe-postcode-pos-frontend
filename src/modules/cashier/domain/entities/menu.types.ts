@@ -8,6 +8,7 @@ export type CashierMenuItem = {
   kind: string;
   prepStationName?: string | null;
   price: number | string;
+  itemType?: 'product' | 'service';
   saleUnit?: 'piece' | 'kg';
   requiresMarking?: boolean;
   markingGtin?: string | null;

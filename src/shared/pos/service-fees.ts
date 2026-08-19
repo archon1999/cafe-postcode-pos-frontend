@@ -17,8 +17,10 @@ type PosServiceFeeComponentDto = PosServiceFeeComponent & { source_name?: string
 
 export function normalizeServiceFeeComponents(
   components: PosServiceFeeComponentDto[] | null | undefined,
-): PosServiceFeeComponent[] {
-  return (components ?? []).map((component) => ({
+): PosServiceFeeComponent[] | undefined {
+  if (components === null || components === undefined) return undefined;
+
+  return components.map((component) => ({
     ...component,
     sourceName: component.sourceName ?? component.source_name,
   }));

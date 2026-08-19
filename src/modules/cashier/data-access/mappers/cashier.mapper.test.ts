@@ -1,8 +1,18 @@
 import { describe, expect, it } from 'vitest';
 
-import { mapCashierOrder } from './cashier.mapper';
+import { mapCashierMenuCategory, mapCashierOrder } from './cashier.mapper';
 
 describe('mapCashierOrder', () => {
+  it('maps the backend service item type', () => {
+    const category = mapCashierMenuCategory({
+      id: 'category-1',
+      name: 'Xizmatlar',
+      items: [{ id: 'service-1', name: 'Yetkazish', kind: 'item', price: 0, item_type: 'service' }],
+    });
+
+    expect(category.items[0].itemType).toBe('service');
+  });
+
   it('maps backend snake_case order number for receipt context', () => {
     const order = mapCashierOrder({
       id: 'order-1',
@@ -36,6 +46,25 @@ describe('mapCashierOrder', () => {
     });
 
     expect(order).toMatchObject({ tableNumber: 23, zoneName: 'VIP kabina', showZoneName: true });
+  });
+
+  it('preserves missing service fee components for legacy percentage fallback', () => {
+    const order = mapCashierOrder({
+      id: 'legacy-fee-order',
+      order_number: 22,
+      status: 'open',
+      subtotal: 10000,
+      serviceFee: 1000,
+      serviceFeeEnabled: true,
+      serviceFeePercent: 10,
+      total: 11000,
+      note: '',
+      channel: 'hall',
+      items: [],
+    });
+
+    expect(order.serviceFeePercent).toBe(10);
+    expect(order.serviceFeeComponents).toBeUndefined();
   });
 
   it('maps weighted quantities and cashier total override fields', () => {

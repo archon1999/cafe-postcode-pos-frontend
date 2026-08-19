@@ -49,6 +49,26 @@ const group: CashierMenuItemGroup = {
   })),
 };
 
+const weightedGroup: CashierMenuItemGroup = {
+  id: 'weighted-products',
+  name: 'Tortib sotiladigan mahsulotlar',
+  sortOrder: 1,
+  members: [
+    {
+      id: 'member-fish',
+      variantName: 'Baliq',
+      sortOrder: 0,
+      item: {
+        id: 'fish',
+        name: 'Baliq',
+        kind: 'food',
+        price: 100_000,
+        saleUnit: 'kg',
+      },
+    },
+  ],
+};
+
 describe('CashierItemGroupConfiguratorDialog', () => {
   it('collects quantities for several sizes and exact modifier configurations', () => {
     const onConfirm = vi.fn();
@@ -72,6 +92,35 @@ describe('CashierItemGroupConfiguratorDialog', () => {
     expect(onConfirm).toHaveBeenCalledWith([
       expect.objectContaining({ item: expect.objectContaining({ id: 'pizza-S' }), quantity: 2 }),
       expect.objectContaining({ item: expect.objectContaining({ id: 'pizza-M' }), quantity: 1 }),
+    ]);
+  });
+
+  it('preserves intermediate decimal text and confirms a fractional kilogram quantity', () => {
+    const onConfirm = vi.fn();
+    render(
+      <CashierItemGroupConfiguratorDialog
+        group={weightedGroup}
+        locale="uz"
+        copy={copy}
+        onClose={vi.fn()}
+        onConfirm={onConfirm}
+      />,
+    );
+
+    const input = screen.getByRole('textbox', { name: /oddiy kg/i }) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: '1.' } });
+    expect(input.value).toBe('1.');
+
+    fireEvent.change(input, { target: { value: '0' } });
+    expect(input.value).toBe('0');
+    fireEvent.change(input, { target: { value: '0.' } });
+    expect(input.value).toBe('0.');
+    fireEvent.change(input, { target: { value: '0.125' } });
+    expect(input.value).toBe('0.125');
+
+    fireEvent.click(screen.getByRole('button', { name: /1 tur qo‘shish/i }));
+    expect(onConfirm).toHaveBeenCalledWith([
+      expect.objectContaining({ item: expect.objectContaining({ id: 'fish' }), quantity: 0.125 }),
     ]);
   });
 });

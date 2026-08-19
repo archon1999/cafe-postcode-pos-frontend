@@ -15,6 +15,7 @@ import { normalizeServiceFeeComponents } from 'shared/pos/service-fees';
 
 type WaiterMenuItemDto = WaiterMenuItem & {
   image_url?: string | null;
+  item_type?: 'product' | 'service';
   sale_unit?: 'piece' | 'kg';
   modifier_groups?: Parameters<typeof mapPosModifierGroups>[0];
 };
@@ -73,6 +74,7 @@ export function mapWaiterMenuCategory(dto: WaiterMenuCategoryDto): WaiterMenuCat
     items: dto.items.map((item) => ({
       ...item,
       imageUrl: item.imageUrl ?? item.image_url ?? null,
+      itemType: item.itemType ?? item.item_type ?? 'product',
       saleUnit: item.saleUnit ?? item.sale_unit ?? 'piece',
       modifierGroups: mapPosModifierGroups(item.modifierGroups ?? item.modifier_groups),
     })),

@@ -1,12 +1,16 @@
 import type { ReactElement } from 'react';
-import { Navigate, createBrowserRouter, useLocation } from 'react-router';
+import { Navigate, createBrowserRouter } from 'react-router';
 
 import {
   LoginPage,
+  DevicePairingPage,
+  DeviceRevokedPage,
   PosAuthenticatedLayout,
-  PosPublicOnlyRoute,
-  PosRestaurantPublicOnlyRoute,
-  RestaurantLoginPage,
+  PosDevicePairingRoute,
+  PosEmployeeRoute,
+  PosLockRoute,
+  PosPinRoute,
+  PosRevokedDeviceRoute,
   canAccessTakeawayBuilder,
   canAccessCashierPayments,
   canCreateCashExpense,
@@ -18,7 +22,7 @@ import {
   usePosSession,
 } from 'modules/auth';
 import { CashExpensesPage, CashierBuilderPage, CashierShiftPage, OpenChecksPage, PaymentPage } from 'modules/cashier';
-import { KitchenMonitorPage, KitchenQueuePage, TvMonitorPage, TvMonitorPairingClaimPage } from 'modules/kitchen';
+import { KitchenMonitorPage, KitchenQueuePage, TvMonitorPage } from 'modules/kitchen';
 import { MenuCatalogPage } from 'modules/menu-catalog';
 import { HallsPage, TableSessionPage } from 'modules/waiter';
 
@@ -45,70 +49,48 @@ function PosAccessGuard({
   return children;
 }
 
-function PosMonitorRestaurantGuard({ children }: { children: ReactElement }) {
-  const location = useLocation();
-  const { restaurantContext } = usePosSession();
-
-  if (!restaurantContext) {
-    const next = encodeURIComponent(`${location.pathname}${location.search}`);
-    return <Navigate to={`/restaurant-login?next=${next}`} replace />;
-  }
-
-  return children;
-}
-
-function PosEmployeeGuard({ children }: { children: ReactElement }) {
-  const location = useLocation();
-  const { isAuthenticated, restaurantContext } = usePosSession();
-  const next = encodeURIComponent(`${location.pathname}${location.search}`);
-
-  if (!restaurantContext) return <Navigate to={`/restaurant-login?next=${next}`} replace />;
-  if (!isAuthenticated) return <Navigate to={`/pin-login?next=${next}`} replace />;
-  return children;
-}
-
 export const posRouter = createBrowserRouter([
   {
-    path: '/restaurant-login',
+    path: '/device-pairing',
     element: (
-      <PosRestaurantPublicOnlyRoute>
-        <RestaurantLoginPage />
-      </PosRestaurantPublicOnlyRoute>
+      <PosDevicePairingRoute>
+        <DevicePairingPage />
+      </PosDevicePairingRoute>
+    ),
+  },
+  {
+    path: '/device-revoked',
+    element: (
+      <PosRevokedDeviceRoute>
+        <DeviceRevokedPage />
+      </PosRevokedDeviceRoute>
     ),
   },
   {
     path: '/pin-login',
     element: (
-      <PosPublicOnlyRoute>
+      <PosPinRoute>
         <LoginPage />
-      </PosPublicOnlyRoute>
+      </PosPinRoute>
     ),
   },
   {
     path: '/monitor/queue',
     element: (
-      <PosMonitorRestaurantGuard>
+      <PosEmployeeRoute>
         <KitchenMonitorPage />
-      </PosMonitorRestaurantGuard>
+      </PosEmployeeRoute>
     ),
   },
   {
     path: '/monitoring/queue',
     element: (
-      <PosMonitorRestaurantGuard>
+      <PosEmployeeRoute>
         <KitchenMonitorPage />
-      </PosMonitorRestaurantGuard>
+      </PosEmployeeRoute>
     ),
   },
   { path: '/tv', element: <TvMonitorPage /> },
-  {
-    path: '/tv/pair/:pairingId',
-    element: (
-      <PosEmployeeGuard>
-        <TvMonitorPairingClaimPage />
-      </PosEmployeeGuard>
-    ),
-  },
   {
     path: '/',
     element: <PosAuthenticatedLayout />,
@@ -182,8 +164,15 @@ export const posRouter = createBrowserRouter([
           </PosAccessGuard>
         ),
       },
-      { path: 'lock-screen', element: <LockScreenPage /> },
     ],
+  },
+  {
+    path: '/lock-screen',
+    element: (
+      <PosLockRoute>
+        <LockScreenPage />
+      </PosLockRoute>
+    ),
   },
   { path: '*', element: <Navigate to="/" replace /> },
 ]);

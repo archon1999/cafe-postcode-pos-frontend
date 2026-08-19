@@ -4,7 +4,7 @@ import axios from 'axios';
 import QRCode from 'qrcode';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { kitchenRepository, persistTvMonitorDevice, readTvMonitorDevice } from 'modules/kitchen/data-access';
+import { kitchenRepository } from 'modules/kitchen/data-access';
 import type {
   KitchenMonitorQueue,
   TvMonitorDeviceRegistration,
@@ -78,9 +78,14 @@ function playUnlockAudio(audio: HTMLAudioElement) {
 }
 
 function requiresPairing(error: unknown) {
-  return (
-    axios.isAxiosError(error) && error.response?.status === 401 && error.response.data?.code === 'tv_pairing_required'
-  );
+  if (!axios.isAxiosError(error) || error.response?.status !== 401) return false;
+  return [
+    'device_required',
+    'device_revoked',
+    'device_lease_expired',
+    'device_proof_invalid',
+    'tv_pairing_required',
+  ].includes(String(error.response.data?.code || ''));
 }
 
 function describeTvMonitorError(error: unknown) {
@@ -93,8 +98,11 @@ function describeTvMonitorError(error: unknown) {
 }
 
 export function TvMonitorPage() {
-  const [device, setDevice] = useState<TvMonitorDeviceRegistration | null>(() => readTvMonitorDevice());
+  const [device, setDevice] = useState<TvMonitorDeviceRegistration | null>(null);
   const [pairing, setPairing] = useState<TvMonitorPairingSession | null>(null);
+  const [isBootstrapping, setIsBootstrapping] = useState(true);
+  const [autoPairingEnabled, setAutoPairingEnabled] = useState(false);
+  const [bootstrapFailed, setBootstrapFailed] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [monitorData, setMonitorData] = useState<KitchenMonitorQueue>(EMPTY_QUEUE);
   const [pairingError, setPairingError] = useState('');
@@ -107,13 +115,14 @@ export function TvMonitorPage() {
   const [audioUnlockError, setAudioUnlockError] = useState('');
   const [diagnostics, setDiagnostics] = useState<TvMonitorDiagnosticSnapshot>(INITIAL_DIAGNOSTICS);
   const pairingRequestRef = useRef<Promise<TvMonitorPairingSession> | null>(null);
+  const bootstrapRequestRef = useRef<ReturnType<typeof kitchenRepository.bootstrapTvMonitor> | null>(null);
   const lastQueueDiagnosticRef = useRef({ signature: '', reportedAt: 0 });
 
   const reportDiagnostic = useCallback(
     (event: TvMonitorDiagnosticEvent, message = '', context: Record<string, unknown> = {}) => {
       if (!device) return;
       void kitchenRepository
-        .reportTvMonitorDiagnostic(device.token, {
+        .reportTvMonitorDiagnostic({
           event,
           message,
           clientTime: new Date().toISOString(),
@@ -133,13 +142,14 @@ export function TvMonitorPage() {
   );
 
   const forgetDevice = useCallback(() => {
-    persistTvMonitorDevice(null);
+    setAutoPairingEnabled(false);
     setDevice(null);
     setPairing(null);
     setMonitorData(EMPTY_QUEUE);
     setDiagnostics(INITIAL_DIAGNOSTICS);
     setAudioUnlockState(window.CafePostcodeTv ? 'ready' : 'required');
     setAudioUnlockError('');
+    void kitchenRepository.forgetTvMonitorDevice().finally(() => setAutoPairingEnabled(true));
   }, []);
 
   const handleEnableAudio = useCallback(async () => {
@@ -191,19 +201,70 @@ export function TvMonitorPage() {
     try {
       const nextPairing = await request;
       setPairing(nextPairing);
-      const claimUrl = new URL(`/tv/pair/${nextPairing.id}`, window.location.origin);
-      claimUrl.searchParams.set('token', nextPairing.claimToken);
-      setQrDataUrl(await QRCode.toDataURL(claimUrl.toString(), { width: 560, margin: 2, errorCorrectionLevel: 'M' }));
     } catch {
+      setAutoPairingEnabled(false);
       setPairingError('QR yaratib bo‘lmadi. Internet aloqasini tekshiring.');
     } finally {
       pairingRequestRef.current = null;
     }
   }, []);
 
+  const bootstrapTvMonitor = useCallback(async () => {
+    setIsBootstrapping(true);
+    setBootstrapFailed(false);
+    setPairingError('');
+    const request = bootstrapRequestRef.current ?? kitchenRepository.bootstrapTvMonitor();
+    bootstrapRequestRef.current = request;
+    try {
+      const result = await request;
+      if (result.status === 'paired') {
+        setDevice(result.device);
+        setPairing(null);
+        setAutoPairingEnabled(false);
+      } else if (result.status === 'pairing') {
+        setPairing(result.pairing);
+        setAutoPairingEnabled(false);
+      } else {
+        setPairing(null);
+        setAutoPairingEnabled(true);
+      }
+    } catch {
+      setBootstrapFailed(true);
+      setAutoPairingEnabled(false);
+      setPairingError('Mavjud TV ulanishini tekshirib bo‘lmadi. Internet aloqasini tekshiring.');
+    } finally {
+      bootstrapRequestRef.current = null;
+      setIsBootstrapping(false);
+    }
+  }, []);
+
   useEffect(() => {
-    if (!device && !pairing && !pairingRequestRef.current) void createPairing();
-  }, [createPairing, device, pairing]);
+    void bootstrapTvMonitor();
+  }, [bootstrapTvMonitor]);
+
+  useEffect(() => {
+    if (!pairing) {
+      setQrDataUrl('');
+      return;
+    }
+    let active = true;
+    void QRCode.toDataURL(pairing.claimUrl, { width: 560, margin: 2, errorCorrectionLevel: 'M' })
+      .then((value) => {
+        if (active) setQrDataUrl(value);
+      })
+      .catch(() => {
+        if (active) setPairingError('QR yaratib bo‘lmadi. Sahifani yangilang.');
+      });
+    return () => {
+      active = false;
+    };
+  }, [pairing]);
+
+  useEffect(() => {
+    if (!isBootstrapping && autoPairingEnabled && !device && !pairing && !pairingRequestRef.current) {
+      void createPairing();
+    }
+  }, [autoPairingEnabled, createPairing, device, isBootstrapping, pairing]);
 
   useEffect(() => {
     if (device || !pairing) return;
@@ -212,20 +273,36 @@ export function TvMonitorPage() {
     const checkPairing = async () => {
       try {
         const status = await kitchenRepository.getTvMonitorPairingStatus(pairing.id, pairing.pollToken);
-        if (!active || status.status !== 'paired') return;
+        if (!active) return;
+        if (status.status === 'rejected') {
+          setPairing(null);
+          setAutoPairingEnabled(false);
+          setPairingError('Ulash so‘rovi rad etildi. Qayta urinish uchun yangi QR yarating.');
+          return;
+        }
+        if (status.status === 'expired') {
+          setPairing(null);
+          setAutoPairingEnabled(true);
+          return;
+        }
+        if (status.status !== 'paired') return;
 
         const registration: TvMonitorDeviceRegistration = {
-          token: pairing.pollToken,
+          deviceId: status.device.id,
+          deviceStatus: status.device.status,
+          leaseExpiresAt: status.device.leaseExpiresAt,
           restaurantId: status.restaurantContext.restaurantId,
           restaurantName: status.restaurantContext.restaurantName,
           posMonitorVariant: status.restaurantContext.posMonitorVariant,
         };
-        persistTvMonitorDevice(registration);
         setDevice(registration);
+        setPairing(null);
+        setAutoPairingEnabled(false);
       } catch (error) {
         if (!active) return;
         if (axios.isAxiosError(error) && error.response?.status === 410) {
           setPairing(null);
+          setAutoPairingEnabled(true);
         }
       }
     };
@@ -279,7 +356,7 @@ export function TvMonitorPage() {
     const fetchQueue = async () => {
       setDiagnostics((current) => ({ ...current, stage: current.lastSuccessAt ? current.stage : 'loading' }));
       try {
-        const queue = await kitchenRepository.getTvMonitorQueue(device.token);
+        const queue = await kitchenRepository.getTvMonitorQueue();
         if (active) {
           const succeededAt = new Date().toISOString();
           setMonitorData(queue);
@@ -383,7 +460,7 @@ export function TvMonitorPage() {
             TV’ni restoranga ulang
           </Typography>
           <Typography sx={{ mt: 1.5, color: alpha('#f5f7fb', 0.68), fontSize: { xs: 18, md: 24, xl: 30 } }}>
-            Avtorizatsiyadan o‘tgan xodim telefondan QR-kodni skanerlaydi
+            Superadmin boshqaruv panelidan QR-kodni skanerlang
           </Typography>
         </Box>
 
@@ -420,13 +497,27 @@ export function TvMonitorPage() {
             <Typography color="error.light" sx={{ fontSize: { xs: 17, md: 21, xl: 24 } }}>
               {pairingError}
             </Typography>
-            <Button variant="contained" size="large" onClick={() => void createPairing()}>
+            <Button
+              variant="contained"
+              size="large"
+              onClick={() => {
+                if (bootstrapFailed) {
+                  void bootstrapTvMonitor();
+                  return;
+                }
+                setAutoPairingEnabled(true);
+                void createPairing();
+              }}>
               Qayta urinish
             </Button>
           </Stack>
         ) : (
           <Typography sx={{ color: alpha('#f5f7fb', 0.5), fontSize: { xs: 14, md: 17, xl: 20 } }}>
-            Bog‘langandan keyin TV bu restoranni eslab qoladi
+            {isBootstrapping
+              ? 'Mavjud xavfsiz ulanish tekshirilmoqda…'
+              : pairing
+                ? `Tasdiqlash kodi: ${pairing.displayCode}`
+                : 'Bog‘langandan keyin TV bu restoranni eslab qoladi'}
           </Typography>
         )}
       </Stack>

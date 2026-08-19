@@ -23,6 +23,7 @@ export type PosTariff = {
 export type PosSessionPayload = {
   token: string;
   user: PosUser;
+  lockedAt?: string | null;
   restaurantAccessActive?: boolean;
   roleCodes?: string[];
   tariff?: PosTariff;
@@ -30,12 +31,39 @@ export type PosSessionPayload = {
 };
 
 export type PosLoginPayload = {
-  restaurantId: string;
   pin: string;
 };
 
-export type PosRestaurantCodePayload = {
-  code: string;
+export type PosUnlockPayload = PosLoginPayload;
+
+export type PosAuthState = 'UNPAIRED' | 'PAIRING' | 'PAIRED_NO_USER' | 'AUTHENTICATED' | 'LOCKED' | 'REVOKED';
+
+export type PosDeviceStatus = 'ACTIVE' | 'REVOKED';
+
+export type PosDevice = {
+  id: string;
+  type: 'POS_TERMINAL';
+  name: string;
+  status: PosDeviceStatus;
+  leaseExpiresAt: string;
+  pairedAt?: string;
+  lastSeenAt?: string | null;
+};
+
+export type PosDevicePairingStatus = 'PENDING' | 'PAIRED' | 'REJECTED' | 'EXPIRED';
+
+export type PosDevicePairing = {
+  id: string;
+  pollToken: string;
+  claimToken: string;
+  displayCode: string;
+  expiresAt: string;
+  status: PosDevicePairingStatus;
+};
+
+export type PosDeviceBinding = {
+  device: PosDevice;
+  restaurantContext: PosRestaurantContext;
 };
 
 export type PosRestaurantContext = {
@@ -54,17 +82,31 @@ export type PosRestaurantContext = {
   paymentTotalMode?: 'fixed' | 'cashier_editable';
   coordinator?: {
     restaurantId: string;
-    edgeToken: string;
     coordinatorUrls?: string[];
+    agentDeviceId?: string;
+    agentSigningPublicKeyAlgorithm?: 'ED25519';
+    agentSigningPublicKey?: string;
+    agentSigningPublicKeyFingerprint?: string;
   } | null;
 };
 
 export type PosSessionContextValue = {
+  authState: PosAuthState;
+  isBootstrapping: boolean;
+  device: PosDevice | null;
+  pairing: PosDevicePairing | null;
   session: PosSessionPayload | null;
   setSession: (value: PosSessionPayload | null) => void;
   isAuthenticated: boolean;
   restaurantContext: PosRestaurantContext | null;
-  setRestaurantContext: (value: PosRestaurantContext | null) => void;
+  startPairing: () => Promise<void>;
+  refreshPairing: () => Promise<void>;
+  cancelPairing: () => Promise<void>;
+  lockSession: (reason?: 'idle' | 'manual') => Promise<void>;
+  unlockSession: (pin: string) => Promise<PosSessionPayload>;
+  changeUser: () => Promise<void>;
+  retryDeviceConnection: () => Promise<void>;
+  forgetRevokedDevice: () => Promise<void>;
   themeMode: PosThemeMode;
   setThemeMode: (mode: PosThemeMode) => void;
   themeColor: PosThemeColor;

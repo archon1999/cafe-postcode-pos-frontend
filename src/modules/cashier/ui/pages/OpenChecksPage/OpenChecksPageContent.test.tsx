@@ -355,6 +355,177 @@ describe('OpenChecksPageContent', () => {
     });
   });
 
+  it('reprints an existing legacy local receipt document without requesting the backend', () => {
+    openOrdersMock.mockReturnValue([]);
+    closedOrdersMock.mockReturnValue([
+      {
+        id: 'order-local',
+        orderNumber: 107,
+        status: 'closed',
+        subtotal: 22000,
+        serviceFee: 0,
+        total: 22000,
+        channel: 'takeaway',
+        items: [],
+        guestCount: 1,
+        payments: [{ id: 'payment-local', amount: 22000, status: 'succeeded', method: 'cash' }],
+        receipts: [
+          {
+            id: 'receipt-local',
+            kind: 'plain',
+            status: 'created',
+            printDocument: 'document-local',
+          },
+        ],
+      },
+    ]);
+
+    render(<OpenChecksPageContent />);
+    fireEvent.click(screen.getByRole('button', { name: /Oddiy cheklar/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Oddiy chekni qayta chiqarish' }));
+
+    expect(requestEdgePrintDocumentsMock).toHaveBeenCalledWith(['document-local'], expect.any(Function));
+    expect(ensurePrintDocumentMutateAsyncMock).not.toHaveBeenCalled();
+  });
+
+  it('uses the newest succeeded payment for actions and displays all succeeded tenders as mixed', async () => {
+    openOrdersMock.mockReturnValue([]);
+    refundMutateAsyncMock.mockResolvedValue({});
+    closedOrdersMock.mockReturnValue([
+      {
+        id: 'order-split-newest-first',
+        orderNumber: 111,
+        status: 'closed',
+        subtotal: 32000,
+        serviceFee: 0,
+        total: 32000,
+        note: '',
+        channel: 'hall',
+        items: [],
+        guestCount: 1,
+        openedByName: 'Ali',
+        createdAt: '2026-08-15T10:00:00Z',
+        closedAt: '2026-08-15T10:04:00Z',
+        payments: [
+          {
+            id: 'payment-card-failed',
+            amount: 12000,
+            status: 'failed',
+            method: 'card',
+            paidAt: '2026-08-15T10:03:00Z',
+          },
+          {
+            id: 'payment-card-newest-succeeded',
+            amount: 12000,
+            status: 'succeeded',
+            method: 'card',
+            createdAt: '2026-08-15T10:02:00Z',
+          },
+          {
+            id: 'payment-cash-oldest-succeeded',
+            amount: 20000,
+            status: 'succeeded',
+            method: 'cash',
+            paidAt: '2026-08-15T10:01:00Z',
+          },
+        ],
+        receipts: [],
+      },
+    ]);
+
+    render(<OpenChecksPageContent />);
+    fireEvent.click(screen.getByRole('button', { name: /Oddiy cheklar/ }));
+
+    expect(screen.getByText('Aralash')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Oddiy chekni qayta chiqarish' }));
+    fireEvent.click(screen.getByRole('button', { name: "To'lovni qaytarish" }));
+    fireEvent.click(screen.getByRole('button', { name: 'Chek chiqarish' }));
+
+    await waitFor(() => {
+      expect(ensurePrintDocumentMutateAsyncMock).toHaveBeenCalledWith('payment-card-newest-succeeded');
+      expect(refundMutateAsyncMock).toHaveBeenCalledWith({ paymentId: 'payment-card-newest-succeeded' });
+      expect(retryFiscalMutateMock).toHaveBeenCalledWith('payment-card-newest-succeeded');
+    });
+  });
+
+  it('refunds split tenders newest-first and hides refund only after every succeeded tender is refunded', async () => {
+    openOrdersMock.mockReturnValue([]);
+    refundMutateAsyncMock.mockResolvedValue({});
+    let cardRefunded = false;
+    let cashRefunded = false;
+    const buildClosedOrder = () => ({
+      id: 'order-split-refund-flow',
+      orderNumber: 112,
+      status: 'closed',
+      subtotal: 30000,
+      serviceFee: 0,
+      total: 30000,
+      note: '',
+      channel: 'hall',
+      items: [],
+      guestCount: 1,
+      openedByName: 'Ali',
+      createdAt: '2026-08-15T10:00:00Z',
+      closedAt: '2026-08-15T10:04:00Z',
+      payments: [
+        {
+          id: 'payment-card-failed-latest',
+          amount: 10000,
+          status: 'failed',
+          method: 'card',
+          paidAt: '2026-08-15T10:03:00Z',
+        },
+        {
+          id: 'payment-card-10',
+          amount: 10000,
+          status: 'succeeded',
+          method: 'card',
+          isRefunded: cardRefunded,
+          paidAt: '2026-08-15T10:02:00Z',
+        },
+        {
+          id: 'payment-cash-20',
+          amount: 20000,
+          status: 'succeeded',
+          method: 'cash',
+          isRefunded: cashRefunded,
+          paidAt: '2026-08-15T10:01:00Z',
+        },
+      ],
+      receipts: [],
+    });
+    closedOrdersMock.mockImplementation(() => [buildClosedOrder()]);
+
+    const { rerender } = render(<OpenChecksPageContent />);
+    fireEvent.click(screen.getByRole('button', { name: /Oddiy cheklar/ }));
+    fireEvent.click(screen.getByRole('button', { name: "To'lovni qaytarish" }));
+
+    await waitFor(() => {
+      expect(refundMutateAsyncMock).toHaveBeenNthCalledWith(1, { paymentId: 'payment-card-10' });
+    });
+
+    cardRefunded = true;
+    rerender(<OpenChecksPageContent />);
+
+    expect(screen.getByRole('button', { name: "To'lovni qaytarish" })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Oddiy chekni qayta chiqarish' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Chek chiqarish' }));
+    fireEvent.click(screen.getByRole('button', { name: "To'lovni qaytarish" }));
+
+    await waitFor(() => {
+      expect(ensurePrintDocumentMutateAsyncMock).toHaveBeenCalledWith('payment-card-10');
+      expect(retryFiscalMutateMock).toHaveBeenCalledWith('payment-card-10');
+      expect(refundMutateAsyncMock).toHaveBeenNthCalledWith(2, { paymentId: 'payment-cash-20' });
+    });
+
+    cashRefunded = true;
+    rerender(<OpenChecksPageContent />);
+
+    expect(screen.queryByRole('button', { name: "To'lovni qaytarish" })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Oddiy chekni qayta chiqarish' })).toBeTruthy();
+  });
+
   it('reprints a fiscal receipt from fiscal checks', async () => {
     openOrdersMock.mockReturnValue([]);
     fiscalClosedOrdersMock.mockReturnValue([

@@ -257,13 +257,21 @@ export function WaiterMenuItemCard({
                 fontWeight: 800,
                 whiteSpace: 'nowrap',
               }}>
-              <Box component="span" sx={{ fontSize: { xs: 20, md: 24 }, lineHeight: 1, fontWeight: 900 }}>
-                {displayPriceParts.amount}
-              </Box>
-              <Box component="span" sx={{ fontSize: { xs: 13.5, md: 16 }, lineHeight: 1, fontWeight: 700 }}>
-                {displayPriceParts.currency}
-              </Box>
-              {menuItem.saleUnit === 'kg' ? (
+              {menuItem.itemType === 'service' ? (
+                <Box component="span" sx={{ fontSize: { xs: 13, md: 14 }, color: 'text.secondary' }}>
+                  {copy.priceOnSelection}
+                </Box>
+              ) : (
+                <>
+                  <Box component="span" sx={{ fontSize: { xs: 20, md: 24 }, lineHeight: 1, fontWeight: 900 }}>
+                    {displayPriceParts.amount}
+                  </Box>
+                  <Box component="span" sx={{ fontSize: { xs: 13.5, md: 16 }, lineHeight: 1, fontWeight: 700 }}>
+                    {displayPriceParts.currency}
+                  </Box>
+                </>
+              )}
+              {menuItem.itemType !== 'service' && menuItem.saleUnit === 'kg' ? (
                 <Box component="span" sx={{ fontSize: { xs: 12, md: 14 }, color: 'text.secondary' }}>
                   / {copy.kilogramUnit}
                 </Box>

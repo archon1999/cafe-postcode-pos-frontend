@@ -1,15 +1,30 @@
 FROM node:22-alpine AS build
 
 WORKDIR /app
-ENV NPM_CONFIG_REGISTRY=https://registry.npmmirror.com
+
+ARG VITE_API_BASE_URL=http://127.0.0.1:18181/v1
+ARG VITE_REMOTE_API_BASE_URL=https://cafe-postcode.uz/api/v1
+ARG VITE_API_TIMEOUT=15000
+ARG VITE_EDGE_BASE_URL=http://127.0.0.1:18181
+ARG VITE_CONTROL_APP_URL=https://admin.cafe-postcode.uz
+ARG VITE_APP_VERSION=web
+ARG VITE_MONITOR_ANNOUNCEMENT_BASE_URL=/monitor-announcements/v1/uz/female
+
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL} \
+    VITE_REMOTE_API_BASE_URL=${VITE_REMOTE_API_BASE_URL} \
+    VITE_API_TIMEOUT=${VITE_API_TIMEOUT} \
+    VITE_EDGE_BASE_URL=${VITE_EDGE_BASE_URL} \
+    VITE_CONTROL_APP_URL=${VITE_CONTROL_APP_URL} \
+    VITE_APP_VERSION=${VITE_APP_VERSION} \
+    VITE_MONITOR_ANNOUNCEMENT_BASE_URL=${VITE_MONITOR_ANNOUNCEMENT_BASE_URL}
 
 COPY package*.json ./
-RUN npm ci --force
+RUN npm ci
 
 COPY . .
 RUN npm run prod:build
 
-FROM nginx:1.27-alpine
+FROM nginx:alpine@sha256:4a73073bd557c65b759505da037898b61f1be6cbcc3c2c3aeac22d2a470c1752
 
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html

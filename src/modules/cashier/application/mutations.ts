@@ -37,12 +37,17 @@ export function useAddCashierOrderItemMutation(options: {
   });
 }
 
-export function useRemoveCashierOrderItemMutation(options: { onSuccess?: () => void }) {
-  const { onSuccess } = options;
+export function useRemoveCashierOrderItemMutation(options: {
+  onSuccess?: () => void;
+  onPrintError?: (error: unknown) => void;
+}) {
+  const { onSuccess, onPrintError } = options;
 
   return useMutation({
     mutationFn: async (itemId: string) => {
-      await cashierRepository.removeOrderItem(itemId);
+      const result = await cashierRepository.removeOrderItem(itemId);
+      requestEdgePrintDocuments(result.kitchenPrintDocuments, onPrintError);
+      return result;
     },
     onSuccess: () => {
       invalidateQueriesInBackground([cashierKeys.builderOrders]);
@@ -55,17 +60,20 @@ export function useCashierOrderScanMutation(options: {
   orderId?: string | null;
   mode: 'add' | 'attach' | 'remove';
   onSuccess?: () => void;
+  onPrintError?: (error: unknown) => void;
 }) {
-  const { orderId, mode, onSuccess } = options;
+  const { orderId, mode, onSuccess, onPrintError } = options;
 
   return useMutation({
     mutationFn: async (rawCode: string) => {
       if (!orderId) {
         throw new Error('Order id is missing');
       }
-      return cashierRepository.scanOrderMarking(orderId, rawCode, mode);
+      const response = await cashierRepository.scanOrderMarking(orderId, rawCode, mode);
+      requestEdgePrintDocuments(response.kitchenPrintDocuments, onPrintError);
+      return response;
     },
-    onSuccess: (order) => {
+    onSuccess: ({ order }) => {
       invalidateQueriesInBackground([
         cashierKeys.builderOrders,
         cashierKeys.paymentOrder(order.id),
@@ -222,12 +230,18 @@ export function useAddCashierPaymentOrderItemMutation(options: { orderId: string
   });
 }
 
-export function useRemoveCashierPaymentOrderItemMutation(options: { orderId: string | null; onSuccess?: () => void }) {
-  const { orderId, onSuccess } = options;
+export function useRemoveCashierPaymentOrderItemMutation(options: {
+  orderId: string | null;
+  onSuccess?: () => void;
+  onPrintError?: (error: unknown) => void;
+}) {
+  const { orderId, onSuccess, onPrintError } = options;
 
   return useMutation({
     mutationFn: async (itemId: string) => {
-      await cashierRepository.removeOrderItem(itemId);
+      const result = await cashierRepository.removeOrderItem(itemId);
+      requestEdgePrintDocuments(result.kitchenPrintDocuments, onPrintError);
+      return result;
     },
     onSuccess: () => {
       invalidateQueriesInBackground([

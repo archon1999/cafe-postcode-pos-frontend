@@ -31,7 +31,7 @@ describe('service worker update lifecycle', () => {
     window.dispatchEvent(new Event('load'));
 
     await vi.waitFor(() => expect(serviceWorker.register).toHaveBeenCalledWith('/sw.js'));
-    await vi.waitFor(() => expect(updateStates.at(-1)).toBe(true));
+    await vi.waitFor(() => expect(updateStates[updateStates.length - 1]).toBe(true));
     expect(waitingWorker.postMessage).not.toHaveBeenCalled();
 
     window.dispatchEvent(new Event('beforeunload'));
