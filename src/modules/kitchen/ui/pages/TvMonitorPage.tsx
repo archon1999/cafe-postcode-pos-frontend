@@ -428,32 +428,31 @@ export function TvMonitorPage() {
   return (
     <Box
       sx={{
-        minHeight: '100vh',
+        height: '100vh',
+        '@supports (height: 100dvh)': { height: '100dvh' },
+        minHeight: 0,
+        overflow: 'hidden',
         display: 'grid',
-        placeItems: 'start center',
+        placeItems: 'center',
         px: { xs: 3, md: 6, xl: 9 },
-        py: { xs: 2, md: 2.5, xl: 3 },
+        py: { xs: 1.5, md: 2 },
         color: '#f5f7fb',
         background: 'radial-gradient(circle at 50% 0%, #253d63 0%, #171b24 48%, #101319 100%)',
       }}>
-      <Stack alignItems="center" spacing={2} sx={{ width: '90vw', maxWidth: 980, textAlign: 'center' }}>
+      <Stack alignItems="center" spacing={1.5} sx={{ width: '90vw', maxWidth: 980, textAlign: 'center' }}>
         <Box>
-          <Typography sx={{ fontSize: { xs: 34, md: 52, xl: 68 }, fontWeight: 850, lineHeight: 1.05 }}>
+          <Typography sx={{ fontSize: 'clamp(28px, 5.2vh, 58px)', fontWeight: 850, lineHeight: 1.05 }}>
             TV’ni restoranga ulang
           </Typography>
-          <Typography sx={{ mt: 1.5, color: alpha('#f5f7fb', 0.68), fontSize: { xs: 18, md: 24, xl: 30 } }}>
+          <Typography sx={{ mt: 1, color: alpha('#f5f7fb', 0.68), fontSize: 'clamp(16px, 2.8vh, 26px)' }}>
             Superadmin boshqaruv panelidan QR-kodni skanerlang
           </Typography>
         </Box>
 
         <Box
           sx={{
-            width: { xs: '68vw', sm: '48vw', md: '32vw' },
-            height: { xs: '68vw', sm: '48vw', md: '32vw' },
-            minWidth: 240,
-            minHeight: 240,
-            maxWidth: 460,
-            maxHeight: 460,
+            width: 'min(52vh, 84vw, 460px)',
+            height: 'min(52vh, 84vw, 460px)',
             boxSizing: 'border-box',
             display: 'grid',
             placeItems: 'center',
