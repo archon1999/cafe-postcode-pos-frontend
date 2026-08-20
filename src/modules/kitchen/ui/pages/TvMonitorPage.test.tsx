@@ -1,23 +1,12 @@
 // @vitest-environment jsdom
 
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import QRCode from 'qrcode';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { kitchenRepository } from 'modules/kitchen/data-access';
 
 import { TvMonitorPage } from './TvMonitorPage';
 
-vi.mock('qrcode', () => ({
-  default: {
-    create: vi.fn().mockReturnValue({
-      modules: {
-        size: 2,
-        get: (row: number, column: number) => row === column,
-      },
-    }),
-  },
-}));
 vi.mock('./KitchenMonitorPage', () => ({
   KitchenMonitorDisplay: ({
     restaurantName,
@@ -86,24 +75,24 @@ describe('TvMonitorPage', () => {
   it('uses the backend fragment QR and starts signed queue polling after approval', async () => {
     const onQueueSuccess = vi.fn();
     window.CafePostcodeTv = { onQueueSuccess };
-    const claimUrl = 'https://admin.cafe-postcode.uz/pair#v=1&pairingId=pairing-1&claimToken=one-time-claim';
+    const claimUrl =
+      'https://control.cafe-postcode.uz/control/pair#v=1&pairingId=pairing-1&claimToken=one-time-claim';
     vi.spyOn(kitchenRepository, 'createTvMonitorPairing').mockResolvedValue({
       id: 'pairing-1',
       pollToken: 'poll-secret',
       claimUrl,
+      qrPath: 'M4 4h1v1h-1zM5 5h1v1h-1z',
+      qrSize: 29,
       displayCode: '482913',
       expiresAt: '2099-01-01T00:00:00Z',
       status: 'pending',
     });
-    vi.spyOn(kitchenRepository, 'getTvMonitorPairingStatus').mockResolvedValue({
-      status: 'paired',
-      device: activeDevice,
-      restaurantContext: {
-        restaurantId: 'restaurant-1',
-        restaurantName: 'Qamish',
-        posMonitorVariant: 'light_compact',
-      },
-    });
+    let resolvePairingStatus!: (value: Awaited<ReturnType<typeof kitchenRepository.getTvMonitorPairingStatus>>) => void;
+    vi.spyOn(kitchenRepository, 'getTvMonitorPairingStatus').mockReturnValue(
+      new Promise((resolve) => {
+        resolvePairingStatus = resolve;
+      }),
+    );
     vi.spyOn(kitchenRepository, 'getTvMonitorQueue').mockResolvedValue({
       announcements: [],
       monitorVariant: 'light_compact',
@@ -113,8 +102,20 @@ describe('TvMonitorPage', () => {
 
     render(<TvMonitorPage />);
 
+    const qr = await screen.findByLabelText('TV pairing QR code');
+    expect(qr.querySelector('path')?.getAttribute('d')).toContain('M4 4h1v1h-1z');
+    await act(async () => {
+      resolvePairingStatus({
+        status: 'paired',
+        device: activeDevice,
+        restaurantContext: {
+          restaurantId: 'restaurant-1',
+          restaurantName: 'Qamish',
+          posMonitorVariant: 'light_compact',
+        },
+      });
+    });
     expect((await screen.findByTestId('paired-monitor')).textContent).toBe('Qamish');
-    expect(QRCode.create).toHaveBeenCalledWith(claimUrl, expect.objectContaining({ errorCorrectionLevel: 'M' }));
     expect(kitchenRepository.getTvMonitorPairingStatus).toHaveBeenCalledWith('pairing-1', 'poll-secret');
     await waitFor(() => expect(kitchenRepository.getTvMonitorQueue).toHaveBeenCalledWith());
     await waitFor(() => expect(onQueueSuccess).toHaveBeenCalled());

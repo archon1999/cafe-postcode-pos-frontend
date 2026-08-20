@@ -1,7 +1,6 @@
 /* eslint-disable i18next/no-literal-string */
 import { Box, Button, CircularProgress, Stack, Typography, alpha } from '@mui/material';
 import axios from 'axios';
-import QRCode from 'qrcode';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { kitchenRepository } from 'modules/kitchen/data-access';
@@ -241,22 +240,7 @@ export function TvMonitorPage() {
 
   const qrCode = useMemo(() => {
     if (!pairing) return null;
-    try {
-      const generated = QRCode.create(pairing.claimUrl, { errorCorrectionLevel: 'M' });
-      const quietZone = 4;
-      const size = generated.modules.size;
-      let path = '';
-      for (let row = 0; row < size; row += 1) {
-        for (let column = 0; column < size; column += 1) {
-          if (generated.modules.get(row, column)) {
-            path += `M${column + quietZone} ${row + quietZone}h1v1h-1z`;
-          }
-        }
-      }
-      return { path, viewBoxSize: size + quietZone * 2 };
-    } catch {
-      return null;
-    }
+    return { path: pairing.qrPath, viewBoxSize: pairing.qrSize };
   }, [pairing]);
 
   useEffect(() => {

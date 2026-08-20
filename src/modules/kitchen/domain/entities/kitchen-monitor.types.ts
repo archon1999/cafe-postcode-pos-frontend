@@ -32,6 +32,8 @@ export type TvMonitorPairingSession = {
   id: string;
   pollToken: string;
   claimUrl: string;
+  qrPath: string;
+  qrSize: number;
   displayCode: string;
   expiresAt: string;
   status: 'pending' | 'rejected' | 'expired';

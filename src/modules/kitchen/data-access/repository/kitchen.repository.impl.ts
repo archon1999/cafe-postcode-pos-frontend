@@ -184,7 +184,15 @@ function safeClaimUrl(response: PairingApiResponse, pairingId: string) {
 }
 
 function pairingFromResponse(response: PairingApiResponse): TvMonitorPairingSession {
-  if (!response.id || !response.pollToken || !response.displayCode || !response.expiresAt) {
+  if (
+    !response.id ||
+    !response.pollToken ||
+    !response.displayCode ||
+    !response.expiresAt ||
+    !response.qrPath ||
+    !response.qrSize ||
+    response.qrSize < 21
+  ) {
     throw new Error('Server TV ulash ma’lumotini to‘liq qaytarmadi.');
   }
   const status = pairingStatus(response.status);
@@ -192,6 +200,8 @@ function pairingFromResponse(response: PairingApiResponse): TvMonitorPairingSess
     id: response.id,
     pollToken: response.pollToken,
     claimUrl: safeClaimUrl(response, response.id),
+    qrPath: response.qrPath,
+    qrSize: response.qrSize,
     displayCode: response.displayCode,
     expiresAt: response.expiresAt,
     status: status === 'paired' ? 'pending' : status,
