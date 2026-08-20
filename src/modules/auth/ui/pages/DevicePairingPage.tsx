@@ -134,7 +134,7 @@ export function DevicePairingPage() {
             <Stack spacing={1.2} sx={{ display: { xs: 'none', md: 'flex' } }}>
               {[
                 'Qurilma kaliti shu terminalda saqlanadi va tashqariga chiqarilmaydi.',
-                'QR kod 5 daqiqada tugaydi va faqat bir marta ishlaydi.',
+                'QR kod 10 daqiqada tugaydi va faqat bir marta ishlaydi.',
                 'Ulangandan keyin xodimlar odatdagidek 4 xonali PIN bilan kiradi.',
               ].map((line) => (
                 <Stack key={line} direction="row" spacing={1} alignItems="center">
