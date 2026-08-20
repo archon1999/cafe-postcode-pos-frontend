@@ -8,7 +8,7 @@ import { kitchenRepository } from 'modules/kitchen/data-access';
 
 import { TvMonitorPage } from './TvMonitorPage';
 
-vi.mock('qrcode', () => ({ default: { toDataURL: vi.fn().mockResolvedValue('data:image/png;base64,qr') } }));
+vi.mock('qrcode', () => ({ default: { toString: vi.fn().mockResolvedValue('<svg><path /></svg>') } }));
 vi.mock('./KitchenMonitorPage', () => ({
   KitchenMonitorDisplay: ({
     restaurantName,
@@ -105,7 +105,10 @@ describe('TvMonitorPage', () => {
     render(<TvMonitorPage />);
 
     expect((await screen.findByTestId('paired-monitor')).textContent).toBe('Qamish');
-    expect(QRCode.toDataURL).toHaveBeenCalledWith(claimUrl, expect.objectContaining({ errorCorrectionLevel: 'M' }));
+    expect(QRCode.toString).toHaveBeenCalledWith(
+      claimUrl,
+      expect.objectContaining({ type: 'svg', errorCorrectionLevel: 'M' }),
+    );
     expect(kitchenRepository.getTvMonitorPairingStatus).toHaveBeenCalledWith('pairing-1', 'poll-secret');
     await waitFor(() => expect(kitchenRepository.getTvMonitorQueue).toHaveBeenCalledWith());
     await waitFor(() => expect(onQueueSuccess).toHaveBeenCalled());

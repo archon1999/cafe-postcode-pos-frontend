@@ -248,9 +248,11 @@ export function TvMonitorPage() {
       return;
     }
     let active = true;
-    void QRCode.toDataURL(pairing.claimUrl, { width: 560, margin: 2, errorCorrectionLevel: 'M' })
+    // SVG generation does not depend on Canvas. Some older Android/TV WebViews
+    // leave qrcode's Canvas-backed toDataURL promise pending forever.
+    void QRCode.toString(pairing.claimUrl, { type: 'svg', width: 560, margin: 2, errorCorrectionLevel: 'M' })
       .then((value) => {
-        if (active) setQrDataUrl(value);
+        if (active) setQrDataUrl(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(value)}`);
       })
       .catch(() => {
         if (active) setPairingError('QR yaratib bo‘lmadi. Sahifani yangilang.');
