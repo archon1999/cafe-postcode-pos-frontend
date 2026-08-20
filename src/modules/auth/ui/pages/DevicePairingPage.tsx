@@ -9,11 +9,9 @@ import { PosLogo } from 'shared/ui/PosLogo';
 import { usePosSession } from '../session-context';
 
 function pairingClaimUrl(pairingId: string, claimToken: string) {
-  const configured = String(import.meta.env.VITE_CONTROL_APP_URL || 'https://admin.cafe-postcode.uz').replace(
-    /\/$/,
-    '',
-  );
-  const url = new URL(`${configured}/pair`);
+  const url = new URL(String(import.meta.env.VITE_CONTROL_APP_URL || 'https://control.cafe-postcode.uz'));
+  const basePath = url.pathname.replace(/\/+$/, '');
+  url.pathname = `${basePath.endsWith('/control') ? basePath : `${basePath}/control`}/pair`;
   url.hash = new URLSearchParams({ v: '1', pairingId, claimToken }).toString();
   return url.toString();
 }

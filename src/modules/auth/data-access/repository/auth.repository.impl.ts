@@ -12,6 +12,7 @@ import type {
 } from 'modules/auth/domain';
 import { apiGetRemote, apiPost, apiPostRemote, apiPostRemotePublic } from 'shared/api/client';
 import {
+  persistTransportConnection,
   readLegacyEdgeMigrationCredential,
   readOrCreateEdgeTerminalIdentity,
   readTransportConnection,
@@ -331,6 +332,25 @@ class PosAuthRepositoryImpl implements AuthRepository {
       if (!session) throw new Error('PIN login did not return a session');
       return session;
     } catch (error) {
+      const connection = readTransportConnection();
+      const localTransportFailure =
+        connection?.mode !== 'remote' && (!axios.isAxiosError(error) || !error.response);
+      if (localTransportFailure && connection?.restaurantId) {
+        try {
+          const session = normalizeSessionPayload(
+            await apiPostRemote<PosSessionPayload>('/pos/auth/pin-login/', payload),
+          );
+          if (!session) throw new Error('PIN login did not return a session');
+          persistTransportConnection({
+            mode: 'remote',
+            restaurantId: connection.restaurantId,
+            backendOnline: true,
+          });
+          return session;
+        } catch (remoteError) {
+          throw normalizeError(remoteError, 'PIN orqali kirib bo‘lmadi.');
+        }
+      }
       throw normalizeError(error, 'PIN orqali kirib bo‘lmadi.');
     }
   }

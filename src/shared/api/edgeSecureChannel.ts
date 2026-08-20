@@ -57,6 +57,7 @@ function normalizedAxiosHeaders(value: AxiosRequestConfig['headers']) {
 
 export type LocalAgentTrust = {
   restaurantId: string;
+  terminalId?: string;
   agentDeviceId: string;
   agentSigningPublicKeyAlgorithm: 'ED25519';
   agentSigningPublicKey: string;
@@ -244,14 +245,22 @@ async function verifyAgentAttestation(payload: HandshakeResponse, trust: LocalAg
   return cryptoApi().subtle.verify('Ed25519', publicKey, signature, encoder.encode(canonical));
 }
 
-function channelUsable(identity: StoredPosDeviceIdentity, origin: string) {
+function channelUsable(identity: StoredPosDeviceIdentity, origin: string, terminalId: string) {
   const channel = identity.localSecureChannel;
   return Boolean(
     channel?.channelId &&
       channel.sessionKey &&
       channel.origin === origin &&
-      channel.terminalId === readOrCreateEdgeTerminalIdentity().terminalId &&
+      channel.terminalId === terminalId &&
       Date.parse(channel.expiresAt || '') > Date.now() + CHANNEL_RENEW_LEAD_MS,
+  );
+}
+
+function secureChannelTerminalId(identity: StoredPosDeviceIdentity, trust?: LocalAgentTrust) {
+  return (
+    trust?.terminalId?.trim() ||
+    identity.localSecureChannel?.terminalId?.trim() ||
+    readOrCreateEdgeTerminalIdentity().terminalId
   );
 }
 
@@ -289,10 +298,10 @@ export async function ensureLocalAgentSecureChannel(
   for (;;) {
     const identity = await readStoredDeviceIdentity();
     if (!identity?.privateKey || !identity.publicKey) return false;
-    if (!requireOwnEstablishment && channelUsable(identity, origin)) return true;
+    const terminalId = secureChannelTerminalId(identity, trust);
+    if (!requireOwnEstablishment && channelUsable(identity, origin, terminalId)) return true;
 
-    const terminal = readOrCreateEdgeTerminalIdentity();
-    const baseKey = localAgentHandshakeBaseKey(origin, terminal.terminalId, identity);
+    const baseKey = localAgentHandshakeBaseKey(origin, terminalId, identity);
     const contractKey = localAgentHandshakeContractKey(legacyMigrationCredential, trust, expectedRestaurantId);
     const active = localAgentHandshakeFlights.get(baseKey);
     if (active) {
@@ -306,7 +315,7 @@ export async function ensureLocalAgentSecureChannel(
 
     const promise = establishLocalAgentSecureChannel(
       origin,
-      terminal.terminalId,
+      terminalId,
       identity.publicKeyFingerprint,
       legacyMigrationCredential,
       requireOwnEstablishment,
@@ -336,22 +345,20 @@ async function establishLocalAgentSecureChannel(
   if (!identity?.privateKey || !identity.publicKey || identity.publicKeyFingerprint !== expectedDeviceFingerprint) {
     return false;
   }
-  if (!force && channelUsable(identity, origin)) return true;
+  if (!force && channelUsable(identity, origin, terminalId)) return true;
 
-  const terminal = readOrCreateEdgeTerminalIdentity();
-  if (terminal.terminalId !== terminalId) return false;
   const client = await ensureClientECDH(identity);
   identity = client.identity;
   const timestamp = Math.floor(Date.now() / 1000).toString();
   const nonce = randomNonce();
-  const canonical = `edge-channel-init-v1\n${terminal.terminalId}\n${client.publicKey}\n${timestamp}\n${nonce}`;
+  const canonical = `edge-channel-init-v1\n${terminalId}\n${client.publicKey}\n${timestamp}\n${nonce}`;
   const legacy = legacyMigrationCredential.trim();
   let salt: Uint8Array;
   let authenticationMode: 'LEGACY_PSK' | 'DEVICE_PROOF';
   let authenticationProof: string;
   let deviceBinding: Record<string, unknown> | undefined;
   const canUseDeviceProof = Boolean(
-    (identity.localSecureChannel?.agentPublicKey && identity.localSecureChannel.terminalId === terminal.terminalId) ||
+    (identity.localSecureChannel?.agentPublicKey && identity.localSecureChannel.terminalId === terminalId) ||
       (identity.device?.status === 'ACTIVE' && trust),
   );
   if (legacy && !canUseDeviceProof) {
@@ -359,7 +366,7 @@ async function establishLocalAgentSecureChannel(
     authenticationMode = 'LEGACY_PSK';
     authenticationProof = await hmacBase64Url(salt, canonical);
     deviceBinding = {
-      terminalId: terminal.terminalId,
+      terminalId,
       publicKeyAlgorithm: 'P256_SHA256',
       publicKey: identity.publicKey,
       deviceName: identity.deviceName,
@@ -383,7 +390,7 @@ async function establishLocalAgentSecureChannel(
       headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
       body: JSON.stringify({
         version: 'v1',
-        terminalId: terminal.terminalId,
+        terminalId,
         clientPublicKey: client.publicKey,
         timestamp,
         nonce,
@@ -400,7 +407,7 @@ async function establishLocalAgentSecureChannel(
   }
   if (
     payload.version !== 'v1' ||
-    payload.terminalId !== terminal.terminalId ||
+    payload.terminalId !== terminalId ||
     payload.agentPublicKeyAlgorithm !== 'P256_ECDH' ||
     !payload.channelId ||
     !payload.serverNonce ||
@@ -424,7 +431,7 @@ async function establishLocalAgentSecureChannel(
   const transcript = [
     'edge-channel-v1',
     restaurantId,
-    terminal.terminalId,
+    terminalId,
     client.publicKey,
     payload.agentPublicKey,
     timestamp,
@@ -450,7 +457,7 @@ async function establishLocalAgentSecureChannel(
         ...current,
         localSecureChannel: {
           version: 1,
-          terminalId: terminal.terminalId,
+          terminalId,
           origin,
           clientPrivateKey: client.privateKey,
           clientPublicKey: client.publicKey,
@@ -484,7 +491,7 @@ export async function protectLocalAxiosRequest(config: AxiosRequestConfig) {
   const baseURL = new URL(config.baseURL || window.location.origin, window.location.origin);
   const origin = normalizeEdgeOrigin(baseURL.origin);
   let identity = await readStoredDeviceIdentity();
-  if (!identity || !channelUsable(identity, origin)) {
+  if (!identity || !channelUsable(identity, origin, secureChannelTerminalId(identity))) {
     if (!(await ensureLocalAgentSecureChannel(origin, readLegacyEdgeMigrationCredential()))) {
       throw new Error('Local Agent secure channel is unavailable.');
     }

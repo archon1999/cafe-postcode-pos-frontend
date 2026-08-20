@@ -109,6 +109,7 @@ function coordinatorTrust(coordinator?: Coordinator | null): LocalAgentTrust | u
   }
   return {
     restaurantId: coordinator.restaurantId,
+    terminalId: coordinator.terminalId,
     agentDeviceId: coordinator.agentDeviceId,
     agentSigningPublicKeyAlgorithm: 'ED25519',
     agentSigningPublicKey: coordinator.agentSigningPublicKey,

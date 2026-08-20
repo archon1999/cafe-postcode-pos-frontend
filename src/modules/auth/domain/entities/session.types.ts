@@ -82,6 +82,7 @@ export type PosRestaurantContext = {
   paymentTotalMode?: 'fixed' | 'cashier_editable';
   coordinator?: {
     restaurantId: string;
+    terminalId?: string;
     coordinatorUrls?: string[];
     agentDeviceId?: string;
     agentSigningPublicKeyAlgorithm?: 'ED25519';
