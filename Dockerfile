@@ -6,7 +6,7 @@ ARG VITE_API_BASE_URL=http://127.0.0.1:18181/v1
 ARG VITE_REMOTE_API_BASE_URL=https://cafe-postcode.uz/api/v1
 ARG VITE_API_TIMEOUT=15000
 ARG VITE_EDGE_BASE_URL=http://127.0.0.1:18181
-ARG VITE_CONTROL_APP_URL=https://admin.cafe-postcode.uz
+ARG VITE_CONTROL_APP_URL=https://control.cafe-postcode.uz
 ARG VITE_APP_VERSION=web
 ARG VITE_MONITOR_ANNOUNCEMENT_BASE_URL=/monitor-announcements/v1/uz/female
 
