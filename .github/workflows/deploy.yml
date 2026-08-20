@@ -66,8 +66,20 @@ jobs:
             git checkout --detach origin/production
             export DOCKER_CONFIG="$(mktemp -d)"
             trap 'rm -rf -- "${DOCKER_CONFIG}"' EXIT
-            printf '%s' "${GHCR_TOKEN}" | docker login ghcr.io --username "${GHCR_USERNAME}" --password-stdin
-            docker pull "${RELEASE_IMAGE}"
+            login_ok=0
+            for attempt in 1 2 3 4 5; do
+              if printf '%s' "${GHCR_TOKEN}" | docker login ghcr.io --username "${GHCR_USERNAME}" --password-stdin; then
+                login_ok=1
+                break
+              fi
+              sleep $((attempt * 5))
+            done
+            test "${login_ok}" = "1"
+            for attempt in 1 2 3 4 5; do
+              docker pull "${RELEASE_IMAGE}" && break
+              test "${attempt}" != "5"
+              sleep $((attempt * 5))
+            done
             export POS_FRONTEND_IMAGE="${RELEASE_IMAGE}"
             docker compose --env-file .env.production up -d --no-build --wait --wait-timeout 180
             docker compose --env-file .env.production exec -T frontend wget -qO- http://127.0.0.1/healthz >/dev/null
