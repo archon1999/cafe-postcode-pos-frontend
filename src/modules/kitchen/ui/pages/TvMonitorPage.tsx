@@ -2,7 +2,7 @@
 import { Box, Button, CircularProgress, Stack, Typography, alpha } from '@mui/material';
 import axios from 'axios';
 import QRCode from 'qrcode';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { kitchenRepository } from 'modules/kitchen/data-access';
 import type {
@@ -17,7 +17,6 @@ import { MONITOR_AUDIO_UNLOCK_PATH } from '../shared/useMonitorAnnouncementPlayb
 import { KitchenMonitorDisplay } from './KitchenMonitorPage';
 import { TvAudioUnlockOverlay, type TvAudioUnlockState } from './TvAudioUnlockOverlay';
 import {
-  TvMonitorDiagnostics,
   TvMonitorRenderBoundary,
   type TvMonitorDiagnosticSnapshot,
 } from './TvMonitorDiagnostics';
@@ -103,7 +102,6 @@ export function TvMonitorPage() {
   const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [autoPairingEnabled, setAutoPairingEnabled] = useState(false);
   const [bootstrapFailed, setBootstrapFailed] = useState(false);
-  const [qrDataUrl, setQrDataUrl] = useState('');
   const [monitorData, setMonitorData] = useState<KitchenMonitorQueue>(EMPTY_QUEUE);
   const [pairingError, setPairingError] = useState('');
   const [announcementAudio] = useState<HTMLAudioElement | null>(() =>
@@ -194,7 +192,6 @@ export function TvMonitorPage() {
 
   const createPairing = useCallback(async () => {
     setPairingError('');
-    setQrDataUrl('');
     const request = pairingRequestRef.current ?? kitchenRepository.createTvMonitorPairing();
     pairingRequestRef.current = request;
 
@@ -242,24 +239,24 @@ export function TvMonitorPage() {
     void bootstrapTvMonitor();
   }, [bootstrapTvMonitor]);
 
-  useEffect(() => {
-    if (!pairing) {
-      setQrDataUrl('');
-      return;
+  const qrCode = useMemo(() => {
+    if (!pairing) return null;
+    try {
+      const generated = QRCode.create(pairing.claimUrl, { errorCorrectionLevel: 'M' });
+      const quietZone = 4;
+      const size = generated.modules.size;
+      let path = '';
+      for (let row = 0; row < size; row += 1) {
+        for (let column = 0; column < size; column += 1) {
+          if (generated.modules.get(row, column)) {
+            path += `M${column + quietZone} ${row + quietZone}h1v1h-1z`;
+          }
+        }
+      }
+      return { path, viewBoxSize: size + quietZone * 2 };
+    } catch {
+      return null;
     }
-    let active = true;
-    // SVG generation does not depend on Canvas. Some older Android/TV WebViews
-    // leave qrcode's Canvas-backed toDataURL promise pending forever.
-    void QRCode.toString(pairing.claimUrl, { type: 'svg', width: 560, margin: 2, errorCorrectionLevel: 'M' })
-      .then((value) => {
-        if (active) setQrDataUrl(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(value)}`);
-      })
-      .catch(() => {
-        if (active) setPairingError('QR yaratib bo‘lmadi. Sahifani yangilang.');
-      });
-    return () => {
-      active = false;
-    };
   }, [pairing]);
 
   useEffect(() => {
@@ -434,7 +431,6 @@ export function TvMonitorPage() {
             onAnnouncementPlaybackUnavailable={handleAnnouncementPlaybackUnavailable}
           />
         </TvMonitorRenderBoundary>
-        <TvMonitorDiagnostics restaurantName={device.restaurantName} snapshot={diagnostics} />
         {!window.CafePostcodeTv && audioUnlockState !== 'ready' ? (
           <TvAudioUnlockOverlay
             state={audioUnlockState}
@@ -482,13 +478,17 @@ export function TvMonitorPage() {
             bgcolor: '#fff',
             boxShadow: '0 24px 90px rgba(0, 0, 0, 0.36), 0 0 60px rgba(89, 166, 255, 0.16)',
           }}>
-          {qrDataUrl ? (
+          {qrCode ? (
             <Box
-              component="img"
-              src={qrDataUrl}
-              alt="TV pairing QR code"
-              sx={{ display: 'block', width: '100%', height: '100%', objectFit: 'contain' }}
-            />
+              component="svg"
+              role="img"
+              aria-label="TV pairing QR code"
+              viewBox={`0 0 ${qrCode.viewBoxSize} ${qrCode.viewBoxSize}`}
+              shapeRendering="crispEdges"
+              sx={{ display: 'block', width: '100%', height: '100%' }}>
+              <Box component="rect" width="100%" height="100%" fill="#fff" />
+              <Box component="path" d={qrCode.path} fill="#000" />
+            </Box>
           ) : (
             <CircularProgress size={72} />
           )}
@@ -523,7 +523,6 @@ export function TvMonitorPage() {
           </Typography>
         )}
       </Stack>
-      <TvMonitorDiagnostics snapshot={diagnostics} />
     </Box>
   );
 }
