@@ -2,24 +2,47 @@ name: Deploy POS Frontend
 
 on:
   push:
-    branches:
-      - production
+    branches: [production]
   workflow_dispatch:
 
 permissions:
   contents: read
+  packages: write
 
 concurrency:
   group: pos-frontend-production
   cancel-in-progress: false
+
+env:
+  RELEASE_IMAGE: ghcr.io/${{ github.repository_owner }}/cafe-postcode-pos:${{ github.sha }}
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - name: Authenticate to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and publish production image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          push: true
+          tags: ${{ env.RELEASE_IMAGE }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
       - name: Deploy production over SSH
         uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
+        env:
+          RELEASE_IMAGE: ${{ env.RELEASE_IMAGE }}
+          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
@@ -27,8 +50,9 @@ jobs:
           fingerprint: ${{ secrets.HOST_FINGERPRINT }}
           port: ${{ secrets.PORT }}
           timeout: 60s
-          command_timeout: 25m
+          command_timeout: 15m
           script_stop: true
+          envs: RELEASE_IMAGE,GHCR_USERNAME,GHCR_TOKEN
           script: |
             set -Eeuo pipefail
             exec 9>/home/postcode/.cafe-postcode-deploy.lock
@@ -40,7 +64,10 @@ jobs:
             fi
             git fetch --prune origin production
             git checkout --detach origin/production
-            docker compose --env-file .env.production config >/dev/null
-            docker compose --env-file .env.production up -d --build --wait --wait-timeout 180
-            docker compose --env-file .env.production ps
+            export DOCKER_CONFIG="$(mktemp -d)"
+            trap 'rm -rf -- "${DOCKER_CONFIG}"' EXIT
+            printf '%s' "${GHCR_TOKEN}" | docker login ghcr.io --username "${GHCR_USERNAME}" --password-stdin
+            docker pull "${RELEASE_IMAGE}"
+            export POS_FRONTEND_IMAGE="${RELEASE_IMAGE}"
+            docker compose --env-file .env.production up -d --no-build --wait --wait-timeout 180
             docker compose --env-file .env.production exec -T frontend wget -qO- http://127.0.0.1/healthz >/dev/null
