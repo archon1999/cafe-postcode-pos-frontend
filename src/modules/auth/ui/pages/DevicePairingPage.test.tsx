@@ -46,4 +46,29 @@ describe('DevicePairingPage', () => {
     expect(qrValue).not.toContain('private-poll-secret');
     expect(screen.getByText('482193')).toBeTruthy();
   });
+
+  it('automatically replaces an expired pairing request', async () => {
+    const cancelPairing = vi.fn().mockResolvedValue(undefined);
+    const startPairing = vi.fn().mockResolvedValue(undefined);
+    contextMock.mockReturnValue({
+      authState: 'PAIRING',
+      deviceError: null,
+      pairing: {
+        id: '22222222-2222-4222-8222-222222222222',
+        pollToken: 'private-poll-secret',
+        claimToken: 'expired-claim-secret',
+        displayCode: '123456',
+        expiresAt: new Date(Date.now() - 1_000).toISOString(),
+        status: 'PENDING',
+      },
+      cancelPairing,
+      refreshPairing: vi.fn().mockResolvedValue(undefined),
+      startPairing,
+    });
+
+    render(<DevicePairingPage />);
+
+    await waitFor(() => expect(cancelPairing).toHaveBeenCalledTimes(1));
+    expect(startPairing).toHaveBeenCalledTimes(1);
+  });
 });
