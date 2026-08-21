@@ -111,13 +111,15 @@ export function PosSessionProvider({ children }: { children: ReactNode }) {
         setDeviceError(message);
         const securityFailure =
           error instanceof PosAuthApiError &&
-          [
-            'device_required',
-            'device_revoked',
-            'device_lease_expired',
-            'device_proof_invalid',
-            'device_replay_detected',
-          ].includes(error.code || '');
+          ['device_required', 'device_revoked', 'device_proof_invalid'].includes(error.code || '');
+        if (!securityFailure && stored?.device && stored.restaurantContext) {
+          // A backend deploy, transient outage, expired rolling lease or an
+          // identical transport retry must not turn a permanently paired POS
+          // into a revoked/unpaired terminal. Keep the stored non-exportable
+          // device key and continue through the already-bound Local Agent.
+          applyBinding({ device: stored.device, restaurantContext: stored.restaurantContext }, readStoredSession());
+          return;
+        }
         if (silent && !securityFailure) return;
         if (error instanceof PosAuthApiError && error.code === 'device_required') {
           setAuthState('UNPAIRED');

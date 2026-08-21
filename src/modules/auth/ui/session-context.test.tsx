@@ -131,6 +131,24 @@ describe('POS session state and locking', () => {
     expect(screen.getByTestId('restaurant').textContent).toBe('restaurant-1');
   });
 
+  it.each([
+    ['backend deployment outage', new Error('Network Error')],
+    ['identical request replay', new PosAuthApiError('Device proof was already used.', 'device_replay_detected', 401)],
+    ['rolling lease expiry', new PosAuthApiError('Device lease expired.', 'device_lease_expired', 401)],
+  ])('keeps the stored device and local session during %s', async (_label, restoreError) => {
+    readIdentityMock.mockResolvedValue({
+      device: binding.device,
+      restaurantContext: binding.restaurantContext,
+    });
+    repositoryMocks.restoreDeviceBinding.mockRejectedValueOnce(restoreError);
+
+    await renderProvider();
+
+    expect(screen.getByTestId('state').textContent).toBe('AUTHENTICATED');
+    expect(screen.getByTestId('token').textContent).toBe('original-token');
+    expect(screen.getByTestId('restaurant').textContent).toBe('restaurant-1');
+  });
+
   it('never locks automatically after inactivity, browser suspension, focus, or input', async () => {
     vi.useFakeTimers();
     await renderProvider();
