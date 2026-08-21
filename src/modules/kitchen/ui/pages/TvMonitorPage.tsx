@@ -80,7 +80,6 @@ function requiresPairing(error: unknown) {
   return [
     'device_required',
     'device_revoked',
-    'device_lease_expired',
     'device_proof_invalid',
     'tv_pairing_required',
   ].includes(String(error.response.data?.code || ''));

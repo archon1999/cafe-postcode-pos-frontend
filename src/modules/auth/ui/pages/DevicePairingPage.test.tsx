@@ -71,4 +71,29 @@ describe('DevicePairingPage', () => {
     await waitFor(() => expect(cancelPairing).toHaveBeenCalledTimes(1));
     expect(startPairing).toHaveBeenCalledTimes(1);
   });
+
+  it('automatically replaces a pairing that the status endpoint marks expired', async () => {
+    const cancelPairing = vi.fn().mockResolvedValue(undefined);
+    const startPairing = vi.fn().mockResolvedValue(undefined);
+    contextMock.mockReturnValue({
+      authState: 'PAIRING',
+      deviceError: 'Ulash so‘rovi yakunlanmadi.',
+      pairing: {
+        id: '33333333-3333-4333-8333-333333333333',
+        pollToken: 'private-poll-secret',
+        claimToken: 'expired-claim-secret',
+        displayCode: '654321',
+        expiresAt: new Date(Date.now() + 60_000).toISOString(),
+        status: 'EXPIRED',
+      },
+      cancelPairing,
+      refreshPairing: vi.fn().mockResolvedValue(undefined),
+      startPairing,
+    });
+
+    render(<DevicePairingPage />);
+
+    await waitFor(() => expect(cancelPairing).toHaveBeenCalledTimes(1));
+    expect(startPairing).toHaveBeenCalledTimes(1);
+  });
 });

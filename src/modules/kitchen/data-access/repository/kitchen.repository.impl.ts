@@ -242,21 +242,27 @@ async function signedPost<T>(identity: StoredTvMonitorIdentity, url: string, pay
   return apiPostRemotePublic<T>(url, proof.wireData, { headers: proof.headers });
 }
 
-async function restoreBinding(identity: StoredTvMonitorIdentity) {
+async function renewLeaseIfNeeded(identity: StoredTvMonitorIdentity) {
   if (!identity.device) throw new Error('Ulangan TV qurilmasi topilmadi.');
   const leaseExpiresAt = Date.parse(identity.device.leaseExpiresAt);
-  let current = identity;
-  if (!Number.isFinite(leaseExpiresAt) || leaseExpiresAt <= Date.now() + LEASE_RENEW_LEAD_MS) {
-    const renewed = await signedPost<{ device: TvMonitorDevice; leaseExpiresAt: string }>(
-      current,
-      '/devices/lease/renew/',
-      {},
-    );
-    current = await persistTvMonitorIdentity({
-      ...current,
-      device: { ...current.device, ...renewed.device, leaseExpiresAt: renewed.leaseExpiresAt },
-    });
-  }
+  if (Number.isFinite(leaseExpiresAt) && leaseExpiresAt > Date.now() + LEASE_RENEW_LEAD_MS) return identity;
+
+  // TV pages commonly stay open for days. Renew with the permanent device key
+  // before the 24-hour rolling lease expires (the backend also permits this
+  // signed endpoint to recover an already-expired ACTIVE lease).
+  const renewed = await signedPost<{ device: TvMonitorDevice; leaseExpiresAt: string }>(
+    identity,
+    '/devices/lease/renew/',
+    {},
+  );
+  return persistTvMonitorIdentity({
+    ...identity,
+    device: { ...identity.device, ...renewed.device, leaseExpiresAt: renewed.leaseExpiresAt },
+  });
+}
+
+async function restoreBinding(identity: StoredTvMonitorIdentity) {
+  const current = await renewLeaseIfNeeded(identity);
   const response = await signedGet<DeviceBindingResponse>(current, '/devices/me/');
   return persistBinding(current, response);
 }
@@ -394,13 +400,15 @@ class KitchenRepositoryImpl implements KitchenRepository {
   }
 
   async getTvMonitorQueue(): Promise<KitchenMonitorQueue> {
-    const identity = await readStoredTvMonitorIdentity();
+    const stored = await readStoredTvMonitorIdentity();
+    const identity = stored ? await renewLeaseIfNeeded(stored) : null;
     if (!identity?.device) throw new Error('Ulangan TV qurilmasi topilmadi.');
     return mapKitchenMonitorQueue(await signedGet<KitchenMonitorQueue>(identity, '/pos/monitor/tv-kitchen-queue/'));
   }
 
   async reportTvMonitorDiagnostic(diagnostic: TvMonitorDiagnostic): Promise<void> {
-    const identity = await readStoredTvMonitorIdentity();
+    const stored = await readStoredTvMonitorIdentity();
+    const identity = stored ? await renewLeaseIfNeeded(stored) : null;
     if (!identity?.device) throw new Error('Ulangan TV qurilmasi topilmadi.');
     await signedPost(identity, '/pos/monitor/tv-diagnostics/', diagnostic);
   }

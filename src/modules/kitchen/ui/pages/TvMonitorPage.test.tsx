@@ -172,4 +172,30 @@ describe('TvMonitorPage', () => {
     expect(screen.getByTestId('tv-audio-unlock-overlay')).toBeTruthy();
     expect(screen.getByTestId('tv-audio-unlock-error').textContent).toContain('Ovoz to‘xtadi');
   });
+
+  it('keeps a paired TV identity when a lease renewal is temporarily delayed', async () => {
+    vi.mocked(kitchenRepository.bootstrapTvMonitor).mockResolvedValue({
+      status: 'paired',
+      device: {
+        deviceId: activeDevice.id,
+        deviceStatus: activeDevice.status,
+        leaseExpiresAt: activeDevice.leaseExpiresAt,
+        restaurantId: 'restaurant-1',
+        restaurantName: 'New York',
+        posMonitorVariant: 'default',
+      },
+    });
+    vi.spyOn(kitchenRepository, 'getTvMonitorQueue').mockRejectedValue(
+      Object.assign(new Error('lease renewal delayed'), {
+        isAxiosError: true,
+        response: { status: 401, data: { code: 'device_lease_expired' } },
+      }),
+    );
+
+    render(<TvMonitorPage />);
+
+    await waitFor(() => expect(kitchenRepository.getTvMonitorQueue).toHaveBeenCalled());
+    expect(kitchenRepository.forgetTvMonitorDevice).not.toHaveBeenCalled();
+    expect(screen.getByTestId('paired-monitor').textContent).toContain('New York');
+  });
 });

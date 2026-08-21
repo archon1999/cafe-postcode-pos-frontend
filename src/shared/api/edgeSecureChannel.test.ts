@@ -454,6 +454,36 @@ describe('Local Agent application-layer secure channel', () => {
     const agentSigningPublic = bytesToBase64Url(await crypto.subtle.exportKey('raw', agentSigning.publicKey));
     const agentSigningFingerprint = await sha256Hex(base64UrlToBytes(agentSigningPublic));
     const agentDeviceId = '22222222-2222-4222-8222-222222222222';
+    const staleClientECDH = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, false, [
+      'deriveBits',
+    ]);
+    const staleAgentECDH = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, false, [
+      'deriveBits',
+    ]);
+    const staleAgentPublic = bytesToBase64Url(await crypto.subtle.exportKey('raw', staleAgentECDH.publicKey));
+    const staleIdentity = await readStoredDeviceIdentity();
+    if (!staleIdentity) throw new Error('POS identity was not persisted');
+    await persistDeviceIdentity({
+      ...staleIdentity,
+      localSecureChannel: {
+        version: 1,
+        clientPrivateKey: staleClientECDH.privateKey,
+        clientPublicKey: bytesToBase64Url(await crypto.subtle.exportKey('raw', staleClientECDH.publicKey)),
+        terminalId,
+        origin,
+        agentPublicKey: staleAgentPublic,
+        agentPublicKeyFingerprint: await sha256Hex(base64UrlToBytes(staleAgentPublic)),
+        sessionKey: await crypto.subtle.importKey(
+          'raw',
+          crypto.getRandomValues(new Uint8Array(32)),
+          'AES-GCM',
+          false,
+          ['encrypt', 'decrypt'],
+        ),
+        channelId: 'stale-channel',
+        expiresAt: new Date(Date.now() + 30 * 60_000).toISOString(),
+      },
+    });
     let tamperAttestation = false;
 
     vi.stubGlobal(
@@ -581,6 +611,7 @@ describe('Local Agent application-layer secure channel', () => {
     await expect(ensureLocalAgentSecureChannel(origin, '', true, trust)).resolves.toBe(true);
     expect(readLegacyEdgeMigrationCredential()).toBe('');
     expect((await readStoredDeviceIdentity())?.localSecureChannel?.agentPublicKey).toBe(agentECDHPublic);
+    expect(agentECDHPublic).not.toBe(staleAgentPublic);
 
     tamperAttestation = true;
     await expect(ensureLocalAgentSecureChannel(origin, '', true, trust)).resolves.toBe(false);

@@ -231,6 +231,31 @@ describe('generalized TV monitor device repository', () => {
     );
   });
 
+  it('renews a continuously open TV lease before its next queue request instead of requiring QR pairing', async () => {
+    const expiredDevice = { ...activeDevice, leaseExpiresAt: '2020-01-01T00:00:00.000Z' };
+    const renewedDevice = { ...activeDevice, leaseExpiresAt: '2099-01-02T00:00:00.000Z' };
+    vi.mocked(apiPostRemotePublic)
+      .mockResolvedValueOnce(pairingResponse())
+      .mockResolvedValueOnce({ status: 'paired', device: expiredDevice, restaurantContext })
+      .mockResolvedValueOnce({ device: renewedDevice, leaseExpiresAt: renewedDevice.leaseExpiresAt });
+    vi.mocked(apiGetRemotePublic).mockResolvedValueOnce({
+      monitorVariant: 'light_compact',
+      preparing: [],
+      recentlyDone: [],
+      announcements: [],
+    });
+    const pairing = await kitchenRepository.createTvMonitorPairing();
+    await kitchenRepository.getTvMonitorPairingStatus(pairing.id, pairing.pollToken);
+
+    await expect(kitchenRepository.getTvMonitorQueue()).resolves.toMatchObject({
+      monitorVariant: 'light_compact',
+    });
+
+    expect(vi.mocked(apiPostRemotePublic).mock.calls[2]?.[0]).toBe('/devices/lease/renew/');
+    expect(vi.mocked(apiGetRemotePublic).mock.calls[0]?.[0]).toBe('/pos/monitor/tv-kitchen-queue/');
+    expect((await readStoredTvMonitorIdentity())?.device?.leaseExpiresAt).toBe(renewedDevice.leaseExpiresAt);
+  });
+
   it('signs every queue and diagnostics request with the paired TV key and never sends X-TV-Token', async () => {
     vi.mocked(apiPostRemotePublic)
       .mockResolvedValueOnce(pairingResponse())

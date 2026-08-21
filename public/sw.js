@@ -26,12 +26,11 @@ function isApiRequest(url) {
 }
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    Promise.all([
-      caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)),
-      self.skipWaiting(),
-    ]),
-  );
+  // Keep the current worker and its asset cache alive while an open POS tab is
+  // still running the previous build. The UI explicitly promotes the waiting
+  // worker on reload/update; activating here would delete the old cache and
+  // make lazy chunks from the open build return 404 during every deployment.
+  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
 });
 
 self.addEventListener('message', (event) => {

@@ -427,7 +427,11 @@ async function establishLocalAgentSecureChannel(
   if (!restaurantId || payload.restaurantId?.toLowerCase() !== restaurantId) return false;
   if (trust && !(await verifyAgentAttestation(payload, trust))) return false;
   const pinnedAgentKey = identity.localSecureChannel?.agentPublicKey;
-  if (pinnedAgentKey && pinnedAgentKey !== payload.agentPublicKey) return false;
+  // A Local Agent reinstall or identity-store repair may rotate its ECDH
+  // transport key while preserving the backend-paired Ed25519 device key.
+  // A freshly verified backend-trusted attestation securely authorizes that
+  // rotation; untrusted/token-only handshakes must still match the old pin.
+  if (pinnedAgentKey && pinnedAgentKey !== payload.agentPublicKey && !trust) return false;
   const transcript = [
     'edge-channel-v1',
     restaurantId,
