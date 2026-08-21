@@ -170,6 +170,17 @@ async function selectCoordinator(restaurantId: string, coordinator?: Coordinator
   return null;
 }
 
+async function discoverCoordinator(restaurantId: string) {
+  const session = readStoredSession();
+  if (!session?.token) return null;
+  const response = await apiPostRemote<{ restaurantId: string; coordinator?: Coordinator | null }>(
+    '/pos/auth/transport/',
+    terminalIdentity(),
+    { timeout: 8_000 },
+  );
+  return response.restaurantId === restaurantId ? (response.coordinator ?? null) : null;
+}
+
 export async function refreshTransportMode() {
   const storedConnection = readTransportConnection();
   const sessionRestaurantId = readStoredSession()?.restaurantContext?.restaurantId;
@@ -191,29 +202,34 @@ export async function refreshTransportMode() {
   if (!current) return { changed: false, requiresRelogin: false, mode: 'remote' as PosTransportMode };
   let next: PosTransportConnection | null = null;
   if (current.mode === 'remote') {
-    const session = readStoredSession();
-    if (session?.token) {
-      try {
-        const response = await apiPostRemote<{ restaurantId: string; coordinator?: Coordinator | null }>(
-          '/pos/auth/transport/',
-          terminalIdentity(),
-          { timeout: 8_000 },
-        );
-        if (response.restaurantId === current.restaurantId) {
-          next = await selectCoordinator(current.restaurantId, response.coordinator);
-        }
-      } catch (error) {
-        if (error instanceof LocalAgentCompatibilityError) throw error;
-        next = null;
-      }
+    try {
+      next = await selectCoordinator(current.restaurantId, await discoverCoordinator(current.restaurantId));
+    } catch (error) {
+      if (error instanceof LocalAgentCompatibilityError) throw error;
+      next = null;
     }
   } else if (
     current.origin &&
     (current.secureChannel || readLegacyEdgeMigrationCredential() || isLoopbackEdgeOrigin(current.origin))
   ) {
-    const result = await probe(current.origin, current.restaurantId);
-    if (result.status === 'incompatible') throw new LocalAgentCompatibilityError(result.protocolVersion);
-    next = result.status === 'selected' ? result.connection : null;
+    // A LAN endpoint may have been selected while loopback was temporarily
+    // unavailable. On an Agent-hosted POS, prefer the same machine again once
+    // it is healthy, using backend-attested Agent trust for safe key repinning.
+    if (current.mode === 'router') {
+      try {
+        const coordinator = await discoverCoordinator(current.restaurantId);
+        const localResult = await probe(DEFAULT_EDGE_ORIGIN, current.restaurantId, coordinatorTrust(coordinator));
+        if (localResult.status === 'selected') next = localResult.connection;
+      } catch {
+        // Keep the already-working LAN path when backend discovery or loopback
+        // probing is unavailable.
+      }
+    }
+    if (!next) {
+      const result = await probe(current.origin, current.restaurantId);
+      if (result.status === 'incompatible') throw new LocalAgentCompatibilityError(result.protocolVersion);
+      next = result.status === 'selected' ? result.connection : null;
+    }
   }
   if (!next)
     next = {

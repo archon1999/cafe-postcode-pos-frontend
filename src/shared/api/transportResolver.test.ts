@@ -93,6 +93,80 @@ describe('paired-device transport resolver', () => {
     );
   });
 
+  it('upgrades a router connection to trusted loopback on the Agent host', async () => {
+    persistTransportConnection({
+      mode: 'router',
+      restaurantId: 'garizon',
+      origin: 'http://192.168.1.113:18181',
+      secureChannel: true,
+      backendOnline: true,
+    });
+    persistSession({
+      token: 'pos-session',
+      user: { id: 'user-1', username: 'cashier', fullName: 'Cashier', permissionCodes: [] },
+      restaurantContext: { restaurantId: 'garizon', restaurantName: 'Garizon' },
+    });
+    apiPostRemoteMock.mockResolvedValueOnce({
+      restaurantId: 'garizon',
+      coordinator: {
+        restaurantId: 'garizon',
+        coordinatorUrls: ['http://127.0.0.1:18181', 'http://192.168.1.113:18181'],
+        agentDeviceId: '22222222-2222-4222-8222-222222222222',
+        agentSigningPublicKeyAlgorithm: 'ED25519',
+        agentSigningPublicKey: 'A'.repeat(43),
+        agentSigningPublicKeyFingerprint: 'a'.repeat(64),
+      },
+    });
+    fetchMock().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ protocolVersion: 1 }),
+    } as Response);
+
+    const result = await refreshTransportMode();
+
+    expect(result).toEqual({ changed: true, requiresRelogin: false, mode: 'local' });
+    expect(readTransportConnection()).toMatchObject({
+      mode: 'local',
+      restaurantId: 'garizon',
+      origin: 'http://127.0.0.1:18181',
+    });
+    expect(secureChannelMock).toHaveBeenCalledWith(
+      'http://127.0.0.1:18181',
+      '',
+      true,
+      expect.objectContaining({ agentDeviceId: '22222222-2222-4222-8222-222222222222' }),
+      'garizon',
+    );
+  });
+
+  it('keeps the working router connection when loopback upgrade is unavailable', async () => {
+    persistTransportConnection({
+      mode: 'router',
+      restaurantId: 'garizon',
+      origin: 'http://192.168.1.113:18181',
+      secureChannel: true,
+      backendOnline: true,
+    });
+    persistSession({
+      token: 'pos-session',
+      user: { id: 'user-1', username: 'cashier', fullName: 'Cashier', permissionCodes: [] },
+      restaurantContext: { restaurantId: 'garizon', restaurantName: 'Garizon' },
+    });
+    apiPostRemoteMock.mockRejectedValueOnce(new Error('backend unavailable'));
+    fetchMock().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ protocolVersion: 1 }),
+    } as Response);
+
+    const result = await refreshTransportMode();
+
+    expect(result).toEqual({ changed: false, requiresRelogin: false, mode: 'router' });
+    expect(readTransportConnection()).toMatchObject({
+      mode: 'router',
+      origin: 'http://192.168.1.113:18181',
+    });
+  });
+
   it('recovers a missing transport record from the paired employee session before probing the agent', async () => {
     persistSession({
       token: 'pos-session',
