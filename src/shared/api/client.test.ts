@@ -138,6 +138,40 @@ describe('remote public API client', () => {
     expect(readStoredSession()?.token).toBe('employee-token');
   });
 
+  it('keeps the employee session when a duplicated request is rejected as a replay', async () => {
+    Object.defineProperty(window, 'crypto', { configurable: true, value: webcrypto });
+    const identity = await createPosDeviceIdentity();
+    await persistDeviceIdentity({
+      ...identity,
+      device: {
+        id: '11111111-1111-4111-8111-111111111111',
+        type: 'POS_TERMINAL',
+        name: 'Retrying POS',
+        status: 'ACTIVE',
+        leaseExpiresAt: new Date(Date.now() + 60_000).toISOString(),
+      },
+      restaurantContext: { restaurantId: 'restaurant-1', restaurantName: 'Restaurant' },
+    });
+    persistSession({
+      token: 'employee-token',
+      user: { id: 'user-1', username: 'cashier', fullName: 'Cashier', permissionCodes: [] },
+    });
+    remoteApiClient.defaults.adapter = async (config) => {
+      throw new AxiosError('replayed request', 'ERR_BAD_REQUEST', config, undefined, {
+        data: { code: 'device_replay_detected' },
+        status: 401,
+        statusText: 'Unauthorized',
+        headers: {},
+        config,
+      });
+    };
+
+    await expect(apiPostRemote('/pos/sales/orders/', {})).rejects.toBeInstanceOf(AxiosError);
+
+    expect(readStoredSession()?.token).toBe('employee-token');
+    expect(window.location.pathname).not.toBe('/pin-login');
+  });
+
   it('turns an exact session_locked response into a synchronous lock signal without clearing the token', async () => {
     persistSession({
       token: 'employee-token',

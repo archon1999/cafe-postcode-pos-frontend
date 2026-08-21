@@ -128,6 +128,12 @@ function handleApiError(error: unknown) {
       dispatchPosDeviceSecurityEvent('device_lease_expired');
       throw error;
     }
+    // A replay response rejects only that duplicated request. It does not mean
+    // the paired device key or the employee session became invalid, so forcing
+    // a new PIN login would turn a harmless transport retry into an outage.
+    if (payload?.code === 'device_replay_detected') {
+      throw error;
+    }
     if (isPosDeviceSecurityCode(payload?.code)) {
       persistSession(null);
       dispatchPosDeviceSecurityEvent(payload.code);
