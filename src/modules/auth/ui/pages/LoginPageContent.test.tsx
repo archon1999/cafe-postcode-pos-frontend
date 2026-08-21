@@ -12,6 +12,7 @@ const setThemeModeMock = vi.fn();
 const unlockSessionMock = vi.fn();
 const mutateMock = vi.fn();
 const usePinLoginMutationMock = vi.fn();
+const refreshTransportModeMock = vi.fn();
 let authState = 'PAIRED_NO_USER';
 
 vi.mock('react-router', async () => {
@@ -44,6 +45,10 @@ vi.mock('../../application', () => ({
   usePinLoginMutation: (...args: unknown[]) => usePinLoginMutationMock(...args),
 }));
 
+vi.mock('shared/api/transportResolver', () => ({
+  refreshTransportMode: () => refreshTransportModeMock(),
+}));
+
 vi.mock('shared/ui/PosLogo', () => ({
   PosLogo: () => <div aria-hidden="true" />,
 }));
@@ -56,6 +61,8 @@ describe('LoginPageContent', () => {
     setSessionMock.mockReset();
     setThemeModeMock.mockReset();
     unlockSessionMock.mockReset();
+    refreshTransportModeMock.mockReset();
+    refreshTransportModeMock.mockResolvedValue({ changed: false, requiresRelogin: false, mode: 'remote' });
     authState = 'PAIRED_NO_USER';
     usePinLoginMutationMock.mockReset();
     usePinLoginMutationMock.mockReturnValue({
@@ -99,5 +106,26 @@ describe('LoginPageContent', () => {
 
     expect(setSessionMock).toHaveBeenCalledWith(response);
     expect(navigateMock).toHaveBeenCalledWith('/monitor/queue', { replace: true });
+  });
+
+  it('resolves the Local Agent transport before submitting a fresh PIN login', async () => {
+    let resolveTransport: ((value: unknown) => void) | undefined;
+    refreshTransportModeMock.mockReturnValue(
+      new Promise((resolve) => {
+        resolveTransport = resolve;
+      }),
+    );
+    render(<LoginPageContent />);
+
+    expect(refreshTransportModeMock).toHaveBeenCalledTimes(1);
+    for (const digit of ['1', '2', '3', '4']) fireEvent.click(screen.getByRole('button', { name: digit }));
+    expect(mutateMock).not.toHaveBeenCalled();
+
+    await act(async () => {
+      resolveTransport?.({ changed: true, requiresRelogin: true, mode: 'local' });
+    });
+    for (const digit of ['1', '2', '3', '4']) fireEvent.click(screen.getByRole('button', { name: digit }));
+
+    await waitFor(() => expect(mutateMock).toHaveBeenCalledWith({ pin: '1234' }));
   });
 });

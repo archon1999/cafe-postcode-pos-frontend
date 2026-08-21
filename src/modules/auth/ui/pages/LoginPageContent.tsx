@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 
 import { ignoreMismatchedAgent } from 'shared/api/edgeConnection';
+import { refreshTransportMode } from 'shared/api/transportResolver';
 import { getPosCopy, localeLabels } from 'shared/locale/copy';
 import { PosLogo } from 'shared/ui/PosLogo';
 
@@ -26,11 +27,27 @@ export function LoginPageContent() {
   const [toastOpen, setToastOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [unlockPending, setUnlockPending] = useState(false);
+  const [transportReadyRestaurantId, setTransportReadyRestaurantId] = useState<string | null>(null);
   const authBackgroundImage = resolvePosAuthBackgroundImage(restaurantContext);
+  const restaurantId = restaurantContext?.restaurantId;
+  const needsPreLoginTransport = authState === 'PAIRED_NO_USER' && Boolean(restaurantId);
+  const transportPending = needsPreLoginTransport && transportReadyRestaurantId !== restaurantId;
 
-  if (restaurantContext?.restaurantId) {
-    ignoreMismatchedAgent(restaurantContext.restaurantId);
-  }
+  useEffect(() => {
+    if (!needsPreLoginTransport || !restaurantId) return;
+
+    let active = true;
+    ignoreMismatchedAgent(restaurantId);
+    void refreshTransportMode()
+      .catch(() => undefined)
+      .finally(() => {
+        if (active) setTransportReadyRestaurantId(restaurantId);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [needsPreLoginTransport, restaurantId]);
 
   const appendDigit = (digit: string) => {
     setToastOpen(false);
@@ -58,7 +75,7 @@ export function LoginPageContent() {
     },
   });
 
-  const isPending = loginMutation.isPending || unlockPending;
+  const isPending = loginMutation.isPending || unlockPending || transportPending;
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
