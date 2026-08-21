@@ -9,6 +9,10 @@ import { refreshTransportMode } from './transportResolver';
 
 const apiPostRemoteMock = vi.hoisted(() => vi.fn());
 const secureChannelMock = vi.hoisted(() => vi.fn());
+const readDeviceIdentityMock = vi.hoisted(() => vi.fn());
+vi.mock('modules/auth/data-access/device/device-identity.store', () => ({
+  readStoredDeviceIdentity: (...args: unknown[]) => readDeviceIdentityMock(...args),
+}));
 vi.mock('./client', () => ({ apiPostRemote: (...args: unknown[]) => apiPostRemoteMock(...args) }));
 vi.mock('./edgeSecureChannel', () => ({
   ensureLocalAgentSecureChannel: (...args: unknown[]) => secureChannelMock(...args),
@@ -23,6 +27,8 @@ describe('paired-device transport resolver', () => {
     window.sessionStorage.clear();
     apiPostRemoteMock.mockReset();
     secureChannelMock.mockReset();
+    readDeviceIdentityMock.mockReset();
+    readDeviceIdentityMock.mockResolvedValue(null);
     secureChannelMock.mockResolvedValue(true);
     vi.stubGlobal('fetch', vi.fn());
   });
@@ -91,6 +97,46 @@ describe('paired-device transport resolver', () => {
     persistSession({
       token: 'pos-session',
       user: { id: 'user-1', username: 'cashier', fullName: 'Cashier', permissionCodes: [] },
+      restaurantContext: { restaurantId: 'garizon', restaurantName: 'Garizon' },
+    });
+    apiPostRemoteMock.mockResolvedValueOnce({
+      restaurantId: 'garizon',
+      coordinator: {
+        restaurantId: 'garizon',
+        coordinatorUrls: ['http://127.0.0.1:18181'],
+        agentDeviceId: '22222222-2222-4222-8222-222222222222',
+        agentSigningPublicKeyAlgorithm: 'ED25519',
+        agentSigningPublicKey: 'A'.repeat(43),
+        agentSigningPublicKeyFingerprint: 'a'.repeat(64),
+      },
+    });
+    fetchMock().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ protocolVersion: 1 }),
+    } as Response);
+
+    const result = await refreshTransportMode();
+
+    expect(result).toEqual({ changed: true, requiresRelogin: true, mode: 'local' });
+    expect(apiPostRemoteMock).toHaveBeenCalledWith(
+      '/pos/auth/transport/',
+      expect.objectContaining({ terminalId: expect.any(String) }),
+      { timeout: 8_000 },
+    );
+    expect(readTransportConnection()).toMatchObject({
+      mode: 'local',
+      restaurantId: 'garizon',
+      origin: 'http://127.0.0.1:18181',
+    });
+  });
+
+  it('recovers an old migrated session without restaurant context from its paired device binding', async () => {
+    persistSession({
+      token: 'pos-session',
+      user: { id: 'user-1', username: 'cashier', fullName: 'Cashier', permissionCodes: [] },
+    });
+    readDeviceIdentityMock.mockResolvedValueOnce({
+      device: { id: 'terminal-1' },
       restaurantContext: { restaurantId: 'garizon', restaurantName: 'Garizon' },
     });
     apiPostRemoteMock.mockResolvedValueOnce({

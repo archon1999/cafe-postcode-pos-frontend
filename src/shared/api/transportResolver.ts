@@ -1,3 +1,4 @@
+import { readStoredDeviceIdentity } from 'modules/auth/data-access/device/device-identity.store';
 import { persistSession, readStoredSession } from 'modules/auth/data-access/storage/session.storage';
 import type { PosRestaurantContext } from 'modules/auth/domain';
 
@@ -172,12 +173,17 @@ async function selectCoordinator(restaurantId: string, coordinator?: Coordinator
 export async function refreshTransportMode() {
   const storedConnection = readTransportConnection();
   const sessionRestaurantId = readStoredSession()?.restaurantContext?.restaurantId;
+  const pairedRestaurantId =
+    !storedConnection && !sessionRestaurantId
+      ? (await readStoredDeviceIdentity().catch(() => null))?.restaurantContext?.restaurantId
+      : undefined;
+  const fallbackRestaurantId = sessionRestaurantId ?? pairedRestaurantId;
   const current: PosTransportConnection | null =
     storedConnection ??
-    (sessionRestaurantId
+    (fallbackRestaurantId
       ? {
           mode: 'remote',
-          restaurantId: sessionRestaurantId,
+          restaurantId: fallbackRestaurantId,
           backendOnline: true,
           selectedAt: new Date().toISOString(),
         }
