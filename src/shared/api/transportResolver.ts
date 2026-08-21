@@ -170,7 +170,18 @@ async function selectCoordinator(restaurantId: string, coordinator?: Coordinator
 }
 
 export async function refreshTransportMode() {
-  const current = readTransportConnection();
+  const storedConnection = readTransportConnection();
+  const sessionRestaurantId = readStoredSession()?.restaurantContext?.restaurantId;
+  const current: PosTransportConnection | null =
+    storedConnection ??
+    (sessionRestaurantId
+      ? {
+          mode: 'remote',
+          restaurantId: sessionRestaurantId,
+          backendOnline: true,
+          selectedAt: new Date().toISOString(),
+        }
+      : null);
   if (!current) return { changed: false, requiresRelogin: false, mode: 'remote' as PosTransportMode };
   let next: PosTransportConnection | null = null;
   if (current.mode === 'remote') {

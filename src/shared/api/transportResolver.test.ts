@@ -87,6 +87,43 @@ describe('paired-device transport resolver', () => {
     );
   });
 
+  it('recovers a missing transport record from the paired employee session before probing the agent', async () => {
+    persistSession({
+      token: 'pos-session',
+      user: { id: 'user-1', username: 'cashier', fullName: 'Cashier', permissionCodes: [] },
+      restaurantContext: { restaurantId: 'garizon', restaurantName: 'Garizon' },
+    });
+    apiPostRemoteMock.mockResolvedValueOnce({
+      restaurantId: 'garizon',
+      coordinator: {
+        restaurantId: 'garizon',
+        coordinatorUrls: ['http://127.0.0.1:18181'],
+        agentDeviceId: '22222222-2222-4222-8222-222222222222',
+        agentSigningPublicKeyAlgorithm: 'ED25519',
+        agentSigningPublicKey: 'A'.repeat(43),
+        agentSigningPublicKeyFingerprint: 'a'.repeat(64),
+      },
+    });
+    fetchMock().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ protocolVersion: 1 }),
+    } as Response);
+
+    const result = await refreshTransportMode();
+
+    expect(result).toEqual({ changed: true, requiresRelogin: true, mode: 'local' });
+    expect(apiPostRemoteMock).toHaveBeenCalledWith(
+      '/pos/auth/transport/',
+      expect.objectContaining({ terminalId: expect.any(String) }),
+      { timeout: 8_000 },
+    );
+    expect(readTransportConnection()).toMatchObject({
+      mode: 'local',
+      restaurantId: 'garizon',
+      origin: 'http://127.0.0.1:18181',
+    });
+  });
+
   it('falls back from a mismatched local agent to remote and requires a new PIN session', async () => {
     persistTransportConnection({
       mode: 'local',
