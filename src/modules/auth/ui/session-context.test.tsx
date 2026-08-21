@@ -3,14 +3,11 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  persistPosLastActivityAt,
-  POS_LAST_ACTIVITY_STORAGE_KEY,
-  POS_SESSION_LOCK_STORAGE_KEY,
-} from '../data-access/storage/session-security';
+import { PosAuthApiError } from '../data-access/repository/auth.repository.impl';
+import { POS_SESSION_LOCK_STORAGE_KEY } from '../data-access/storage/session-security';
 import type { PosDeviceBinding } from '../domain';
 
-import { POS_IDLE_LOCK_MS, PosSessionProvider, usePosSession } from './session-context';
+import { PosSessionProvider, usePosSession } from './session-context';
 
 const repositoryMocks = vi.hoisted(() => ({
   clearDeviceIdentity: vi.fn(),
@@ -98,7 +95,6 @@ describe('POS session state and locking', () => {
         restaurantContext: binding.restaurantContext,
       }),
     );
-    persistPosLastActivityAt();
   });
 
   afterEach(() => {
@@ -114,18 +110,50 @@ describe('POS session state and locking', () => {
     expect(repositoryMocks.restoreDeviceBinding).toHaveBeenCalledOnce();
   });
 
-  it('locks after 15 minutes of inactivity, keeps only the locked session, and requires rotated PIN unlock', async () => {
+  it('routes an existing server-locked session to PIN unlock instead of device revocation', async () => {
+    sessionStorage.setItem(
+      'restaurant-pos-session',
+      JSON.stringify({
+        token: 'original-token',
+        lockedAt: '2026-08-21T04:00:00.000Z',
+        user: { id: 'user-1', username: 'cashier', fullName: 'Cashier', permissionCodes: [] },
+        restaurantContext: binding.restaurantContext,
+      }),
+    );
+    repositoryMocks.restoreDeviceBinding.mockRejectedValueOnce(
+      new PosAuthApiError('POS session is locked.', 'session_locked', 423),
+    );
+
     await renderProvider();
+
+    expect(screen.getByTestId('state').textContent).toBe('LOCKED');
+    expect(screen.getByTestId('state').textContent).not.toBe('REVOKED');
+    expect(screen.getByTestId('restaurant').textContent).toBe('restaurant-1');
+  });
+
+  it('never locks automatically after inactivity, browser suspension, focus, or input', async () => {
     vi.useFakeTimers();
-    fireEvent.pointerMove(window);
-
+    await renderProvider();
+    const now = Date.now();
+    vi.setSystemTime(now + 24 * 60 * 60_000);
     await act(async () => {
-      vi.advanceTimersByTime(POS_IDLE_LOCK_MS - 1);
+      vi.advanceTimersByTime(24 * 60 * 60_000);
+      fireEvent.pointerMove(window);
+      fireEvent.pointerDown(window);
+      fireEvent.keyDown(window, { key: 'Enter' });
+      window.dispatchEvent(new Event('focus'));
+      document.dispatchEvent(new Event('visibilitychange'));
+      await Promise.resolve();
     });
-    expect(screen.getByTestId('state').textContent).toBe('AUTHENTICATED');
 
+    expect(repositoryMocks.lockSession).not.toHaveBeenCalled();
+    expect(screen.getByTestId('state').textContent).toBe('AUTHENTICATED');
+  });
+
+  it('keeps explicit manual lock and rotated PIN unlock', async () => {
+    await renderProvider();
     await act(async () => {
-      vi.advanceTimersByTime(1);
+      fireEvent.click(screen.getByRole('button', { name: 'lock' }));
       await Promise.resolve();
     });
     expect(repositoryMocks.lockSession).toHaveBeenCalledOnce();
@@ -142,147 +170,8 @@ describe('POS session state and locking', () => {
     expect(screen.getByTestId('token').textContent).toBe('rotated-token');
   });
 
-  it('does not let the first input after browser suspension reset an elapsed idle window', async () => {
+  it('accepts a cross-tab session_locked signal and locks every tab', async () => {
     await renderProvider();
-    vi.useFakeTimers();
-    vi.setSystemTime(Date.now() + POS_IDLE_LOCK_MS + 1);
-
-    await act(async () => {
-      fireEvent.pointerDown(window);
-      await Promise.resolve();
-    });
-
-    expect(repositoryMocks.lockSession).toHaveBeenCalledOnce();
-    expect(screen.getByTestId('state').textContent).toBe('LOCKED');
-  });
-
-  it('keeps the absolute idle deadline across a full provider reload and locks exactly at 15 minutes', async () => {
-    vi.useFakeTimers();
-    const startedAt = Date.parse('2026-08-17T05:00:00.000Z');
-    vi.setSystemTime(startedAt);
-    persistPosLastActivityAt(startedAt);
-    const firstMount = await renderProvider();
-    firstMount.unmount();
-
-    vi.setSystemTime(startedAt + POS_IDLE_LOCK_MS - 1_000);
-    await renderProvider();
-    window.dispatchEvent(new Event('online'));
-    window.dispatchEvent(new Event('focus'));
-
-    await act(async () => {
-      vi.advanceTimersByTime(999);
-      await Promise.resolve();
-    });
-    expect(repositoryMocks.lockSession).not.toHaveBeenCalled();
-
-    await act(async () => {
-      vi.advanceTimersByTime(1);
-      await Promise.resolve();
-    });
-    expect(repositoryMocks.lockSession).toHaveBeenCalledOnce();
-    expect(screen.getByTestId('state').textContent).toBe('LOCKED');
-  });
-
-  it.each([
-    ['missing', null],
-    ['future', JSON.stringify({ version: 1, at: Date.parse('2026-08-18T05:00:00.000Z') })],
-    ['malformed', '{not-json'],
-  ])('locks an existing session on reload when its activity epoch is %s', async (_caseName, storedValue) => {
-    vi.useFakeTimers();
-    vi.setSystemTime(Date.parse('2026-08-17T05:00:00.000Z'));
-    if (storedValue === null) localStorage.removeItem(POS_LAST_ACTIVITY_STORAGE_KEY);
-    else localStorage.setItem(POS_LAST_ACTIVITY_STORAGE_KEY, storedValue);
-
-    await renderProvider();
-    await act(async () => {
-      await Promise.resolve();
-    });
-
-    expect(repositoryMocks.lockSession).toHaveBeenCalledOnce();
-    expect(screen.getByTestId('state').textContent).toBe('LOCKED');
-    expect(screen.getByTestId('token').textContent).toBe('original-token');
-  });
-
-  it('keeps an in-memory idle deadline when activity storage becomes unavailable', async () => {
-    vi.useFakeTimers();
-    const startedAt = Date.parse('2026-08-17T07:00:00.000Z');
-    vi.setSystemTime(startedAt);
-    persistPosLastActivityAt(startedAt);
-    await renderProvider();
-
-    const originalSetItem = Storage.prototype.setItem;
-    const storageFailure = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (
-      this: Storage,
-      key,
-      value,
-    ) {
-      if (this === localStorage && key === POS_LAST_ACTIVITY_STORAGE_KEY) {
-        throw new DOMException('Denied', 'SecurityError');
-      }
-      return originalSetItem.call(this, key, value);
-    });
-    try {
-      vi.setSystemTime(startedAt + 1_000);
-      fireEvent.pointerDown(window);
-      await act(async () => {
-        vi.advanceTimersByTime(POS_IDLE_LOCK_MS - 1);
-        await Promise.resolve();
-      });
-      expect(repositoryMocks.lockSession).not.toHaveBeenCalled();
-
-      await act(async () => {
-        vi.advanceTimersByTime(1);
-        await Promise.resolve();
-      });
-      expect(repositoryMocks.lockSession).toHaveBeenCalledOnce();
-      expect(screen.getByTestId('state').textContent).toBe('LOCKED');
-    } finally {
-      storageFailure.mockRestore();
-    }
-  });
-
-  it('locks fail-closed when activity storage cannot be read on reload', async () => {
-    const originalGetItem = Storage.prototype.getItem;
-    const storageFailure = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(function (this: Storage, key) {
-      if (this === localStorage && key === POS_LAST_ACTIVITY_STORAGE_KEY) {
-        throw new DOMException('Denied', 'SecurityError');
-      }
-      return originalGetItem.call(this, key);
-    });
-    try {
-      await renderProvider();
-      await act(async () => {
-        await Promise.resolve();
-      });
-      expect(repositoryMocks.lockSession).toHaveBeenCalledOnce();
-      expect(screen.getByTestId('state').textContent).toBe('LOCKED');
-    } finally {
-      storageFailure.mockRestore();
-    }
-  });
-
-  it('accepts real activity from another tab but a cross-tab session_locked signal locks every tab', async () => {
-    vi.useFakeTimers();
-    const startedAt = Date.parse('2026-08-17T06:00:00.000Z');
-    vi.setSystemTime(startedAt);
-    persistPosLastActivityAt(startedAt);
-    await renderProvider();
-
-    vi.setSystemTime(startedAt + POS_IDLE_LOCK_MS - 60_000);
-    const crossTabActivityAt = Date.now();
-    persistPosLastActivityAt(crossTabActivityAt);
-    window.dispatchEvent(
-      new StorageEvent('storage', {
-        key: POS_LAST_ACTIVITY_STORAGE_KEY,
-        newValue: JSON.stringify({ version: 1, at: crossTabActivityAt }),
-        storageArea: localStorage,
-      }),
-    );
-    await act(async () => {
-      vi.advanceTimersByTime(60_000);
-      await Promise.resolve();
-    });
-    expect(repositoryMocks.lockSession).not.toHaveBeenCalled();
 
     const lockedAt = new Date(Date.now()).toISOString();
     act(() => {

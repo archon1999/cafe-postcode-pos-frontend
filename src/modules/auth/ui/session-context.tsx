@@ -3,11 +3,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import {
   authRepository,
   dispatchPosSessionLocked,
-  persistPosLastActivityAt,
   PosAuthApiError,
-  POS_LAST_ACTIVITY_STORAGE_KEY,
   POS_DEVICE_SECURITY_EVENT,
-  readPosLastActivityAt,
   readStoredDeviceIdentity,
   subscribePosSessionLocked,
   type PosDeviceSecurityCode,
@@ -34,7 +31,6 @@ import {
   readStoredThemeMode,
 } from '../data-access/storage/session.storage';
 
-export const POS_IDLE_LOCK_MS = 15 * 60_000;
 const MAX_BROWSER_TIMEOUT_MS = 2_147_000_000;
 
 type InternalContext = PosSessionContextValue & { deviceError: string | null };
@@ -61,7 +57,6 @@ export function PosSessionProvider({ children }: { children: ReactNode }) {
 
   const storeSession = useCallback(
     (nextValue: PosSessionPayload | null) => {
-      const previousToken = readStoredSession()?.token;
       const normalized = nextValue
         ? {
             ...nextValue,
@@ -70,9 +65,6 @@ export function PosSessionProvider({ children }: { children: ReactNode }) {
         : null;
       updateSession(normalized);
       persistSession(normalized);
-      if (normalized?.token && normalized.token !== previousToken && !normalized.lockedAt) {
-        persistPosLastActivityAt();
-      }
       if (device) setAuthState(derivePosAuthState(normalized));
     },
     [device, restaurantContext],
@@ -104,6 +96,17 @@ export function PosSessionProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         const stored = await readStoredDeviceIdentity().catch(() => null);
         if (stored?.device) setDevice(stored.device);
+        if (stored?.restaurantContext) setRestaurantContext(stored.restaurantContext);
+        if (error instanceof PosAuthApiError && error.code === 'session_locked' && stored?.device) {
+          const lockedSession = readStoredSession();
+          if (!stored.restaurantContext && lockedSession?.restaurantContext) {
+            setRestaurantContext(lockedSession.restaurantContext);
+          }
+          updateSession(lockedSession);
+          setDeviceError(null);
+          setAuthState(derivePosAuthState(lockedSession));
+          return;
+        }
         const message = error instanceof Error ? error.message : 'Qurilma ulanishini tekshirib bo‘lmadi.';
         setDeviceError(message);
         const securityFailure =
@@ -236,9 +239,6 @@ export function PosSessionProvider({ children }: { children: ReactNode }) {
       await authRepository.lockSession();
       const unlocked = { ...(await authRepository.unlockSession({ pin })), lockedAt: null };
       storeSession(unlocked);
-      // A successful PIN entry is explicit user activity even when an older
-      // coordinator does not rotate the session token as expected.
-      persistPosLastActivityAt();
       setAuthState(transitionPosAuthState('LOCKED', { type: 'USER_AUTHENTICATED' }));
       return unlocked;
     },
@@ -319,63 +319,6 @@ export function PosSessionProvider({ children }: { children: ReactNode }) {
     scheduleRenewal();
     return () => window.clearTimeout(timeoutId);
   }, [authState, device, retryDeviceConnection]);
-
-  useEffect(() => {
-    if (authState !== 'AUTHENTICATED') return;
-    // Only a real login/unlock or user input creates an activity epoch. An
-    // existing session whose persisted epoch is missing or invalid is locked
-    // fail-closed, so reload/storage tampering cannot renew the idle window.
-    let lastActivityAt = readPosLastActivityAt(Date.now()) ?? 0;
-    let timeoutId = 0;
-    let lastReset = 0;
-
-    const enforceIdle = () => {
-      const now = Date.now();
-      lastActivityAt = Math.max(lastActivityAt, readPosLastActivityAt(now) ?? 0);
-      if (now - lastActivityAt >= POS_IDLE_LOCK_MS) {
-        void lockSession('idle');
-        return;
-      }
-      window.clearTimeout(timeoutId);
-      timeoutId = window.setTimeout(enforceIdle, POS_IDLE_LOCK_MS - (now - lastActivityAt));
-    };
-    const markActivity = () => {
-      const now = Date.now();
-      lastActivityAt = Math.max(lastActivityAt, readPosLastActivityAt(now) ?? 0);
-      // A browser may suspend timers in the background. The first input after
-      // resume must enforce the elapsed idle period, not reset it.
-      if (now - lastActivityAt >= POS_IDLE_LOCK_MS) {
-        void lockSession('idle');
-        return;
-      }
-      if (now - lastReset < 1_000) return;
-      lastReset = now;
-      lastActivityAt = persistPosLastActivityAt(now) ?? now;
-      enforceIdle();
-    };
-    const onVisibilityOrFocus = () => {
-      if (!document.hidden) enforceIdle();
-    };
-    const onCrossTabActivity = (event: StorageEvent) => {
-      if (event.key !== POS_LAST_ACTIVITY_STORAGE_KEY) return;
-      const now = Date.now();
-      lastActivityAt = Math.max(lastActivityAt, readPosLastActivityAt(now) ?? 0);
-      enforceIdle();
-    };
-    enforceIdle();
-    const events: Array<keyof WindowEventMap> = ['pointerdown', 'pointermove', 'keydown', 'touchstart'];
-    for (const eventName of events) window.addEventListener(eventName, markActivity, { passive: true });
-    window.addEventListener('focus', onVisibilityOrFocus);
-    window.addEventListener('storage', onCrossTabActivity);
-    document.addEventListener('visibilitychange', onVisibilityOrFocus);
-    return () => {
-      window.clearTimeout(timeoutId);
-      for (const eventName of events) window.removeEventListener(eventName, markActivity);
-      window.removeEventListener('focus', onVisibilityOrFocus);
-      window.removeEventListener('storage', onCrossTabActivity);
-      document.removeEventListener('visibilitychange', onVisibilityOrFocus);
-    };
-  }, [authState, lockSession]);
 
   const value = useMemo<InternalContext>(
     () => ({
