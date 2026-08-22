@@ -108,47 +108,51 @@ vi.mock('shared/pos/useOptimisticBuilderOrder', () => ({
   useOptimisticBuilderOrder: (...args: unknown[]) => useOptimisticBuilderOrderMock(...args),
 }));
 
-vi.mock('shared/ui/pos-primitives', () => ({
-  PosBuilderPageSkeleton: () => <div>loading</div>,
-  PosIconAction: ({ icon, onClick }: { icon: string; onClick?: () => void }) => (
-    <button aria-label={icon} onClick={onClick}>
-      {icon}
-    </button>
-  ),
-  PosOrderChannelSegment: ({
-    channel,
-    items = [],
-  }: {
-    channel: string;
-    items?: Array<{ value: string; label: string }>;
-  }) => (
-    <div>
-      {items.map((item) => (
-        <span key={item.value} aria-current={item.value === channel ? 'true' : undefined}>
-          {item.label}
-        </span>
-      ))}
-    </div>
-  ),
-  PosSectionTabs: ({ items }: { items: Array<{ label: string }> }) => (
-    <div>{items.map((item) => item.label).join(', ')}</div>
-  ),
-  PosItemNoteDialog: ({
-    itemLabel,
-    onSave,
-    open,
-  }: {
-    itemLabel: string;
-    onSave: (note: string) => void;
-    open: boolean;
-  }) =>
-    open ? (
-      <div role="dialog" aria-label={`note-${itemLabel}`}>
-        <button onClick={() => onSave('Piyozsiz')}>Test note save</button>
+vi.mock('shared/ui/pos-primitives', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('shared/ui/pos-primitives')>();
+  return {
+    PosMenuItemCard: actual.PosMenuItemCard,
+    PosBuilderPageSkeleton: () => <div>loading</div>,
+    PosIconAction: ({ icon, onClick }: { icon: string; onClick?: () => void }) => (
+      <button aria-label={icon} onClick={onClick}>
+        {icon}
+      </button>
+    ),
+    PosOrderChannelSegment: ({
+      channel,
+      items = [],
+    }: {
+      channel: string;
+      items?: Array<{ value: string; label: string }>;
+    }) => (
+      <div>
+        {items.map((item) => (
+          <span key={item.value} aria-current={item.value === channel ? 'true' : undefined}>
+            {item.label}
+          </span>
+        ))}
       </div>
-    ) : null,
-  PosSettingsMenu: () => null,
-}));
+    ),
+    PosSectionTabs: ({ items }: { items: Array<{ label: string }> }) => (
+      <div>{items.map((item) => item.label).join(', ')}</div>
+    ),
+    PosItemNoteDialog: ({
+      itemLabel,
+      onSave,
+      open,
+    }: {
+      itemLabel: string;
+      onSave: (note: string) => void;
+      open: boolean;
+    }) =>
+      open ? (
+        <div role="dialog" aria-label={`note-${itemLabel}`}>
+          <button onClick={() => onSave('Piyozsiz')}>Test note save</button>
+        </div>
+      ) : null,
+    PosSettingsMenu: () => null,
+  };
+});
 
 describe('TableSessionPageContent', () => {
   afterEach(() => {
@@ -233,7 +237,9 @@ describe('TableSessionPageContent', () => {
     fireEvent.change(screen.getAllByLabelText('Butun buyurtma uchun izoh')[0], {
       target: { value: 'Umumiy: tezroq' },
     });
-    const options = useOptimisticBuilderOrderMock.mock.calls.at(-1)?.[0] as {
+    const options = useOptimisticBuilderOrderMock.mock.calls[
+      useOptimisticBuilderOrderMock.mock.calls.length - 1
+    ]?.[0] as {
       createOrder: () => Promise<string>;
       addOrderItem: (orderId: string, item: { id: string }, note: string) => Promise<unknown>;
     };

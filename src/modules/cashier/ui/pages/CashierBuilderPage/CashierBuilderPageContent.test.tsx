@@ -14,6 +14,7 @@ const useOptimisticBuilderOrderMock = vi.fn();
 const submitOrderMutateAsyncMock = vi.fn();
 const createBuilderOrderMock = vi.fn();
 const addOrderItemMock = vi.fn();
+const addItemMock = vi.fn();
 const updateOrderNoteMock = vi.fn();
 const updateOrderDeliveryDetailsMock = vi.fn();
 const updateOrderChannelMock = vi.fn();
@@ -30,6 +31,15 @@ function getSearchParamsMock() {
     cachedSearchParams = new URLSearchParams(searchParamsValue);
   }
   return cachedSearchParams;
+}
+
+function dispatchPointer(element: Element, type: string, clientX: number, clientY: number) {
+  const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX, clientY });
+  Object.defineProperties(event, {
+    pointerId: { value: 1 },
+    pointerType: { value: 'touch' },
+  });
+  fireEvent(element, event);
 }
 
 vi.mock('@iconify/react', () => ({
@@ -107,37 +117,54 @@ vi.mock('modules/edge-printing/application', () => ({
   requestEdgePrintDocuments: requestEdgePrintDocumentsMock,
 }));
 
-vi.mock('shared/ui/pos-primitives', () => ({
-  PosBuilderPageSkeleton: () => <div>loading</div>,
-  PosIconAction: ({ icon, onClick }: { icon: string; onClick?: () => void }) => (
-    <button aria-label={icon} onClick={onClick}>
-      {icon}
-    </button>
-  ),
-  PosOrderChannelSegment: ({
-    channel,
-    items,
-    onChange,
-  }: {
-    channel: string;
-    items?: Array<{ value: 'delivery' | 'takeaway'; label: string }>;
-    onChange?: (channel: 'delivery' | 'takeaway') => void;
-  }) => (
-    <div>
-      <span>{channel}</span>
-      {items?.map((item) => (
-        <button key={item.value} onClick={() => onChange?.(item.value)}>
-          {item.label}
-        </button>
-      ))}
-    </div>
-  ),
-  PosSectionTabs: ({ items }: { items: Array<{ label: string }> }) => (
-    <div>{items.map((item) => item.label).join(', ')}</div>
-  ),
-  PosItemNoteDialog: () => null,
-  PosSettingsMenu: () => null,
-}));
+vi.mock('shared/ui/pos-primitives', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('shared/ui/pos-primitives')>();
+  return {
+    PosMenuItemCard: actual.PosMenuItemCard,
+    PosBuilderPageSkeleton: () => <div>loading</div>,
+    PosIconAction: ({ icon, onClick }: { icon: string; onClick?: () => void }) => (
+      <button aria-label={icon} onClick={onClick}>
+        {icon}
+      </button>
+    ),
+    PosOrderChannelSegment: ({
+      channel,
+      items,
+      onChange,
+    }: {
+      channel: string;
+      items?: Array<{ value: 'delivery' | 'takeaway'; label: string }>;
+      onChange?: (channel: 'delivery' | 'takeaway') => void;
+    }) => (
+      <div>
+        <span>{channel}</span>
+        {items?.map((item) => (
+          <button key={item.value} onClick={() => onChange?.(item.value)}>
+            {item.label}
+          </button>
+        ))}
+      </div>
+    ),
+    PosSectionTabs: ({ items }: { items: Array<{ label: string }> }) => (
+      <div>{items.map((item) => item.label).join(', ')}</div>
+    ),
+    PosItemNoteDialog: ({
+      itemLabel,
+      onSave,
+      open,
+    }: {
+      itemLabel: string;
+      onSave: (note: string) => void;
+      open: boolean;
+    }) =>
+      open ? (
+        <div role="dialog" aria-label={`note-${itemLabel}`}>
+          <button onClick={() => onSave('Piyozsiz')}>Test note save</button>
+        </div>
+      ) : null,
+    PosSettingsMenu: () => null,
+  };
+});
 
 describe('CashierBuilderPageContent', () => {
   afterEach(() => {
@@ -151,6 +178,7 @@ describe('CashierBuilderPageContent', () => {
     createBuilderOrderMock.mockResolvedValue({ id: 'created-order-1' });
     addOrderItemMock.mockReset();
     addOrderItemMock.mockResolvedValue({});
+    addItemMock.mockReset();
     updateOrderNoteMock.mockReset();
     updateOrderNoteMock.mockResolvedValue({ id: 'order-1', note: 'Piyozsiz' });
     updateOrderDeliveryDetailsMock.mockReset();
@@ -196,7 +224,7 @@ describe('CashierBuilderPageContent', () => {
         status: 'open',
         items: [],
       },
-      addItem: vi.fn(),
+      addItem: addItemMock,
       removeItem: vi.fn(),
       hasPendingOperations: false,
     }));
@@ -220,7 +248,9 @@ describe('CashierBuilderPageContent', () => {
     fireEvent.change(screen.getByLabelText('Butun buyurtma uchun izoh'), {
       target: { value: 'Umumiy: tezroq' },
     });
-    const options = useOptimisticBuilderOrderMock.mock.calls.at(-1)?.[0] as {
+    const options = useOptimisticBuilderOrderMock.mock.calls[
+      useOptimisticBuilderOrderMock.mock.calls.length - 1
+    ]?.[0] as {
       createOrder: () => Promise<string>;
       addOrderItem: (orderId: string, item: { id: string }, note: string) => Promise<unknown>;
     };
@@ -230,6 +260,23 @@ describe('CashierBuilderPageContent', () => {
 
     expect(createBuilderOrderMock).toHaveBeenCalledWith({ channel: 'hall', note: 'Umumiy: tezroq' });
     expect(addOrderItemMock).toHaveBeenCalledWith('created-order-1', 'item-1', 'Piyozsiz', undefined, undefined);
+  });
+
+  it('opens a note dialog after swiping a simple cashier menu item and adds only after note save', () => {
+    render(<CashierBuilderPageContent />);
+
+    const card = screen.getByRole('button', { name: /Cola/ });
+    dispatchPointer(card, 'pointerdown', 180, 40);
+    dispatchPointer(card, 'pointermove', 130, 42);
+    dispatchPointer(card, 'pointerup', 90, 43);
+
+    expect(screen.getByRole('dialog', { name: 'note-Cola' })).toBeTruthy();
+    expect(addItemMock).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Test note save' }));
+
+    expect(addItemMock).toHaveBeenCalledWith(expect.objectContaining({ id: 'item-1' }), 'Piyozsiz');
+    expect(screen.queryByRole('dialog', { name: 'note-Cola' })).toBeNull();
   });
 
   it('prints cancellation and replacement documents returned by a marking scan', async () => {

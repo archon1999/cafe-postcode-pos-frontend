@@ -83,6 +83,7 @@ export function CashierBuilderPageContent() {
   const [settingsAnchor, setSettingsAnchor] = useState<HTMLElement | null>(null);
   const [selectedCartItemKey, setSelectedCartItemKey] = useState<string | null>(null);
   const [editingItemNote, setEditingItemNote] = useState<PosCartItem | null>(null);
+  const [addingItemWithNote, setAddingItemWithNote] = useState<CashierMenuItem | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
   const [scanToast, setScanToast] = useState('');
   const [configuringItem, setConfiguringItem] = useState<{
@@ -258,6 +259,13 @@ export function CashierBuilderPageContent() {
     }
     addItem(menuItem, sourceItem?.note ?? '');
   };
+  const requestAddItemWithNote = (menuItem: CashierMenuItem) => {
+    if (menuItem.modifierGroups?.length || menuItem.itemType === 'service' || menuItem.saleUnit === 'kg') {
+      requestAddItem(menuItem);
+      return;
+    }
+    setAddingItemWithNote(menuItem);
+  };
   const categoryTabs = useMemo(
     () =>
       categories.map((category) => ({
@@ -388,7 +396,7 @@ export function CashierBuilderPageContent() {
           total={currentOrder?.total}
           billsLabel={copy.bills}
           onAdd={requestAddItem}
-          onEditItemNote={setEditingItemNote}
+          onAddWithNote={requestAddItemWithNote}
           onOpenGroup={setConfiguringGroup}
           onCartOpen={() => setCartOpen(true)}
           onRemove={removeItem}
@@ -572,6 +580,18 @@ export function CashierBuilderPageContent() {
           }}
         />
       ) : null}
+
+      <PosItemNoteDialog
+        itemLabel={addingItemWithNote?.name ?? ''}
+        locale={locale}
+        onClose={() => setAddingItemWithNote(null)}
+        onSave={(note) => {
+          if (!addingItemWithNote) return;
+          addItem(addingItemWithNote, note);
+          setAddingItemWithNote(null);
+        }}
+        open={Boolean(addingItemWithNote)}
+      />
 
       <PosItemNoteDialog
         initialNote={editingItemNote?.note}

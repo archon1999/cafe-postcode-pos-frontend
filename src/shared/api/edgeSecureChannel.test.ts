@@ -614,6 +614,129 @@ describe('Local Agent application-layer secure channel', () => {
     await expect(ensureLocalAgentSecureChannel(origin, '', true, trust)).resolves.toBe(false);
   });
 
+  it('reopens a stale channel after an Agent restart using the pinned Agent transport key', async () => {
+    const identity = await createPosDeviceIdentity();
+    const agentECDH = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, false, ['deriveBits']);
+    const agentPublicKey = bytesToBase64Url(await crypto.subtle.exportKey('raw', agentECDH.publicKey));
+    const agentPublicKeyFingerprint = await sha256Hex(base64UrlToBytes(agentPublicKey));
+    const clientECDH = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, false, ['deriveBits']);
+    const clientPublicKey = bytesToBase64Url(await crypto.subtle.exportKey('raw', clientECDH.publicKey));
+    const staleSessionKey = await crypto.subtle.importKey(
+      'raw',
+      crypto.getRandomValues(new Uint8Array(32)),
+      'AES-GCM',
+      false,
+      ['encrypt', 'decrypt'],
+    );
+    await persistDeviceIdentity({
+      ...identity,
+      device: {
+        id: '11111111-1111-4111-8111-111111111111',
+        type: 'POS_TERMINAL',
+        name: 'Restart recovery POS',
+        status: 'ACTIVE',
+        leaseExpiresAt: new Date(Date.now() + 60_000).toISOString(),
+      },
+      restaurantContext: { restaurantId: 'restaurant-1', restaurantName: 'Cafe' },
+      localSecureChannel: {
+        version: 1,
+        clientPrivateKey: clientECDH.privateKey,
+        clientPublicKey,
+        terminalId,
+        origin,
+        agentPublicKey,
+        agentPublicKeyFingerprint,
+        sessionKey: staleSessionKey,
+        channelId: 'channel-lost-during-agent-restart',
+        expiresAt: new Date(Date.now() + 30 * 60_000).toISOString(),
+      },
+    });
+    localStorage.setItem(EDGE_TERMINAL_ID_STORAGE_KEY, terminalId);
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+        const input = JSON.parse(String(init?.body)) as {
+          terminalId: string;
+          clientPublicKey: string;
+          timestamp: string;
+          nonce: string;
+          authenticationMode: string;
+          authenticationProof: string;
+          deviceBinding?: unknown;
+        };
+        expect(input.authenticationMode).toBe('DEVICE_PROOF');
+        expect(input.deviceBinding).toBeUndefined();
+        expect(input.clientPublicKey).toBe(clientPublicKey);
+
+        const clientPublic = await crypto.subtle.importKey(
+          'raw',
+          base64UrlToBytes(input.clientPublicKey),
+          { name: 'ECDH', namedCurve: 'P-256' },
+          false,
+          [],
+        );
+        const shared = await crypto.subtle.deriveBits(
+          { name: 'ECDH', public: clientPublic },
+          agentECDH.privateKey,
+          256,
+        );
+        const hkdfKey = await crypto.subtle.importKey('raw', shared, 'HKDF', false, ['deriveBits']);
+        const serverNonce = bytesToBase64Url(crypto.getRandomValues(new Uint8Array(32)));
+        const transcript = [
+          'edge-channel-v1',
+          'restaurant-1',
+          input.terminalId,
+          input.clientPublicKey,
+          agentPublicKey,
+          input.timestamp,
+          input.nonce,
+          serverNonce,
+        ].join('\n');
+        const salt = Uint8Array.from(identity.publicKeyFingerprint.match(/.{2}/g) || [], (value) =>
+          Number.parseInt(value, 16),
+        );
+        const material = new Uint8Array(
+          await crypto.subtle.deriveBits(
+            { name: 'HKDF', hash: 'SHA-256', salt, info: encoder.encode(transcript) },
+            hkdfKey,
+            512,
+          ),
+        );
+        const channelId = 'channel-after-agent-restart';
+        const expiresAt = new Date(Date.now() + 30 * 60_000).toISOString();
+        const confirmation = await hmac(
+          material.slice(32),
+          `edge-channel-confirm-v1\n${transcript}\n${channelId}\n${expiresAt}`,
+        );
+        material.fill(0);
+        return new Response(
+          JSON.stringify({
+            version: 'v1',
+            channelId,
+            terminalId,
+            agentPublicKeyAlgorithm: 'P256_ECDH',
+            agentPublicKey,
+            agentPublicKeyFingerprint,
+            serverNonce,
+            expiresAt,
+            confirmation,
+            restaurantId: 'restaurant-1',
+          }),
+          { status: 201, headers: { 'Content-Type': 'application/json' } },
+        );
+      }),
+    );
+
+    await expect(ensureLocalAgentSecureChannel(origin, '', true)).resolves.toBe(true);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect((await readStoredDeviceIdentity())?.localSecureChannel).toMatchObject({
+      channelId: 'channel-after-agent-restart',
+      agentPublicKey,
+      clientPublicKey,
+    });
+  });
+
   it('rejects an oversized handshake response before parsing it', async () => {
     const identity = await createPosDeviceIdentity();
     await persistDeviceIdentity({

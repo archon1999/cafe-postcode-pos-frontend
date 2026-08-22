@@ -1,13 +1,32 @@
 import { Icon } from '@iconify/react';
 import { Box, Stack, Typography, alpha } from '@mui/material';
-import { useRef, useState, type PointerEvent } from 'react';
+import { useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 
-import type { WaiterMenuItem } from 'modules/waiter/domain';
 import { resolveApiBaseUrl } from 'shared/api/apiUrl';
 import { getPosCopy, type PosLocale } from 'shared/locale/copy';
-import { formatMoneyParts, formatPosQuantity } from 'shared/pos/utils';
+import { formatMoneyParts, formatPosQuantity, type PosSaleUnit } from 'shared/pos/utils';
 
-function resolveMenuItemImageUrl(imageUrl?: string | null) {
+export type PosMenuItemCardItem = {
+  name: string;
+  description?: string | null;
+  imageUrl?: string | null;
+  itemType?: string | null;
+  prepStationName?: string | null;
+  price?: number | string | null;
+  saleUnit?: PosSaleUnit;
+};
+
+type PosMenuItemCardProps = {
+  item: PosMenuItemCardItem;
+  locale: PosLocale;
+  menuLabel: string;
+  selectedCount: number;
+  onAdd: () => void;
+  onAddWithNote?: () => void;
+  onRemove: () => void;
+};
+
+function resolveImageUrl(imageUrl?: string | null) {
   if (!imageUrl) {
     return null;
   }
@@ -19,36 +38,30 @@ function resolveMenuItemImageUrl(imageUrl?: string | null) {
   }
 }
 
-type WaiterMenuItemCardProps = {
-  copy: ReturnType<typeof getPosCopy>;
-  latestItemId?: string;
-  locale: PosLocale;
-  menuItem: WaiterMenuItem;
-  selectedCount: number;
-  onAdd: () => void;
-  onAddWithNote?: () => void;
-  onRemove: (itemId: string) => void;
-};
-
-export function WaiterMenuItemCard({
-  copy,
-  latestItemId,
+export function PosMenuItemCard({
+  item,
   locale,
-  menuItem,
+  menuLabel,
   selectedCount,
   onAdd,
   onAddWithNote,
   onRemove,
-}: WaiterMenuItemCardProps) {
-  const displayPrice = Number(menuItem.price ?? 0);
-  const displayPriceParts = formatMoneyParts(displayPrice, locale);
-  const menuItemImageUrl = resolveMenuItemImageUrl(menuItem.imageUrl);
-  const selectedCountForMenuItem = selectedCount;
-  const hasSelectedCount = selectedCountForMenuItem > 0;
+}: PosMenuItemCardProps) {
+  const imageUrl = resolveImageUrl(item.imageUrl);
+  const copy = getPosCopy(locale);
+  const price = formatMoneyParts(Number(item.price ?? 0), locale);
   const [noteActionVisible, setNoteActionVisible] = useState(false);
   const swipeStartRef = useRef<{ pointerId: number; x: number; y: number } | null>(null);
   const suppressClickUntilRef = useRef(0);
   const noteSwipeEnabled = Boolean(onAddWithNote);
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (event.key !== 'Enter' && event.key !== ' ') {
+      return;
+    }
+    event.preventDefault();
+    onAdd();
+  };
 
   const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (!noteSwipeEnabled) return;
@@ -84,25 +97,19 @@ export function WaiterMenuItemCard({
 
   return (
     <Box
-      key={menuItem.id}
       role="button"
       tabIndex={0}
       onClick={() => {
         if (Date.now() < suppressClickUntilRef.current) return;
         onAdd();
       }}
+      onKeyDown={handleKeyDown}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={finishPointer}
       onPointerCancel={() => {
         swipeStartRef.current = null;
         setNoteActionVisible(false);
-      }}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          onAdd();
-        }
       }}
       sx={(theme) => ({
         border: 0,
@@ -127,13 +134,8 @@ export function WaiterMenuItemCard({
                 : '0 14px 28px rgba(40,51,65,0.12), inset 0 0 0 1px rgba(40,51,65,0.08)',
           },
         },
-        '&:active': {
-          transform: 'translateY(0) scale(0.985)',
-        },
-        '&:focus-visible': {
-          outline: `2px solid ${theme.palette.primary.main}`,
-          outlineOffset: 2,
-        },
+        '&:active': { transform: 'translateY(0) scale(0.985)' },
+        '&:focus-visible': { outline: `2px solid ${theme.palette.primary.main}`, outlineOffset: 2 },
       })}>
       <Box
         sx={{
@@ -184,7 +186,7 @@ export function WaiterMenuItemCard({
               theme.palette.mode === 'dark'
                 ? 'inset 0 0 0 1px rgba(255,255,255,0.04)'
                 : 'inset 0 0 0 1px rgba(40,51,65,0.06)',
-            ...(hasSelectedCount
+            ...(selectedCount > 0
               ? {
                   WebkitMaskImage:
                     'radial-gradient(circle 25px at calc(100% - 14px) 11px, transparent 24px, #000 25px)',
@@ -192,11 +194,11 @@ export function WaiterMenuItemCard({
                 }
               : null),
           })}>
-          {menuItemImageUrl ? (
+          {imageUrl ? (
             <Box
               component="img"
-              src={menuItemImageUrl}
-              alt={menuItem.name}
+              src={imageUrl}
+              alt={item.name}
               loading="lazy"
               sx={{
                 position: 'absolute',
@@ -216,15 +218,15 @@ export function WaiterMenuItemCard({
               spacing={0.75}
               sx={{
                 p: { xs: 1.25, md: 1.45, xl: 1.85 },
-                pr: menuItemImageUrl ? { xs: 7.25, md: 8.4, xl: 9.5 } : undefined,
+                pr: imageUrl ? { xs: 7.25, md: 8.4, xl: 9.5 } : undefined,
               }}>
               <Typography variant="body2" color="text.secondary">
-                {menuItem.prepStationName ?? copy.menu}
+                {item.prepStationName ?? menuLabel}
               </Typography>
               <Typography variant="h6" sx={{ pr: 1 }}>
-                {menuItem.name}
+                {item.name}
               </Typography>
-              {menuItem.description ? (
+              {item.description ? (
                 <Typography
                   variant="body2"
                   color="text.secondary"
@@ -235,7 +237,7 @@ export function WaiterMenuItemCard({
                     WebkitBoxOrient: 'vertical',
                     WebkitLineClamp: 2,
                   }}>
-                  {menuItem.description}
+                  {item.description}
                 </Typography>
               ) : null}
             </Stack>
@@ -254,80 +256,10 @@ export function WaiterMenuItemCard({
                 backgroundColor: 'var(--pos-menu-product-price-bg)',
                 borderRadius: '0 0 10px 10px',
               })}>
-              {hasSelectedCount ? (
+              {selectedCount > 0 ? (
                 <Stack data-testid="menu-item-controls" direction="row" spacing={0.8} alignItems="center">
-                  <Box
-                    component="button"
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      if (latestItemId) {
-                        onRemove(latestItemId);
-                      }
-                    }}
-                    sx={(theme) => ({
-                      width: { xs: 28, md: 30 },
-                      height: { xs: 28, md: 30 },
-                      borderRadius: '50%',
-                      border: 0,
-                      display: 'grid',
-                      placeItems: 'center',
-                      backgroundColor: theme.palette.mode === 'dark' ? '#2a2d31' : alpha('#ffffff', 0.8),
-                      color: theme.palette.mode === 'dark' ? '#ffffff' : '#23262b',
-                      cursor: 'pointer',
-                      transition: 'transform 0.14s ease, background-color 0.14s ease, box-shadow 0.14s ease',
-                      boxShadow:
-                        theme.palette.mode === 'dark'
-                          ? 'inset 0 0 0 1px rgba(255,255,255,0.08)'
-                          : 'inset 0 0 0 1px rgba(35,38,43,0.12)',
-                      '&:hover': {
-                        backgroundColor: theme.palette.mode === 'dark' ? '#363a40' : '#ffffff',
-                      },
-                      '&:active': {
-                        transform: 'scale(0.92)',
-                      },
-                      '&:focus-visible': {
-                        outline: `2px solid ${theme.palette.primary.main}`,
-                        outlineOffset: 1,
-                      },
-                    })}>
-                    <Icon icon="solar:minus-circle-bold" width={18} />
-                  </Box>
-                  <Box
-                    component="button"
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onAdd();
-                    }}
-                    sx={(theme) => ({
-                      width: { xs: 28, md: 30 },
-                      height: { xs: 28, md: 30 },
-                      borderRadius: '50%',
-                      border: 0,
-                      display: 'grid',
-                      placeItems: 'center',
-                      backgroundColor: theme.palette.mode === 'dark' ? '#2a2d31' : alpha('#ffffff', 0.8),
-                      color: theme.palette.mode === 'dark' ? '#ffffff' : '#23262b',
-                      cursor: 'pointer',
-                      transition: 'transform 0.14s ease, background-color 0.14s ease, box-shadow 0.14s ease',
-                      boxShadow:
-                        theme.palette.mode === 'dark'
-                          ? 'inset 0 0 0 1px rgba(255,255,255,0.08)'
-                          : 'inset 0 0 0 1px rgba(35,38,43,0.12)',
-                      '&:hover': {
-                        backgroundColor: theme.palette.mode === 'dark' ? '#363a40' : '#ffffff',
-                      },
-                      '&:active': {
-                        transform: 'scale(0.92)',
-                      },
-                      '&:focus-visible': {
-                        outline: `2px solid ${theme.palette.primary.main}`,
-                        outlineOffset: 1,
-                      },
-                    })}>
-                    <Icon icon="solar:add-circle-bold" width={18} />
-                  </Box>
+                  <QuantityButton icon="solar:minus-circle-bold" onClick={onRemove} />
+                  <QuantityButton icon="solar:add-circle-bold" onClick={onAdd} />
                 </Stack>
               ) : null}
               <Typography
@@ -341,21 +273,21 @@ export function WaiterMenuItemCard({
                   fontWeight: 800,
                   whiteSpace: 'nowrap',
                 }}>
-                {menuItem.itemType === 'service' ? (
+                {item.itemType === 'service' ? (
                   <Box component="span" sx={{ fontSize: { xs: 13, md: 14 }, color: 'text.secondary' }}>
                     {copy.priceOnSelection}
                   </Box>
                 ) : (
                   <>
                     <Box component="span" sx={{ fontSize: { xs: 20, md: 24 }, lineHeight: 1, fontWeight: 900 }}>
-                      {displayPriceParts.amount}
+                      {price.amount}
                     </Box>
                     <Box component="span" sx={{ fontSize: { xs: 13.5, md: 16 }, lineHeight: 1, fontWeight: 700 }}>
-                      {displayPriceParts.currency}
+                      {price.currency}
                     </Box>
                   </>
                 )}
-                {menuItem.itemType !== 'service' && menuItem.saleUnit === 'kg' ? (
+                {item.itemType !== 'service' && item.saleUnit === 'kg' ? (
                   <Box component="span" sx={{ fontSize: { xs: 12, md: 14 }, color: 'text.secondary' }}>
                     / {copy.kilogramUnit}
                   </Box>
@@ -365,7 +297,7 @@ export function WaiterMenuItemCard({
           </Stack>
         </Box>
       </Box>
-      {hasSelectedCount ? (
+      {selectedCount > 0 ? (
         <Box
           data-testid="menu-item-count-badge"
           sx={(theme) => ({
@@ -386,9 +318,42 @@ export function WaiterMenuItemCard({
             lineHeight: 1,
             boxShadow: '0 6px 14px rgba(0,0,0,0.22)',
           })}>
-          {formatPosQuantity(selectedCountForMenuItem, menuItem.saleUnit, locale)}
+          {formatPosQuantity(selectedCount, item.saleUnit, locale)}
         </Box>
       ) : null}
+    </Box>
+  );
+}
+
+function QuantityButton({ icon, onClick }: { icon: string; onClick: () => void }) {
+  return (
+    <Box
+      component="button"
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation();
+        onClick();
+      }}
+      sx={(theme) => ({
+        width: { xs: 28, md: 30 },
+        height: { xs: 28, md: 30 },
+        borderRadius: '50%',
+        border: 0,
+        display: 'grid',
+        placeItems: 'center',
+        backgroundColor: theme.palette.mode === 'dark' ? '#2a2d31' : alpha('#ffffff', 0.8),
+        color: theme.palette.mode === 'dark' ? '#ffffff' : '#23262b',
+        cursor: 'pointer',
+        transition: 'transform 0.14s ease, background-color 0.14s ease, box-shadow 0.14s ease',
+        boxShadow:
+          theme.palette.mode === 'dark'
+            ? 'inset 0 0 0 1px rgba(255,255,255,0.08)'
+            : 'inset 0 0 0 1px rgba(35,38,43,0.12)',
+        '&:hover': { backgroundColor: theme.palette.mode === 'dark' ? '#363a40' : '#ffffff' },
+        '&:active': { transform: 'scale(0.92)' },
+        '&:focus-visible': { outline: `2px solid ${theme.palette.primary.main}`, outlineOffset: 1 },
+      })}>
+      <Icon icon={icon} width={18} />
     </Box>
   );
 }

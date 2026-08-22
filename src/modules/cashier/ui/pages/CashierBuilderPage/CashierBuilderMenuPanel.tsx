@@ -8,8 +8,8 @@ import {
 } from 'modules/cashier/domain';
 import type { PosLocale } from 'shared/locale/copy';
 import { addPosQuantities, formatCompactMoney } from 'shared/pos/utils';
+import { PosMenuItemCard } from 'shared/ui/pos-primitives';
 
-import { CashierMenuItemCard } from './CashierMenuItemCard';
 import { CashierMenuItemGroupCard } from './CashierMenuItemGroupCard';
 
 type CashierBuilderMenuPanelProps = {
@@ -23,6 +23,7 @@ type CashierBuilderMenuPanelProps = {
   total?: number | string | null;
   billsLabel: string;
   onAdd: (menuItem: CashierMenuItem) => void;
+  onAddWithNote: (menuItem: CashierMenuItem) => void;
   onOpenGroup: (group: CashierMenuItemGroup) => void;
   onCartOpen: () => void;
   onRemove: (itemId: string) => void;
@@ -39,6 +40,7 @@ export function CashierBuilderMenuPanel({
   total,
   billsLabel,
   onAdd,
+  onAddWithNote,
   onOpenGroup,
   onCartOpen,
   onRemove,
@@ -89,13 +91,18 @@ export function CashierBuilderMenuPanel({
               ),
           )
           .map((menuItem) => (
-            <CashierMenuItemCard
+            <PosMenuItemCard
               key={menuItem.id}
               item={menuItem}
               locale={locale}
               menuLabel={menuLabel}
               selectedCount={itemCounts.get(menuItem.id) ?? 0}
               onAdd={() => onAdd(menuItem)}
+              onAddWithNote={
+                !menuItem.modifierGroups?.length && menuItem.itemType !== 'service' && menuItem.saleUnit !== 'kg'
+                  ? () => onAddWithNote(menuItem)
+                  : undefined
+              }
               onRemove={() => {
                 const latestItemId = latestItemIds.get(menuItem.id);
                 if (latestItemId) {

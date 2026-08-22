@@ -247,7 +247,12 @@ class PosAuthRepositoryImpl implements AuthRepository {
     }
 
     const transport = readTransportConnection();
-    if (transport?.mode !== 'remote' && transport?.restaurantId === identity.restaurantContext?.restaurantId) {
+    if (
+      transport &&
+      transport.mode !== 'remote' &&
+      identity.restaurantContext &&
+      transport.restaurantId === identity.restaurantContext.restaurantId
+    ) {
       // The Local Agent owns device authority and revocation state while POS
       // traffic is on an edge transport.  Do not make the browser renew or
       // validate the same device directly against the backend on every boot.

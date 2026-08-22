@@ -12,3 +12,4 @@ export * from './PosProductConfiguratorDialog';
 export * from './PosWeightedItemDialog';
 export * from './PosItemNoteDialog';
 export * from './PosItemNoteField';
+export * from './PosMenuItemCard';

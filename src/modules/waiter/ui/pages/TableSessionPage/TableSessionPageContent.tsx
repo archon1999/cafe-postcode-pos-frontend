@@ -356,7 +356,6 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
           showMobileSummary={isMobile}
           onAdd={requestAddItem}
           onAddWithNote={requestAddItemWithNote}
-          onEditItemNote={setEditingItemNote}
           onOpenCart={() => setCartOpen(true)}
           onRemove={removeItem}
         />
@@ -392,6 +391,7 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
           vatLabel={vatLabel}
           zoneLabel={tableZoneLabel}
           onAdd={requestAddItem}
+          onEditItemNote={setEditingItemNote}
           onCheckout={() => void handleTakeawayCheckout()}
           onKitchenNoteChange={(value) => {
             setOrderSent(false);

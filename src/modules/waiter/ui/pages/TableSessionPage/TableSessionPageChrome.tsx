@@ -4,9 +4,7 @@ import type { MouseEvent } from 'react';
 import type { WaiterMenuCategory, WaiterMenuItem } from 'modules/waiter/domain';
 import { getPosCopy, type PosLocale } from 'shared/locale/copy';
 import { formatCompactMoney } from 'shared/pos/utils';
-import { PosIconAction, PosSectionTabs } from 'shared/ui/pos-primitives';
-
-import { WaiterMenuItemCard } from './WaiterMenuItemCard';
+import { PosIconAction, PosMenuItemCard, PosSectionTabs } from 'shared/ui/pos-primitives';
 
 type TableSessionHeaderProps = {
   categoryTabs: Array<{ value: string; label: string; count: number }>;
@@ -110,12 +108,11 @@ export function TableSessionMenuPanel({
           gap: { xs: 1.1, md: 1.2, xl: 1.4 },
         }}>
         {(selectedCategory?.items ?? []).map((menuItem) => (
-          <WaiterMenuItemCard
+          <PosMenuItemCard
             key={menuItem.id}
-            copy={copy}
-            latestItemId={latestItemMap.get(menuItem.id)}
+            item={menuItem}
             locale={locale}
-            menuItem={menuItem}
+            menuLabel={copy.menu}
             selectedCount={selectedCountMap.get(menuItem.id) ?? 0}
             onAdd={() => onAdd(menuItem)}
             onAddWithNote={
@@ -123,7 +120,12 @@ export function TableSessionMenuPanel({
                 ? () => onAddWithNote(menuItem)
                 : undefined
             }
-            onRemove={onRemove}
+            onRemove={() => {
+              const latestItemId = latestItemMap.get(menuItem.id);
+              if (latestItemId) {
+                onRemove(latestItemId);
+              }
+            }}
           />
         ))}
       </Box>

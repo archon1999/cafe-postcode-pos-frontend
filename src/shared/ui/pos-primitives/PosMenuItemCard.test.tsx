@@ -3,9 +3,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { getPosCopy } from 'shared/locale/copy';
-
-import { WaiterMenuItemCard } from './WaiterMenuItemCard';
+import { PosMenuItemCard } from './PosMenuItemCard';
 
 vi.mock('@iconify/react', () => ({
   Icon: ({ icon }: { icon: string }) => <span data-icon={icon} />,
@@ -20,25 +18,24 @@ function dispatchPointer(element: Element, type: string, clientX: number, client
   fireEvent(element, event);
 }
 
-describe('WaiterMenuItemCard', () => {
+const item = {
+  name: 'Choyxona osh',
+  prepStationName: 'Oshxona',
+  price: 48000,
+};
+
+describe('PosMenuItemCard', () => {
   afterEach(() => {
     cleanup();
   });
 
   it('renders the selected item count as a corner badge outside the footer controls', () => {
     render(
-      <WaiterMenuItemCard
-        copy={getPosCopy('uz')}
+      <PosMenuItemCard
+        item={item}
         locale="uz"
-        menuItem={{
-          id: 'item-1',
-          name: 'Choyxona osh',
-          kind: 'product',
-          prepStationName: 'Oshxona',
-          price: 48000,
-        }}
+        menuLabel="Menyu"
         selectedCount={4}
-        latestItemId="order-item-4"
         onAdd={vi.fn()}
         onRemove={vi.fn()}
       />,
@@ -56,16 +53,10 @@ describe('WaiterMenuItemCard', () => {
 
   it('does not render a count badge when the item is not selected', () => {
     render(
-      <WaiterMenuItemCard
-        copy={getPosCopy('uz')}
+      <PosMenuItemCard
+        item={item}
         locale="uz"
-        menuItem={{
-          id: 'item-1',
-          name: 'Choyxona osh',
-          kind: 'product',
-          prepStationName: 'Oshxona',
-          price: 48000,
-        }}
+        menuLabel="Menyu"
         selectedCount={0}
         onAdd={vi.fn()}
         onRemove={vi.fn()}
@@ -79,16 +70,10 @@ describe('WaiterMenuItemCard', () => {
     const onAdd = vi.fn();
     const onAddWithNote = vi.fn();
     render(
-      <WaiterMenuItemCard
-        copy={getPosCopy('uz')}
+      <PosMenuItemCard
+        item={item}
         locale="uz"
-        menuItem={{
-          id: 'item-1',
-          name: 'Choyxona osh',
-          kind: 'product',
-          prepStationName: 'Oshxona',
-          price: 48000,
-        }}
+        menuLabel="Menyu"
         selectedCount={0}
         onAdd={onAdd}
         onAddWithNote={onAddWithNote}
