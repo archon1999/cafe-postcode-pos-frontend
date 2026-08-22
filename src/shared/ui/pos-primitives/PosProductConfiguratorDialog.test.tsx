@@ -52,6 +52,7 @@ describe('PosProductConfiguratorDialog', () => {
     );
 
     const addButton = screen.getByRole('button', { name: /Buyurtmaga qo'shish/ });
+    expect(screen.getByTestId('product-configurator-scroll')).toBeTruthy();
     expect((addButton as HTMLButtonElement).disabled).toBe(true);
 
     fireEvent.click(screen.getByRole('radio', { name: /Pishloqli bort/ }));

@@ -1,6 +1,6 @@
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography } from '@mui/material';
 
-import type { ActiveSession, DiningTable } from 'modules/waiter/domain';
+import type { DiningTable } from 'modules/waiter/domain';
 import type { getPosCopy } from 'shared/locale/copy';
 
 type Props = {
@@ -17,9 +17,6 @@ type Props = {
   onOpen: () => void;
   onReserve: () => void;
   onOpenSession: (sessionId: string) => void;
-  onTransferSession: (session: ActiveSession) => void;
-  onGroupSession: (session: ActiveSession) => void;
-  onUngroupSession: (session: ActiveSession) => void;
 };
 
 export function OpenTableDialog({
@@ -36,9 +33,6 @@ export function OpenTableDialog({
   onOpen,
   onReserve,
   onOpenSession,
-  onTransferSession,
-  onGroupSession,
-  onUngroupSession,
 }: Props) {
   return (
     <Dialog open={Boolean(table)} onClose={onClose} maxWidth="xs" fullWidth>
@@ -60,31 +54,9 @@ export function OpenTableDialog({
           {table?.activeSessions?.length ? (
             <Stack spacing={1}>
               {table.activeSessions.map((activeSession, index) => (
-                <Stack
-                  key={activeSession.id}
-                  spacing={1}
-                  sx={(theme) => ({
-                    p: 1.25,
-                    borderRadius: 2.5,
-                    border: `1px solid ${theme.palette.divider}`,
-                  })}>
-                  <Button variant="outlined" onClick={() => onOpenSession(activeSession.id)}>
-                    {copy.openTable} #{index + 1}
-                  </Button>
-                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                    <Button size="small" onClick={() => onTransferSession(activeSession)}>
-                      {copy.moveTable}
-                    </Button>
-                    <Button size="small" onClick={() => onGroupSession(activeSession)}>
-                      {copy.groupTables}
-                    </Button>
-                    {(activeSession.tableIds?.length ?? 1) > 1 ? (
-                      <Button size="small" color="warning" onClick={() => onUngroupSession(activeSession)}>
-                        {copy.ungroupTables}
-                      </Button>
-                    ) : null}
-                  </Stack>
-                </Stack>
+                <Button key={activeSession.id} variant="outlined" onClick={() => onOpenSession(activeSession.id)}>
+                  {copy.openTable} #{index + 1}
+                </Button>
               ))}
             </Stack>
           ) : null}

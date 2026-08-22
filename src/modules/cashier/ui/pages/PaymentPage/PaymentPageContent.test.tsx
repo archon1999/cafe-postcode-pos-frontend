@@ -337,7 +337,7 @@ describe('PaymentPageContent', () => {
     expect(screen.queryByRole('button', { name: 'QR' })).toBeNull();
   });
 
-  it('requires a reason and sends a cashier-edited final total without changing calculated total', async () => {
+  it('sends a cashier-edited final total without asking for a reason', async () => {
     paymentTotalEditableMock = true;
     paymentMutateAsyncMock.mockResolvedValueOnce({
       order: {
@@ -354,13 +354,15 @@ describe('PaymentPageContent', () => {
     });
 
     render(<PaymentPageContent orderId="order-1" />);
-    fireEvent.change(screen.getByLabelText("Yakuniy to'lov summasi"), { target: { value: '15000' } });
+    const finalTotalInput = screen.getByLabelText("Yakuniy to'lov summasi");
+    expect(screen.queryByRole('button', { name: 'Chegirma %' })).toBeNull();
+    expect(screen.queryByText('Hisoblangan summa')).toBeNull();
+    fireEvent.focus(finalTotalInput);
+    fireEvent.change(finalTotalInput, { target: { value: '15000' } });
 
     const submit = screen.getByRole('button', { name: 'Chek' }) as HTMLButtonElement;
-    expect(submit.disabled).toBe(true);
-    fireEvent.change(screen.getByLabelText("O'zgartirish sababi"), {
-      target: { value: 'Mijoz bilan kelishilgan narx' },
-    });
+    expect(submit.disabled).toBe(false);
+    expect(screen.queryByRole('textbox', { name: /sabab/i })).toBeNull();
     fireEvent.click(submit);
 
     await waitFor(() => {
@@ -369,10 +371,47 @@ describe('PaymentPageContent', () => {
         amount: 15000,
         registerFiscal: true,
         finalTotal: 15000,
-        totalOverrideReason: 'Mijoz bilan kelishilgan narx',
       });
     });
     expect(screen.getByText('Hisoblangan summa')).toBeTruthy();
+  });
+
+  it('converts a percentage discount into the final payment total', async () => {
+    orderTotalMock = 200000;
+    paymentTotalEditableMock = true;
+    paymentMutateAsyncMock.mockResolvedValueOnce({
+      order: {
+        orderNumber: 101,
+        status: 'closed',
+        items: [],
+        subtotal: 200000,
+        calculatedTotal: 200000,
+        total: 180000,
+        note: '',
+      },
+      payment: { method: 'cash', amount: 180000, paidAt: '2026-08-12T12:00:00Z' },
+      receipt: { id: 'receipt-percent-discount', payload: {} },
+    });
+
+    render(<PaymentPageContent orderId="order-1" />);
+    fireEvent.focus(screen.getByLabelText("Yakuniy to'lov summasi"));
+    fireEvent.click(screen.getByRole('button', { name: 'Chegirma %' }));
+    fireEvent.change(screen.getByLabelText('Chegirma foizi'), { target: { value: '10' } });
+
+    await waitFor(() => {
+      expect(screen.getByText('Chegirma summasi').parentElement?.textContent).toContain('20');
+      expect(screen.getByText("Yakuniy to'lov summasi").parentElement?.textContent).toContain('180');
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Chek' }));
+
+    await waitFor(() => {
+      expect(paymentMutateAsyncMock).toHaveBeenCalledWith({
+        method: 'cash',
+        amount: 180000,
+        registerFiscal: true,
+        finalTotal: 180000,
+      });
+    });
   });
 
   it('submits split payment parts sequentially with the selected fiscal intent', async () => {

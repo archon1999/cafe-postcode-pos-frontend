@@ -110,8 +110,8 @@ export function PosProductConfiguratorDialog<TItem extends ConfigurablePosMenuIt
           boxShadow: '0 32px 90px rgba(16, 24, 40, 0.26)',
         },
       }}>
-      <DialogContent sx={{ p: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-        <Box sx={{ px: { xs: 2.2, sm: 3.4 }, pt: { xs: 2, sm: 2.6 }, pb: 2 }}>
+      <DialogContent sx={{ p: 0, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+        <Box sx={{ px: { xs: 2.2, sm: 3.4 }, pt: { xs: 2, sm: 2.6 }, pb: 2, flexShrink: 0 }}>
           <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={2}>
             <Box sx={{ minWidth: 0, pt: 0.25 }}>
               <Typography variant="h4" sx={{ fontWeight: 800, letterSpacing: '-0.035em', lineHeight: 1.08 }}>
@@ -141,7 +141,19 @@ export function PosProductConfiguratorDialog<TItem extends ConfigurablePosMenuIt
           </Stack>
         </Box>
 
-        <Stack spacing={1.5} sx={{ px: { xs: 1.5, sm: 2.5 }, pb: 2, overflowY: 'auto' }}>
+        <Stack
+          data-testid="product-configurator-scroll"
+          spacing={1.5}
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            px: { xs: 1.5, sm: 2.5 },
+            pb: 2,
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            overscrollBehavior: 'contain',
+            scrollbarWidth: 'thin',
+          }}>
           {groups.map((group) => {
             const selected = selectedByGroup.get(group.id) ?? [];
             const helper =
@@ -234,6 +246,7 @@ export function PosProductConfiguratorDialog<TItem extends ConfigurablePosMenuIt
         <Box
           sx={(theme) => ({
             mt: 'auto',
+            flexShrink: 0,
             p: { xs: 1.5, sm: 2.2 },
             borderTop: `1px solid ${theme.palette.divider}`,
             bgcolor: alpha(theme.palette.background.paper, 0.94),

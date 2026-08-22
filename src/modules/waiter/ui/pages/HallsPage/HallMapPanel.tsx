@@ -31,6 +31,7 @@ type Props = {
   tables: DiningTable[];
   gridColumns: number;
   onTableSelect: (table: DiningTable) => void;
+  onTableActions?: (table: DiningTable, anchorEl: HTMLElement) => void;
 };
 
 export function HallMapPanel({
@@ -52,6 +53,7 @@ export function HallMapPanel({
   tables,
   gridColumns,
   onTableSelect,
+  onTableActions,
 }: Props) {
   return (
     <Box
@@ -141,7 +143,12 @@ export function HallMapPanel({
                         gridColumn: `${placement.positionX - layoutBounds.minX + 1} / span ${placement.width}`,
                         gridRow: `${placement.positionY - layoutBounds.minY + 1} / span ${placement.height}`,
                       }}>
-                      <HallTableCard copy={copy} table={table} onSelect={onTableSelect} />
+                      <HallTableCard
+                        copy={copy}
+                        table={table}
+                        onSelect={onTableSelect}
+                        onOpenActions={onTableActions}
+                      />
                     </Box>
                   );
                 })}

@@ -75,6 +75,7 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
   const [orderSent, setOrderSent] = useState(false);
   const [selectedCartItemKey, setSelectedCartItemKey] = useState<string | null>(null);
   const [editingItemNote, setEditingItemNote] = useState<PosCartItem | null>(null);
+  const [addingItemWithNote, setAddingItemWithNote] = useState<WaiterMenuItem | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
   const [configuringItem, setConfiguringItem] = useState<{
     item: WaiterMenuItem;
@@ -256,6 +257,13 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
     }
     addItem(menuItem, sourceItem?.note ?? '');
   };
+  const requestAddItemWithNote = (menuItem: WaiterMenuItem) => {
+    if (menuItem.modifierGroups?.length || menuItem.itemType === 'service' || menuItem.saleUnit === 'kg') {
+      requestAddItem(menuItem);
+      return;
+    }
+    setAddingItemWithNote(menuItem);
+  };
   const categoryTabs = useMemo(
     () =>
       categories.map((category) => ({
@@ -347,6 +355,7 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
           selectedCountMap={menuItemMeta.countMap}
           showMobileSummary={isMobile}
           onAdd={requestAddItem}
+          onAddWithNote={requestAddItemWithNote}
           onEditItemNote={setEditingItemNote}
           onOpenCart={() => setCartOpen(true)}
           onRemove={removeItem}
@@ -517,6 +526,17 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
           }}
         />
       ) : null}
+      <PosItemNoteDialog
+        itemLabel={addingItemWithNote?.name ?? ''}
+        locale={locale}
+        onClose={() => setAddingItemWithNote(null)}
+        onSave={(note) => {
+          if (!addingItemWithNote) return;
+          addItem(addingItemWithNote, note);
+          setAddingItemWithNote(null);
+        }}
+        open={Boolean(addingItemWithNote)}
+      />
       <PosItemNoteDialog
         initialNote={editingItemNote?.note}
         itemLabel={editingItemNote?.catalogItemName ?? ''}

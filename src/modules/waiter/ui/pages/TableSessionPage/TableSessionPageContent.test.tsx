@@ -15,7 +15,17 @@ const useOptimisticBuilderOrderMock = vi.fn();
 const canAccessTableSessionMenuMock = vi.fn();
 const createOrderMock = vi.fn();
 const addOrderItemMock = vi.fn();
+const optimisticAddItemMock = vi.fn();
 let submitMutationOptions: { onSuccess?: () => void } | undefined;
+
+function dispatchPointer(element: Element, type: string, clientX: number, clientY: number) {
+  const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX, clientY });
+  Object.defineProperties(event, {
+    pointerId: { value: 1 },
+    pointerType: { value: 'touch' },
+  });
+  fireEvent(element, event);
+}
 
 vi.mock('react-router', () => ({
   useNavigate: () => navigateMock,
@@ -123,7 +133,20 @@ vi.mock('shared/ui/pos-primitives', () => ({
   PosSectionTabs: ({ items }: { items: Array<{ label: string }> }) => (
     <div>{items.map((item) => item.label).join(', ')}</div>
   ),
-  PosItemNoteDialog: () => null,
+  PosItemNoteDialog: ({
+    itemLabel,
+    onSave,
+    open,
+  }: {
+    itemLabel: string;
+    onSave: (note: string) => void;
+    open: boolean;
+  }) =>
+    open ? (
+      <div role="dialog" aria-label={`note-${itemLabel}`}>
+        <button onClick={() => onSave('Piyozsiz')}>Test note save</button>
+      </div>
+    ) : null,
   PosSettingsMenu: () => null,
 }));
 
@@ -141,6 +164,7 @@ describe('TableSessionPageContent', () => {
     createOrderMock.mockResolvedValue({ id: 'created-order-1' });
     addOrderItemMock.mockReset();
     addOrderItemMock.mockResolvedValue({});
+    optimisticAddItemMock.mockReset();
     canAccessTableSessionMenuMock.mockReset();
     canAccessTableSessionMenuMock.mockReturnValue(true);
     useWaiterMenuQueryMock.mockReset();
@@ -180,7 +204,7 @@ describe('TableSessionPageContent', () => {
         items: [],
         channel: 'hall',
       },
-      addItem: vi.fn(),
+      addItem: optimisticAddItemMock,
       removeItem: vi.fn(),
       hasPendingOperations: false,
     });
@@ -219,6 +243,24 @@ describe('TableSessionPageContent', () => {
 
     expect(createOrderMock).toHaveBeenCalledWith('session-1', 'Umumiy: tezroq');
     expect(addOrderItemMock).toHaveBeenCalledWith('created-order-1', 'item-1', 'Piyozsiz', undefined, undefined);
+  });
+
+  it('opens a note dialog after swiping a simple menu item and adds only after note save', () => {
+    render(<TableSessionPageContent sessionId="session-1" mode="hall" />);
+
+    const card = screen.getByText('Osh').closest('[role="button"]');
+    expect(card).toBeTruthy();
+    dispatchPointer(card as Element, 'pointerdown', 180, 40);
+    dispatchPointer(card as Element, 'pointermove', 120, 42);
+    dispatchPointer(card as Element, 'pointerup', 80, 43);
+
+    expect(screen.getByRole('dialog', { name: 'note-Osh' })).toBeTruthy();
+    expect(optimisticAddItemMock).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Test note save' }));
+
+    expect(optimisticAddItemMock).toHaveBeenCalledWith(expect.objectContaining({ id: 'item-1' }), 'Piyozsiz');
+    expect(screen.queryByRole('dialog', { name: 'note-Osh' })).toBeNull();
   });
 
   it('enables the hall menu query for hall-session access', () => {

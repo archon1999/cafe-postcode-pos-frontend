@@ -110,7 +110,6 @@ export interface CashierRepository {
       manualCardReason?: string;
       registerFiscal?: boolean;
       finalTotal?: number;
-      totalOverrideReason?: string;
     },
   ): Promise<CashierPaymentResponse>;
   createPrecheckPrintDocument(orderId: string): Promise<CashierPrecheckPrintDocumentResponse>;

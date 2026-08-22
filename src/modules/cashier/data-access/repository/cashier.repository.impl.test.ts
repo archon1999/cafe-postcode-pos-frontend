@@ -178,13 +178,12 @@ describe('cashier repository transport contract', () => {
     expect(result.order.orderNumber).toBe(78);
   });
 
-  it('sends the cashier final total and its audit reason only when provided', async () => {
+  it('sends the cashier final total without a reason', async () => {
     const response = paymentResponse(79);
     apiPostMock.mockResolvedValueOnce(response);
 
     await cashierRepository.payOrder('order-3', 'cash', 50_000, {
       finalTotal: 50_000,
-      totalOverrideReason: 'Kelishilgan narx',
     });
 
     expect(apiPostMock).toHaveBeenCalledWith('/pos/billing/orders/order-3/pay/', {
@@ -196,7 +195,6 @@ describe('cashier repository transport contract', () => {
       manualCardOverride: false,
       manualCardReason: '',
       finalTotal: 50_000,
-      totalOverrideReason: 'Kelishilgan narx',
     });
   });
 

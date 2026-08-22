@@ -32,6 +32,7 @@ import { HallMapPanel } from './HallMapPanel';
 import { formatFloorLabel } from './hallMapScale';
 import { HallMapZoomControls } from './HallMapZoomControls';
 import { OpenTableDialog } from './OpenTableDialog';
+import { TableActionsMenu } from './TableActionsMenu';
 import { type TableOperationMode, type TableOperationSubmit, TableOperationsDialog } from './TableOperationsDialog';
 import { useHallMapViewport } from './useHallMapViewport';
 import { useHallsNavigation } from './useHallsNavigation';
@@ -42,6 +43,11 @@ type ActiveTableOperation = {
   mode: TableOperationMode;
   sourceTable: DiningTable;
   sourceSession: ActiveSession;
+};
+
+type ActiveTableActions = {
+  anchorEl: HTMLElement;
+  table: DiningTable;
 };
 
 export function HallsPageContent() {
@@ -57,6 +63,7 @@ export function HallsPageContent() {
   const [settingsAnchor, setSettingsAnchor] = useState<HTMLElement | null>(null);
   const [floorAnchor, setFloorAnchor] = useState<HTMLElement | null>(null);
   const [hallAnchor, setHallAnchor] = useState<HTMLElement | null>(null);
+  const [tableActions, setTableActions] = useState<ActiveTableActions | null>(null);
   const [tableOperation, setTableOperation] = useState<ActiveTableOperation | null>(null);
 
   const hallsQuery = useWaiterHallsQuery();
@@ -158,7 +165,7 @@ export function HallsPageContent() {
         return;
       }
 
-      setSelectedTable(currentTable);
+      void navigate(`/waiter/table-session?sessionId=${currentTable.activeSession.id}`);
       return;
     }
 
@@ -179,10 +186,8 @@ export function HallsPageContent() {
     setSelectedTable(currentTable);
   };
 
-  const openTableOperation = (mode: TableOperationMode, sourceSession: ActiveSession) => {
-    if (!selectedTable) return;
-    setTableOperation({ mode, sourceTable: selectedTable, sourceSession });
-    setSelectedTable(null);
+  const openTableOperation = (mode: TableOperationMode, sourceTable: DiningTable, sourceSession: ActiveSession) => {
+    setTableOperation({ mode, sourceTable, sourceSession });
   };
 
   const handleTableOperationConfirm = (operation: TableOperationSubmit) => {
@@ -383,6 +388,13 @@ export function HallsPageContent() {
         tables={visibleTables}
         gridColumns={gridColumns}
         onTableSelect={handleTableSelect}
+        onTableActions={
+          canManageTables
+            ? (table, anchorEl) => {
+                setTableActions({ table, anchorEl });
+              }
+            : undefined
+        }
       />
 
       <OpenTableDialog
@@ -402,9 +414,17 @@ export function HallsPageContent() {
           setSelectedTable(null);
           void navigate(`/waiter/table-session?sessionId=${sessionId}`);
         }}
-        onTransferSession={(activeSession) => openTableOperation('transfer', activeSession)}
-        onGroupSession={(activeSession) => openTableOperation('group', activeSession)}
-        onUngroupSession={(activeSession) => openTableOperation('ungroup', activeSession)}
+      />
+
+      <TableActionsMenu
+        anchorEl={tableActions?.anchorEl ?? null}
+        table={tableActions?.table ?? null}
+        copy={copy}
+        onClose={() => setTableActions(null)}
+        onAction={(mode, activeSession) => {
+          if (!tableActions) return;
+          openTableOperation(mode, tableActions.table, activeSession);
+        }}
       />
 
       <TableOperationsDialog

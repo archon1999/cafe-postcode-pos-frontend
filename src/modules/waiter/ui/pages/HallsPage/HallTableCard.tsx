@@ -1,5 +1,7 @@
-import { Box, Stack, Typography, alpha } from '@mui/material';
+import { Icon } from '@iconify/react';
+import { Box, IconButton, Stack, Typography, alpha } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
+import type { MouseEvent } from 'react';
 
 import {
   type DiningTable,
@@ -179,10 +181,12 @@ export function HallTableCard({
   copy,
   table,
   onSelect,
+  onOpenActions,
 }: {
   copy: ReturnType<typeof getPosCopy>;
   table: DiningTable;
   onSelect: (table: DiningTable) => void;
+  onOpenActions?: (table: DiningTable, anchorEl: HTMLElement) => void;
 }) {
   const theme = useTheme();
   const visualState = getTableVisualState(table);
@@ -194,6 +198,13 @@ export function HallTableCard({
   const isTall = coreShape === 'vertical' || Number(table.height ?? 1) > Number(table.width ?? 1);
   const activeSessionCount = table.activeSessionCount ?? table.activeSessions?.length ?? (table.activeSession ? 1 : 0);
   const activeSessionCountLabel = `x${activeSessionCount}`;
+  const hasActions = Boolean(onOpenActions && activeSessionCount > 0);
+
+  const openActions = (event: MouseEvent<HTMLElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    onOpenActions?.(table, event.currentTarget);
+  };
 
   const numberPlateSx =
     coreShape === 'horizontal'
@@ -204,22 +215,15 @@ export function HallTableCard({
 
   return (
     <Box
-      component="button"
-      type="button"
-      data-testid={`hall-table-${table.tableNumber}`}
-      aria-label={table.name}
-      onClick={() => onSelect(table)}
+      onContextMenu={hasActions ? openActions : undefined}
       sx={(theme) => ({
         position: 'relative',
         width: '100%',
         height: '100%',
-        border: 0,
-        p: 0,
         borderRadius: '22px',
-        cursor: 'pointer',
         backgroundColor: theme.palette.mode === 'dark' ? alpha(palette.outer, 0.72) : palette.outer,
         color: palette.ink,
-        overflow: 'hidden',
+        overflow: 'visible',
         transition: 'transform 0.18s ease, filter 0.18s ease, box-shadow 0.18s ease',
         boxShadow:
           theme.palette.mode === 'dark'
@@ -234,11 +238,36 @@ export function HallTableCard({
               : 'inset 0 0 0 1px rgba(40,51,65,0.08), 0 12px 24px rgba(76,55,31,0.12)',
         },
       })}>
+      <Box
+        component="button"
+        type="button"
+        data-testid={`hall-table-${table.tableNumber}`}
+        aria-label={table.name}
+        onClick={() => onSelect(table)}
+        sx={(theme) => ({
+          position: 'absolute',
+          inset: 0,
+          zIndex: 1,
+          width: '100%',
+          height: '100%',
+          border: 0,
+          p: 0,
+          borderRadius: '22px',
+          cursor: 'pointer',
+          background: 'transparent',
+          '&:focus-visible': {
+            outline: `3px solid ${theme.palette.primary.main}`,
+            outlineOffset: -3,
+          },
+        })}
+      />
+
       {markers.map(({ key, width, height, ...seatMarker }) => (
         <Box
           key={key}
           sx={{
             position: 'absolute',
+            pointerEvents: 'none',
             borderRadius: 999,
             backgroundColor: palette.rail,
             boxShadow: `0 0 18px ${alpha(palette.rail, visualState === 'available' ? 0.08 : 0.18)}`,
@@ -252,6 +281,7 @@ export function HallTableCard({
       <Box
         sx={(theme) => ({
           position: 'absolute',
+          pointerEvents: 'none',
           inset: isTall ? '12px 24px' : '16px 18px',
           borderRadius: '20px',
           backgroundColor: palette.shell,
@@ -346,6 +376,29 @@ export function HallTableCard({
           ) : null}
         </Stack>
       </Box>
+
+      {hasActions ? (
+        <IconButton
+          aria-label={`${table.name} · ${copy.tableActions}`}
+          onClick={openActions}
+          sx={(theme) => ({
+            position: 'absolute',
+            top: -20,
+            right: -20,
+            zIndex: 3,
+            width: 42,
+            height: 42,
+            color: '#ffffff',
+            backgroundColor: alpha(theme.palette.common.black, theme.palette.mode === 'dark' ? 0.34 : 0.22),
+            backdropFilter: 'blur(8px)',
+            border: `1px solid ${alpha('#ffffff', 0.12)}`,
+            '&:hover': {
+              backgroundColor: alpha(theme.palette.common.black, theme.palette.mode === 'dark' ? 0.5 : 0.34),
+            },
+          })}>
+          <Icon icon="solar:menu-dots-bold" width={26} />
+        </IconButton>
+      ) : null}
     </Box>
   );
 }

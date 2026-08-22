@@ -33,9 +33,7 @@ export const cashierPaymentGateway = {
         registerFiscal: options?.registerFiscal ?? true,
         manualCardOverride: Boolean(options?.manualCardOverride),
         manualCardReason: options?.manualCardReason ?? '',
-        ...(options?.finalTotal !== undefined
-          ? { finalTotal: options.finalTotal, totalOverrideReason: options.totalOverrideReason ?? '' }
-          : {}),
+        ...(options?.finalTotal !== undefined ? { finalTotal: options.finalTotal } : {}),
       }),
     );
   },

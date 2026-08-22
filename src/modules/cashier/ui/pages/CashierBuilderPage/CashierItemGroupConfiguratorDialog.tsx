@@ -428,8 +428,8 @@ function CounterButton({ icon, disabled = false, onClick }: { icon: string; disa
       size="small"
       disabled={disabled}
       onClick={onClick}
-      sx={{ bgcolor: 'background.paper', boxShadow: 1 }}>
-      <Icon icon={icon} width={21} />
+      sx={{ width: 46, height: 46, flexShrink: 0, bgcolor: 'background.paper', boxShadow: 1 }}>
+      <Icon icon={icon} width={27} />
     </IconButton>
   );
 }

@@ -13,7 +13,6 @@ type PaymentCommand = {
   manualCardOverride?: boolean;
   manualCardReason?: string;
   finalTotal?: number;
-  totalOverrideReason?: string;
 };
 
 type FailedPaymentAttempt = PaymentCommand & {
@@ -32,7 +31,6 @@ type Options = {
   paymentFailedMessage: string;
   splitParts: SplitPaymentPart[] | null;
   finalTotal?: number;
-  totalOverrideReason?: string;
   onPaymentComplete: (response: CashierPaymentResponse, paidAmount: number) => void;
   setAmount: (value: string) => void;
   setSplitParts: Dispatch<SetStateAction<SplitPaymentPart[] | null>>;
@@ -45,7 +43,6 @@ export function usePaymentSubmission({
   paymentFailedMessage,
   splitParts,
   finalTotal,
-  totalOverrideReason,
   onPaymentComplete,
   setAmount,
   setSplitParts,
@@ -99,9 +96,7 @@ export function usePaymentSubmission({
         method: part.method,
         amount: part.amount,
         registerFiscal,
-        ...(canApplyTotalOverride && index === 0 && finalTotal !== undefined
-          ? { finalTotal, totalOverrideReason }
-          : {}),
+        ...(canApplyTotalOverride && index === 0 && finalTotal !== undefined ? { finalTotal } : {}),
       };
       try {
         latestResponse = await executePayment(command);
@@ -137,7 +132,7 @@ export function usePaymentSubmission({
           method,
           amount: paymentAmount,
           registerFiscal,
-          ...(finalTotal !== undefined ? { finalTotal, totalOverrideReason } : {}),
+          ...(finalTotal !== undefined ? { finalTotal } : {}),
         };
         try {
           const response = await executePayment(command);
@@ -164,9 +159,7 @@ export function usePaymentSubmission({
         registerFiscal: attempt.registerFiscal,
         manualCardOverride: true,
         manualCardReason: cardFailureMessage,
-        ...(attempt.finalTotal !== undefined
-          ? { finalTotal: attempt.finalTotal, totalOverrideReason: attempt.totalOverrideReason }
-          : {}),
+        ...(attempt.finalTotal !== undefined ? { finalTotal: attempt.finalTotal } : {}),
       });
       let hasPendingSplitParts = false;
       if (attempt.splitPartId) {

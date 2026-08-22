@@ -64,6 +64,7 @@ type TableSessionMenuPanelProps = {
   selectedCountMap: ReadonlyMap<string, number>;
   showMobileSummary: boolean;
   onAdd: (menuItem: WaiterMenuItem) => void;
+  onAddWithNote: (menuItem: WaiterMenuItem) => void;
   onOpenCart: () => void;
   onRemove: (itemId: string) => void;
 };
@@ -78,6 +79,7 @@ export function TableSessionMenuPanel({
   selectedCountMap,
   showMobileSummary,
   onAdd,
+  onAddWithNote,
   onOpenCart,
   onRemove,
 }: TableSessionMenuPanelProps) {
@@ -104,6 +106,7 @@ export function TableSessionMenuPanel({
             xl: 'repeat(4, minmax(0, 1fr))',
             '@media (min-width: 1800px)': { gridTemplateColumns: 'repeat(5, minmax(0, 1fr))' },
           },
+          gridAutoRows: '1fr',
           gap: { xs: 1.1, md: 1.2, xl: 1.4 },
         }}>
         {(selectedCategory?.items ?? []).map((menuItem) => (
@@ -115,6 +118,11 @@ export function TableSessionMenuPanel({
             menuItem={menuItem}
             selectedCount={selectedCountMap.get(menuItem.id) ?? 0}
             onAdd={() => onAdd(menuItem)}
+            onAddWithNote={
+              !menuItem.modifierGroups?.length && menuItem.itemType !== 'service' && menuItem.saleUnit !== 'kg'
+                ? () => onAddWithNote(menuItem)
+                : undefined
+            }
             onRemove={onRemove}
           />
         ))}

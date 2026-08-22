@@ -33,6 +33,7 @@ import { buildServiceFeeRows } from 'shared/pos/service-fees';
 import { useScannerInput } from 'shared/pos/useScannerInput';
 import { PosSettingsMenu } from 'shared/ui/pos-primitives';
 
+import { calculatePercentageDiscount } from './payment-total-adjustment';
 import { PaymentCheckoutSummary } from './PaymentCheckoutSummary';
 import { PaymentMethodEditor } from './PaymentMethodEditor';
 import { PaymentOrderPanel } from './PaymentOrderPanel';
@@ -59,7 +60,8 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [settingsAnchor, setSettingsAnchor] = useState<HTMLElement | null>(null);
-  const [totalOverrideReason, setTotalOverrideReason] = useState('');
+  const [totalEditMode, setTotalEditMode] = useState<'amount' | 'percentage'>('amount');
+  const [discountPercent, setDiscountPercent] = useState('0');
   const canProcessPayments = canManageCashierPayments(session?.user);
   const canViewShift = canViewCashShift(session?.user);
   const canDisableFiscalRegistration = canSkipFiscalReceipts(session?.user);
@@ -119,13 +121,22 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   });
   const calculatedTotal = Number(orderQuery.data?.calculatedTotal ?? orderQuery.data?.total ?? 0);
   const totalEditable = Boolean(orderQuery.data?.paymentTotalEditable && paidTotal === 0);
-  const isTotalOverridden = totalEditable && paymentAmount !== calculatedTotal;
-  const isTotalOverrideReasonValid = !isTotalOverridden || Boolean(totalOverrideReason.trim());
+  const percentageDiscount = useMemo(
+    () => calculatePercentageDiscount(calculatedTotal, discountPercent),
+    [calculatedTotal, discountPercent],
+  );
+  const isPercentageDiscountValid = !totalEditable || totalEditMode !== 'percentage' || percentageDiscount.isValid;
   const effectiveRemainingTotal = totalEditable ? paymentAmount : remainingTotal;
 
   useEffect(() => {
-    setTotalOverrideReason(orderQuery.data?.totalOverrideReason ?? '');
-  }, [orderQuery.data?.id, orderQuery.data?.totalOverrideReason]);
+    setTotalEditMode('amount');
+    setDiscountPercent('0');
+  }, [orderQuery.data?.id]);
+  useEffect(() => {
+    if (totalEditable && totalEditMode === 'percentage' && percentageDiscount.isValid) {
+      setAmount(String(percentageDiscount.finalTotal));
+    }
+  }, [percentageDiscount.finalTotal, percentageDiscount.isValid, setAmount, totalEditMode, totalEditable]);
   const aggregatedOrderItems = useMemo(
     () => aggregateCashierOrderItems(orderQuery.data?.items),
     [orderQuery.data?.items],
@@ -198,7 +209,6 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     paymentFailedMessage: copy.paymentFailed,
     splitParts,
     finalTotal: totalEditable ? paymentAmount : undefined,
-    totalOverrideReason: totalOverrideReason.trim(),
     onPaymentComplete: handleSuccessfulPaymentResponse,
     setAmount,
     setSplitParts,
@@ -212,9 +222,9 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
       cashierContextQuery.data?.currentShift &&
       (!markingCheckEnabled || markingMissingCount === 0) &&
       isPaymentAmountValid &&
+      isPercentageDiscountValid &&
       (isSplitPayment ? pendingSplitTotal <= effectiveRemainingTotal : paymentAmount <= effectiveRemainingTotal) &&
       isSplitPaymentValid &&
-      isTotalOverrideReasonValid &&
       !isPaymentProcessing &&
       !printPrecheckMutation.isPending,
   );
@@ -328,10 +338,19 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
               splitTotal={splitTotal}
               splitValidationMessage={splitValidationMessage}
               calculatedTotal={calculatedTotal}
+              discountAmount={percentageDiscount.discountAmount}
+              discountPercent={discountPercent}
+              discountPercentValid={isPercentageDiscountValid}
               totalEditable={totalEditable}
-              totalOverrideReason={totalOverrideReason}
-              totalOverrideReasonValid={isTotalOverrideReasonValid}
-              onTotalOverrideReasonChange={setTotalOverrideReason}
+              totalEditMode={totalEditMode}
+              onDiscountPercentChange={setDiscountPercent}
+              onTotalEditModeChange={(mode) => {
+                setTotalEditMode(mode);
+                setSplitParts(null);
+                if (mode === 'percentage' && percentageDiscount.isValid) {
+                  setAmount(String(percentageDiscount.finalTotal));
+                }
+              }}
             />
 
             <PaymentCheckoutSummary

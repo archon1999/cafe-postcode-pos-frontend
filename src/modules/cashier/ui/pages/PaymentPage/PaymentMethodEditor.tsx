@@ -1,5 +1,17 @@
 import { Icon } from '@iconify/react';
-import { Box, Button, IconButton, MenuItem, Stack, TextField, Tooltip, Typography, alpha } from '@mui/material';
+import {
+  Box,
+  Button,
+  IconButton,
+  InputAdornment,
+  MenuItem,
+  Stack,
+  TextField,
+  Tooltip,
+  Typography,
+  alpha,
+} from '@mui/material';
+import { useState } from 'react';
 
 import type { PaymentMethod } from 'modules/cashier/domain';
 import { getPosCopy, type PosLocale } from 'shared/locale/copy';
@@ -27,10 +39,13 @@ type PaymentMethodEditorProps = {
   splitTotal: number;
   splitValidationMessage: string;
   calculatedTotal: number;
+  discountAmount: number;
+  discountPercent: string;
+  discountPercentValid: boolean;
   totalEditable: boolean;
-  totalOverrideReason: string;
-  totalOverrideReasonValid: boolean;
-  onTotalOverrideReasonChange: (value: string) => void;
+  totalEditMode: 'amount' | 'percentage';
+  onDiscountPercentChange: (value: string) => void;
+  onTotalEditModeChange: (mode: 'amount' | 'percentage') => void;
 };
 
 export function PaymentMethodEditor({
@@ -53,12 +68,15 @@ export function PaymentMethodEditor({
   splitTotal,
   splitValidationMessage,
   calculatedTotal,
+  discountAmount,
+  discountPercent,
+  discountPercentValid,
   totalEditable,
-  totalOverrideReason,
-  totalOverrideReasonValid,
-  onTotalOverrideReasonChange,
+  totalEditMode,
+  onDiscountPercentChange,
+  onTotalEditModeChange,
 }: PaymentMethodEditorProps) {
-  const isTotalOverridden = totalEditable && Number(amount || 0) !== calculatedTotal;
+  const [totalAdjustmentExpanded, setTotalAdjustmentExpanded] = useState(false);
   return (
     <>
       <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
@@ -85,18 +103,55 @@ export function PaymentMethodEditor({
         </Stack>
       ) : null}
 
+      {totalEditable && totalAdjustmentExpanded ? (
+        <Stack direction="row" spacing={1}>
+          <Button
+            fullWidth
+            variant={totalEditMode === 'amount' ? 'contained' : 'outlined'}
+            aria-pressed={totalEditMode === 'amount'}
+            onClick={() => onTotalEditModeChange('amount')}>
+            {copy.totalAdjustmentAmount}
+          </Button>
+          <Button
+            fullWidth
+            variant={totalEditMode === 'percentage' ? 'contained' : 'outlined'}
+            aria-pressed={totalEditMode === 'percentage'}
+            onClick={() => onTotalEditModeChange('percentage')}>
+            {copy.totalAdjustmentPercent}
+          </Button>
+        </Stack>
+      ) : null}
+
       <Stack direction="row" spacing={1} alignItems="flex-start">
-        <Tooltip title={!isPaymentAmountValid ? copy.zeroAmountNotAllowed : ''} arrow>
+        {totalEditable && totalEditMode === 'percentage' ? (
           <TextField
-            label={totalEditable ? copy.finalPaymentTotal : copy.total}
-            value={amount}
+            label={copy.discountPercent}
+            value={discountPercent}
             type="number"
-            slotProps={{ htmlInput: { min: 1, step: 1 } }}
-            onChange={(event) => onAmountChange(event.target.value)}
-            error={!isPaymentAmountValid}
+            slotProps={{
+              htmlInput: { min: 0, max: 99.99, step: 0.01 },
+              input: { endAdornment: <InputAdornment position="end">%</InputAdornment> },
+            }}
+            onChange={(event) => onDiscountPercentChange(event.target.value)}
+            error={!discountPercentValid}
+            helperText={!discountPercentValid ? copy.discountPercentInvalid : ' '}
             fullWidth
           />
-        </Tooltip>
+        ) : (
+          <Tooltip title={!isPaymentAmountValid ? copy.zeroAmountNotAllowed : ''} arrow>
+            <TextField
+              label={totalEditable ? copy.finalPaymentTotal : copy.total}
+              value={amount}
+              type="number"
+              slotProps={{ htmlInput: { min: 1, step: 1 } }}
+              onChange={(event) => onAmountChange(event.target.value)}
+              onClick={() => setTotalAdjustmentExpanded(true)}
+              onFocus={() => setTotalAdjustmentExpanded(true)}
+              error={!isPaymentAmountValid}
+              fullWidth
+            />
+          </Tooltip>
+        )}
         <Tooltip title={addPaymentPartLabel} arrow>
           <IconButton
             aria-label={addPaymentPartLabel}
@@ -114,7 +169,7 @@ export function PaymentMethodEditor({
         </Tooltip>
       </Stack>
 
-      {totalEditable ? (
+      {totalEditable && totalAdjustmentExpanded ? (
         <Box
           sx={(theme) => ({
             borderRadius: '10px',
@@ -126,20 +181,18 @@ export function PaymentMethodEditor({
               <Typography color="text.secondary">{copy.calculatedTotal}</Typography>
               <Typography fontWeight={800}>{formatCompactMoney(calculatedTotal, locale)}</Typography>
             </Stack>
-            {isTotalOverridden ? (
-              <TextField
-                label={copy.totalOverrideReason}
-                value={totalOverrideReason}
-                onChange={(event) => onTotalOverrideReasonChange(event.target.value)}
-                error={!totalOverrideReasonValid}
-                helperText={!totalOverrideReasonValid ? copy.totalOverrideReasonRequired : copy.totalOverrideHint}
-                fullWidth
-              />
-            ) : (
-              <Typography variant="body2" color="text.secondary">
-                {copy.totalOverrideHint}
-              </Typography>
-            )}
+            {totalEditMode === 'percentage' ? (
+              <Stack direction="row" justifyContent="space-between" spacing={2}>
+                <Typography color="text.secondary">{copy.discountAmount}</Typography>
+                <Typography fontWeight={800} color="success.main">
+                  − {formatCompactMoney(discountAmount, locale)}
+                </Typography>
+              </Stack>
+            ) : null}
+            <Stack direction="row" justifyContent="space-between" spacing={2}>
+              <Typography color="text.secondary">{copy.finalPaymentTotal}</Typography>
+              <Typography fontWeight={900}>{formatCompactMoney(Number(amount || 0), locale)}</Typography>
+            </Stack>
           </Stack>
         </Box>
       ) : null}
