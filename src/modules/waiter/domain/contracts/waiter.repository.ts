@@ -3,6 +3,7 @@ import type { PosModifierSelection } from 'shared/pos/modifiers';
 import type {
   Hall,
   TableSession,
+  TableOperationResponse,
   WaiterCreateOrderResponse,
   WaiterMenuCategory,
   WaiterOrder,
@@ -15,6 +16,14 @@ export interface WaiterRepository {
   openTableSession(tableId: string, guestCount: number): Promise<WaiterSessionResponse>;
   reserveTable(tableId: string): Promise<void>;
   getTableSession(sessionId: string): Promise<TableSession>;
+  transferTableSession(
+    sessionId: string,
+    targetTableId: string,
+    expectedTargetSessionIds: string[],
+    targetSessionId?: string,
+  ): Promise<TableOperationResponse>;
+  groupTableSession(sessionId: string, tableIds: string[]): Promise<TableOperationResponse>;
+  ungroupTableSession(sessionId: string, tableIds?: string[]): Promise<TableOperationResponse>;
   getMenu(): Promise<WaiterMenuCategory[]>;
   getOrders(): Promise<WaiterOrder[]>;
   createOrder(sessionId: string, note: string): Promise<WaiterCreateOrderResponse>;

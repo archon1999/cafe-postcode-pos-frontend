@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { mapWaiterMenuCategory, mapWaiterOrder } from './waiter.mapper';
+import { mapHall, mapWaiterMenuCategory, mapWaiterOrder } from './waiter.mapper';
 
 describe('mapWaiterOrder', () => {
   it('maps the backend service item type', () => {
@@ -31,5 +31,37 @@ describe('mapWaiterOrder', () => {
 
     expect(order.serviceFeePercent).toBe(10);
     expect(order.serviceFeeComponents).toBeUndefined();
+  });
+});
+
+describe('mapHall', () => {
+  it('maps grouped physical table metadata on active sessions', () => {
+    const hall = mapHall({
+      id: 'hall-1',
+      name: 'Main',
+      tables: [
+        {
+          id: 'table-1',
+          name: 'Main 1',
+          tableNumber: 1,
+          seatCount: 4,
+          status: 'occupied',
+          active_session: {
+            id: 'session-1',
+            guestCount: 4,
+            status: 'open',
+            primary_table_id: 'table-1',
+            table_ids: ['table-1', 'table-2'],
+            table_numbers: [1, 2],
+          },
+        },
+      ],
+    });
+
+    expect(hall.tables[0].activeSession).toMatchObject({
+      primaryTableId: 'table-1',
+      tableIds: ['table-1', 'table-2'],
+      tableNumbers: [1, 2],
+    });
   });
 });

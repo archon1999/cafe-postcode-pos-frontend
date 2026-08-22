@@ -27,6 +27,9 @@ type ActiveSessionDto = ActiveSession & {
   guest_count?: number;
   created_at?: string;
   service_state?: string;
+  primary_table_id?: string;
+  table_ids?: string[];
+  table_numbers?: number[];
 };
 type DiningTableDto = Omit<
   DiningTable,
@@ -51,6 +54,7 @@ type TableSessionDto = Omit<TableSession, 'tableNumber'> & {
   show_zone_name?: boolean;
   service_fee_percent?: number | string;
   service_fee_components?: TableSession['serviceFeeComponents'];
+  group_table_count?: number;
 };
 type WaiterOrderItemDto = WaiterOrderItem & {
   base_unit_price?: number | string;
@@ -86,11 +90,15 @@ export function mapWaiterMenuCategories(dtos: WaiterMenuCategoryDto[]) {
 }
 
 function mapActiveSession(dto: ActiveSessionDto): ActiveSession {
+  const tableIds = dto.tableIds ?? dto.table_ids ?? [];
   return {
     ...dto,
     guestCount: dto.guestCount ?? dto.guest_count ?? 0,
     createdAt: dto.createdAt ?? dto.created_at,
     serviceState: dto.serviceState ?? dto.service_state,
+    primaryTableId: dto.primaryTableId ?? dto.primary_table_id ?? tableIds[0],
+    tableIds,
+    tableNumbers: dto.tableNumbers ?? dto.table_numbers ?? [],
   };
 }
 
@@ -124,6 +132,7 @@ export function mapTableSession(dto: TableSessionDto): TableSession {
     showZoneName: dto.showZoneName ?? dto.show_zone_name ?? false,
     serviceFeePercent: dto.serviceFeePercent ?? dto.service_fee_percent ?? 0,
     serviceFeeComponents: normalizeServiceFeeComponents(dto.serviceFeeComponents ?? dto.service_fee_components),
+    groupTableCount: dto.groupTableCount ?? dto.group_table_count ?? dto.tables?.length ?? 1,
   };
 }
 

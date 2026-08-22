@@ -20,6 +20,9 @@ export type ActiveSession = {
   status: string;
   createdAt?: string;
   serviceState?: ActiveSessionServiceState;
+  primaryTableId?: string;
+  tableIds?: string[];
+  tableNumbers?: number[];
 };
 
 export type HallZone = {
@@ -74,8 +77,23 @@ export type TableSession = {
   assignedWaiterName?: string | null;
   serviceFeePercent?: number | string;
   serviceFeeComponents?: PosServiceFeeComponent[];
+  tables?: Array<{
+    id: string;
+    name: string;
+    tableNumber: number;
+    hallId: string;
+    isPrimary: boolean;
+  }>;
+  groupTableCount?: number;
 };
 
 export type WaiterSessionResponse = {
   id: string;
+};
+
+export type TableOperationResponse = {
+  mode: 'moved' | 'merged' | 'grouped' | 'ungrouped';
+  session: TableSession;
+  tableIds?: string[];
+  releasedTableIds?: string[];
 };

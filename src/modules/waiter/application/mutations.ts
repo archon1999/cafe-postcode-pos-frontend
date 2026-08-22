@@ -49,6 +49,69 @@ export function useReserveTableMutation(options: { selectedTable: DiningTable | 
   });
 }
 
+function invalidateTableOperationQueries(sessionId: string) {
+  invalidateQueriesInBackground([
+    waiterKeys.halls,
+    waiterKeys.orders,
+    waiterKeys.tableSession(sessionId),
+    waiterKeys.sessionOrders(sessionId),
+    ['cashier', 'checks'],
+    ['kitchen', 'queue'],
+  ]);
+}
+
+export function useTransferTableSessionMutation(options: {
+  onSuccess?: () => void;
+  onError?: (error: unknown) => void;
+}) {
+  return useMutation({
+    mutationFn: (payload: {
+      sessionId: string;
+      targetTableId: string;
+      expectedTargetSessionIds: string[];
+      targetSessionId?: string;
+    }) =>
+      waiterRepository.transferTableSession(
+        payload.sessionId,
+        payload.targetTableId,
+        payload.expectedTargetSessionIds,
+        payload.targetSessionId,
+      ),
+    onSuccess: (_response, payload) => {
+      invalidateTableOperationQueries(payload.sessionId);
+      options.onSuccess?.();
+    },
+    onError: options.onError,
+  });
+}
+
+export function useGroupTableSessionMutation(options: { onSuccess?: () => void; onError?: (error: unknown) => void }) {
+  return useMutation({
+    mutationFn: (payload: { sessionId: string; tableIds: string[] }) =>
+      waiterRepository.groupTableSession(payload.sessionId, payload.tableIds),
+    onSuccess: (_response, payload) => {
+      invalidateTableOperationQueries(payload.sessionId);
+      options.onSuccess?.();
+    },
+    onError: options.onError,
+  });
+}
+
+export function useUngroupTableSessionMutation(options: {
+  onSuccess?: () => void;
+  onError?: (error: unknown) => void;
+}) {
+  return useMutation({
+    mutationFn: (payload: { sessionId: string; tableIds?: string[] }) =>
+      waiterRepository.ungroupTableSession(payload.sessionId, payload.tableIds),
+    onSuccess: (_response, payload) => {
+      invalidateTableOperationQueries(payload.sessionId);
+      options.onSuccess?.();
+    },
+    onError: options.onError,
+  });
+}
+
 export function useAddWaiterOrderItemMutation(options: {
   currentOrderId?: string;
   sessionId: string | null;

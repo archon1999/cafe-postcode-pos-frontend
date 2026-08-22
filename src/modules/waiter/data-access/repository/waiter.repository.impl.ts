@@ -1,6 +1,7 @@
 import type {
   Hall,
   TableSession,
+  TableOperationResponse,
   WaiterCreateOrderResponse,
   WaiterMenuCategory,
   WaiterOrder,
@@ -41,6 +42,27 @@ class WaiterRepositoryImpl implements WaiterRepository {
 
   async getTableSession(sessionId: string): Promise<TableSession> {
     return mapTableSession(await apiGet<TableSession>(`/pos/floor/table-sessions/${sessionId}/`));
+  }
+
+  async transferTableSession(
+    sessionId: string,
+    targetTableId: string,
+    expectedTargetSessionIds: string[],
+    targetSessionId?: string,
+  ) {
+    return apiPost<TableOperationResponse>(`/pos/floor/table-sessions/${sessionId}/transfer/`, {
+      targetTableId,
+      expectedTargetSessionIds,
+      ...(targetSessionId ? { targetSessionId } : {}),
+    });
+  }
+
+  async groupTableSession(sessionId: string, tableIds: string[]) {
+    return apiPost<TableOperationResponse>(`/pos/floor/table-sessions/${sessionId}/group/`, { tableIds });
+  }
+
+  async ungroupTableSession(sessionId: string, tableIds: string[] = []) {
+    return apiPost<TableOperationResponse>(`/pos/floor/table-sessions/${sessionId}/ungroup/`, { tableIds });
   }
 
   async getMenu(): Promise<WaiterMenuCategory[]> {

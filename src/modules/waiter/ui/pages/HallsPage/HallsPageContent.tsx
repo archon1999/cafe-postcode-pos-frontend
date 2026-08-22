@@ -3,16 +3,26 @@ import { Button, Menu, MenuItem, Stack, alpha, useMediaQuery } from '@mui/materi
 import { useTheme } from '@mui/material/styles';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
+import { toast } from 'sonner';
 
 import { canAccessWaiterTables, canManageTableReservations, usePosSession } from 'modules/auth';
-import { useOpenTableSessionMutation, useReserveTableMutation, useWaiterHallsQuery } from 'modules/waiter/application';
 import {
+  useGroupTableSessionMutation,
+  useOpenTableSessionMutation,
+  useReserveTableMutation,
+  useTransferTableSessionMutation,
+  useUngroupTableSessionMutation,
+  useWaiterHallsQuery,
+} from 'modules/waiter/application';
+import {
+  type ActiveSession,
   type DiningTable,
   type Hall,
   clampGuestCount,
   getAvailableSeatCount,
   getSupportedSeatCount,
 } from 'modules/waiter/domain';
+import { getApiErrorMessage } from 'shared/api/errorMessage';
 import { refreshTransportAndReload } from 'shared/api/transportResolver';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { getPosCopy } from 'shared/locale/copy';
@@ -22,10 +32,17 @@ import { HallMapPanel } from './HallMapPanel';
 import { formatFloorLabel } from './hallMapScale';
 import { HallMapZoomControls } from './HallMapZoomControls';
 import { OpenTableDialog } from './OpenTableDialog';
+import { type TableOperationMode, type TableOperationSubmit, TableOperationsDialog } from './TableOperationsDialog';
 import { useHallMapViewport } from './useHallMapViewport';
 import { useHallsNavigation } from './useHallsNavigation';
 
 const EMPTY_HALLS: Hall[] = [];
+
+type ActiveTableOperation = {
+  mode: TableOperationMode;
+  sourceTable: DiningTable;
+  sourceSession: ActiveSession;
+};
 
 export function HallsPageContent() {
   const navigate = useNavigate();
@@ -40,6 +57,7 @@ export function HallsPageContent() {
   const [settingsAnchor, setSettingsAnchor] = useState<HTMLElement | null>(null);
   const [floorAnchor, setFloorAnchor] = useState<HTMLElement | null>(null);
   const [hallAnchor, setHallAnchor] = useState<HTMLElement | null>(null);
+  const [tableOperation, setTableOperation] = useState<ActiveTableOperation | null>(null);
 
   const hallsQuery = useWaiterHallsQuery();
   const openSessionMutation = useOpenTableSessionMutation({
@@ -56,6 +74,16 @@ export function HallsPageContent() {
       setSelectedTable(null);
     },
   });
+  const tableOperationMutationOptions = {
+    onSuccess: () => {
+      setTableOperation(null);
+      setSelectedTable(null);
+    },
+    onError: (error: unknown) => toast.error(getApiErrorMessage(error, copy.tableOperationFailed)),
+  };
+  const transferTableMutation = useTransferTableSessionMutation(tableOperationMutationOptions);
+  const groupTablesMutation = useGroupTableSessionMutation(tableOperationMutationOptions);
+  const ungroupTablesMutation = useUngroupTableSessionMutation(tableOperationMutationOptions);
   const canManageTables = canAccessWaiterTables(session?.user);
   const canReserveTables = canManageTableReservations(session?.user);
   const selectedTableAvailableSeats = selectedTable ? getAvailableSeatCount(selectedTable) : 0;
@@ -130,7 +158,7 @@ export function HallsPageContent() {
         return;
       }
 
-      void navigate(`/waiter/table-session?sessionId=${currentTable.activeSession.id}`);
+      setSelectedTable(currentTable);
       return;
     }
 
@@ -150,6 +178,34 @@ export function HallsPageContent() {
     setGuestCount(nextGuestCount);
     setSelectedTable(currentTable);
   };
+
+  const openTableOperation = (mode: TableOperationMode, sourceSession: ActiveSession) => {
+    if (!selectedTable) return;
+    setTableOperation({ mode, sourceTable: selectedTable, sourceSession });
+    setSelectedTable(null);
+  };
+
+  const handleTableOperationConfirm = (operation: TableOperationSubmit) => {
+    if (!tableOperation) return;
+    const sessionId = tableOperation.sourceSession.id;
+    if (operation.mode === 'transfer') {
+      transferTableMutation.mutate({
+        sessionId,
+        targetTableId: operation.targetTable.id,
+        expectedTargetSessionIds: (operation.targetTable.activeSessions ?? []).map((item) => item.id),
+        targetSessionId: operation.targetSessionId,
+      });
+      return;
+    }
+    if (operation.mode === 'group') {
+      groupTablesMutation.mutate({ sessionId, tableIds: operation.tableIds });
+      return;
+    }
+    ungroupTablesMutation.mutate({ sessionId, tableIds: operation.tableIds });
+  };
+
+  const tableOperationPending =
+    transferTableMutation.isPending || groupTablesMutation.isPending || ungroupTablesMutation.isPending;
 
   if (isInitialLoading) {
     return <PosHallsPageSkeleton />;
@@ -346,6 +402,21 @@ export function HallsPageContent() {
           setSelectedTable(null);
           void navigate(`/waiter/table-session?sessionId=${sessionId}`);
         }}
+        onTransferSession={(activeSession) => openTableOperation('transfer', activeSession)}
+        onGroupSession={(activeSession) => openTableOperation('group', activeSession)}
+        onUngroupSession={(activeSession) => openTableOperation('ungroup', activeSession)}
+      />
+
+      <TableOperationsDialog
+        open={Boolean(tableOperation)}
+        mode={tableOperation?.mode ?? 'transfer'}
+        sourceTable={tableOperation?.sourceTable ?? null}
+        sourceSession={tableOperation?.sourceSession ?? null}
+        halls={halls}
+        copy={copy}
+        pending={tableOperationPending}
+        onClose={() => setTableOperation(null)}
+        onConfirm={handleTableOperationConfirm}
       />
 
       <PosSettingsMenu
