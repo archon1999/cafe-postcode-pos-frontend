@@ -204,7 +204,7 @@ describe('POS session state and locking', () => {
 
     expect(screen.getByTestId('state').textContent).toBe('LOCKED');
     expect(screen.getByTestId('token').textContent).toBe('original-token');
-    expect(JSON.parse(sessionStorage.getItem('restaurant-pos-session') ?? '{}')).toMatchObject({
+    expect(JSON.parse(localStorage.getItem('restaurant-pos-session') ?? '{}')).toMatchObject({
       token: 'original-token',
       lockedAt,
     });
