@@ -52,7 +52,7 @@ function pairingResponse(claimUrl?: string) {
     claimToken: 'claim-token-with-enough-entropy-1234567',
     claimUrl:
       claimUrl ||
-      'https://control.cafe-postcode.uz/control/pair#v=1&pairingId=pairing-1&claimToken=claim-token-with-enough-entropy-1234567',
+      'https://control.cafe-postcode.uz/pair#v=1&pairingId=pairing-1&claimToken=claim-token-with-enough-entropy-1234567',
     displayCode: '482913',
     qrPath: 'M4 4h1v1h-1zM5 5h1v1h-1z',
     qrSize: 29,
@@ -108,7 +108,7 @@ describe('generalized TV monitor device repository', () => {
   it('rejects a QR contract that leaks the claim secret through the query string', async () => {
     vi.mocked(apiPostRemotePublic).mockResolvedValueOnce(
       pairingResponse(
-        'https://control.cafe-postcode.uz/control/pair?claimToken=claim-token-with-enough-entropy-1234567#v=1&pairingId=pairing-1&claimToken=claim-token-with-enough-entropy-1234567',
+        'https://control.cafe-postcode.uz/pair?claimToken=claim-token-with-enough-entropy-1234567#v=1&pairingId=pairing-1&claimToken=claim-token-with-enough-entropy-1234567',
       ),
     );
 

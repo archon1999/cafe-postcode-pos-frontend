@@ -76,7 +76,7 @@ describe('TvMonitorPage', () => {
     const onQueueSuccess = vi.fn();
     window.CafePostcodeTv = { onQueueSuccess };
     const claimUrl =
-      'https://control.cafe-postcode.uz/control/pair#v=1&pairingId=pairing-1&claimToken=one-time-claim';
+      'https://control.cafe-postcode.uz/pair#v=1&pairingId=pairing-1&claimToken=one-time-claim';
     vi.spyOn(kitchenRepository, 'createTvMonitorPairing').mockResolvedValue({
       id: 'pairing-1',
       pollToken: 'poll-secret',

@@ -10,8 +10,7 @@ import { usePosSession } from '../session-context';
 
 function pairingClaimUrl(pairingId: string, claimToken: string) {
   const url = new URL(String(import.meta.env.VITE_CONTROL_APP_URL || 'https://control.cafe-postcode.uz'));
-  const basePath = url.pathname.replace(/\/+$/, '');
-  url.pathname = `${basePath.endsWith('/control') ? basePath : `${basePath}/control`}/pair`;
+  url.pathname = '/pair';
   url.hash = new URLSearchParams({ v: '1', pairingId, claimToken }).toString();
   return url.toString();
 }

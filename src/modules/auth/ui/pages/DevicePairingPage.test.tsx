@@ -41,7 +41,7 @@ describe('DevicePairingPage', () => {
     await waitFor(() => expect(qrMock).toHaveBeenCalled());
     const qrValue = String(qrMock.mock.calls[0][0]);
     expect(qrValue).toBe(
-      'https://control.cafe-postcode.uz/control/pair#v=1&pairingId=11111111-1111-4111-8111-111111111111&claimToken=one-use-claim-secret',
+      'https://control.cafe-postcode.uz/pair#v=1&pairingId=11111111-1111-4111-8111-111111111111&claimToken=one-use-claim-secret',
     );
     expect(qrValue).not.toContain('private-poll-secret');
     expect(screen.getByText('482193')).toBeTruthy();

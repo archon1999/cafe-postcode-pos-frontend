@@ -163,8 +163,7 @@ function safeClaimUrl(response: PairingApiResponse, pairingId: string) {
   const trustedUrl = new URL(
     String(import.meta.env.VITE_CONTROL_APP_URL || 'https://control.cafe-postcode.uz'),
   );
-  const basePath = trustedUrl.pathname.replace(/\/+$/, '');
-  trustedUrl.pathname = `${basePath.endsWith('/control') ? basePath : `${basePath}/control`}/pair`;
+  trustedUrl.pathname = '/pair';
   const fragment = new URLSearchParams(url.hash.replace(/^#/, ''));
   const isLoopback = ['localhost', '127.0.0.1', '::1'].includes(url.hostname);
   if (
