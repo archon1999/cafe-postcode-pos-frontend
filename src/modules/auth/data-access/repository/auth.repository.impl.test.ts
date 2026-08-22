@@ -255,6 +255,34 @@ describe('POS device auth repository', () => {
     expect(apiMocks.post).toHaveBeenCalledWith('/pos/auth/pin-login/', { pin: '1234' });
   });
 
+  it('never falls back to the backend when Local Agent PIN login is unavailable', async () => {
+    edgeMocks.readTransportConnection.mockReturnValue({
+      mode: 'local',
+      restaurantId: 'restaurant-1',
+      origin: 'http://127.0.0.1:18181',
+    });
+    apiMocks.post.mockRejectedValue(new Error('Local Agent is unavailable'));
+
+    await expect(authRepository.loginWithPin({ pin: '1234' })).rejects.toThrow('Local Agent is unavailable');
+
+    expect(apiMocks.postRemote).not.toHaveBeenCalled();
+  });
+
+  it('restores an edge-bound device without direct backend lease or device requests', async () => {
+    const identity = await createPosDeviceIdentity();
+    await persistDeviceIdentity({ ...identity, device: activeDevice, restaurantContext });
+    edgeMocks.readTransportConnection.mockReturnValue({
+      mode: 'router',
+      restaurantId: 'restaurant-1',
+      origin: 'http://192.168.1.10:18181',
+    });
+
+    await expect(authRepository.restoreDeviceBinding()).resolves.toEqual({ device: activeDevice, restaurantContext });
+
+    expect(apiMocks.postRemote).not.toHaveBeenCalled();
+    expect(apiMocks.getRemote).not.toHaveBeenCalled();
+  });
+
   it('renews a near-expiry lease before loading authoritative restaurant context', async () => {
     const identity = await createPosDeviceIdentity();
     await persistDeviceIdentity({

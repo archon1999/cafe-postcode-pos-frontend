@@ -106,17 +106,6 @@ describe('paired-device transport resolver', () => {
       user: { id: 'user-1', username: 'cashier', fullName: 'Cashier', permissionCodes: [] },
       restaurantContext: { restaurantId: 'garizon', restaurantName: 'Garizon' },
     });
-    apiPostRemoteMock.mockResolvedValueOnce({
-      restaurantId: 'garizon',
-      coordinator: {
-        restaurantId: 'garizon',
-        coordinatorUrls: ['http://127.0.0.1:18181', 'http://192.168.1.113:18181'],
-        agentDeviceId: '22222222-2222-4222-8222-222222222222',
-        agentSigningPublicKeyAlgorithm: 'ED25519',
-        agentSigningPublicKey: 'A'.repeat(43),
-        agentSigningPublicKeyFingerprint: 'a'.repeat(64),
-      },
-    });
     fetchMock().mockResolvedValueOnce({
       ok: true,
       json: async () => ({ protocolVersion: 1 }),
@@ -130,13 +119,8 @@ describe('paired-device transport resolver', () => {
       restaurantId: 'garizon',
       origin: 'http://127.0.0.1:18181',
     });
-    expect(secureChannelMock).toHaveBeenCalledWith(
-      'http://127.0.0.1:18181',
-      '',
-      true,
-      expect.objectContaining({ agentDeviceId: '22222222-2222-4222-8222-222222222222' }),
-      'garizon',
-    );
+    expect(secureChannelMock).toHaveBeenCalledWith('http://127.0.0.1:18181', '', true, undefined, 'garizon');
+    expect(apiPostRemoteMock).not.toHaveBeenCalled();
   });
 
   it('keeps the working router connection when loopback upgrade is unavailable', async () => {
@@ -152,11 +136,12 @@ describe('paired-device transport resolver', () => {
       user: { id: 'user-1', username: 'cashier', fullName: 'Cashier', permissionCodes: [] },
       restaurantContext: { restaurantId: 'garizon', restaurantName: 'Garizon' },
     });
-    apiPostRemoteMock.mockRejectedValueOnce(new Error('backend unavailable'));
-    fetchMock().mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ protocolVersion: 1 }),
-    } as Response);
+    fetchMock()
+      .mockRejectedValueOnce(new Error('loopback unavailable'))
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ protocolVersion: 1 }),
+      } as Response);
 
     const result = await refreshTransportMode();
 
@@ -165,6 +150,7 @@ describe('paired-device transport resolver', () => {
       mode: 'router',
       origin: 'http://192.168.1.113:18181',
     });
+    expect(apiPostRemoteMock).not.toHaveBeenCalled();
   });
 
   it('recovers a missing transport record from the paired employee session before probing the agent', async () => {
@@ -244,7 +230,7 @@ describe('paired-device transport resolver', () => {
     });
   });
 
-  it('falls back from a mismatched local agent to remote and requires a new PIN session', async () => {
+  it('keeps edge transport sticky when the selected Local Agent is temporarily unavailable', async () => {
     persistTransportConnection({
       mode: 'local',
       restaurantId: 'new-york',
@@ -259,7 +245,13 @@ describe('paired-device transport resolver', () => {
 
     const result = await refreshTransportMode();
 
-    expect(result).toEqual({ changed: true, requiresRelogin: true, mode: 'remote' });
-    expect(readTransportConnection()).toMatchObject({ mode: 'remote', restaurantId: 'new-york' });
+    expect(result).toEqual({ changed: false, requiresRelogin: false, mode: 'local' });
+    expect(readTransportConnection()).toMatchObject({
+      mode: 'local',
+      restaurantId: 'new-york',
+      origin: 'http://127.0.0.1:18181',
+      backendOnline: false,
+    });
+    expect(apiPostRemoteMock).not.toHaveBeenCalled();
   });
 });

@@ -212,18 +212,12 @@ export async function refreshTransportMode() {
     current.origin &&
     (current.secureChannel || readLegacyEdgeMigrationCredential() || isLoopbackEdgeOrigin(current.origin))
   ) {
-    // A LAN endpoint may have been selected while loopback was temporarily
-    // unavailable. On an Agent-hosted POS, prefer the same machine again once
-    // it is healthy, using backend-attested Agent trust for safe key repinning.
+    // Once an edge transport is selected, POS browser traffic stays entirely
+    // on the Agent. A previously pinned Agent can prove the same identity on
+    // loopback without a backend discovery request.
     if (current.mode === 'router') {
-      try {
-        const coordinator = await discoverCoordinator(current.restaurantId);
-        const localResult = await probe(DEFAULT_EDGE_ORIGIN, current.restaurantId, coordinatorTrust(coordinator));
-        if (localResult.status === 'selected') next = localResult.connection;
-      } catch {
-        // Keep the already-working LAN path when backend discovery or loopback
-        // probing is unavailable.
-      }
+      const localResult = await probe(DEFAULT_EDGE_ORIGIN, current.restaurantId);
+      if (localResult.status === 'selected') next = localResult.connection;
     }
     if (!next) {
       const result = await probe(current.origin, current.restaurantId);
@@ -231,13 +225,23 @@ export async function refreshTransportMode() {
       next = result.status === 'selected' ? result.connection : null;
     }
   }
-  if (!next)
-    next = {
-      mode: 'remote',
-      restaurantId: current.restaurantId,
-      backendOnline: true,
-      selectedAt: new Date().toISOString(),
-    };
+  if (!next) {
+    next =
+      current.mode === 'remote'
+        ? {
+            mode: 'remote',
+            restaurantId: current.restaurantId,
+            backendOnline: true,
+            selectedAt: new Date().toISOString(),
+          }
+        : {
+            ...current,
+            // Edge selection is sticky. A stopped/restarting Agent must not
+            // silently convert the browser into a direct backend POS client.
+            backendOnline: false,
+            selectedAt: new Date().toISOString(),
+          };
+  }
   const currentGroup = current.mode === 'remote' ? 'remote' : 'edge';
   const nextGroup = next.mode === 'remote' ? 'remote' : 'edge';
   persistTransportConnection(next);

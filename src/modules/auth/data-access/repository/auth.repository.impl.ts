@@ -12,7 +12,6 @@ import type {
 } from 'modules/auth/domain';
 import { apiGetRemote, apiPost, apiPostRemote, apiPostRemotePublic } from 'shared/api/client';
 import {
-  persistTransportConnection,
   readLegacyEdgeMigrationCredential,
   readOrCreateEdgeTerminalIdentity,
   readTransportConnection,
@@ -247,6 +246,14 @@ class PosAuthRepositoryImpl implements AuthRepository {
       throw new PosAuthApiError('Qurilma superadmin tomonidan bekor qilingan.', 'device_revoked', 401);
     }
 
+    const transport = readTransportConnection();
+    if (transport?.mode !== 'remote' && transport?.restaurantId === identity.restaurantContext?.restaurantId) {
+      // The Local Agent owns device authority and revocation state while POS
+      // traffic is on an edge transport.  Do not make the browser renew or
+      // validate the same device directly against the backend on every boot.
+      return { device: identity.device, restaurantContext: identity.restaurantContext };
+    }
+
     try {
       const leaseExpiresAt = Date.parse(identity.device.leaseExpiresAt);
       if (!Number.isFinite(leaseExpiresAt) || leaseExpiresAt <= Date.now() + 10 * 60_000) {
@@ -275,7 +282,6 @@ class PosAuthRepositoryImpl implements AuthRepository {
         throw normalized;
       }
 
-      const transport = readTransportConnection();
       if (
         transport &&
         transport.mode !== 'remote' &&
@@ -332,25 +338,9 @@ class PosAuthRepositoryImpl implements AuthRepository {
       if (!session) throw new Error('PIN login did not return a session');
       return session;
     } catch (error) {
-      const connection = readTransportConnection();
-      const localTransportFailure =
-        connection?.mode !== 'remote' && (!axios.isAxiosError(error) || !error.response);
-      if (localTransportFailure && connection?.restaurantId) {
-        try {
-          const session = normalizeSessionPayload(
-            await apiPostRemote<PosSessionPayload>('/pos/auth/pin-login/', payload),
-          );
-          if (!session) throw new Error('PIN login did not return a session');
-          persistTransportConnection({
-            mode: 'remote',
-            restaurantId: connection.restaurantId,
-            backendOnline: true,
-          });
-          return session;
-        } catch (remoteError) {
-          throw normalizeError(remoteError, 'PIN orqali kirib bo‘lmadi.');
-        }
-      }
+      // Edge mode is intentionally strict: a Local Agent outage must be
+      // visible as an Agent outage, not silently turn the POS into a direct
+      // backend client and create a second, incompatible session authority.
       throw normalizeError(error, 'PIN orqali kirib bo‘lmadi.');
     }
   }
