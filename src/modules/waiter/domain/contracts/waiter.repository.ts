@@ -37,6 +37,7 @@ export interface WaiterRepository {
     }>,
   ): Promise<{ kitchenPrintDocuments?: string[] }>;
   removeOrderItem(itemId: string): Promise<{ kitchenPrintDocuments: string[]; orderRemoved?: boolean }>;
+  updateOrderItemNote(itemId: string, note: string): Promise<void>;
   updateOrderNote(orderId: string, note: string): Promise<WaiterOrder>;
   submitOrder(orderId: string): Promise<WaiterOrder>;
   createPrecheckPrintDocument(orderId: string): Promise<WaiterPrecheckPrintDocumentResponse>;

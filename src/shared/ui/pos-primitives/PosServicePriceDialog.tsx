@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { getPosCopy, type PosLocale } from 'shared/locale/copy';
 import { formatCompactMoney } from 'shared/pos/utils';
 
+import { PosItemNoteField } from './PosItemNoteField';
+
 type ServiceMenuItem = {
   id: string;
   name: string;
@@ -13,8 +15,10 @@ type ServiceMenuItem = {
 type Props = {
   item: ServiceMenuItem;
   locale: PosLocale;
+  allowItemNote?: boolean;
+  initialNote?: string;
   onClose: () => void;
-  onConfirm: (price: number) => void;
+  onConfirm: (price: number, note: string) => void;
 };
 
 export function parseServicePrice(value: string) {
@@ -24,12 +28,16 @@ export function parseServicePrice(value: string) {
   return Number.isSafeInteger(price) && price > 0 && price <= 2_147_483_647 ? price : null;
 }
 
-export function PosServicePriceDialog({ item, locale, onClose, onConfirm }: Props) {
+export function PosServicePriceDialog({ allowItemNote = false, initialNote, item, locale, onClose, onConfirm }: Props) {
   const copy = getPosCopy(locale);
   const [value, setValue] = useState('');
+  const [note, setNote] = useState('');
   const price = useMemo(() => parseServicePrice(value), [value]);
 
-  useEffect(() => setValue(''), [item.id]);
+  useEffect(() => {
+    setValue('');
+    setNote(initialNote ?? '');
+  }, [initialNote, item.id]);
 
   return (
     <Dialog open onClose={onClose} maxWidth="xs" fullWidth>
@@ -61,6 +69,8 @@ export function PosServicePriceDialog({ item, locale, onClose, onConfirm }: Prop
             fullWidth
           />
 
+          {allowItemNote ? <PosItemNoteField locale={locale} onChange={setNote} value={note} /> : null}
+
           {price !== null ? (
             <Typography variant="h5" fontWeight={900} textAlign="right">
               {formatCompactMoney(price, locale)}
@@ -71,7 +81,7 @@ export function PosServicePriceDialog({ item, locale, onClose, onConfirm }: Prop
             variant="contained"
             size="large"
             disabled={price === null}
-            onClick={() => price !== null && onConfirm(price)}
+            onClick={() => price !== null && onConfirm(price, note.trim())}
             sx={{ minHeight: 52 }}>
             {copy.addService}
           </Button>

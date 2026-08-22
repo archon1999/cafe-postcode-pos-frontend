@@ -47,6 +47,7 @@ describe('cashier order mutation transport contract', () => {
     expect(cashierRepository.addOrderItem).toBe(cashierOrderGateway.addOrderItem);
     expect(cashierRepository.scanOrderMarking).toBe(cashierOrderGateway.scanOrderMarking);
     expect(cashierRepository.removeOrderItem).toBe(cashierOrderGateway.removeOrderItem);
+    expect(cashierRepository.updateOrderItemNote).toBe(cashierOrderGateway.updateOrderItemNote);
     expect(cashierRepository.updateOrderNote).toBe(cashierOrderGateway.updateOrderNote);
     expect(cashierRepository.updateOrderDisplayName).toBe(cashierOrderGateway.updateOrderDisplayName);
     expect(cashierRepository.updateOrderDeliveryDetails).toBe(cashierOrderGateway.updateOrderDeliveryDetails);
@@ -118,6 +119,22 @@ describe('cashier order mutation transport contract', () => {
     });
   });
 
+  it('keeps a separate note for every item in a bulk add payload', async () => {
+    apiPostMock.mockResolvedValueOnce({});
+
+    await cashierRepository.addOrderItems('order-1', [
+      { catalogItemId: 'pizza-s', quantity: 2, note: 'Ko‘proq pishloq' },
+      { catalogItemId: 'pizza-m', quantity: 1, note: 'Kolbasasiz' },
+    ]);
+
+    expect(apiPostMock).toHaveBeenCalledWith('/pos/sales/orders/order-1/items/bulk/', {
+      items: [
+        { catalogItem: 'pizza-s', quantity: 2, note: 'Ko‘proq pishloq' },
+        { catalogItem: 'pizza-m', quantity: 1, note: 'Kolbasasiz' },
+      ],
+    });
+  });
+
   it('scans a marking then preserves the mapped order and top-level kitchen print documents', async () => {
     apiPostMock.mockResolvedValueOnce({
       order: orderResponse(82),
@@ -168,6 +185,14 @@ describe('cashier order mutation transport contract', () => {
 
     expect(apiPatchMock).toHaveBeenCalledWith('/pos/sales/orders/order-1/', { note: 'Piyozsiz' });
     expect(result.orderNumber).toBe(83);
+  });
+
+  it('updates only the selected order item note through the item endpoint', async () => {
+    apiPatchMock.mockResolvedValueOnce({});
+
+    await cashierRepository.updateOrderItemNote('item-1', 'Piyozsiz');
+
+    expect(apiPatchMock).toHaveBeenCalledWith('/pos/sales/orders/items/item-1/', { note: 'Piyozsiz' });
   });
 
   it('updates the display name and maps the returned order', async () => {

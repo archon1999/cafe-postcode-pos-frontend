@@ -159,6 +159,7 @@ describe('useOptimisticBuilderOrder', () => {
     });
 
     expect(createRemoteOrder).toHaveBeenCalledTimes(1);
+    expect(createRemoteOrder).toHaveBeenCalledWith();
     expect(addOrderItem).toHaveBeenCalledWith(
       'order-12',
       expect.objectContaining({ id: 'menu-1' }),
@@ -414,7 +415,7 @@ describe('useOptimisticBuilderOrder', () => {
     expect(onOrderRemoved).toHaveBeenCalledTimes(1);
 
     act(() => result.current.addItem(createMenuItem({ id: 'menu-2' }), ''));
-    await waitFor(() => expect(createRemoteOrder).toHaveBeenCalledWith(''));
+    await waitFor(() => expect(createRemoteOrder).toHaveBeenCalledWith());
   });
 
   it('issues only one delete request per remove action in strict mode', async () => {

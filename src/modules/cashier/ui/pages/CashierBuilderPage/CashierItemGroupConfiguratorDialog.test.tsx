@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { CashierMenuItemGroup } from 'modules/cashier/domain';
@@ -70,7 +70,7 @@ const weightedGroup: CashierMenuItemGroup = {
 };
 
 describe('CashierItemGroupConfiguratorDialog', () => {
-  it('collects quantities for several sizes and exact modifier configurations', () => {
+  it('collects quantities for several sizes and exact modifier configurations', async () => {
     const onConfirm = vi.fn();
     render(
       <CashierItemGroupConfiguratorDialog
@@ -87,11 +87,20 @@ describe('CashierItemGroupConfiguratorDialog', () => {
     fireEvent.click(addButtons[0]);
     fireEvent.click(addButtons[2]);
 
+    fireEvent.click(screen.getAllByRole('button', { name: 'Izoh qo‘shish' })[0]);
+    fireEvent.change(screen.getByLabelText('Mahsulot uchun izoh'), { target: { value: 'Ko‘proq pishloq' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Izohni saqlash' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Izoh qo‘shish' })).toBeNull());
     fireEvent.click(screen.getByRole('button', { name: /3 ta qo‘shish/i }));
 
     expect(onConfirm).toHaveBeenCalledWith([
-      expect.objectContaining({ item: expect.objectContaining({ id: 'pizza-S' }), quantity: 2 }),
-      expect.objectContaining({ item: expect.objectContaining({ id: 'pizza-M' }), quantity: 1 }),
+      expect.objectContaining({
+        item: expect.objectContaining({ id: 'pizza-S' }),
+        note: 'Ko‘proq pishloq',
+        quantity: 2,
+      }),
+      expect.objectContaining({ item: expect.objectContaining({ id: 'pizza-M' }), note: '', quantity: 1 }),
     ]);
   });
 
@@ -120,7 +129,7 @@ describe('CashierItemGroupConfiguratorDialog', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /1 tur qo‘shish/i }));
     expect(onConfirm).toHaveBeenCalledWith([
-      expect.objectContaining({ item: expect.objectContaining({ id: 'fish' }), quantity: 0.125 }),
+      expect.objectContaining({ item: expect.objectContaining({ id: 'fish' }), note: '', quantity: 0.125 }),
     ]);
   });
 });

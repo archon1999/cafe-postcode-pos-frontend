@@ -4,6 +4,7 @@ import type { KeyboardEvent } from 'react';
 
 import { formatPosCopy, type PosLocale } from 'shared/locale/copy';
 import type { PosOrderItemModifier } from 'shared/pos/modifiers';
+import { isTemporaryBuilderId } from 'shared/pos/optimistic-builder-order';
 import { formatCompactMoney, formatPosItemQuantityLabel } from 'shared/pos/utils';
 
 export type PosCartItem = {
@@ -31,11 +32,14 @@ type CartItemGroup = readonly [string, PosCartItem[]];
 
 export type PosCartItemGroupsProps<TMenuItem extends PosCartMenuItem> = {
   groups: CartItemGroup[];
-  itemQuantityLabel: string;
+  itemNoteAddLabel: string;
+  itemNoteEditLabel: string;
+  itemNotePendingLabel: string;
   locale: PosLocale;
   markingProgressLabel?: string;
   menuItems: ReadonlyMap<string, TMenuItem>;
   onAdd: (item: TMenuItem, sourceItem: PosCartItem) => void;
+  onEditNote: (item: PosCartItem) => void;
   onRemove: (itemId: string) => void;
   onSelect: (key: string) => void;
   selectedItemKey: string | null;
@@ -55,17 +59,27 @@ function activationHandler(onActivate: () => void) {
 
 function CartItemActions<TMenuItem extends PosCartMenuItem>({
   item,
+  itemNoteAddLabel,
+  itemNoteEditLabel,
+  itemNotePendingLabel,
   menuItems,
   onAdd,
+  onEditNote,
   onRemove,
   variant,
 }: {
   item: PosCartItem;
+  itemNoteAddLabel: string;
+  itemNoteEditLabel: string;
+  itemNotePendingLabel: string;
   menuItems: ReadonlyMap<string, TMenuItem>;
   onAdd: (item: TMenuItem, sourceItem: PosCartItem) => void;
+  onEditNote: (item: PosCartItem) => void;
   onRemove: (itemId: string) => void;
   variant: PosCartItemGroupsProps<TMenuItem>['variant'];
 }) {
+  const noteEditingDisabled = isTemporaryBuilderId(item.id);
+  const noteActionLabel = noteEditingDisabled ? itemNotePendingLabel : item.note ? itemNoteEditLabel : itemNoteAddLabel;
   const removeLatest = () => onRemove(item.itemIds[item.itemIds.length - 1]);
   const addAnother = () => {
     const menuItem = menuItems.get(item.catalogItem);
@@ -95,6 +109,18 @@ function CartItemActions<TMenuItem extends PosCartMenuItem>({
           }}
           sx={{ minWidth: 54, px: 0 }}>
           <Icon icon="solar:minus-circle-bold" width={18} />
+        </Button>
+        <Button
+          variant="contained"
+          aria-label={noteActionLabel}
+          title={noteActionLabel}
+          disabled={noteEditingDisabled}
+          onClick={(event) => {
+            event.stopPropagation();
+            onEditNote(item);
+          }}
+          sx={{ minWidth: 54, px: 0 }}>
+          <Icon icon="solar:notes-bold-duotone" width={18} />
         </Button>
         <Button
           variant="contained"
@@ -151,6 +177,24 @@ function CartItemActions<TMenuItem extends PosCartMenuItem>({
       <Box
         component="button"
         type="button"
+        aria-label={noteActionLabel}
+        title={noteActionLabel}
+        disabled={noteEditingDisabled}
+        onClick={(event) => {
+          event.stopPropagation();
+          onEditNote(item);
+        }}
+        sx={(theme) => ({
+          ...actionSx(theme),
+          color: item.note ? theme.palette.primary.main : actionSx(theme).color,
+          opacity: noteEditingDisabled ? 0.45 : 1,
+          cursor: noteEditingDisabled ? 'wait' : 'pointer',
+        })}>
+        <Icon icon="solar:notes-bold-duotone" width={22} />
+      </Box>
+      <Box
+        component="button"
+        type="button"
         onClick={(event) => {
           event.stopPropagation();
           addAnother();
@@ -164,10 +208,14 @@ function CartItemActions<TMenuItem extends PosCartMenuItem>({
 
 export function PosCartItemGroups<TMenuItem extends PosCartMenuItem>({
   groups,
+  itemNoteAddLabel,
+  itemNoteEditLabel,
+  itemNotePendingLabel,
   locale,
   markingProgressLabel,
   menuItems,
   onAdd,
+  onEditNote,
   onRemove,
   onSelect,
   selectedItemKey,
@@ -222,9 +270,24 @@ export function PosCartItemGroups<TMenuItem extends PosCartMenuItem>({
                   {formatPosItemQuantityLabel(item.catalogItemName, item.quantity, item.saleUnit, locale)}
                 </Typography>
                 {item.note ? (
-                  <Typography variant={mobile ? 'caption' : 'body2'} color="text.secondary">
-                    {item.note}
-                  </Typography>
+                  <Stack
+                    direction="row"
+                    spacing={0.6}
+                    alignItems="flex-start"
+                    sx={(theme) => ({
+                      width: 'fit-content',
+                      maxWidth: '100%',
+                      px: 0.75,
+                      py: 0.45,
+                      borderRadius: '8px',
+                      bgcolor: alpha(theme.palette.warning.main, theme.palette.mode === 'dark' ? 0.12 : 0.09),
+                      color: theme.palette.mode === 'dark' ? 'warning.light' : 'warning.dark',
+                    })}>
+                    <Icon icon="solar:notes-bold-duotone" width={mobile ? 15 : 17} />
+                    <Typography variant={mobile ? 'caption' : 'body2'} sx={{ color: 'inherit', lineHeight: 1.3 }}>
+                      {item.note}
+                    </Typography>
+                  </Stack>
                 ) : null}
                 {item.modifiers?.map((modifier) => (
                   <Stack
@@ -257,7 +320,17 @@ export function PosCartItemGroups<TMenuItem extends PosCartMenuItem>({
               </Typography>
             </Stack>
             {actionsVisible ? (
-              <CartItemActions item={item} menuItems={menuItems} onAdd={onAdd} onRemove={onRemove} variant={variant} />
+              <CartItemActions
+                item={item}
+                itemNoteAddLabel={itemNoteAddLabel}
+                itemNoteEditLabel={itemNoteEditLabel}
+                itemNotePendingLabel={itemNotePendingLabel}
+                menuItems={menuItems}
+                onAdd={onAdd}
+                onEditNote={onEditNote}
+                onRemove={onRemove}
+                variant={variant}
+              />
             ) : null}
           </Box>
         );

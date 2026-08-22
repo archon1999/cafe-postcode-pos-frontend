@@ -12,6 +12,8 @@ const useCashierMenuQueryMock = vi.fn();
 const useCashierPaymentOrderQueryMock = vi.fn();
 const useOptimisticBuilderOrderMock = vi.fn();
 const submitOrderMutateAsyncMock = vi.fn();
+const createBuilderOrderMock = vi.fn();
+const addOrderItemMock = vi.fn();
 const updateOrderNoteMock = vi.fn();
 const updateOrderDeliveryDetailsMock = vi.fn();
 const updateOrderChannelMock = vi.fn();
@@ -68,13 +70,14 @@ vi.mock('modules/cashier/application', () => ({
     mutate: vi.fn(),
     mutateAsync: submitOrderMutateAsyncMock,
   }),
+  useUpdateCashierOrderItemNoteMutation: () => ({ isPending: false, mutate: vi.fn() }),
 }));
 
 vi.mock('modules/cashier/data-access', () => ({
   cashierRepository: {
     getOpenOrders: vi.fn(),
-    createBuilderOrder: vi.fn(),
-    addOrderItem: vi.fn(),
+    createBuilderOrder: (...args: unknown[]) => createBuilderOrderMock(...args),
+    addOrderItem: (...args: unknown[]) => addOrderItemMock(...args),
     removeOrderItem: vi.fn(),
     scanOrderMarking: (...args: unknown[]) => scanOrderMarkingMock(...args),
     updateOrderNote: (...args: unknown[]) => updateOrderNoteMock(...args),
@@ -132,6 +135,7 @@ vi.mock('shared/ui/pos-primitives', () => ({
   PosSectionTabs: ({ items }: { items: Array<{ label: string }> }) => (
     <div>{items.map((item) => item.label).join(', ')}</div>
   ),
+  PosItemNoteDialog: () => null,
   PosSettingsMenu: () => null,
 }));
 
@@ -143,6 +147,10 @@ describe('CashierBuilderPageContent', () => {
   beforeEach(() => {
     navigateMock.mockReset();
     submitOrderMutateAsyncMock.mockReset();
+    createBuilderOrderMock.mockReset();
+    createBuilderOrderMock.mockResolvedValue({ id: 'created-order-1' });
+    addOrderItemMock.mockReset();
+    addOrderItemMock.mockResolvedValue({});
     updateOrderNoteMock.mockReset();
     updateOrderNoteMock.mockResolvedValue({ id: 'order-1', note: 'Piyozsiz' });
     updateOrderDeliveryDetailsMock.mockReset();
@@ -204,6 +212,24 @@ describe('CashierBuilderPageContent', () => {
     fireEvent.click(screen.getByRole('button', { name: 'solar:chef-hat-bold-duotone' }));
 
     expect(navigateMock).toHaveBeenCalledWith('/menu/catalog?source=cashier&channel=takeaway');
+  });
+
+  it('keeps the order note separate from an item-level note', async () => {
+    render(<CashierBuilderPageContent />);
+
+    fireEvent.change(screen.getByLabelText('Butun buyurtma uchun izoh'), {
+      target: { value: 'Umumiy: tezroq' },
+    });
+    const options = useOptimisticBuilderOrderMock.mock.calls.at(-1)?.[0] as {
+      createOrder: () => Promise<string>;
+      addOrderItem: (orderId: string, item: { id: string }, note: string) => Promise<unknown>;
+    };
+
+    await expect(options.createOrder()).resolves.toBe('created-order-1');
+    await options.addOrderItem('created-order-1', { id: 'item-1' }, 'Piyozsiz');
+
+    expect(createBuilderOrderMock).toHaveBeenCalledWith({ channel: 'hall', note: 'Umumiy: tezroq' });
+    expect(addOrderItemMock).toHaveBeenCalledWith('created-order-1', 'item-1', 'Piyozsiz', undefined, undefined);
   });
 
   it('prints cancellation and replacement documents returned by a marking scan', async () => {
@@ -363,7 +389,7 @@ describe('CashierBuilderPageContent', () => {
     searchParamsValue = 'channel=takeaway';
     render(<CashierBuilderPageContent />);
 
-    fireEvent.change(screen.getByLabelText('Oshxona uchun izoh'), { target: { value: 'Piyozsiz' } });
+    fireEvent.change(screen.getByLabelText('Butun buyurtma uchun izoh'), { target: { value: 'Piyozsiz' } });
     fireEvent.click(screen.getByRole('button', { name: "To'lov oynasiga o'tish" }));
 
     await waitFor(() => {

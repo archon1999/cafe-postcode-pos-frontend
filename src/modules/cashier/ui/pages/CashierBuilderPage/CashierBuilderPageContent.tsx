@@ -10,6 +10,7 @@ import {
   useCashierMenuQuery,
   useCashierPaymentOrderQuery,
   useSubmitCashierOrderMutation,
+  useUpdateCashierOrderItemNoteMutation,
   cashierKeys,
 } from 'modules/cashier/application';
 import { cashierRepository } from 'modules/cashier/data-access';
@@ -38,6 +39,7 @@ import { useScannerInput } from 'shared/pos/useScannerInput';
 import { addPosQuantities } from 'shared/pos/utils';
 import {
   PosBuilderPageSkeleton,
+  PosItemNoteDialog,
   PosProductConfiguratorDialog,
   PosServicePriceDialog,
   PosSettingsMenu,
@@ -80,19 +82,23 @@ export function CashierBuilderPageContent() {
   const [kitchenNote, setKitchenNote] = useState('');
   const [settingsAnchor, setSettingsAnchor] = useState<HTMLElement | null>(null);
   const [selectedCartItemKey, setSelectedCartItemKey] = useState<string | null>(null);
+  const [editingItemNote, setEditingItemNote] = useState<PosCartItem | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
   const [scanToast, setScanToast] = useState('');
   const [configuringItem, setConfiguringItem] = useState<{
     item: CashierMenuItem;
+    initialNote?: string;
     initialSelections?: PosModifierSelection[];
   } | null>(null);
   const [configuringGroup, setConfiguringGroup] = useState<CashierMenuItemGroup | null>(null);
   const [weighingItem, setWeighingItem] = useState<{
     item: CashierMenuItem;
+    initialNote?: string;
     selections: PosModifierSelection[];
   } | null>(null);
   const [pricingService, setPricingService] = useState<{
     item: CashierMenuItem;
+    initialNote?: string;
     selections: PosModifierSelection[];
   } | null>(null);
   const noteOrderIdRef = useRef<string | null>(null);
@@ -110,8 +116,8 @@ export function CashierBuilderPageContent() {
     canonicalQueryFn: async () =>
       editOrderId ? [await cashierRepository.getOrder(editOrderId)] : cashierRepository.getOpenOrders(),
     channel: builderChannel,
-    createOrder: async (note) => {
-      const response = await cashierRepository.createBuilderOrder({ channel: builderChannel, note });
+    createOrder: async () => {
+      const response = await cashierRepository.createBuilderOrder({ channel: builderChannel, note: kitchenNote });
       return response.id;
     },
     defaultServiceFeeEnabled: Boolean(session?.restaurantContext?.serviceFeeEnabled),
@@ -148,6 +154,14 @@ export function CashierBuilderPageContent() {
         })),
       ),
     syncErrorMessage: copy.itemSyncFailed,
+  });
+  const updateItemNoteMutation = useUpdateCashierOrderItemNoteMutation({
+    orderId: currentOrder?.id,
+    onSuccess: () => {
+      setEditingItemNote(null);
+      setSelectedCartItemKey(null);
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error, copy.itemSyncFailed)),
   });
 
   useEffect(() => {
@@ -226,6 +240,7 @@ export function CashierBuilderPageContent() {
     if (menuItem.modifierGroups?.length) {
       setConfiguringItem({
         item: menuItem,
+        initialNote: sourceItem?.note ?? '',
         initialSelections: sourceItem
           ? selectionsFromOrderModifiers(menuItem.modifierGroups, sourceItem.modifiers)
           : undefined,
@@ -233,14 +248,14 @@ export function CashierBuilderPageContent() {
       return;
     }
     if (menuItem.itemType === 'service') {
-      setPricingService({ item: menuItem, selections: [] });
+      setPricingService({ item: menuItem, initialNote: sourceItem?.note ?? '', selections: [] });
       return;
     }
     if (menuItem.saleUnit === 'kg') {
-      setWeighingItem({ item: menuItem, selections: [] });
+      setWeighingItem({ item: menuItem, initialNote: sourceItem?.note ?? '', selections: [] });
       return;
     }
-    addItem(menuItem, kitchenNote);
+    addItem(menuItem, sourceItem?.note ?? '');
   };
   const categoryTabs = useMemo(
     () =>
@@ -372,6 +387,7 @@ export function CashierBuilderPageContent() {
           total={currentOrder?.total}
           billsLabel={copy.bills}
           onAdd={requestAddItem}
+          onEditItemNote={setEditingItemNote}
           onOpenGroup={setConfiguringGroup}
           onCartOpen={() => setCartOpen(true)}
           onRemove={removeItem}
@@ -402,6 +418,7 @@ export function CashierBuilderPageContent() {
           vatAmount={vatAmount}
           vatLabel={vatLabel}
           onAdd={requestAddItem}
+          onEditItemNote={setEditingItemNote}
           onChannelChange={(channel) => void builderActions.changeChannel(channel)}
           onCheckout={() => void builderActions.runOrderAction('checkout')}
           onKitchenNoteChange={setKitchenNote}
@@ -437,6 +454,7 @@ export function CashierBuilderPageContent() {
         vatAmount={vatAmount}
         vatLabel={vatLabel}
         onAdd={requestAddItem}
+        onEditItemNote={setEditingItemNote}
         onChannelChange={(channel) => void builderActions.changeChannel(channel)}
         onCheckout={() => void builderActions.runOrderAction('checkout')}
         onClose={() => setCartOpen(false)}
@@ -465,6 +483,8 @@ export function CashierBuilderPageContent() {
       {configuringItem ? (
         <PosProductConfiguratorDialog
           item={configuringItem?.item ?? null}
+          allowItemNote
+          initialNote={configuringItem?.initialNote}
           initialSelections={configuringItem?.initialSelections}
           locale={locale}
           copy={{
@@ -477,13 +497,13 @@ export function CashierBuilderPageContent() {
             selectedCount: copy.selectedCount,
           }}
           onClose={() => setConfiguringItem(null)}
-          onConfirm={(menuItem, selections) => {
+          onConfirm={(menuItem, selections, note) => {
             if (menuItem.itemType === 'service') {
-              setPricingService({ item: menuItem, selections });
+              setPricingService({ item: menuItem, initialNote: note, selections });
             } else if (menuItem.saleUnit === 'kg') {
-              setWeighingItem({ item: menuItem, selections });
+              setWeighingItem({ item: menuItem, initialNote: note, selections });
             } else {
-              addItem(menuItem, kitchenNote, selections);
+              addItem(menuItem, note, selections);
             }
             setConfiguringItem(null);
           }}
@@ -508,7 +528,7 @@ export function CashierBuilderPageContent() {
             lines.map((line) => ({
               menuItem: line.item,
               quantity: line.quantity,
-              note: kitchenNote,
+              note: line.note,
               selectedModifiers: line.selections,
             })),
           );
@@ -519,15 +539,17 @@ export function CashierBuilderPageContent() {
       {weighingItem ? (
         <CashierWeightDialog
           item={weighingItem.item}
+          allowItemNote
+          initialNote={weighingItem.initialNote}
           selections={weighingItem.selections}
           locale={locale}
           onClose={() => setWeighingItem(null)}
-          onConfirm={(quantity) => {
+          onConfirm={(quantity, note) => {
             addItems([
               {
                 menuItem: weighingItem.item,
                 quantity,
-                note: kitchenNote,
+                note,
                 selectedModifiers: weighingItem.selections,
               },
             ]);
@@ -539,14 +561,26 @@ export function CashierBuilderPageContent() {
       {pricingService ? (
         <PosServicePriceDialog
           item={pricingService.item}
+          allowItemNote
+          initialNote={pricingService.initialNote}
           locale={locale}
           onClose={() => setPricingService(null)}
-          onConfirm={(manualPrice) => {
-            addItem(pricingService.item, kitchenNote, pricingService.selections, manualPrice);
+          onConfirm={(manualPrice, note) => {
+            addItem(pricingService.item, note, pricingService.selections, manualPrice);
             setPricingService(null);
           }}
         />
       ) : null}
+
+      <PosItemNoteDialog
+        initialNote={editingItemNote?.note}
+        itemLabel={editingItemNote?.catalogItemName ?? ''}
+        locale={locale}
+        onClose={() => setEditingItemNote(null)}
+        onSave={(note) => editingItemNote && updateItemNoteMutation.mutate({ itemId: editingItemNote.id, note })}
+        open={Boolean(editingItemNote)}
+        saving={updateItemNoteMutation.isPending}
+      />
 
       <PosSettingsMenu
         anchorEl={settingsAnchor}

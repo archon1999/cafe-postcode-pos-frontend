@@ -31,7 +31,27 @@ describe('CashierWeightDialog', () => {
     fireEvent.change(screen.getByLabelText('Miqdor (kg)'), { target: { value: '1,4' } });
     fireEvent.click(screen.getByRole('button', { name: "Buyurtmaga qo'shish" }));
 
-    expect(onConfirm).toHaveBeenCalledWith(1.4);
+    expect(onConfirm).toHaveBeenCalledWith(1.4, '');
+  });
+
+  it('submits a note together with a fractional kilogram quantity', () => {
+    const onConfirm = vi.fn();
+    render(
+      <CashierWeightDialog
+        allowItemNote
+        item={{ id: 'fish-1', name: 'Baliq', price: 100000 }}
+        selections={[]}
+        locale="uz"
+        onClose={vi.fn()}
+        onConfirm={onConfirm}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText('Miqdor (kg)'), { target: { value: '0,75' } });
+    fireEvent.change(screen.getByLabelText('Mahsulot uchun izoh'), { target: { value: '  Tozalab bering  ' } });
+    fireEvent.click(screen.getByRole('button', { name: "Buyurtmaga qo'shish" }));
+
+    expect(onConfirm).toHaveBeenCalledWith(0.75, 'Tozalab bering');
   });
 
   it('rejects more than three decimal places', () => {

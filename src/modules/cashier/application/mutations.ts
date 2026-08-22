@@ -26,7 +26,7 @@ export function useAddCashierOrderItemMutation(options: {
         orderId = createdOrder.id;
       }
 
-      const result = await cashierRepository.addOrderItem(orderId, menuItem.id, kitchenNote);
+      const result = await cashierRepository.addOrderItem(orderId, menuItem.id, '');
       requestEdgePrintDocuments(result?.kitchenPrintDocuments ?? [], onPrintError);
       return result;
     },
@@ -34,6 +34,28 @@ export function useAddCashierOrderItemMutation(options: {
       invalidateQueriesInBackground([cashierKeys.builderOrders]);
       onSuccess?.();
     },
+  });
+}
+
+export function useUpdateCashierOrderItemNoteMutation(options?: {
+  orderId?: string | null;
+  onSuccess?: () => void;
+  onError?: (error: unknown) => void;
+}) {
+  return useMutation({
+    mutationFn: ({ itemId, note }: { itemId: string; note: string }) =>
+      cashierRepository.updateOrderItemNote(itemId, note),
+    onSuccess: () => {
+      invalidateQueriesInBackground([
+        cashierKeys.builderOrders,
+        cashierKeys.checks('open'),
+        cashierKeys.checks('closed'),
+        ...(options?.orderId ? [cashierKeys.paymentOrder(options.orderId)] : []),
+        ['kitchen', 'queue'],
+      ]);
+      options?.onSuccess?.();
+    },
+    onError: (error) => options?.onError?.(error),
   });
 }
 

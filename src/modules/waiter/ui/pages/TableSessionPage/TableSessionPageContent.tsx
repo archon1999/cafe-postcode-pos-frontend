@@ -16,6 +16,7 @@ import {
   useCurrentWaiterTakeawayOrder,
   usePrintWaiterPrecheckMutation,
   useSubmitWaiterOrderMutation,
+  useUpdateWaiterOrderItemNoteMutation,
   useWaiterMenuQuery,
   useWaiterTableSessionQuery,
   waiterKeys,
@@ -28,6 +29,7 @@ import {
   getWaiterOrderItemMeta,
   type WaiterMenuItem,
 } from 'modules/waiter/domain';
+import { getApiErrorMessage } from 'shared/api/errorMessage';
 import { refreshTransportAndReload } from 'shared/api/transportResolver';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { getPosCopy } from 'shared/locale/copy';
@@ -37,6 +39,7 @@ import { buildServiceFeeRows, type PosServiceFeeComponent } from 'shared/pos/ser
 import { useOptimisticBuilderOrder } from 'shared/pos/useOptimisticBuilderOrder';
 import {
   PosBuilderPageSkeleton,
+  PosItemNoteDialog,
   PosProductConfiguratorDialog,
   PosServicePriceDialog,
   PosSettingsMenu,
@@ -72,17 +75,21 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
   const [settingsAnchor, setSettingsAnchor] = useState<HTMLElement | null>(null);
   const [orderSent, setOrderSent] = useState(false);
   const [selectedCartItemKey, setSelectedCartItemKey] = useState<string | null>(null);
+  const [editingItemNote, setEditingItemNote] = useState<PosCartItem | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
   const [configuringItem, setConfiguringItem] = useState<{
     item: WaiterMenuItem;
+    initialNote?: string;
     initialSelections?: PosModifierSelection[];
   } | null>(null);
   const [weighingItem, setWeighingItem] = useState<{
     item: WaiterMenuItem;
+    initialNote?: string;
     selections: PosModifierSelection[];
   } | null>(null);
   const [pricingService, setPricingService] = useState<{
     item: WaiterMenuItem;
+    initialNote?: string;
     selections: PosModifierSelection[];
   } | null>(null);
   const noteOrderIdRef = useRef<string | null>(null);
@@ -112,10 +119,10 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
     canonicalQueryKey: waiterKeys.orders,
     canonicalQueryFn: () => waiterRepository.getOrders(),
     channel: isTakeawayMode ? 'takeaway' : 'hall',
-    createOrder: async (note) => {
+    createOrder: async () => {
       const response = isTakeawayMode
-        ? await waiterRepository.createTakeawayOrder(note)
-        : await waiterRepository.createOrder(sessionId as string, note);
+        ? await waiterRepository.createTakeawayOrder(kitchenNote)
+        : await waiterRepository.createOrder(sessionId as string, kitchenNote);
       return response.id;
     },
     defaultServiceFeeEnabled: defaultServiceFeeComponents.length > 0,
@@ -156,6 +163,14 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
         })),
       ),
     syncErrorMessage: copy.itemSyncFailed,
+  });
+  const updateItemNoteMutation = useUpdateWaiterOrderItemNoteMutation({
+    sessionId,
+    onSuccess: () => {
+      setEditingItemNote(null);
+      setSelectedCartItemKey(null);
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error, copy.itemSyncFailed)),
   });
 
   useEffect(() => {
@@ -224,6 +239,7 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
     if (menuItem.modifierGroups?.length) {
       setConfiguringItem({
         item: menuItem,
+        initialNote: sourceItem?.note ?? '',
         initialSelections: sourceItem
           ? selectionsFromOrderModifiers(menuItem.modifierGroups, sourceItem.modifiers)
           : undefined,
@@ -231,14 +247,14 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
       return;
     }
     if (menuItem.itemType === 'service') {
-      setPricingService({ item: menuItem, selections: [] });
+      setPricingService({ item: menuItem, initialNote: sourceItem?.note ?? '', selections: [] });
       return;
     }
     if (menuItem.saleUnit === 'kg') {
-      setWeighingItem({ item: menuItem, selections: [] });
+      setWeighingItem({ item: menuItem, initialNote: sourceItem?.note ?? '', selections: [] });
       return;
     }
-    addItem(menuItem, kitchenNote);
+    addItem(menuItem, sourceItem?.note ?? '');
   };
   const categoryTabs = useMemo(
     () =>
@@ -331,6 +347,7 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
           selectedCountMap={menuItemMeta.countMap}
           showMobileSummary={isMobile}
           onAdd={requestAddItem}
+          onEditItemNote={setEditingItemNote}
           onOpenCart={() => setCartOpen(true)}
           onRemove={removeItem}
         />
@@ -410,6 +427,7 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
         vatAmount={vatAmount}
         vatLabel={vatLabel}
         onAdd={requestAddItem}
+        onEditItemNote={setEditingItemNote}
         onCheckout={() => void handleTakeawayCheckout()}
         onClose={() => setCartOpen(false)}
         onKitchenNoteChange={(value) => {
@@ -441,6 +459,8 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
       {configuringItem ? (
         <PosProductConfiguratorDialog
           item={configuringItem?.item ?? null}
+          allowItemNote
+          initialNote={configuringItem?.initialNote}
           initialSelections={configuringItem?.initialSelections}
           locale={locale}
           copy={{
@@ -453,13 +473,13 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
             selectedCount: copy.selectedCount,
           }}
           onClose={() => setConfiguringItem(null)}
-          onConfirm={(menuItem, selections) => {
+          onConfirm={(menuItem, selections, note) => {
             if (menuItem.itemType === 'service') {
-              setPricingService({ item: menuItem, selections });
+              setPricingService({ item: menuItem, initialNote: note, selections });
             } else if (menuItem.saleUnit === 'kg') {
-              setWeighingItem({ item: menuItem, selections });
+              setWeighingItem({ item: menuItem, initialNote: note, selections });
             } else {
-              addItem(menuItem, kitchenNote, selections);
+              addItem(menuItem, note, selections);
             }
             setConfiguringItem(null);
           }}
@@ -468,10 +488,12 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
       {pricingService ? (
         <PosServicePriceDialog
           item={pricingService.item}
+          allowItemNote
+          initialNote={pricingService.initialNote}
           locale={locale}
           onClose={() => setPricingService(null)}
-          onConfirm={(manualPrice) => {
-            addItem(pricingService.item, kitchenNote, pricingService.selections, manualPrice);
+          onConfirm={(manualPrice, note) => {
+            addItem(pricingService.item, note, pricingService.selections, manualPrice);
             setPricingService(null);
           }}
         />
@@ -479,15 +501,17 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
       {weighingItem ? (
         <PosWeightedItemDialog
           item={weighingItem.item}
+          allowItemNote
+          initialNote={weighingItem.initialNote}
           selections={weighingItem.selections}
           locale={locale}
           onClose={() => setWeighingItem(null)}
-          onConfirm={(quantity) => {
+          onConfirm={(quantity, note) => {
             addItems([
               {
                 menuItem: weighingItem.item,
                 quantity,
-                note: kitchenNote,
+                note,
                 selectedModifiers: weighingItem.selections,
               },
             ]);
@@ -495,6 +519,15 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
           }}
         />
       ) : null}
+      <PosItemNoteDialog
+        initialNote={editingItemNote?.note}
+        itemLabel={editingItemNote?.catalogItemName ?? ''}
+        locale={locale}
+        onClose={() => setEditingItemNote(null)}
+        onSave={(note) => editingItemNote && updateItemNoteMutation.mutate({ itemId: editingItemNote.id, note })}
+        open={Boolean(editingItemNote)}
+        saving={updateItemNoteMutation.isPending}
+      />
     </PosPageFrame>
   );
 }

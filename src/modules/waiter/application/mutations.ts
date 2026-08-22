@@ -75,7 +75,7 @@ export function useAddWaiterOrderItemMutation(options: {
         orderId = createdOrder.id;
       }
 
-      const result = await waiterRepository.addOrderItem(orderId, menuItem.id, kitchenNote);
+      const result = await waiterRepository.addOrderItem(orderId, menuItem.id, '');
       requestEdgePrintDocuments(result?.kitchenPrintDocuments ?? [], onPrintError);
       return result;
     },
@@ -83,6 +83,27 @@ export function useAddWaiterOrderItemMutation(options: {
       invalidateQueriesInBackground([waiterKeys.orders, ...(sessionId ? [waiterKeys.sessionOrders(sessionId)] : [])]);
       onSuccess?.();
     },
+  });
+}
+
+export function useUpdateWaiterOrderItemNoteMutation(options: {
+  sessionId: string | null;
+  onSuccess?: () => void;
+  onError?: (error: unknown) => void;
+}) {
+  return useMutation({
+    mutationFn: ({ itemId, note }: { itemId: string; note: string }) =>
+      waiterRepository.updateOrderItemNote(itemId, note),
+    onSuccess: () => {
+      invalidateQueriesInBackground([
+        waiterKeys.orders,
+        ...(options.sessionId ? [waiterKeys.sessionOrders(options.sessionId)] : []),
+        ['cashier', 'checks', 'open'],
+        ['kitchen', 'queue'],
+      ]);
+      options.onSuccess?.();
+    },
+    onError: (error) => options.onError?.(error),
   });
 }
 

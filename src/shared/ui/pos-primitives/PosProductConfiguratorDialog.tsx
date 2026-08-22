@@ -25,6 +25,8 @@ import {
 } from 'shared/pos/modifiers';
 import { formatCompactMoney } from 'shared/pos/utils';
 
+import { PosItemNoteField } from './PosItemNoteField';
+
 export type ConfigurablePosMenuItem = {
   id: string;
   name: string;
@@ -38,7 +40,9 @@ type PosProductConfiguratorDialogProps<TItem extends ConfigurablePosMenuItem> = 
   item: TItem | null;
   locale: PosLocale;
   onClose: () => void;
-  onConfirm: (item: TItem, selections: PosModifierSelection[]) => void;
+  onConfirm: (item: TItem, selections: PosModifierSelection[], note: string) => void;
+  allowItemNote?: boolean;
+  initialNote?: string;
   initialSelections?: PosModifierSelection[];
   copy: {
     addToOrder: string;
@@ -53,6 +57,8 @@ type PosProductConfiguratorDialogProps<TItem extends ConfigurablePosMenuItem> = 
 
 export function PosProductConfiguratorDialog<TItem extends ConfigurablePosMenuItem>({
   copy,
+  allowItemNote = false,
+  initialNote,
   initialSelections,
   item,
   locale,
@@ -62,10 +68,14 @@ export function PosProductConfiguratorDialog<TItem extends ConfigurablePosMenuIt
   const fullScreen = useMediaQuery('(max-width:700px)');
   const groups = useMemo(() => item?.modifierGroups ?? [], [item?.modifierGroups]);
   const [selections, setSelections] = useState<PosModifierSelection[]>([]);
+  const [note, setNote] = useState('');
 
   useEffect(() => {
-    if (item) setSelections(initialSelections ?? defaultModifierSelections(item.modifierGroups ?? []));
-  }, [initialSelections, item]);
+    if (item) {
+      setSelections(initialSelections ?? defaultModifierSelections(item.modifierGroups ?? []));
+      setNote(initialNote ?? '');
+    }
+  }, [initialNote, initialSelections, item]);
 
   if (!item) return null;
 
@@ -218,6 +228,7 @@ export function PosProductConfiguratorDialog<TItem extends ConfigurablePosMenuIt
               </Box>
             );
           })}
+          {allowItemNote ? <PosItemNoteField locale={locale} onChange={setNote} value={note} /> : null}
         </Stack>
 
         <Box
@@ -233,7 +244,7 @@ export function PosProductConfiguratorDialog<TItem extends ConfigurablePosMenuIt
             size="large"
             variant="contained"
             disabled={!valid}
-            onClick={() => onConfirm(item, selections)}
+            onClick={() => onConfirm(item, selections, note.trim())}
             sx={{ minHeight: 58, borderRadius: '17px', fontSize: 16, fontWeight: 850 }}>
             {copy.addToOrder} · {formatCompactMoney(finalPrice, locale)}
           </Button>

@@ -59,7 +59,27 @@ describe('PosProductConfiguratorDialog', () => {
     expect((addButton as HTMLButtonElement).disabled).toBe(false);
     expect(addButton.textContent?.replace(/\s/g, ' ')).toContain('131 000');
     fireEvent.click(addButton);
-    expect(onConfirm).toHaveBeenCalledWith(item, [{ group: 'dough', options: ['cheese-crust'] }]);
+    expect(onConfirm).toHaveBeenCalledWith(item, [{ group: 'dough', options: ['cheese-crust'] }], '');
+  });
+
+  it('submits a trimmed item-level kitchen note when enabled', () => {
+    const onConfirm = vi.fn();
+    render(
+      <PosProductConfiguratorDialog
+        allowItemNote
+        item={item}
+        locale="uz"
+        copy={copy}
+        onClose={vi.fn()}
+        onConfirm={onConfirm}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('radio', { name: /Yupqa/ }));
+    fireEvent.change(screen.getByLabelText('Mahsulot uchun izoh'), { target: { value: '  Piyozsiz  ' } });
+    fireEvent.click(screen.getByRole('button', { name: /Buyurtmaga qo'shish/ }));
+
+    expect(onConfirm).toHaveBeenCalledWith(item, [{ group: 'dough', options: ['thin'] }], 'Piyozsiz');
   });
 
   it('shows zero-price options as free and keeps the base price', () => {

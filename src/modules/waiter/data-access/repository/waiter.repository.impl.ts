@@ -111,6 +111,10 @@ class WaiterRepositoryImpl implements WaiterRepository {
     };
   }
 
+  async updateOrderItemNote(itemId: string, note: string): Promise<void> {
+    await apiPatch(`/pos/sales/orders/items/${itemId}/`, { note });
+  }
+
   async updateOrderNote(orderId: string, note: string) {
     return apiPatch<WaiterOrder>(`/pos/sales/orders/${orderId}/`, { note });
   }

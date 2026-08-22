@@ -39,6 +39,7 @@ export type TableSessionDesktopCartProps = {
   vatAmount: number;
   vatLabel: string;
   onAdd: PosCartItemGroupsProps<WaiterMenuItem>['onAdd'];
+  onEditItemNote: PosCartItemGroupsProps<WaiterMenuItem>['onEditNote'];
   onCheckout: () => void;
   onKitchenNoteChange: (value: string) => void;
   onPrintPrecheck: () => void;
@@ -163,10 +164,13 @@ export function TableSessionDesktopCart(props: TableSessionDesktopCartProps) {
           {props.groups.length > 0 ? (
             <PosCartItemGroups
               groups={props.groups}
-              itemQuantityLabel={props.copy.itemQuantityLabel}
+              itemNoteAddLabel={props.copy.itemNoteAdd}
+              itemNoteEditLabel={props.copy.itemNoteEdit}
+              itemNotePendingLabel={props.copy.itemNotePending}
               locale={props.locale}
               menuItems={props.menuItems}
               onAdd={props.onAdd}
+              onEditNote={props.onEditItemNote}
               onRemove={props.onRemove}
               onSelect={props.onSelect}
               selectedItemKey={props.selectedItemKey}

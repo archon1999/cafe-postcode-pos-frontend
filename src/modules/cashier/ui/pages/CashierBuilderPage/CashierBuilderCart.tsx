@@ -36,6 +36,7 @@ type CartProps = {
   vatAmount: number;
   vatLabel: string;
   onAdd: PosCartItemGroupsProps<CashierMenuItem>['onAdd'];
+  onEditItemNote: PosCartItemGroupsProps<CashierMenuItem>['onEditNote'];
   onChannelChange: (channel: Channel) => void;
   onCheckout: () => void;
   onKitchenNoteChange: (value: string) => void;
@@ -92,11 +93,14 @@ function CartItems({ groups, ...props }: CartProps & { variant: 'desktop' | 'mob
   return (
     <PosCartItemGroups
       groups={groups}
-      itemQuantityLabel={props.copy.itemQuantityLabel}
+      itemNoteAddLabel={props.copy.itemNoteAdd}
+      itemNoteEditLabel={props.copy.itemNoteEdit}
+      itemNotePendingLabel={props.copy.itemNotePending}
       locale={props.locale}
       markingProgressLabel={props.copy.markingProgress}
       menuItems={props.menuItems}
       onAdd={props.onAdd}
+      onEditNote={props.onEditItemNote}
       onRemove={props.onRemove}
       onSelect={props.onSelect}
       selectedItemKey={props.selectedItemKey}

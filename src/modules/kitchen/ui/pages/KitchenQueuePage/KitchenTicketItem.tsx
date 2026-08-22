@@ -79,9 +79,24 @@ export function KitchenTicketItem({
               {formatPosItemQuantityLabel(item.catalogItemName, item.quantity, item.saleUnit, locale)}
             </Typography>
             {item.note ? (
-              <Typography variant="body2" color="text.secondary" sx={{ fontSize: 12.5 }}>
-                {item.note}
-              </Typography>
+              <Stack
+                direction="row"
+                spacing={0.6}
+                alignItems="flex-start"
+                sx={{
+                  width: 'fit-content',
+                  maxWidth: '100%',
+                  px: 0.7,
+                  py: 0.45,
+                  borderRadius: '7px',
+                  bgcolor: alpha('#f0b63b', 0.14),
+                  color: '#f0b63b',
+                }}>
+                <Icon icon="solar:notes-bold-duotone" width={15} />
+                <Typography sx={{ color: 'inherit', fontSize: 12.5, fontWeight: 700, lineHeight: 1.25 }}>
+                  {item.note}
+                </Typography>
+              </Stack>
             ) : null}
           </Stack>
 

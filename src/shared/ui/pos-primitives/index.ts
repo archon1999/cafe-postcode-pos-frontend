@@ -10,3 +10,5 @@ export * from './PosSettingsMenu';
 export * from './PosServicePriceDialog';
 export * from './PosProductConfiguratorDialog';
 export * from './PosWeightedItemDialog';
+export * from './PosItemNoteDialog';
+export * from './PosItemNoteField';

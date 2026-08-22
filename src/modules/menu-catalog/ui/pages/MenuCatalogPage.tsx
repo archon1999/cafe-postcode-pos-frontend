@@ -45,8 +45,8 @@ function WaiterMenuCatalogPage({ sessionId }: { sessionId: string | null }) {
     canonicalQueryKey: waiterKeys.orders,
     canonicalQueryFn: () => waiterRepository.getOrders(),
     channel: 'hall',
-    createOrder: async (note) => {
-      const response = await waiterRepository.createOrder(sessionId as string, note);
+    createOrder: async () => {
+      const response = await waiterRepository.createOrder(sessionId as string, '');
       return response.id;
     },
     defaultServiceFeeEnabled: Boolean(tableSessionQuery.data?.serviceFeeComponents?.length),
@@ -105,8 +105,8 @@ function CashierMenuCatalogPage({ channel }: { channel: CashierBuilderOrderChann
     canonicalQueryKey: cashierKeys.builderOrders,
     canonicalQueryFn: () => cashierRepository.getOpenOrders(),
     channel,
-    createOrder: async (note) => {
-      const response = await cashierRepository.createBuilderOrder({ channel, note });
+    createOrder: async () => {
+      const response = await cashierRepository.createBuilderOrder({ channel, note: '' });
       return response.id;
     },
     defaultServiceFeeEnabled: Boolean(session?.restaurantContext?.serviceFeeEnabled),

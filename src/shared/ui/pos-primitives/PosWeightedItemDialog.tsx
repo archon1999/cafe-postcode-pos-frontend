@@ -6,6 +6,8 @@ import { getPosCopy, type PosLocale } from 'shared/locale/copy';
 import { modifierPriceDelta, type PosModifierGroup, type PosModifierSelection } from 'shared/pos/modifiers';
 import { formatCompactMoney } from 'shared/pos/utils';
 
+import { PosItemNoteField } from './PosItemNoteField';
+
 type WeightedMenuItem = {
   id: string;
   name: string;
@@ -18,8 +20,10 @@ type Props = {
   selections: PosModifierSelection[];
   locale: PosLocale;
   showPrice?: boolean;
+  allowItemNote?: boolean;
+  initialNote?: string;
   onClose: () => void;
-  onConfirm: (quantity: number) => void;
+  onConfirm: (quantity: number, note: string) => void;
 };
 
 function parseWeight(value: string) {
@@ -29,13 +33,26 @@ function parseWeight(value: string) {
   return Number.isFinite(quantity) && quantity > 0 && quantity <= 999_999_999.999 ? quantity : null;
 }
 
-export function PosWeightedItemDialog({ item, selections, locale, showPrice = true, onClose, onConfirm }: Props) {
+export function PosWeightedItemDialog({
+  allowItemNote = false,
+  initialNote,
+  item,
+  selections,
+  locale,
+  showPrice = true,
+  onClose,
+  onConfirm,
+}: Props) {
   const copy = getPosCopy(locale);
   const [value, setValue] = useState('1');
+  const [note, setNote] = useState('');
   const quantity = useMemo(() => parseWeight(value), [value]);
   const unitPrice = Number(item.price || 0) + modifierPriceDelta(item.modifierGroups ?? [], selections);
 
-  useEffect(() => setValue('1'), [item.id, selections]);
+  useEffect(() => {
+    setValue('1');
+    setNote(initialNote ?? '');
+  }, [initialNote, item.id, selections]);
 
   return (
     <Dialog open onClose={onClose} maxWidth="xs" fullWidth>
@@ -71,6 +88,8 @@ export function PosWeightedItemDialog({ item, selections, locale, showPrice = tr
             fullWidth
           />
 
+          {allowItemNote ? <PosItemNoteField locale={locale} onChange={setNote} value={note} /> : null}
+
           {showPrice ? (
             <Box
               sx={(theme) => ({
@@ -93,7 +112,7 @@ export function PosWeightedItemDialog({ item, selections, locale, showPrice = tr
             variant="contained"
             size="large"
             disabled={quantity === null}
-            onClick={() => quantity !== null && onConfirm(quantity)}
+            onClick={() => quantity !== null && onConfirm(quantity, note.trim())}
             sx={{ minHeight: 52 }}>
             {copy.addWeightedItem}
           </Button>

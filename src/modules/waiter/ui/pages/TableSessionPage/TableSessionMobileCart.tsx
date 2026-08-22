@@ -57,10 +57,13 @@ export function TableSessionMobileCart({
           <Stack spacing={1.25}>
             <PosCartItemGroups
               groups={props.groups}
-              itemQuantityLabel={props.copy.itemQuantityLabel}
+              itemNoteAddLabel={props.copy.itemNoteAdd}
+              itemNoteEditLabel={props.copy.itemNoteEdit}
+              itemNotePendingLabel={props.copy.itemNotePending}
               locale={props.locale}
               menuItems={props.menuItems}
               onAdd={props.onAdd}
+              onEditNote={props.onEditItemNote}
               onRemove={props.onRemove}
               onSelect={props.onSelect}
               selectedItemKey={props.selectedItemKey}

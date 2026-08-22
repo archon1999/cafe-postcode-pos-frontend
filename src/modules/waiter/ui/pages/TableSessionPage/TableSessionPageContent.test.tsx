@@ -13,6 +13,8 @@ const useWaiterMenuQueryMock = vi.fn();
 const useWaiterTableSessionQueryMock = vi.fn();
 const useOptimisticBuilderOrderMock = vi.fn();
 const canAccessTableSessionMenuMock = vi.fn();
+const createOrderMock = vi.fn();
+const addOrderItemMock = vi.fn();
 let submitMutationOptions: { onSuccess?: () => void } | undefined;
 
 vi.mock('react-router', () => ({
@@ -56,6 +58,7 @@ vi.mock('modules/waiter/application', () => ({
       mutateAsync: vi.fn(),
     };
   },
+  useUpdateWaiterOrderItemNoteMutation: () => ({ isPending: false, mutate: vi.fn() }),
   useWaiterMenuQuery: (...args: unknown[]) => useWaiterMenuQueryMock(...args),
   useWaiterTableSessionQuery: (...args: unknown[]) => useWaiterTableSessionQueryMock(...args),
   waiterKeys: {
@@ -66,10 +69,10 @@ vi.mock('modules/waiter/application', () => ({
 vi.mock('modules/waiter/data-access', () => ({
   waiterRepository: {
     getOrders: vi.fn(),
-    createOrder: vi.fn(),
+    createOrder: (...args: unknown[]) => createOrderMock(...args),
     createTakeawayOrder: vi.fn(),
     removeOrderItem: vi.fn(),
-    addOrderItem: vi.fn(),
+    addOrderItem: (...args: unknown[]) => addOrderItemMock(...args),
   },
 }));
 
@@ -120,6 +123,7 @@ vi.mock('shared/ui/pos-primitives', () => ({
   PosSectionTabs: ({ items }: { items: Array<{ label: string }> }) => (
     <div>{items.map((item) => item.label).join(', ')}</div>
   ),
+  PosItemNoteDialog: () => null,
   PosSettingsMenu: () => null,
 }));
 
@@ -133,6 +137,10 @@ describe('TableSessionPageContent', () => {
     submitMutateMock.mockReset();
     submitMutationOptions = undefined;
     printPrecheckMutateMock.mockReset();
+    createOrderMock.mockReset();
+    createOrderMock.mockResolvedValue({ id: 'created-order-1' });
+    addOrderItemMock.mockReset();
+    addOrderItemMock.mockResolvedValue({});
     canAccessTableSessionMenuMock.mockReset();
     canAccessTableSessionMenuMock.mockReturnValue(true);
     useWaiterMenuQueryMock.mockReset();
@@ -193,6 +201,24 @@ describe('TableSessionPageContent', () => {
 
     expect(printPrecheckMutateMock).toHaveBeenCalledTimes(1);
     expect(submitMutateMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the table order note separate from an item-level note', async () => {
+    render(<TableSessionPageContent sessionId="session-1" mode="hall" />);
+
+    fireEvent.change(screen.getAllByLabelText('Butun buyurtma uchun izoh')[0], {
+      target: { value: 'Umumiy: tezroq' },
+    });
+    const options = useOptimisticBuilderOrderMock.mock.calls.at(-1)?.[0] as {
+      createOrder: () => Promise<string>;
+      addOrderItem: (orderId: string, item: { id: string }, note: string) => Promise<unknown>;
+    };
+
+    await expect(options.createOrder()).resolves.toBe('created-order-1');
+    await options.addOrderItem('created-order-1', { id: 'item-1' }, 'Piyozsiz');
+
+    expect(createOrderMock).toHaveBeenCalledWith('session-1', 'Umumiy: tezroq');
+    expect(addOrderItemMock).toHaveBeenCalledWith('created-order-1', 'item-1', 'Piyozsiz', undefined, undefined);
   });
 
   it('enables the hall menu query for hall-session access', () => {

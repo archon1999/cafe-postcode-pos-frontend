@@ -23,10 +23,11 @@ import {
   type PosModifierSelection,
 } from 'shared/pos/modifiers';
 import { formatCompactMoney, formatPosQuantity } from 'shared/pos/utils';
-import { PosProductConfiguratorDialog } from 'shared/ui/pos-primitives';
+import { PosItemNoteDialog, PosProductConfiguratorDialog } from 'shared/ui/pos-primitives';
 
 export type CashierGroupOrderLine = {
   item: CashierMenuItem;
+  note: string;
   quantity: number;
   selections: PosModifierSelection[];
 };
@@ -59,10 +60,12 @@ export function CashierItemGroupConfiguratorDialog({ group, locale, onClose, onC
   const fullScreen = useMediaQuery('(max-width:700px)');
   const [lines, setLines] = useState<InternalLine[]>([]);
   const [customizing, setCustomizing] = useState<{ memberId: string; item: CashierMenuItem } | null>(null);
+  const [editingLineKey, setEditingLineKey] = useState<string | null>(null);
 
   useEffect(() => {
     setLines(group ? group.members.flatMap((member) => buildQuickLines(member.id, member.item)) : []);
     setCustomizing(null);
+    setEditingLineKey(null);
   }, [group]);
 
   const selectedLines = lines.filter((line) => line.quantity > 0);
@@ -78,6 +81,7 @@ export function CashierItemGroupConfiguratorDialog({ group, locale, onClose, onC
     for (const line of lines) result.set(line.memberId, [...(result.get(line.memberId) ?? []), line]);
     return result;
   }, [lines]);
+  const editingLine = editingLineKey ? (lines.find((line) => line.key === editingLineKey) ?? null) : null;
 
   if (!group) return null;
 
@@ -98,6 +102,30 @@ export function CashierItemGroupConfiguratorDialog({ group, locale, onClose, onC
     setLines((current) =>
       current.map((line) => (line.key === key ? { ...line, quantity, quantityInput: value } : line)),
     );
+  };
+  const setLineNote = (key: string, note: string) => {
+    setLines((current) => {
+      const target = current.find((line) => line.key === key);
+      if (!target) return current;
+      const normalizedNote = note.trim();
+      const nextKey = lineKey(target.memberId, target.selections, normalizedNote);
+      const matchingLine = current.find((line) => line.key === nextKey && line.key !== key);
+      if (matchingLine) {
+        return current
+          .filter((line) => line.key !== key)
+          .map((line) =>
+            line.key === matchingLine.key
+              ? {
+                  ...line,
+                  quantity: line.quantity + target.quantity,
+                  quantityInput: String(line.quantity + target.quantity),
+                }
+              : line,
+          );
+      }
+      return current.map((line) => (line.key === key ? { ...line, key: nextKey, note: normalizedNote } : line));
+    });
+    setEditingLineKey(null);
   };
 
   return (
@@ -184,19 +212,33 @@ export function CashierItemGroupConfiguratorDialog({ group, locale, onClose, onC
                             borderTop: `1px solid ${alpha(theme.palette.text.primary, 0.07)}`,
                             bgcolor: line.quantity ? alpha(theme.palette.primary.main, 0.055) : 'transparent',
                           })}>
-                          <Stack
-                            direction="row"
-                            alignItems="baseline"
-                            justifyContent="space-between"
-                            spacing={2}
-                            sx={{ flex: 1, minWidth: 0 }}>
-                            <Typography fontWeight={line.quantity ? 750 : 550} sx={{ minWidth: 0 }}>
-                              {line.label}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary" sx={{ flexShrink: 0 }}>
-                              {formatCompactMoney(unitPrice, locale)}
-                            </Typography>
+                          <Stack spacing={0.35} sx={{ flex: 1, minWidth: 0 }}>
+                            <Stack direction="row" alignItems="baseline" justifyContent="space-between" spacing={2}>
+                              <Typography fontWeight={line.quantity ? 750 : 550} sx={{ minWidth: 0 }}>
+                                {line.label}
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary" sx={{ flexShrink: 0 }}>
+                                {formatCompactMoney(unitPrice, locale)}
+                              </Typography>
+                            </Stack>
+                            {line.note ? (
+                              <Stack direction="row" spacing={0.55} alignItems="center">
+                                <Icon icon="solar:notes-bold-duotone" width={16} />
+                                <Typography variant="caption" color="text.secondary">
+                                  {line.note}
+                                </Typography>
+                              </Stack>
+                            ) : null}
                           </Stack>
+                          {line.quantity ? (
+                            <IconButton
+                              aria-label={line.note ? posCopy.itemNoteEdit : posCopy.itemNoteAdd}
+                              color={line.note ? 'primary' : 'default'}
+                              onClick={() => setEditingLineKey(line.key)}
+                              sx={(theme) => ({ bgcolor: alpha(theme.palette.text.primary, 0.055) })}>
+                              <Icon icon="solar:notes-bold-duotone" width={21} />
+                            </IconButton>
+                          ) : null}
                           {line.item.saleUnit === 'kg' ? (
                             <TextField
                               size="small"
@@ -265,7 +307,9 @@ export function CashierItemGroupConfiguratorDialog({ group, locale, onClose, onC
               variant="contained"
               disabled={!totalQuantity}
               onClick={() =>
-                onConfirm(selectedLines.map(({ item, quantity, selections }) => ({ item, quantity, selections })))
+                onConfirm(
+                  selectedLines.map(({ item, note, quantity, selections }) => ({ item, note, quantity, selections })),
+                )
               }
               sx={{ minHeight: 58, borderRadius: '16px', fontWeight: 850 }}>
               {totalQuantity
@@ -281,11 +325,12 @@ export function CashierItemGroupConfiguratorDialog({ group, locale, onClose, onC
       {customizing ? (
         <PosProductConfiguratorDialog
           item={customizing.item}
+          allowItemNote
           locale={locale}
           copy={copy}
           onClose={() => setCustomizing(null)}
-          onConfirm={(item, selections) => {
-            const key = `${customizing.memberId}:${selectionKey(selections)}`;
+          onConfirm={(item, selections, note) => {
+            const key = lineKey(customizing.memberId, selections, note);
             setLines((current) => {
               const existing = current.find((line) => line.key === key);
               if (existing) {
@@ -300,6 +345,7 @@ export function CashierItemGroupConfiguratorDialog({ group, locale, onClose, onC
                   key,
                   memberId: customizing.memberId,
                   item,
+                  note,
                   quantity: 1,
                   quantityInput: '1',
                   selections,
@@ -311,6 +357,15 @@ export function CashierItemGroupConfiguratorDialog({ group, locale, onClose, onC
           }}
         />
       ) : null}
+
+      <PosItemNoteDialog
+        initialNote={editingLine?.note}
+        itemLabel={editingLine ? `${editingLine.item.name} · ${editingLine.label}` : ''}
+        locale={locale}
+        onClose={() => setEditingLineKey(null)}
+        onSave={(note) => editingLine && setLineNote(editingLine.key, note)}
+        open={Boolean(editingLine)}
+      />
     </>
   );
 }
@@ -336,14 +391,19 @@ function createLine(
   label: string,
 ): InternalLine {
   return {
-    key: `${memberId}:${selectionKey(selections)}`,
+    key: lineKey(memberId, selections, ''),
     memberId,
     item,
+    note: '',
     selections,
     label,
     quantity: 0,
     quantityInput: '',
   };
+}
+
+function lineKey(memberId: string, selections: PosModifierSelection[], note: string) {
+  return `${memberId}:${selectionKey(selections)}:${note.trim()}`;
 }
 
 function selectionKey(selections: PosModifierSelection[]) {

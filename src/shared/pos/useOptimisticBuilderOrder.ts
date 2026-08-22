@@ -27,7 +27,7 @@ type UseOptimisticBuilderOrderOptions<
   canonicalQueryKey: readonly unknown[];
   canonicalQueryFn: () => Promise<TCanonicalData>;
   channel: string;
-  createOrder: (note: string) => Promise<string>;
+  createOrder: () => Promise<string>;
   defaultServiceFeeEnabled?: boolean;
   defaultServiceFeePercent: number;
   defaultServiceFeeComponents?: PosServiceFeeComponent[];
@@ -169,7 +169,7 @@ export function useOptimisticBuilderOrder<
         let orderId = resolvedOrderIdRef.current;
 
         if (!orderId) {
-          orderId = await createOrder(queuedOperation.note);
+          orderId = await createOrder();
           resolvedOrderIdRef.current = orderId;
           createdOrderId = orderId;
         }
@@ -294,7 +294,7 @@ export function useOptimisticBuilderOrder<
       try {
         let orderId = resolvedOrderIdRef.current;
         if (!orderId) {
-          orderId = await createOrder(queuedOperations[0].note);
+          orderId = await createOrder();
           resolvedOrderIdRef.current = orderId;
           createdOrderId = orderId;
         }

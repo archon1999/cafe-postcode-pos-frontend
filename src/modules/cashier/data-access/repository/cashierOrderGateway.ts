@@ -89,6 +89,10 @@ export const cashierOrderGateway = {
     };
   },
 
+  async updateOrderItemNote(itemId: string, note: string): Promise<void> {
+    await apiPatch(`/pos/sales/orders/items/${itemId}/`, { note });
+  },
+
   async updateOrderNote(orderId: string, note: string): Promise<OrderResponse> {
     return mapCashierOrder(await apiPatch<OrderResponse>(`/pos/sales/orders/${orderId}/`, { note }));
   },
