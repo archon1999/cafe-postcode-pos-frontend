@@ -126,7 +126,7 @@ describe('TvMonitorPage', () => {
     );
   });
 
-  it('restores an already paired device and unlocks browser audio with one interaction', async () => {
+  it('keeps the paired TV visible when browser audio is unavailable', async () => {
     vi.mocked(kitchenRepository.bootstrapTvMonitor).mockResolvedValue({
       status: 'paired',
       device: {
@@ -147,30 +147,14 @@ describe('TvMonitorPage', () => {
 
     render(<TvMonitorPage />);
 
-    expect(await screen.findByTestId('tv-audio-unlock-overlay')).toBeTruthy();
-    expect(screen.getByTestId('paired-monitor').getAttribute('data-audio-enabled')).toBe('false');
-
-    fireEvent.click(screen.getByTestId('tv-audio-unlock-button'));
-
-    expect(audioInstances).toHaveLength(1);
-    expect(audioInstances[0].src).toContain('/monitor-announcements/v1/uz/female/unlock.mp3');
-    expect(audioInstances[0].load).toHaveBeenCalledTimes(1);
-    expect(audioInstances[0].play).toHaveBeenCalledTimes(1);
-
-    await act(async () => audioInstances[0].dispatchEvent(new Event('ended')));
-
+    expect(await screen.findByTestId('paired-monitor')).toBeTruthy();
     expect(screen.queryByTestId('tv-audio-unlock-overlay')).toBeNull();
     expect(screen.getByTestId('paired-monitor').getAttribute('data-audio-enabled')).toBe('true');
-    await waitFor(() =>
-      expect(kitchenRepository.reportTvMonitorDiagnostic).toHaveBeenCalledWith(
-        expect.objectContaining({ event: 'announcement_play_ended' }),
-      ),
-    );
 
     fireEvent.click(screen.getByTestId('simulate-audio-failure'));
 
-    expect(screen.getByTestId('tv-audio-unlock-overlay')).toBeTruthy();
-    expect(screen.getByTestId('tv-audio-unlock-error').textContent).toContain('Ovoz to‘xtadi');
+    expect(screen.queryByTestId('tv-audio-unlock-overlay')).toBeNull();
+    expect(screen.getByTestId('paired-monitor')).toBeTruthy();
   });
 
   it('keeps a paired TV identity when a lease renewal is temporarily delayed', async () => {
