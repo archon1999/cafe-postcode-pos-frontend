@@ -236,6 +236,25 @@ describe('optimistic builder order', () => {
     expect(takeawayOrder?.total).toBe(10000);
   });
 
+  it('ignores a stale restaurant service fee snapshot outside the hall channel', () => {
+    for (const channel of ['takeaway', 'delivery']) {
+      const order = deriveOptimisticBuilderOrder<TestMenuItem, TestOrderItem, TestOrder>({
+        baseOrder: createOrder({ channel, serviceFeeEnabled: true, serviceFeePercent: 10 }),
+        channel,
+        defaultServiceFeeEnabled: true,
+        defaultServiceFeePercent: 10,
+        pendingAdds: [],
+        pendingRemoves: [],
+        tempOrderId: null,
+      });
+
+      expect(order?.serviceFeeEnabled).toBe(false);
+      expect(order?.serviceFeePercent).toBe(0);
+      expect(order?.serviceFee).toBe(0);
+      expect(order?.total).toBe(12000);
+    }
+  });
+
   it('falls back to the legacy percentage when the component list is empty', () => {
     const order = deriveOptimisticBuilderOrder<TestMenuItem, TestOrderItem, TestOrder>({
       baseOrder: createOrder({ serviceFeeEnabled: true, serviceFeePercent: 10, serviceFeeComponents: [] }),

@@ -174,9 +174,12 @@ export function deriveOptimisticBuilderOrder<
       return sum + toMoneyNumber(item.lineTotal);
     }, 0),
   );
-  const configuredServiceFeeComponents = baseOrder?.serviceFeeComponents ?? defaultServiceFeeComponents;
+  const serviceFeeAllowed = (baseOrder?.channel ?? channel) === 'hall';
+  const configuredServiceFeeComponents = serviceFeeAllowed
+    ? (baseOrder?.serviceFeeComponents ?? defaultServiceFeeComponents)
+    : [];
   const legacyServiceFeeEnabled = Boolean(
-    baseOrder?.serviceFeeEnabled ?? defaultServiceFeeEnabled ?? defaultServiceFeePercent > 0,
+    serviceFeeAllowed && (baseOrder?.serviceFeeEnabled ?? defaultServiceFeeEnabled ?? defaultServiceFeePercent > 0),
   );
   const legacyServiceFeePercent = legacyServiceFeeEnabled
     ? toMoneyNumber(baseOrder?.serviceFeePercent ?? defaultServiceFeePercent)
