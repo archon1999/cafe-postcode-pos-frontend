@@ -1,12 +1,11 @@
 import { Icon } from '@iconify/react';
-import { Box, IconButton, Stack, Typography } from '@mui/material';
+import { Box, Stack, Typography } from '@mui/material';
 import { useRef, useState, type KeyboardEvent, type TouchEvent } from 'react';
 
-import { getCashierOrderDisplayName, getCashierOrderNumberLabel } from 'modules/cashier/domain';
 import type { CashierCheckStatus, CashierOrder } from 'modules/cashier/domain/entities/order.types';
 import { type PosLocale, getPosCopy } from 'shared/locale/copy';
-import { getPosTableNumberLabel, getPosZoneContextLabel } from 'shared/pos/orderLocation';
-import { formatCompactMoney, formatTime } from 'shared/pos/utils';
+
+import { OpenCheckOrderSummary, getOpenChecksCardSx } from './OpenChecksCardDesign';
 
 export function OpenChecksList({
   copy,
@@ -97,18 +96,14 @@ export function OpenChecksList({
               }
             }}
             sx={(theme) => ({
-              border: 0,
               width: '100%',
               textAlign: 'left',
-              borderRadius: '10px',
-              px: 2,
-              py: 1.65,
               position: 'relative',
               cursor: 'pointer',
               color: 'inherit',
               outline: 0,
-              backgroundColor:
-                selectedOrderId === order.id ? 'var(--pos-check-card-selected-bg)' : 'var(--pos-check-card-bg)',
+              overflow: 'visible',
+              ...getOpenChecksCardSx(selectedOrderId === order.id)(theme),
               transform: swipedOrderId === order.id ? 'translateX(-54px)' : 'translateX(0)',
               transition: 'transform 140ms ease',
               touchAction: 'pan-y',
@@ -139,71 +134,14 @@ export function OpenChecksList({
                 <Icon icon="solar:pen-2-bold-duotone" width={22} />
               </Box>
             ) : null}
-            <Stack direction="row" justifyContent="space-between" spacing={2} alignItems="center">
-              <Stack direction="row" spacing={1.75} alignItems="center">
-                <Box
-                  sx={{
-                    minWidth: 56,
-                    height: 56,
-                    borderRadius: '9px',
-                    backgroundColor: 'var(--pos-check-card-avatar-bg)',
-                    display: 'grid',
-                    placeItems: 'center',
-                    fontSize: 22,
-                    fontWeight: 700,
-                    lineHeight: 1,
-                  }}>
-                  {order.channel === 'delivery'
-                    ? 'YD'
-                    : order.channel === 'takeaway'
-                      ? 'TG'
-                      : getPosTableNumberLabel(order)}
-                </Box>
-                <Stack spacing={0.4}>
-                  <Stack direction="row" spacing={0.75} alignItems="center">
-                    <Typography variant="h6">{getCashierOrderDisplayName(order)}</Typography>
-                    {selectedTab === 'open' ? (
-                      <IconButton
-                        aria-label={copy.renameOrder}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          onRename(order);
-                        }}
-                        sx={{ p: 0.4 }}>
-                        <Icon icon="solar:pen-2-bold-duotone" width={18} />
-                      </IconButton>
-                    ) : null}
-                  </Stack>
-                  {order.displayName?.trim() ? (
-                    <Typography variant="body2" color="text.secondary">
-                      {copy.orders}: {getCashierOrderNumberLabel(order)}
-                    </Typography>
-                  ) : null}
-                  {getPosZoneContextLabel(order) ? (
-                    <Typography variant="body2" color="text.secondary" noWrap title={getPosZoneContextLabel(order)}>
-                      {getPosZoneContextLabel(order)}
-                    </Typography>
-                  ) : null}
-                  <Typography variant="body2" color="text.secondary">
-                    {order.channel === 'delivery'
-                      ? copy.deliveryLabel
-                      : order.channel === 'takeaway'
-                        ? copy.takeawayLabel
-                        : `${order.guestCount} ${copy.guests}`}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {selectedTab === 'closed' ? (order.cashierName ?? order.openedByName) : order.openedByName}
-                  </Typography>
-                </Stack>
-              </Stack>
-
-              <Stack spacing={0.4} alignItems="flex-end">
-                <Typography variant="h6">{formatCompactMoney(order.total, locale)}</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {formatTime(selectedTab === 'closed' ? (order.closedAt ?? order.createdAt) : order.createdAt, locale)}
-                </Typography>
-              </Stack>
-            </Stack>
+            <OpenCheckOrderSummary
+              context="list"
+              copy={copy}
+              locale={locale}
+              onRename={selectedTab === 'open' ? () => onRename(order) : undefined}
+              order={order}
+              selectedTab={selectedTab}
+            />
           </Box>
         ))
       ) : (

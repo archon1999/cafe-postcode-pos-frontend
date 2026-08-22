@@ -24,7 +24,6 @@ import {
 import { waiterRepository } from 'modules/waiter/data-access';
 import {
   aggregateWaiterCartItemsByStation,
-  formatWaiterOrderLabel,
   getDefaultWaiterMenuCategory,
   getWaiterOrderItemMeta,
   type WaiterMenuItem,
@@ -34,7 +33,7 @@ import { refreshTransportAndReload } from 'shared/api/transportResolver';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { getPosCopy } from 'shared/locale/copy';
 import { selectionsFromOrderModifiers, type PosModifierSelection } from 'shared/pos/modifiers';
-import { getPosOrderLocationLabel, getPosTableNumberLabel } from 'shared/pos/orderLocation';
+import { getPosTableNumberLabel, getPosZoneContextLabel } from 'shared/pos/orderLocation';
 import { buildServiceFeeRows, type PosServiceFeeComponent } from 'shared/pos/service-fees';
 import { useOptimisticBuilderOrder } from 'shared/pos/useOptimisticBuilderOrder';
 import {
@@ -203,7 +202,8 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
   const vatLabel = `${copy.vat} (${formatPercent(vatPercent)}%)`;
   const orderModeMeta = isTakeawayMode ? `${1} ${copy.guests}` : `${sessionQuery.data?.guestCount ?? 0} ${copy.guests}`;
   const tableNumberLabel = getPosTableNumberLabel(sessionQuery.data);
-  const tableLocationLabel = isTakeawayMode ? '' : getPosOrderLocationLabel(sessionQuery.data);
+  const tableZoneLabel = isTakeawayMode ? '' : getPosZoneContextLabel(sessionQuery.data);
+  const tableHallLabel = isTakeawayMode ? '' : String(sessionQuery.data?.hallName ?? '').trim();
   const submitOrderMutation = useSubmitWaiterOrderMutation({
     orderId: currentOrder?.id,
     sessionId,
@@ -355,7 +355,6 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
         <TableSessionDesktopCart
           avatarLabel={isTakeawayMode ? 'TG' : tableNumberLabel}
           canTakePayment={canTakePayment}
-          channel={currentOrder?.channel ?? mode}
           copy={copy}
           groups={groupedOrderItems}
           isSubmitDisabled={isSubmitDisabled}
@@ -365,12 +364,11 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
           isTakeawayMode={isTakeawayMode}
           kitchenNote={kitchenNote}
           locale={locale}
-          locationLabel={tableLocationLabel}
+          hallLabel={tableHallLabel}
           menuItems={menuItemById}
           operatorName={
             isTakeawayMode ? currentOperatorName : (sessionQuery.data?.assignedWaiterName ?? currentOperatorName)
           }
-          orderLabel={formatWaiterOrderLabel(currentOrder)}
           orderModeMeta={orderModeMeta}
           orderSent={orderSent}
           selectedItemKey={selectedCartItemKey}
@@ -383,6 +381,7 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
           total={currentOrder?.total}
           vatAmount={vatAmount}
           vatLabel={vatLabel}
+          zoneLabel={tableZoneLabel}
           onAdd={requestAddItem}
           onCheckout={() => void handleTakeawayCheckout()}
           onKitchenNoteChange={(value) => {
@@ -400,7 +399,6 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
         open={isMobile && cartOpen}
         avatarLabel=""
         canTakePayment={canTakePayment}
-        channel={currentOrder?.channel ?? mode}
         copy={copy}
         groups={groupedOrderItems}
         isSubmitDisabled={isSubmitDisabled}
@@ -410,10 +408,9 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
         isTakeawayMode={isTakeawayMode}
         kitchenNote={kitchenNote}
         locale={locale}
-        locationLabel={tableLocationLabel}
+        hallLabel={tableHallLabel}
         menuItems={menuItemById}
         operatorName=""
-        orderLabel={formatWaiterOrderLabel(currentOrder)}
         orderModeMeta=""
         orderSent={orderSent}
         selectedItemKey={selectedCartItemKey}
@@ -426,6 +423,7 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
         total={currentOrder?.total}
         vatAmount={vatAmount}
         vatLabel={vatLabel}
+        zoneLabel={tableZoneLabel}
         onAdd={requestAddItem}
         onEditItemNote={setEditingItemNote}
         onCheckout={() => void handleTakeawayCheckout()}

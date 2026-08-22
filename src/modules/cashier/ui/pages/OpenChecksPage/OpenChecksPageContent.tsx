@@ -1,4 +1,4 @@
-import { Box, useMediaQuery } from '@mui/material';
+import { Box, Stack, useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -295,60 +295,62 @@ export function OpenChecksPageContent() {
           }}
         />
       }>
-      {isMobile ? (
-        <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-          <OpenChecksListPanel
-            copy={copy}
-            locale={locale}
-            orders={visibleOrders}
-            page={pagedChecksPage}
-            pageCount={pagedChecksPageCount}
-            paged={isPagedChecksTab}
-            search={pagedChecksSearch}
-            selectedOrderId={selectedOrderId}
-            selectedTab={selectedTab}
-            onPageChange={handlePagedPageChange}
-            onRename={handleOpenRenameDialog}
-            onSearchChange={handlePagedSearchChange}
-            onSwipeEdit={handleSwipeEdit}
-            onSelect={(orderId) => {
-              setSelectedOrderId(orderId);
-              setMobileDetailOpen(true);
-            }}
-          />
-        </Box>
-      ) : (
-        <Box
-          sx={{
-            flex: 1,
-            minHeight: 0,
-            display: 'grid',
-            gridTemplateColumns: {
-              xs: '1fr',
-              md: 'minmax(0, 1fr) clamp(320px, 34vw, 370px)',
-              xl: 'minmax(0, 1fr) clamp(380px, 24vw, 430px)',
-            },
-            gap: { xs: 1.5, md: 1.6, xl: 2.4 },
-          }}>
-          <OpenChecksListPanel
-            copy={copy}
-            locale={locale}
-            orders={visibleOrders}
-            page={pagedChecksPage}
-            pageCount={pagedChecksPageCount}
-            paged={isPagedChecksTab}
-            search={pagedChecksSearch}
-            selectedOrderId={selectedOrder?.id}
-            selectedTab={selectedTab}
-            onPageChange={handlePagedPageChange}
-            onRename={handleOpenRenameDialog}
-            onSearchChange={handlePagedSearchChange}
-            onSelect={setSelectedOrderId}
-            onSwipeEdit={handleSwipeEdit}
-          />
-          <Box sx={{ minHeight: 0 }}>{detailPanel}</Box>
-        </Box>
-      )}
+      <Stack spacing={1.2} sx={{ flex: 1, minHeight: 0 }}>
+        {isMobile ? (
+          <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+            <OpenChecksListPanel
+              copy={copy}
+              locale={locale}
+              orders={visibleOrders}
+              page={pagedChecksPage}
+              pageCount={pagedChecksPageCount}
+              paged={isPagedChecksTab}
+              search={pagedChecksSearch}
+              selectedOrderId={selectedOrderId}
+              selectedTab={selectedTab}
+              onPageChange={handlePagedPageChange}
+              onRename={handleOpenRenameDialog}
+              onSearchChange={handlePagedSearchChange}
+              onSwipeEdit={handleSwipeEdit}
+              onSelect={(orderId) => {
+                setSelectedOrderId(orderId);
+                setMobileDetailOpen(true);
+              }}
+            />
+          </Box>
+        ) : (
+          <Box
+            sx={{
+              flex: 1,
+              minHeight: 0,
+              display: 'grid',
+              gridTemplateColumns: {
+                xs: '1fr',
+                md: 'minmax(0, 1fr) clamp(320px, 34vw, 370px)',
+                xl: 'minmax(0, 1fr) clamp(380px, 24vw, 430px)',
+              },
+              gap: { xs: 1.5, md: 1.6, xl: 2.4 },
+            }}>
+            <OpenChecksListPanel
+              copy={copy}
+              locale={locale}
+              orders={visibleOrders}
+              page={pagedChecksPage}
+              pageCount={pagedChecksPageCount}
+              paged={isPagedChecksTab}
+              search={pagedChecksSearch}
+              selectedOrderId={selectedOrder?.id}
+              selectedTab={selectedTab}
+              onPageChange={handlePagedPageChange}
+              onRename={handleOpenRenameDialog}
+              onSearchChange={handlePagedSearchChange}
+              onSelect={setSelectedOrderId}
+              onSwipeEdit={handleSwipeEdit}
+            />
+            <Box sx={{ minHeight: 0 }}>{detailPanel}</Box>
+          </Box>
+        )}
+      </Stack>
 
       <OpenChecksMobileDetail
         copy={copy}

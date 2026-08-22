@@ -5,14 +5,12 @@ import type { WaiterMenuItem } from 'modules/waiter/domain';
 import type { PosLocale, getPosCopy } from 'shared/locale/copy';
 import type { PosServiceFeeRow } from 'shared/pos/service-fees';
 import { formatCompactMoney } from 'shared/pos/utils';
-import { PosOrderChannelSegment } from 'shared/ui/pos-primitives';
 import type { PosCartItemGroupsProps } from 'shared/ui/pos-primitives/PosCartItemGroups';
 import { PosCartItemGroups } from 'shared/ui/pos-primitives/PosCartItemGroups';
 
 export type TableSessionDesktopCartProps = {
   avatarLabel: string;
   canTakePayment: boolean;
-  channel: string;
   copy: ReturnType<typeof getPosCopy>;
   groups: PosCartItemGroupsProps<WaiterMenuItem>['groups'];
   isSubmitDisabled: boolean;
@@ -22,10 +20,9 @@ export type TableSessionDesktopCartProps = {
   isTakeawayMode: boolean;
   kitchenNote: string;
   locale: PosLocale;
-  locationLabel: string;
+  hallLabel: string;
   menuItems: ReadonlyMap<string, WaiterMenuItem>;
   operatorName: string;
-  orderLabel: string;
   orderModeMeta: string;
   orderSent: boolean;
   selectedItemKey: string | null;
@@ -38,6 +35,7 @@ export type TableSessionDesktopCartProps = {
   total: number | string | undefined;
   vatAmount: number;
   vatLabel: string;
+  zoneLabel: string;
   onAdd: PosCartItemGroupsProps<WaiterMenuItem>['onAdd'];
   onEditItemNote: PosCartItemGroupsProps<WaiterMenuItem>['onEditNote'];
   onCheckout: () => void;
@@ -106,56 +104,62 @@ export function TableSessionDesktopCart(props: TableSessionDesktopCartProps) {
         border: `1px solid ${alpha('#ffffff', theme.palette.mode === 'dark' ? 0.04 : 0.3)}`,
       })}>
       <Box sx={{ p: 2.5 }}>
-        <Stack spacing={1.7}>
-          <Stack direction="row" spacing={1.5} alignItems="center">
-            <Box
-              sx={{
-                minWidth: 66,
-                height: 66,
-                borderRadius: '10px',
-                backgroundColor: 'var(--pos-order-avatar-bg)',
-                display: 'grid',
-                placeItems: 'center',
-                fontSize: 30,
-                fontWeight: 700,
-                lineHeight: 1,
-              }}>
-              {props.avatarLabel}
-            </Box>
-            <Stack spacing={0.45} sx={{ minWidth: 0 }}>
-              <Typography variant="body1" color="text.secondary">
-                {props.copy.orders}: {props.orderLabel}
-              </Typography>
-              {props.locationLabel ? (
-                <Typography variant="body2" color="text.secondary" noWrap title={props.locationLabel}>
-                  {props.locationLabel}
+        <Stack direction="row" spacing={1.5} alignItems="center">
+          <Box
+            sx={{
+              minWidth: 66,
+              height: 66,
+              borderRadius: '10px',
+              backgroundColor: 'var(--pos-order-avatar-bg)',
+              display: 'grid',
+              placeItems: 'center',
+              fontSize: 30,
+              fontWeight: 700,
+              lineHeight: 1,
+            }}>
+            {props.avatarLabel}
+          </Box>
+          <Stack spacing={0.65} sx={{ minWidth: 0 }}>
+            {props.zoneLabel || props.hallLabel ? (
+              <Stack spacing={0.2} data-location-emphasis="true" sx={{ minWidth: 0 }}>
+                {props.zoneLabel ? (
+                  <Typography
+                    variant="subtitle2"
+                    color="text.secondary"
+                    data-location-level="zone"
+                    noWrap
+                    title={props.zoneLabel}
+                    sx={{ fontWeight: 650, lineHeight: 1.2 }}>
+                    {props.zoneLabel}
+                  </Typography>
+                ) : null}
+                {props.hallLabel ? (
+                  <Typography
+                    variant="h6"
+                    data-location-level="hall"
+                    noWrap
+                    title={props.hallLabel}
+                    sx={{ fontWeight: 750, lineHeight: 1.2 }}>
+                    {props.hallLabel}
+                  </Typography>
+                ) : null}
+              </Stack>
+            ) : null}
+            <Stack direction="row" spacing={1.4} alignItems="center" useFlexGap flexWrap="wrap">
+              <Stack direction="row" spacing={0.7} alignItems="center" minWidth={0}>
+                <Icon icon="solar:user-rounded-bold-duotone" width={18} />
+                <Typography variant="body2" color="text.secondary" noWrap>
+                  {props.orderModeMeta}
                 </Typography>
-              ) : null}
-              <Stack direction="row" spacing={1.4} alignItems="center" useFlexGap flexWrap="wrap">
-                <Stack direction="row" spacing={0.7} alignItems="center" minWidth={0}>
-                  <Icon icon="solar:user-rounded-bold-duotone" width={18} />
-                  <Typography variant="body2" color="text.secondary" noWrap>
-                    {props.orderModeMeta}
-                  </Typography>
-                </Stack>
-                <Stack direction="row" spacing={0.7} alignItems="center" minWidth={0}>
-                  <Icon icon="solar:plate-bold-duotone" width={18} />
-                  <Typography variant="body2" color="text.secondary" noWrap>
-                    {props.operatorName}
-                  </Typography>
-                </Stack>
+              </Stack>
+              <Stack direction="row" spacing={0.7} alignItems="center" minWidth={0}>
+                <Icon icon="solar:plate-bold-duotone" width={18} />
+                <Typography variant="body2" color="text.secondary" noWrap>
+                  {props.operatorName}
+                </Typography>
               </Stack>
             </Stack>
           </Stack>
-          <PosOrderChannelSegment
-            takeawayLabel={props.copy.takeaway}
-            channel={props.channel}
-            items={[
-              { value: 'hall', label: props.copy.hall },
-              { value: 'takeaway', label: props.copy.takeawaySwitch },
-              { value: 'delivery', label: props.copy.deliverySwitch },
-            ]}
-          />
         </Stack>
       </Box>
 

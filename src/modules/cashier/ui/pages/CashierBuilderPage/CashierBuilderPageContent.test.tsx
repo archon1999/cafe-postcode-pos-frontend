@@ -266,6 +266,21 @@ describe('CashierBuilderPageContent', () => {
     expect(screen.getAllByRole('button', { name: 'Dostavka' }).length).toBeGreaterThan(0);
   });
 
+  it('shows a plain hash instead of #0 when there is no current order', () => {
+    useOptimisticBuilderOrderMock.mockReturnValue({
+      currentOrder: null,
+      addItem: vi.fn(),
+      removeItem: vi.fn(),
+      hasPendingOperations: false,
+    });
+
+    render(<CashierBuilderPageContent />);
+
+    expect(screen.getAllByText('Buyurtma: #').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Buyurtma: #0')).toBeNull();
+    expect(document.querySelector('[data-order-avatar="#"]')).toBeTruthy();
+  });
+
   it('hides the local order id until the server assigns the real order number', () => {
     useOptimisticBuilderOrderMock.mockReturnValue({
       currentOrder: {
@@ -289,6 +304,7 @@ describe('CashierBuilderPageContent', () => {
 
     expect(screen.getAllByText('Buyurtma: Yaratilmoqda...').length).toBeGreaterThan(0);
     expect(screen.queryByText(/L-c14d6e/)).toBeNull();
+    expect(document.querySelector('[data-order-avatar="#"]')).toBeTruthy();
   });
 
   it('aggregates matching cart lines while preserving note and status boundaries', () => {
@@ -383,6 +399,20 @@ describe('CashierBuilderPageContent', () => {
     expect(submitOrderMutateAsyncMock).not.toHaveBeenCalled();
     expect(updateOrderDeliveryDetailsMock).not.toHaveBeenCalled();
     expect(navigateMock).toHaveBeenCalledWith('/cashier/payment?orderId=order-1');
+  });
+
+  it('saves a takeaway order without forcing payment', async () => {
+    searchParamsValue = 'channel=takeaway';
+
+    render(<CashierBuilderPageContent />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Saqlash' }));
+
+    await waitFor(() => {
+      expect(submitOrderMutateAsyncMock).toHaveBeenCalledTimes(1);
+    });
+    expect(updateOrderDeliveryDetailsMock).not.toHaveBeenCalled();
+    expect(navigateMock).not.toHaveBeenCalledWith('/cashier/payment?orderId=order-1');
   });
 
   it('persists the latest note before opening payment', async () => {

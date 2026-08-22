@@ -49,29 +49,24 @@ function CartActions({
   copy,
   isSubmitDisabled,
   isSubmitting,
-  isTakeaway,
   onCheckout,
   onSendOrder,
-}: Pick<CartProps, 'copy' | 'isSubmitDisabled' | 'isSubmitting' | 'onCheckout' | 'onSendOrder'> & {
-  isTakeaway: boolean;
-}) {
+}: Pick<CartProps, 'copy' | 'isSubmitDisabled' | 'isSubmitting' | 'onCheckout' | 'onSendOrder'>) {
   return (
     <Stack direction="row" spacing={1.1}>
-      {!isTakeaway ? (
-        <Button
-          variant="contained"
-          sx={(theme) => ({
-            flex: 1,
-            backgroundImage: 'none',
-            backgroundColor: 'var(--pos-secondary-action-bg)',
-            color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
-          })}
-          disabled={isSubmitDisabled}
-          onClick={onSendOrder}>
-          {isSubmitting ? copy.processing : copy.sendOrder}
-        </Button>
-      ) : null}
-      <Button variant="contained" sx={{ flex: isTakeaway ? 1 : 1.1 }} disabled={isSubmitDisabled} onClick={onCheckout}>
+      <Button
+        variant="contained"
+        sx={(theme) => ({
+          flex: 1,
+          backgroundImage: 'none',
+          backgroundColor: 'var(--pos-secondary-action-bg)',
+          color: theme.palette.mode === 'dark' ? '#f5f5f5' : theme.palette.text.primary,
+        })}
+        disabled={isSubmitDisabled}
+        onClick={onSendOrder}>
+        {isSubmitting ? copy.processing : copy.sendOrder}
+      </Button>
+      <Button variant="contained" sx={{ flex: 1.1 }} disabled={isSubmitDisabled} onClick={onCheckout}>
         {copy.goToPayment}
       </Button>
     </Stack>
@@ -145,7 +140,6 @@ function CartFooter(props: CartProps & { compact?: boolean; dense?: boolean }) {
         copy={props.copy}
         isSubmitDisabled={props.isSubmitDisabled}
         isSubmitting={props.isSubmitting}
-        isTakeaway={props.channel === 'takeaway'}
         onCheckout={props.onCheckout}
         onSendOrder={props.onSendOrder}
       />
@@ -172,6 +166,7 @@ export function CashierBuilderDesktopCart(props: CartProps) {
         <Stack spacing={dense ? 1.15 : 1.7}>
           <Stack direction="row" spacing={1.5} alignItems="center">
             <Box
+              data-order-avatar={props.currentOrderLabel === props.copy.orderCreating ? '#' : props.currentOrderLabel}
               sx={{
                 minWidth: dense ? 52 : 64,
                 height: dense ? 52 : 64,
@@ -182,13 +177,17 @@ export function CashierBuilderDesktopCart(props: CartProps) {
                 fontSize: 28,
                 fontWeight: 700,
               }}>
-              TG
+              {props.currentOrderLabel === props.copy.orderCreating ? '#' : props.currentOrderLabel}
             </Box>
             <Stack spacing={0.45}>
               <Typography variant="body1" color="text.secondary">
                 {props.copy.orders}: {props.currentOrderLabel}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="subtitle1"
+                color="text.secondary"
+                data-operator-emphasis="true"
+                sx={{ fontWeight: 650, lineHeight: 1.25 }}>
                 {props.userName}
               </Typography>
             </Stack>

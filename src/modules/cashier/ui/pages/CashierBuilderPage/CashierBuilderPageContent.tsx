@@ -120,8 +120,9 @@ export function CashierBuilderPageContent() {
       const response = await cashierRepository.createBuilderOrder({ channel: builderChannel, note: kitchenNote });
       return response.id;
     },
-    defaultServiceFeeEnabled: Boolean(session?.restaurantContext?.serviceFeeEnabled),
-    defaultServiceFeePercent: Number(session?.restaurantContext?.serviceFeePercent ?? 0),
+    defaultServiceFeeEnabled: builderChannel === 'hall' && Boolean(session?.restaurantContext?.serviceFeeEnabled),
+    defaultServiceFeePercent:
+      builderChannel === 'hall' ? Number(session?.restaurantContext?.serviceFeePercent ?? 0) : 0,
     defaultVatEnabled: Boolean(session?.restaurantContext?.vatEnabled),
     defaultVatPercent: session?.restaurantContext?.vatPercent ?? 0,
     removeOrderItem: (itemId) => cashierRepository.removeOrderItem(itemId),
@@ -348,7 +349,7 @@ export function CashierBuilderPageContent() {
     ? isTemporaryBuilderId(currentOrder.id) || /^L-[0-9a-f]{6}$/i.test(currentOrder.displayName?.trim() ?? '')
       ? copy.orderCreating
       : getCashierOrderDisplayName(currentOrder)
-    : '#0';
+    : '#';
 
   return (
     <PosPageFrame

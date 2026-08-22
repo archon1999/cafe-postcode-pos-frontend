@@ -33,7 +33,7 @@ describe('CashierBuilderDesktopCart', () => {
         channel="takeaway"
         channelSwitchDisabled={false}
         copy={getPosCopy('uz')}
-        currentOrderLabel="#1"
+        currentOrderLabel="#4"
         groups={[['Oshxona', [cartItem]]]}
         isSubmitDisabled={false}
         isSubmitting={false}
@@ -66,5 +66,8 @@ describe('CashierBuilderDesktopCart', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Izoh qo‘shish' }));
 
     expect(onEditItemNote).toHaveBeenCalledWith(cartItem);
+    expect(document.querySelector('[data-order-avatar="#4"]')).toBeTruthy();
+    expect(document.querySelector('[data-operator-emphasis="true"]')?.textContent).toBe('Cashier');
+    expect(screen.queryByText('TG')).toBeNull();
   });
 });

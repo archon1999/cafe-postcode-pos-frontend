@@ -213,6 +213,65 @@ describe('OpenChecksPageContent', () => {
     expect(screen.getAllByText('VIP kabina').length).toBeGreaterThan(0);
   });
 
+  it('keeps the balanced card, hides the order id, and emphasizes the hall and zone', () => {
+    openOrdersState = [{ ...openOrdersState[0], displayName: 'VIP mijoz', hallName: 'VIP 1' }];
+    render(<OpenChecksPageContent />);
+
+    expect(document.querySelectorAll('[data-card-design="balanced"]')).toHaveLength(2);
+    expect(document.querySelectorAll('[data-location-emphasis="true"]')).toHaveLength(2);
+    expect(document.querySelectorAll('[data-guest-chip-layout="inline"]')).toHaveLength(1);
+    expect(document.querySelectorAll('[data-guest-chip-layout="below"]')).toHaveLength(1);
+    expect(screen.getAllByText('VIP kabina · VIP 1')).toHaveLength(2);
+    expect(screen.queryByText('Buyurtma: ID 101')).toBeNull();
+    expect(screen.queryByRole('button', { name: '2 Axborot' })).toBeNull();
+  });
+
+  it('uses S, D, and Z avatars for tableless order channels without an empty location row', () => {
+    openOrdersState = [
+      {
+        ...openOrdersState[0],
+        id: 'takeaway-1',
+        orderNumber: 201,
+        channel: 'takeaway',
+        tableSession: null,
+        tableName: '',
+        tableNumber: null,
+        zoneName: '',
+        showZoneName: false,
+      },
+      {
+        ...openOrdersState[0],
+        id: 'delivery-1',
+        orderNumber: 202,
+        channel: 'delivery',
+        tableSession: null,
+        tableName: '',
+        tableNumber: null,
+        zoneName: '',
+        showZoneName: false,
+      },
+      {
+        ...openOrdersState[0],
+        id: 'hall-without-table',
+        orderNumber: 203,
+        channel: 'hall',
+        tableSession: null,
+        tableName: '',
+        tableNumber: null,
+        zoneName: '',
+        hallName: '',
+        showZoneName: false,
+      },
+    ];
+
+    render(<OpenChecksPageContent />);
+
+    expect(document.querySelectorAll('[data-order-avatar="S"]')).toHaveLength(2);
+    expect(document.querySelectorAll('[data-order-avatar="D"]')).toHaveLength(1);
+    expect(document.querySelectorAll('[data-order-avatar="Z"]')).toHaveLength(1);
+    expect(document.querySelectorAll('[data-location-emphasis="true"]')).toHaveLength(0);
+  });
+
   it('prints an open check precheck without navigating to payment', () => {
     render(<OpenChecksPageContent />);
 

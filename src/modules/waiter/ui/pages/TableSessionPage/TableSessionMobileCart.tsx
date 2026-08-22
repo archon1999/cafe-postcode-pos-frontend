@@ -1,7 +1,7 @@
 import { Box, Divider, Drawer, Stack, TextField, Typography } from '@mui/material';
 
 import { formatCompactMoney } from 'shared/pos/utils';
-import { PosIconAction, PosOrderChannelSegment } from 'shared/ui/pos-primitives';
+import { PosIconAction } from 'shared/ui/pos-primitives';
 import { PosCartItemGroups } from 'shared/ui/pos-primitives/PosCartItemGroups';
 
 import { TableSessionActions, type TableSessionDesktopCartProps } from './TableSessionDesktopCart';
@@ -29,29 +29,34 @@ export function TableSessionMobileCart({
         <Stack direction="row" spacing={1.2} alignItems="center" justifyContent="space-between" sx={{ px: 2, py: 1.5 }}>
           <Stack spacing={0.25}>
             <Typography variant="h6">{props.copy.bills}</Typography>
-            <Typography variant="body2" color="text.secondary">
-              {props.copy.orders}: {props.orderLabel}
-            </Typography>
-            {props.locationLabel ? (
-              <Typography variant="body2" color="text.secondary" noWrap title={props.locationLabel}>
-                {props.locationLabel}
-              </Typography>
+            {props.zoneLabel || props.hallLabel ? (
+              <Stack spacing={0.15} data-location-emphasis="true" sx={{ minWidth: 0 }}>
+                {props.zoneLabel ? (
+                  <Typography
+                    variant="subtitle2"
+                    color="text.secondary"
+                    data-location-level="zone"
+                    noWrap
+                    title={props.zoneLabel}
+                    sx={{ fontWeight: 650, lineHeight: 1.2 }}>
+                    {props.zoneLabel}
+                  </Typography>
+                ) : null}
+                {props.hallLabel ? (
+                  <Typography
+                    variant="subtitle1"
+                    data-location-level="hall"
+                    noWrap
+                    title={props.hallLabel}
+                    sx={{ fontWeight: 750, lineHeight: 1.2 }}>
+                    {props.hallLabel}
+                  </Typography>
+                ) : null}
+              </Stack>
             ) : null}
           </Stack>
           <PosIconAction icon="solar:close-circle-bold-duotone" onClick={onClose} />
         </Stack>
-        <Box sx={{ px: 2, pb: 1.35 }}>
-          <PosOrderChannelSegment
-            takeawayLabel={props.copy.takeaway}
-            channel={props.channel}
-            compact
-            items={[
-              { value: 'hall', label: props.copy.hall },
-              { value: 'takeaway', label: props.copy.takeawaySwitch },
-              { value: 'delivery', label: props.copy.deliverySwitch },
-            ]}
-          />
-        </Box>
         <Divider />
         <Box sx={{ px: 2, py: 1.5, flex: 1, overflowY: 'auto' }}>
           <Stack spacing={1.25}>

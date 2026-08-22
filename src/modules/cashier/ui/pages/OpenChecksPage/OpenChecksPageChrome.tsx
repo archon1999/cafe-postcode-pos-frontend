@@ -1,7 +1,7 @@
 import { Box, Drawer, Pagination, Stack, TextField, Typography } from '@mui/material';
 import type { MouseEvent, ReactNode } from 'react';
 
-import { getCashierOrderDisplayName, getCashierOrderNumberLabel } from 'modules/cashier/domain';
+import { getCashierOrderDisplayName } from 'modules/cashier/domain';
 import type { CashierCheckStatus, CashierOrder } from 'modules/cashier/domain/entities/order.types';
 import { getPosCopy, type PosLocale } from 'shared/locale/copy';
 import { PosIconAction, PosSectionTabs } from 'shared/ui/pos-primitives';
@@ -147,9 +147,6 @@ export function OpenChecksMobileDetail({ copy, detail, open, order, onClose }: O
             <Typography variant="h6">{copy.bills}</Typography>
             <Typography variant="body2" color="text.secondary">
               {order ? getCashierOrderDisplayName(order) : copy.orders}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {order ? getCashierOrderNumberLabel(order) : copy.orders}
             </Typography>
           </Stack>
           <PosIconAction icon="solar:close-circle-bold-duotone" onClick={onClose} />

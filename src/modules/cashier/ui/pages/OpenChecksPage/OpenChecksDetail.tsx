@@ -1,15 +1,12 @@
 import { Box, Button, Divider, Stack, Typography, alpha } from '@mui/material';
 
-import {
-  getCashierOrderDisplayName,
-  getCashierOrderNumberLabel,
-  groupCashierOrderItemsByStation,
-} from 'modules/cashier/domain';
+import { groupCashierOrderItemsByStation } from 'modules/cashier/domain';
 import type { CashierCheckStatus, CashierOrder } from 'modules/cashier/domain/entities/order.types';
 import { type PosLocale, getPosCopy } from 'shared/locale/copy';
-import { getPosTableNumberLabel, getPosZoneContextLabel } from 'shared/pos/orderLocation';
 import { buildServiceFeeRows } from 'shared/pos/service-fees';
 import { formatCompactMoney, formatPosItemQuantityLabel, formatTime } from 'shared/pos/utils';
+
+import { OpenCheckOrderSummary } from './OpenChecksCardDesign';
 
 type CashierPaymentMethod = NonNullable<CashierOrder['payments']>[number]['method'];
 
@@ -80,45 +77,7 @@ export function OpenChecksDetail({
         flexDirection: 'column',
         border: `1px solid ${alpha('#ffffff', theme.palette.mode === 'dark' ? 0.04 : 0.3)}`,
       })}>
-      <Box sx={{ p: 2.5 }}>
-        <Stack direction="row" spacing={1.5} alignItems="center">
-          <Box
-            sx={{
-              minWidth: 66,
-              height: 66,
-              borderRadius: '10px',
-              backgroundColor: 'var(--pos-order-avatar-bg)',
-              display: 'grid',
-              placeItems: 'center',
-              fontSize: 30,
-              fontWeight: 700,
-            }}>
-            {order.channel === 'delivery' ? 'YD' : order.channel === 'takeaway' ? 'TG' : getPosTableNumberLabel(order)}
-          </Box>
-
-          <Stack spacing={0.25}>
-            <Typography variant="h5">{getCashierOrderDisplayName(order)}</Typography>
-            <Typography variant="body2" color="text.secondary">
-              {copy.orders}: {getCashierOrderNumberLabel(order)}
-            </Typography>
-            {getPosZoneContextLabel(order) ? (
-              <Typography variant="body2" color="text.secondary" noWrap title={getPosZoneContextLabel(order)}>
-                {getPosZoneContextLabel(order)}
-              </Typography>
-            ) : null}
-            <Typography variant="body2" color="text.secondary">
-              {order.channel === 'delivery'
-                ? copy.deliveryLabel
-                : order.channel === 'takeaway'
-                  ? copy.takeawayLabel
-                  : `${order.guestCount} ${copy.guests}`}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {selectedTab === 'closed' ? (order.cashierName ?? order.openedByName) : order.openedByName}
-            </Typography>
-          </Stack>
-        </Stack>
-      </Box>
+      <OpenCheckOrderSummary context="detail" copy={copy} locale={locale} order={order} selectedTab={selectedTab} />
 
       <Box sx={{ px: 2.5, pb: 2, flex: 1, overflowY: 'auto' }}>
         <Stack spacing={1.55}>

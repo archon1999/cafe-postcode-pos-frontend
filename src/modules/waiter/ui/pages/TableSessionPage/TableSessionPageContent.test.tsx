@@ -237,14 +237,20 @@ describe('TableSessionPageContent', () => {
     expect(navigateMock).toHaveBeenCalledWith('/waiter/halls', { replace: true });
   });
 
-  it('shows the table number and the three-channel segment with hall active', () => {
+  it('shows the table and emphasized hall location without the order label or channel tabs', () => {
     render(<TableSessionPageContent sessionId="session-1" mode="hall" />);
 
     expect(screen.getByText('7')).toBeTruthy();
-    expect(screen.getByText('VIP kabina · VIP zal')).toBeTruthy();
-    expect(screen.getByText('Zal').getAttribute('aria-current')).toBe('true');
-    expect(screen.getByText('Soboy')).toBeTruthy();
-    expect(screen.getByText('Dostavka')).toBeTruthy();
+    expect(screen.getByText('VIP kabina')).toBeTruthy();
+    expect(screen.getByText('VIP zal')).toBeTruthy();
+    expect(screen.queryByText('VIP kabina · VIP zal')).toBeNull();
+    expect(document.querySelector('[data-location-level="zone"]')?.textContent).toBe('VIP kabina');
+    expect(document.querySelector('[data-location-level="hall"]')?.textContent).toBe('VIP zal');
+    expect(document.querySelectorAll('[data-location-emphasis="true"]').length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Buyurtma:/)).toBeNull();
+    expect(screen.queryByText('Zal')).toBeNull();
+    expect(screen.queryByText('Soboy')).toBeNull();
+    expect(screen.queryByText('Dostavka')).toBeNull();
   });
 
   it('opens the price-hidden catalog for the current table session', () => {
