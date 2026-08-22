@@ -12,10 +12,7 @@ import type {
 } from 'modules/kitchen/domain';
 
 import { KitchenMonitorDisplay } from './KitchenMonitorPage';
-import {
-  TvMonitorRenderBoundary,
-  type TvMonitorDiagnosticSnapshot,
-} from './TvMonitorDiagnostics';
+import { TvMonitorRenderBoundary, type TvMonitorDiagnosticSnapshot } from './TvMonitorDiagnostics';
 
 const PAIRING_POLL_INTERVAL_MS = 2000;
 const QUEUE_POLL_INTERVAL_MS = 5000;
@@ -37,12 +34,9 @@ const INITIAL_DIAGNOSTICS: TvMonitorDiagnosticSnapshot = {
 
 function requiresPairing(error: unknown) {
   if (!axios.isAxiosError(error) || error.response?.status !== 401) return false;
-  return [
-    'device_required',
-    'device_revoked',
-    'device_proof_invalid',
-    'tv_pairing_required',
-  ].includes(String(error.response.data?.code || ''));
+  return ['device_required', 'device_revoked', 'device_proof_invalid', 'tv_pairing_required'].includes(
+    String(error.response.data?.code || ''),
+  );
 }
 
 function describeTvMonitorError(error: unknown) {
@@ -65,7 +59,7 @@ export function TvMonitorPage() {
   const [announcementAudio] = useState<HTMLAudioElement | null>(() =>
     typeof Audio === 'undefined' ? null : new Audio(),
   );
-  const [diagnostics, setDiagnostics] = useState<TvMonitorDiagnosticSnapshot>(INITIAL_DIAGNOSTICS);
+  const [, setDiagnostics] = useState<TvMonitorDiagnosticSnapshot>(INITIAL_DIAGNOSTICS);
   const pairingRequestRef = useRef<Promise<TvMonitorPairingSession> | null>(null);
   const bootstrapRequestRef = useRef<ReturnType<typeof kitchenRepository.bootstrapTvMonitor> | null>(null);
   const lastQueueDiagnosticRef = useRef({ signature: '', reportedAt: 0 });

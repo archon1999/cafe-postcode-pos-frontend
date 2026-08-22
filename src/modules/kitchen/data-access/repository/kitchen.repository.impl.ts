@@ -160,9 +160,7 @@ function safeClaimUrl(response: PairingApiResponse, pairingId: string) {
     throw new Error('Server QR ulash ma’lumotini to‘liq qaytarmadi.');
   }
   const url = new URL(response.claimUrl, window.location.origin);
-  const trustedUrl = new URL(
-    String(import.meta.env.VITE_CONTROL_APP_URL || 'https://control.cafe-postcode.uz'),
-  );
+  const trustedUrl = new URL(String(import.meta.env.VITE_CONTROL_APP_URL || 'https://control.cafe-postcode.uz'));
   trustedUrl.pathname = '/pair';
   const fragment = new URLSearchParams(url.hash.replace(/^#/, ''));
   const isLoopback = ['localhost', '127.0.0.1', '::1'].includes(url.hostname);

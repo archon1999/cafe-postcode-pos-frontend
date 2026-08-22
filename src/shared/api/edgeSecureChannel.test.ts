@@ -473,13 +473,10 @@ describe('Local Agent application-layer secure channel', () => {
         origin,
         agentPublicKey: staleAgentPublic,
         agentPublicKeyFingerprint: await sha256Hex(base64UrlToBytes(staleAgentPublic)),
-        sessionKey: await crypto.subtle.importKey(
-          'raw',
-          crypto.getRandomValues(new Uint8Array(32)),
-          'AES-GCM',
-          false,
-          ['encrypt', 'decrypt'],
-        ),
+        sessionKey: await crypto.subtle.importKey('raw', crypto.getRandomValues(new Uint8Array(32)), 'AES-GCM', false, [
+          'encrypt',
+          'decrypt',
+        ]),
         channelId: 'stale-channel',
         expiresAt: new Date(Date.now() + 30 * 60_000).toISOString(),
       },

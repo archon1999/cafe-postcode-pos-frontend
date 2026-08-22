@@ -16,7 +16,6 @@ type Props = {
   onClose: () => void;
   onOpen: () => void;
   onReserve: () => void;
-  onOpenSession: (sessionId: string) => void;
 };
 
 export function OpenTableDialog({
@@ -32,7 +31,6 @@ export function OpenTableDialog({
   onClose,
   onOpen,
   onReserve,
-  onOpenSession,
 }: Props) {
   return (
     <Dialog open={Boolean(table)} onClose={onClose} maxWidth="xs" fullWidth>
@@ -51,15 +49,6 @@ export function OpenTableDialog({
               onGuestCountChange(Math.max(1, Math.min(Math.trunc(Number(event.target.value)) || 1, guestLimit)))
             }
           />
-          {table?.activeSessions?.length ? (
-            <Stack spacing={1}>
-              {table.activeSessions.map((activeSession, index) => (
-                <Button key={activeSession.id} variant="outlined" onClick={() => onOpenSession(activeSession.id)}>
-                  {copy.openTable} #{index + 1}
-                </Button>
-              ))}
-            </Stack>
-          ) : null}
         </Stack>
       </DialogContent>
       <DialogActions>

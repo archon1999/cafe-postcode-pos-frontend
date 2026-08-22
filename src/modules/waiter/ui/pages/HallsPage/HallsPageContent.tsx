@@ -156,15 +156,6 @@ export function HallsPageContent() {
       if (!canManageTables) {
         return;
       }
-
-      const availableSeats = getAvailableSeatCount(currentTable);
-      if (availableSeats > 0) {
-        const nextGuestCount = Math.max(1, Math.min(getSupportedSeatCount(currentTable.seatCount), availableSeats));
-        setGuestCount(nextGuestCount);
-        setSelectedTable(currentTable);
-        return;
-      }
-
       void navigate(`/waiter/table-session?sessionId=${currentTable.activeSession.id}`);
       return;
     }
@@ -410,10 +401,6 @@ export function HallsPageContent() {
         onClose={() => setSelectedTable(null)}
         onOpen={() => openSessionMutation.mutate()}
         onReserve={() => reserveTableMutation.mutate()}
-        onOpenSession={(sessionId) => {
-          setSelectedTable(null);
-          void navigate(`/waiter/table-session?sessionId=${sessionId}`);
-        }}
       />
 
       <TableActionsMenu

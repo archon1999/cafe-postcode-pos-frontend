@@ -7,12 +7,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const scanOrderMarkingMock = vi.hoisted(() => vi.fn());
 const removeOrderItemMock = vi.hoisted(() => vi.fn());
+const payOrderMock = vi.hoisted(() => vi.fn());
 const requestEdgePrintDocumentsMock = vi.hoisted(() => vi.fn());
 const invalidateQueriesInBackgroundMock = vi.hoisted(() => vi.fn());
 
 vi.mock('../data-access', () => ({
   cashierRepository: {
     removeOrderItem: removeOrderItemMock,
+    payOrder: payOrderMock,
     scanOrderMarking: scanOrderMarkingMock,
   },
 }));
@@ -28,6 +30,7 @@ vi.mock('shared/api/query-client', () => ({
 
 import {
   useCashierOrderScanMutation,
+  useCashierPaymentMutation,
   useRemoveCashierOrderItemMutation,
   useRemoveCashierPaymentOrderItemMutation,
 } from './mutations';
@@ -46,6 +49,7 @@ describe('useCashierOrderScanMutation', () => {
   beforeEach(() => {
     scanOrderMarkingMock.mockReset();
     removeOrderItemMock.mockReset();
+    payOrderMock.mockReset();
     requestEdgePrintDocumentsMock.mockReset();
     invalidateQueriesInBackgroundMock.mockReset();
   });
@@ -119,5 +123,21 @@ describe('useCashierOrderScanMutation', () => {
 
     expect(removeOrderItemMock).toHaveBeenCalledWith('item-2');
     expect(requestEdgePrintDocumentsMock).toHaveBeenCalledWith(['cancel-document-payment'], onPrintError);
+  });
+
+  it('invalidates the halls projection after a successful payment', async () => {
+    payOrderMock.mockResolvedValue({
+      order: { id: 'order-1', kitchenPrintDocuments: [] },
+      kitchenPrintDocuments: [],
+    });
+    const { result } = renderHook(() => useCashierPaymentMutation({ orderId: 'order-1' }), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync({ method: 'cash', amount: 11000, registerFiscal: false });
+    });
+
+    expect(invalidateQueriesInBackgroundMock).toHaveBeenCalledWith(expect.arrayContaining([['waiter', 'halls']]));
   });
 });

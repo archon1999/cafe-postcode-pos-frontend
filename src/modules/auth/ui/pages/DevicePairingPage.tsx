@@ -85,14 +85,8 @@ export function DevicePairingPage() {
 
   useEffect(() => {
     const expired =
-      pairing?.status === 'EXPIRED' ||
-      (pairing?.status === 'PENDING' && Date.parse(pairing.expiresAt) <= Date.now());
-    if (
-      !pairing ||
-      !expired ||
-      actionPending ||
-      autoRestartedPairing.current === pairing.id
-    ) {
+      pairing?.status === 'EXPIRED' || (pairing?.status === 'PENDING' && Date.parse(pairing.expiresAt) <= Date.now());
+    if (!pairing || !expired || actionPending || autoRestartedPairing.current === pairing.id) {
       return;
     }
     autoRestartedPairing.current = pairing.id;

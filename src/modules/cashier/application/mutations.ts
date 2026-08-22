@@ -196,6 +196,7 @@ export function useCashierPaymentMutation(options: {
         cashierKeys.builderOrders,
         cashierKeys.paymentOrder(orderId),
         ['kitchen', 'queue'],
+        ['waiter', 'halls'],
       ]);
       onSuccess?.();
     },

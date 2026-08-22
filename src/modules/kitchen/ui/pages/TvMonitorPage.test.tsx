@@ -75,8 +75,7 @@ describe('TvMonitorPage', () => {
   it('uses the backend fragment QR and starts signed queue polling after approval', async () => {
     const onQueueSuccess = vi.fn();
     window.CafePostcodeTv = { onQueueSuccess };
-    const claimUrl =
-      'https://control.cafe-postcode.uz/pair#v=1&pairingId=pairing-1&claimToken=one-time-claim';
+    const claimUrl = 'https://control.cafe-postcode.uz/pair#v=1&pairingId=pairing-1&claimToken=one-time-claim';
     vi.spyOn(kitchenRepository, 'createTvMonitorPairing').mockResolvedValue({
       id: 'pairing-1',
       pollToken: 'poll-secret',
