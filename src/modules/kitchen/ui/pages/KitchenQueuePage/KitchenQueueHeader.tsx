@@ -1,4 +1,4 @@
-import { alpha, Button, Stack } from '@mui/material';
+import { Button, Stack } from '@mui/material';
 
 import type { getPosCopy } from 'shared/locale/copy';
 import { PosIconAction } from 'shared/ui/pos-primitives';
@@ -49,41 +49,21 @@ export function KitchenQueueHeader({
                 key={item.value}
                 variant="contained"
                 onClick={() => onSelectTab(item.value)}
-                sx={(theme) => ({
+                sx={{
                   flex: 1,
                   minHeight: { xs: 56, md: 70 },
                   borderRadius: { xs: '14px', md: '16px' },
-                  backgroundImage: 'none',
-                  backgroundColor: active
-                    ? theme.palette.primary.main
-                    : theme.palette.mode === 'dark'
-                      ? '#2b2d31'
-                      : alpha('#fffaf3', 0.94),
-                  color: active ? '#ffffff' : theme.palette.mode === 'dark' ? '#a2a6ad' : '#5f6773',
+                  background: active ? 'var(--pos-primary-gradient)' : 'var(--pos-tab-idle-bg)',
+                  color: active ? 'var(--pos-tab-active-color)' : 'var(--pos-tab-idle-color)',
                   fontSize: { xs: 14, md: 17 },
                   fontWeight: 600,
                   justifyContent: 'center',
-                  border: `1px solid ${
-                    active
-                      ? 'transparent'
-                      : alpha(
-                          theme.palette.mode === 'dark' ? '#ffffff' : '#6c5330',
-                          theme.palette.mode === 'dark' ? 0 : 0.1,
-                        )
-                  }`,
-                  boxShadow: active
-                    ? '0 12px 22px rgba(27,132,236,0.24)'
-                    : theme.palette.mode === 'dark'
-                      ? 'none'
-                      : '0 12px 24px rgba(78, 55, 28, 0.08)',
+                  border: `1px solid ${active ? 'transparent' : 'var(--pos-accent-border)'}`,
+                  boxShadow: active ? 'var(--pos-tab-active-shadow)' : 'none',
                   '&:hover': {
-                    backgroundColor: active
-                      ? theme.palette.primary.dark
-                      : theme.palette.mode === 'dark'
-                        ? '#303339'
-                        : '#f4ecdf',
+                    background: active ? 'var(--pos-tab-active-hover-bg)' : 'var(--pos-tab-idle-hover-bg)',
                   },
-                })}>
+                }}>
                 {item.label}
               </Button>
             );

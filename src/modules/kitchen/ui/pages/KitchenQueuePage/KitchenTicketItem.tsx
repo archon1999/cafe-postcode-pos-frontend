@@ -57,9 +57,17 @@ export function KitchenTicketItem({
         borderRadius: '16px',
         px: 1.3,
         py: 1.2,
-        backgroundColor: theme.palette.mode === 'dark' ? '#33363b' : '#e8dfd2',
-        border: `1px solid ${isSelected ? alpha(theme.palette.primary.main, 0.65) : alpha('#ffffff', 0.03)}`,
-        boxShadow: isSelected ? '0 10px 26px rgba(21, 120, 224, 0.14)' : 'none',
+        backgroundColor: isSelected
+          ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.16 : 0.1)
+          : 'var(--pos-cart-item-bg)',
+        border: `1px solid ${isSelected ? alpha(theme.palette.primary.main, 0.65) : theme.palette.divider}`,
+        boxShadow: isSelected ? `0 10px 26px ${alpha(theme.palette.primary.main, 0.16)}` : 'none',
+        transition: 'background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease',
+        '&:hover': {
+          backgroundColor: isSelected
+            ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.2 : 0.14)
+            : 'var(--pos-cart-item-hover-bg)',
+        },
       })}>
       <Stack spacing={1}>
         <Stack

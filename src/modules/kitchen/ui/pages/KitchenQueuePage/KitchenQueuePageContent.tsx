@@ -127,29 +127,35 @@ export function KitchenQueuePageContent() {
                   sx={(theme) => ({
                     borderRadius: '22px',
                     overflow: 'hidden',
-                    backgroundColor: theme.palette.mode === 'dark' ? '#26292e' : '#f6eee4',
-                    border: `1px solid ${
+                    backgroundColor:
                       selectedTicketId === ticket.id
-                        ? alpha(theme.palette.primary.main, 0.32)
-                        : alpha('#ffffff', theme.palette.mode === 'dark' ? 0.03 : 0.28)
+                        ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.12 : 0.08)
+                        : 'var(--pos-order-panel-bg)',
+                    border: `1px solid ${
+                      selectedTicketId === ticket.id ? alpha(theme.palette.primary.main, 0.32) : theme.palette.divider
                     }`,
                     minHeight: isMobile ? 0 : 420,
-                    boxShadow: selectedTicketId === ticket.id ? '0 12px 24px rgba(17, 120, 224, 0.06)' : 'none',
+                    boxShadow:
+                      selectedTicketId === ticket.id
+                        ? `0 12px 24px ${alpha(theme.palette.primary.main, 0.1)}`
+                        : 'var(--pos-shadow-soft)',
                     cursor: selectedTab === 'active' ? 'pointer' : 'default',
+                    transition: 'background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease',
                   })}>
                   <Stack spacing={1.15}>
                     <Box
                       sx={(theme) => ({
                         px: 2.05,
                         py: 1.45,
-                        backgroundColor: theme.palette.mode === 'dark' ? '#35383d' : '#ddd5c8',
+                        backgroundColor: 'var(--pos-order-avatar-bg)',
+                        borderBottom: `1px solid ${theme.palette.divider}`,
                       })}>
                       <Stack direction="row" justifyContent="space-between" spacing={1.5}>
                         <Stack spacing={0.18}>
                           <Typography sx={{ fontSize: 16, fontWeight: 700, lineHeight: 1.15 }}>
                             {ticket.waiterName || copy.kitchen}
                           </Typography>
-                          <Typography variant="body2" sx={{ color: '#9a9fa8', fontSize: 13 }}>
+                          <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13 }}>
                             {getKitchenTicketContextLabel(ticket, copy)}
                           </Typography>
                         </Stack>
@@ -157,7 +163,7 @@ export function KitchenQueuePageContent() {
                           <Typography sx={{ fontSize: 17, fontWeight: 700, lineHeight: 1.1 }}>
                             #{getKitchenTicketDisplayNumber(ticket)}
                           </Typography>
-                          <Typography variant="body2" sx={{ color: '#9a9fa8', fontSize: 13 }}>
+                          <Typography variant="body2" color="text.secondary" sx={{ fontSize: 13 }}>
                             {formatTime(ticket.createdAt, locale)}
                           </Typography>
                         </Stack>
@@ -269,14 +275,14 @@ export function KitchenQueuePageContent() {
         </Box>
       ) : (
         <Box
-          sx={(theme) => ({
+          sx={{
             flex: 1,
             minHeight: 0,
             borderRadius: '22px',
             display: 'grid',
             placeItems: 'center',
-            backgroundColor: theme.palette.mode === 'dark' ? '#26292e' : alpha('#ffffff', 0.72),
-          })}>
+            backgroundColor: 'var(--pos-check-card-empty-bg)',
+          }}>
           <Typography variant="h6" color="text.secondary">
             {copy.kitchenEmpty}
           </Typography>
