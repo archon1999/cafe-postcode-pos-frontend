@@ -21,8 +21,24 @@ export async function enqueueEdgePrintDocuments(documentIds: string[]) {
   };
 }
 
+export async function enqueueEdgeReprintDocuments(documentIds: string[]) {
+  const settled = await Promise.allSettled(
+    [...new Set(documentIds.filter(Boolean))].map((documentId) => edgePrintRepository.print({ documentId })),
+  );
+  return {
+    jobs: settled.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : [])),
+    errors: settled.flatMap((result) => (result.status === 'rejected' ? [result.reason] : [])),
+  };
+}
+
 export function requestEdgePrintDocuments(documentIds: string[], onError?: (error: unknown) => void) {
   void enqueueEdgePrintDocuments(documentIds).then(({ errors }) => {
+    errors.forEach(onError ?? (() => undefined));
+  });
+}
+
+export function requestEdgeReprintDocuments(documentIds: string[], onError?: (error: unknown) => void) {
+  void enqueueEdgeReprintDocuments(documentIds).then(({ errors }) => {
     errors.forEach(onError ?? (() => undefined));
   });
 }

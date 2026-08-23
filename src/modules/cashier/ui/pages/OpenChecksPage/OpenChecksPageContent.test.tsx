@@ -17,6 +17,7 @@ const fiscalClosedRefetchMock = vi.fn();
 const ensurePrintDocumentMutateAsyncMock = vi.fn();
 const printPrecheckMutateMock = vi.fn();
 const requestEdgePrintDocumentsMock = vi.hoisted(() => vi.fn());
+const requestEdgeReprintDocumentsMock = vi.hoisted(() => vi.fn());
 const refundMutateAsyncMock = vi.fn();
 let openOrdersState: Array<Record<string, unknown>> = [];
 
@@ -157,6 +158,7 @@ vi.mock('shared/ui/pos-primitives', () => ({
 
 vi.mock('modules/edge-printing/application', () => ({
   requestEdgePrintDocuments: requestEdgePrintDocumentsMock,
+  requestEdgeReprintDocuments: requestEdgeReprintDocumentsMock,
 }));
 
 describe('OpenChecksPageContent', () => {
@@ -176,6 +178,7 @@ describe('OpenChecksPageContent', () => {
       receipt: { id: 'receipt-materialized', printDocument: 'document-materialized' },
     });
     requestEdgePrintDocumentsMock.mockClear();
+    requestEdgeReprintDocumentsMock.mockClear();
     refundMutateAsyncMock.mockReset();
     openOrdersState = [
       {
@@ -410,7 +413,7 @@ describe('OpenChecksPageContent', () => {
 
     await waitFor(() => {
       expect(ensurePrintDocumentMutateAsyncMock).toHaveBeenCalledWith('payment-6');
-      expect(requestEdgePrintDocumentsMock).toHaveBeenCalledWith(['document-materialized'], expect.any(Function));
+      expect(requestEdgeReprintDocumentsMock).toHaveBeenCalledWith(['document-materialized'], expect.any(Function));
     });
   });
 
@@ -443,7 +446,7 @@ describe('OpenChecksPageContent', () => {
     fireEvent.click(screen.getByRole('button', { name: /Oddiy cheklar/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Oddiy chekni qayta chiqarish' }));
 
-    expect(requestEdgePrintDocumentsMock).toHaveBeenCalledWith(['document-local'], expect.any(Function));
+    expect(requestEdgeReprintDocumentsMock).toHaveBeenCalledWith(['document-local'], expect.any(Function));
     expect(ensurePrintDocumentMutateAsyncMock).not.toHaveBeenCalled();
   });
 
@@ -621,7 +624,7 @@ describe('OpenChecksPageContent', () => {
 
     await waitFor(() => {
       expect(ensurePrintDocumentMutateAsyncMock).toHaveBeenCalledWith('payment-7');
-      expect(requestEdgePrintDocumentsMock).toHaveBeenCalledWith(['document-7'], expect.any(Function));
+      expect(requestEdgeReprintDocumentsMock).toHaveBeenCalledWith(['document-7'], expect.any(Function));
     });
   });
 

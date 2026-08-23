@@ -19,7 +19,7 @@ import {
   groupCashierOrderItemsByStation,
 } from 'modules/cashier/domain';
 import type { CashierCheckStatus, CashierOrder } from 'modules/cashier/domain/entities/order.types';
-import { requestEdgePrintDocuments } from 'modules/edge-printing/application';
+import { requestEdgePrintDocuments, requestEdgeReprintDocuments } from 'modules/edge-printing/application';
 import { refreshTransportAndReload } from 'shared/api/transportResolver';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { getPosCopy } from 'shared/locale/copy';
@@ -216,7 +216,7 @@ export function OpenChecksPageContent() {
         const handlePrintError = (error: unknown) =>
           toast.info(error instanceof Error ? error.message : 'Printer so‘rovini yuborib bo‘lmadi');
         if (existingReprintDocument) {
-          requestEdgePrintDocuments([existingReprintDocument], handlePrintError);
+          requestEdgeReprintDocuments([existingReprintDocument], handlePrintError);
           return;
         }
         ensurePrintDocumentMutation
@@ -225,7 +225,7 @@ export function OpenChecksPageContent() {
             if (!response.receipt?.printDocument) {
               throw new Error('Chek uchun print hujjati tayyor emas');
             }
-            requestEdgePrintDocuments([response.receipt.printDocument], handlePrintError);
+            requestEdgeReprintDocuments([response.receipt.printDocument], handlePrintError);
           })
           .catch((error) => toast.info(error instanceof Error ? error.message : 'Printer ishlamayapti'));
       }}
