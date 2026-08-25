@@ -17,6 +17,7 @@ const item: PosCartItem = {
   catalogItem: 'lavash',
   catalogItemName: 'Lavash',
   note: 'Piyozsiz',
+  modifiers: [{ groupName: 'Xamir', optionName: 'Pishloqli bort', priceDelta: 0 }],
   quantity: 1,
   lineTotal: 30_000,
   status: 'new',
@@ -51,6 +52,14 @@ describe('PosCartItemGroups item notes', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Izohni tahrirlash' }));
 
     expect(props.onEditNote).toHaveBeenCalledWith(item);
+  });
+
+  it('shows the item note after its modifiers', () => {
+    renderGroups();
+
+    const modifier = screen.getByText('Xamir: Pishloqli bort');
+    const note = screen.getByText('Piyozsiz');
+    expect(modifier.compareDocumentPosition(note) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('disables note editing while an optimistic item is still syncing', () => {

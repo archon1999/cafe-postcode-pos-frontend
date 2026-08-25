@@ -127,11 +127,6 @@ export function PaymentOrderPanel({
                     }}>
                     {formatPosItemQuantityLabel(item.catalogItemName, item.quantity, item.saleUnit, locale)}
                   </Typography>
-                  {item.note ? (
-                    <Typography variant="body2" color="text.secondary">
-                      {item.note}
-                    </Typography>
-                  ) : null}
                   {item.modifiers?.map((modifier) => (
                     <Typography
                       key={`${modifier.groupName}-${modifier.optionName}`}
@@ -143,6 +138,11 @@ export function PaymentOrderPanel({
                         : ''}
                     </Typography>
                   ))}
+                  {item.note ? (
+                    <Typography variant="body2" color="text.secondary">
+                      {item.note}
+                    </Typography>
+                  ) : null}
                   {item.status === 'cancelled' ? (
                     <Typography variant="caption" sx={{ color: 'error.main', fontWeight: 700 }}>
                       {copy.cancelled}

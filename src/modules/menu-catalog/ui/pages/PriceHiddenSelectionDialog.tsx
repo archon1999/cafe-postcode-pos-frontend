@@ -76,6 +76,15 @@ export function PriceHiddenSelectionDialog({
                   <Typography variant="subtitle1" noWrap sx={{ color: '#f6f6f4', fontWeight: 900 }}>
                     {item.catalogItemName}
                   </Typography>
+                  {item.modifiers?.map((modifier) => (
+                    <Typography
+                      key={`${modifier.groupName}-${modifier.optionName}`}
+                      variant="body2"
+                      noWrap
+                      sx={{ color: 'rgba(255,255,255,0.48)' }}>
+                      • {modifier.groupName}: {modifier.optionName}
+                    </Typography>
+                  ))}
                   {item.note ? (
                     <Typography variant="body2" noWrap sx={{ color: 'rgba(255,255,255,0.48)' }}>
                       {item.note}

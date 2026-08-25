@@ -269,6 +269,21 @@ export function PosCartItemGroups<TMenuItem extends PosCartMenuItem>({
                   sx={item.status === 'cancelled' ? { textDecoration: 'line-through', opacity: 0.68 } : undefined}>
                   {formatPosItemQuantityLabel(item.catalogItemName, item.quantity, item.saleUnit, locale)}
                 </Typography>
+                {item.modifiers?.map((modifier) => (
+                  <Stack
+                    key={`${modifier.groupName}-${modifier.optionName}`}
+                    direction="row"
+                    spacing={0.65}
+                    alignItems="center">
+                    <Box sx={{ width: 5, height: 5, borderRadius: '50%', bgcolor: 'primary.main', flex: '0 0 auto' }} />
+                    <Typography variant={mobile ? 'caption' : 'body2'} color="text.secondary">
+                      {modifier.groupName}: {modifier.optionName}
+                      {Number(modifier.priceDelta)
+                        ? ` (+${formatCompactMoney(Number(modifier.priceDelta), locale)})`
+                        : ''}
+                    </Typography>
+                  </Stack>
+                ))}
                 {item.note ? (
                   <Stack
                     direction="row"
@@ -289,21 +304,6 @@ export function PosCartItemGroups<TMenuItem extends PosCartMenuItem>({
                     </Typography>
                   </Stack>
                 ) : null}
-                {item.modifiers?.map((modifier) => (
-                  <Stack
-                    key={`${modifier.groupName}-${modifier.optionName}`}
-                    direction="row"
-                    spacing={0.65}
-                    alignItems="center">
-                    <Box sx={{ width: 5, height: 5, borderRadius: '50%', bgcolor: 'primary.main', flex: '0 0 auto' }} />
-                    <Typography variant={mobile ? 'caption' : 'body2'} color="text.secondary">
-                      {modifier.groupName}: {modifier.optionName}
-                      {Number(modifier.priceDelta)
-                        ? ` (+${formatCompactMoney(Number(modifier.priceDelta), locale)})`
-                        : ''}
-                    </Typography>
-                  </Stack>
-                ))}
                 {markingProgressLabel &&
                 Number(item.markingRequiredCount ?? 0) > 0 &&
                 Number(item.markingMissingCount ?? 0) > 0 ? (

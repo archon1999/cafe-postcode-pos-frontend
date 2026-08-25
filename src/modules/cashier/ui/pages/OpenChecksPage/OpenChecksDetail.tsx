@@ -134,6 +134,17 @@ export function OpenChecksDetail({
                           {copy.cancelled}
                         </Typography>
                       ) : null}
+                      {item.modifiers?.map((modifier) => (
+                        <Typography
+                          key={`${modifier.groupName}-${modifier.optionName}`}
+                          variant="body2"
+                          color="text.secondary">
+                          • {modifier.groupName}: {modifier.optionName}
+                          {Number(modifier.priceDelta)
+                            ? ` (+${formatCompactMoney(Number(modifier.priceDelta), locale)})`
+                            : ''}
+                        </Typography>
+                      ))}
                       {item.note ? (
                         <Typography variant="body2" color="text.secondary">
                           {item.note}
