@@ -68,6 +68,10 @@ type CashierOrderDto = Omit<CashierOrder, 'items' | 'orderNumber' | 'displayName
   zone_name?: string | null;
   show_zone_name?: boolean;
   service_fee_components?: CashierOrder['serviceFeeComponents'];
+  service_fee_started_at?: string | null;
+  service_fee_frozen_at?: string | null;
+  service_fee_billable_minutes?: number;
+  service_fee_quote?: CashierOrder['serviceFeeQuote'];
 };
 type CashierPaymentResponseDto = CashierPaymentResponse;
 type CashierCreateOrderResponseDto = CashierCreateOrderResponse;
@@ -119,6 +123,10 @@ export function mapCashierOrder(dto: CashierOrderDto): CashierOrder {
     zoneName: dto.zoneName ?? dto.zone_name ?? null,
     showZoneName: dto.showZoneName ?? dto.show_zone_name ?? false,
     serviceFeeComponents: normalizeServiceFeeComponents(dto.serviceFeeComponents ?? dto.service_fee_components),
+    serviceFeeStartedAt: dto.serviceFeeStartedAt ?? dto.service_fee_started_at ?? null,
+    serviceFeeFrozenAt: dto.serviceFeeFrozenAt ?? dto.service_fee_frozen_at ?? null,
+    serviceFeeBillableMinutes: dto.serviceFeeBillableMinutes ?? dto.service_fee_billable_minutes,
+    serviceFeeQuote: dto.serviceFeeQuote ?? dto.service_fee_quote ?? null,
     items: dto.items.map((item) => ({
       ...item,
       markingRequiredCount: item.markingRequiredCount ?? item.marking_required_count,

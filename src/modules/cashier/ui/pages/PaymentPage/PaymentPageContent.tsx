@@ -209,6 +209,11 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     paymentFailedMessage: copy.paymentFailed,
     splitParts,
     finalTotal: totalEditable ? paymentAmount : undefined,
+    serviceFeeQuote: orderQuery.data?.serviceFeeQuote,
+    onQuoteStale: async () => {
+      await orderQuery.refetch();
+      setSplitParts(null);
+    },
     onPaymentComplete: handleSuccessfulPaymentResponse,
     setAmount,
     setSplitParts,
@@ -235,7 +240,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   const serviceFeeAmount = Number(orderQuery.data?.serviceFee ?? 0);
   const serviceFeeEnabled = Boolean(orderQuery.data?.serviceFeeEnabled ?? serviceFeePercent > 0);
   const shouldShowServiceFee = serviceFeeEnabled && (serviceFeePercent > 0 || serviceFeeAmount > 0);
-  const serviceFeeLabel = `${copy.serviceFee} (${serviceFeePercent}%)`;
+  const serviceFeeLabel = serviceFeePercent > 0 ? `${copy.serviceFee} (${serviceFeePercent}%)` : copy.serviceFee;
   const serviceFeeRows = buildServiceFeeRows(orderQuery.data?.serviceFeeComponents, {
     restaurant: copy.restaurantServiceFee,
     hall: copy.hallServiceFee,

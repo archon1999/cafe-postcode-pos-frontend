@@ -106,7 +106,9 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
     ? [
         {
           scope: 'restaurant',
+          mode: session.restaurantContext.serviceFeeMode ?? 'percentage',
           percent: session.restaurantContext.serviceFeePercent ?? 0,
+          hourlyRate: session.restaurantContext.serviceFeeHourlyRate ?? 0,
         },
       ]
     : [];
@@ -127,10 +129,11 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
     },
     defaultServiceFeeEnabled: defaultServiceFeeComponents.length > 0,
     defaultServiceFeePercent: defaultServiceFeeComponents.reduce(
-      (sum, component) => sum + Number(component.percent),
+      (sum, component) => sum + Number(component.percent ?? 0),
       0,
     ),
     defaultServiceFeeComponents,
+    defaultServiceFeeStartedAt: sessionQuery.data?.openedAt,
     defaultVatEnabled: Boolean(session?.restaurantContext?.vatEnabled),
     defaultVatPercent: session?.restaurantContext?.vatPercent ?? 0,
     removeOrderItem: (itemId) => waiterRepository.removeOrderItem(itemId),
@@ -185,12 +188,12 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
   const activeServiceFeeComponents = currentOrder?.serviceFeeComponents ?? defaultServiceFeeComponents;
   const serviceFeePercent = Number(
     currentOrder?.serviceFeePercent ??
-      activeServiceFeeComponents.reduce((sum, component) => sum + Number(component.percent), 0),
+      activeServiceFeeComponents.reduce((sum, component) => sum + Number(component.percent ?? 0), 0),
   );
   const serviceFeeAmount = Number(currentOrder?.serviceFee ?? 0);
   const serviceFeeEnabled = Boolean(currentOrder?.serviceFeeEnabled ?? activeServiceFeeComponents.length > 0);
   const shouldShowServiceFee = serviceFeeEnabled && (serviceFeePercent > 0 || serviceFeeAmount > 0);
-  const serviceFeeLabel = `${copy.serviceFee} (${serviceFeePercent}%)`;
+  const serviceFeeLabel = serviceFeePercent > 0 ? `${copy.serviceFee} (${serviceFeePercent}%)` : copy.serviceFee;
   const serviceFeeRows = buildServiceFeeRows(activeServiceFeeComponents, {
     restaurant: copy.restaurantServiceFee,
     hall: copy.hallServiceFee,

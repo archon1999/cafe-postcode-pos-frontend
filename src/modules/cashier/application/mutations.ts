@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { enqueueEdgePrintDocuments, requestEdgePrintDocuments } from 'modules/edge-printing/application';
 import { invalidateQueriesInBackground } from 'shared/api/query-client';
 import type { PosModifierSelection } from 'shared/pos/modifiers';
+import type { PosServiceFeeQuote } from 'shared/pos/service-fees';
 
 import { cashierRepository } from '../data-access';
 import type { CashierMenuItem, CashierShiftCloseResponse, PaymentMethod } from '../domain';
@@ -168,6 +169,7 @@ export function useCashierPaymentMutation(options: {
       manualCardReason?: string;
       registerFiscal?: boolean;
       finalTotal?: number;
+      serviceFeeQuote?: PosServiceFeeQuote | null;
     }) => {
       if (!orderId) {
         throw new Error('Order id is missing');
@@ -180,6 +182,7 @@ export function useCashierPaymentMutation(options: {
         manualCardReason: payload.manualCardReason,
         registerFiscal: payload.registerFiscal,
         finalTotal: payload.finalTotal,
+        serviceFeeQuote: payload.serviceFeeQuote,
       });
       requestEdgePrintDocuments(
         response.kitchenPrintDocuments ?? response.order.kitchenPrintDocuments ?? [],

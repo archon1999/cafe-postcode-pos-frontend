@@ -59,6 +59,8 @@ export function useCashierPaymentOrderQuery(orderId: string | null) {
     queryKey: cashierKeys.paymentOrder(orderId),
     enabled: Boolean(orderId),
     queryFn: () => cashierRepository.getOrder(orderId as string),
+    refetchInterval: 2_000,
+    refetchIntervalInBackground: false,
   });
 }
 

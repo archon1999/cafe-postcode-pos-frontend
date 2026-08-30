@@ -33,7 +33,7 @@ import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { getPosCopy } from 'shared/locale/copy';
 import { selectionsFromOrderModifiers, type PosModifierSelection } from 'shared/pos/modifiers';
 import { isTemporaryBuilderId } from 'shared/pos/optimistic-builder-order';
-import { buildServiceFeeRows } from 'shared/pos/service-fees';
+import { buildServiceFeeRows, type PosServiceFeeComponent } from 'shared/pos/service-fees';
 import { useOptimisticBuilderOrder } from 'shared/pos/useOptimisticBuilderOrder';
 import { useScannerInput } from 'shared/pos/useScannerInput';
 import { addPosQuantities } from 'shared/pos/utils';
@@ -107,6 +107,16 @@ export function CashierBuilderPageContent() {
   const menuQuery = useCashierMenuQuery();
   const ordersQuery = useCashierBuilderOrdersQuery();
   const editOrderQuery = useCashierPaymentOrderQuery(editOrderId);
+  const restaurantServiceFeeComponents: PosServiceFeeComponent[] = session?.restaurantContext?.serviceFeeEnabled
+    ? [
+        {
+          scope: 'restaurant',
+          mode: session.restaurantContext.serviceFeeMode ?? 'percentage',
+          percent: session.restaurantContext.serviceFeePercent ?? 0,
+          hourlyRate: session.restaurantContext.serviceFeeHourlyRate ?? 0,
+        },
+      ]
+    : [];
   const serverOrder = useMemo(
     () => editOrderQuery.data ?? getCurrentCashierBuilderOrder(ordersQuery.data, session?.user.id),
     [editOrderQuery.data, ordersQuery.data, session?.user.id],
@@ -124,6 +134,7 @@ export function CashierBuilderPageContent() {
     defaultServiceFeeEnabled: builderChannel === 'hall' && Boolean(session?.restaurantContext?.serviceFeeEnabled),
     defaultServiceFeePercent:
       builderChannel === 'hall' ? Number(session?.restaurantContext?.serviceFeePercent ?? 0) : 0,
+    defaultServiceFeeComponents: builderChannel === 'hall' ? restaurantServiceFeeComponents : [],
     defaultVatEnabled: Boolean(session?.restaurantContext?.vatEnabled),
     defaultVatPercent: session?.restaurantContext?.vatPercent ?? 0,
     removeOrderItem: (itemId) => cashierRepository.removeOrderItem(itemId),
@@ -279,7 +290,7 @@ export function CashierBuilderPageContent() {
   const serviceFeeAmount = Number(currentOrder?.serviceFee ?? 0);
   const serviceFeeEnabled = Boolean(currentOrder?.serviceFeeEnabled);
   const shouldShowServiceFee = serviceFeeEnabled && (serviceFeePercent > 0 || serviceFeeAmount > 0);
-  const serviceFeeLabel = `${copy.serviceFee} (${serviceFeePercent}%)`;
+  const serviceFeeLabel = serviceFeePercent > 0 ? `${copy.serviceFee} (${serviceFeePercent}%)` : copy.serviceFee;
   const serviceFeeRows = buildServiceFeeRows(currentOrder?.serviceFeeComponents, {
     restaurant: copy.restaurantServiceFee,
     hall: copy.hallServiceFee,

@@ -2,6 +2,7 @@ import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 
 import { useCashierPaymentMutation } from 'modules/cashier/application';
 import type { CashierPaymentResponse, PaymentMethod } from 'modules/cashier/domain';
+import type { PosServiceFeeQuote } from 'shared/pos/service-fees';
 
 import { getMartaNon2xxDebugJson, getMutationErrorDetail } from './payment-error-debug';
 import type { SplitPaymentPart } from './usePaymentEditorState';
@@ -13,6 +14,7 @@ type PaymentCommand = {
   manualCardOverride?: boolean;
   manualCardReason?: string;
   finalTotal?: number;
+  serviceFeeQuote?: PosServiceFeeQuote | null;
 };
 
 type FailedPaymentAttempt = PaymentCommand & {
@@ -31,6 +33,8 @@ type Options = {
   paymentFailedMessage: string;
   splitParts: SplitPaymentPart[] | null;
   finalTotal?: number;
+  serviceFeeQuote?: PosServiceFeeQuote | null;
+  onQuoteStale?: () => void | Promise<void>;
   onPaymentComplete: (response: CashierPaymentResponse, paidAmount: number) => void;
   setAmount: (value: string) => void;
   setSplitParts: Dispatch<SetStateAction<SplitPaymentPart[] | null>>;
@@ -43,6 +47,8 @@ export function usePaymentSubmission({
   paymentFailedMessage,
   splitParts,
   finalTotal,
+  serviceFeeQuote,
+  onQuoteStale,
   onPaymentComplete,
   setAmount,
   setSplitParts,
@@ -56,7 +62,20 @@ export function usePaymentSubmission({
   const [cardFailureDebugJson, setCardFailureDebugJson] = useState('');
   const [failedPaymentAttempt, setFailedPaymentAttempt] = useState<FailedPaymentAttempt | null>(null);
 
+  const isServiceFeeQuoteStale = (error: unknown) => {
+    const responseData = (error as { response?: { data?: { code?: string } } })?.response?.data;
+    return responseData?.code === 'SERVICE_FEE_QUOTE_STALE';
+  };
+
   const reportError = (error: unknown, fallback = paymentFailedMessage, failedAttempt?: FailedPaymentAttempt) => {
+    if (isServiceFeeQuoteStale(error)) {
+      void onQuoteStale?.();
+      setErrorMessage('Xizmat haqi yangilandi. Yangi summani qayta tasdiqlang.');
+      setErrorToastOpen(true);
+      setCardFailureOpen(false);
+      setFailedPaymentAttempt(null);
+      return;
+    }
     const detail = getMutationErrorDetail(error) || fallback;
     setErrorMessage(detail);
     setErrorToastOpen(true);
@@ -96,6 +115,7 @@ export function usePaymentSubmission({
         method: part.method,
         amount: part.amount,
         registerFiscal,
+        serviceFeeQuote,
         ...(canApplyTotalOverride && index === 0 && finalTotal !== undefined ? { finalTotal } : {}),
       };
       try {
@@ -132,6 +152,7 @@ export function usePaymentSubmission({
           method,
           amount: paymentAmount,
           registerFiscal,
+          serviceFeeQuote,
           ...(finalTotal !== undefined ? { finalTotal } : {}),
         };
         try {
@@ -159,6 +180,7 @@ export function usePaymentSubmission({
         registerFiscal: attempt.registerFiscal,
         manualCardOverride: true,
         manualCardReason: cardFailureMessage,
+        serviceFeeQuote: attempt.serviceFeeQuote,
         ...(attempt.finalTotal !== undefined ? { finalTotal: attempt.finalTotal } : {}),
       });
       let hasPendingSplitParts = false;

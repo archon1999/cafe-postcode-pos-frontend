@@ -53,7 +53,7 @@ export function OpenChecksDetail({
   const serviceFeeAmount = Number(order.serviceFee ?? 0);
   const serviceFeeEnabled = Boolean(order.serviceFeeEnabled ?? serviceFeePercent > 0);
   const shouldShowServiceFee = serviceFeeEnabled && (serviceFeePercent > 0 || serviceFeeAmount > 0);
-  const serviceFeeLabel = `${copy.serviceFee} (${serviceFeePercent}%)`;
+  const serviceFeeLabel = serviceFeePercent > 0 ? `${copy.serviceFee} (${serviceFeePercent}%)` : copy.serviceFee;
   const serviceFeeRows = buildServiceFeeRows(order.serviceFeeComponents, {
     restaurant: copy.restaurantServiceFee,
     hall: copy.hallServiceFee,

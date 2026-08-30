@@ -1,6 +1,6 @@
 import type { PosModifierSelection, PosOrderItemModifier } from './modifiers';
 import { modifierPriceDelta, orderItemModifierSignature, selectedModifierOptions } from './modifiers';
-import type { PosServiceFeeComponent } from './service-fees';
+import { calculateServiceFeeComponents, type PosServiceFeeComponent } from './service-fees';
 
 export type BuilderMenuItemLike = {
   id: string;
@@ -34,6 +34,8 @@ export type BuilderOrderLike<TItem extends BuilderOrderItemLike = BuilderOrderIt
   serviceFeeEnabled?: boolean;
   serviceFeePercent?: number | string;
   serviceFeeComponents?: PosServiceFeeComponent[];
+  serviceFeeStartedAt?: string | null;
+  serviceFeeFrozenAt?: string | null;
   vatEnabled?: boolean;
   vatPercent?: number | string;
   vatAmount?: number | string;
@@ -69,6 +71,8 @@ type DeriveOptimisticBuilderOrderOptions<
   defaultServiceFeeEnabled?: boolean;
   defaultServiceFeePercent: number;
   defaultServiceFeeComponents?: PosServiceFeeComponent[];
+  defaultServiceFeeStartedAt?: string | null;
+  serviceFeeNow?: number;
   defaultVatEnabled?: boolean;
   defaultVatPercent?: number | string;
   pendingAdds: PendingAddOperation<TMenuItem>[];
@@ -148,6 +152,8 @@ export function deriveOptimisticBuilderOrder<
     defaultServiceFeeEnabled,
     defaultServiceFeePercent,
     defaultServiceFeeComponents,
+    defaultServiceFeeStartedAt,
+    serviceFeeNow,
     defaultVatEnabled = false,
     defaultVatPercent = 0,
     pendingAdds,
@@ -189,13 +195,12 @@ export function deriveOptimisticBuilderOrder<
     : legacyServiceFeePercent > 0
       ? [{ scope: 'restaurant' as const, percent: legacyServiceFeePercent }]
       : [];
-  const serviceFeeComponents = sourceServiceFeeComponents
-    .filter((component) => toMoneyNumber(component.percent) > 0)
-    .map((component) => ({
-      ...component,
-      percent: toMoneyNumber(component.percent),
-      amount: Math.round((subtotal * toMoneyNumber(component.percent)) / 100),
-    }));
+  const serviceFeeComponents = calculateServiceFeeComponents(sourceServiceFeeComponents, {
+    subtotal,
+    startedAt: baseOrder?.serviceFeeStartedAt ?? defaultServiceFeeStartedAt,
+    frozenAt: baseOrder?.serviceFeeFrozenAt,
+    now: serviceFeeNow,
+  });
   const serviceFeePercent = serviceFeeComponents.reduce((sum, component) => sum + toMoneyNumber(component.percent), 0);
   const serviceFee = serviceFeeComponents.reduce((sum, component) => sum + toMoneyNumber(component.amount), 0);
   const serviceFeeEnabled = serviceFeeComponents.length > 0;

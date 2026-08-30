@@ -33,6 +33,8 @@ type RestaurantContextCompat = PosRestaurantContext & {
   pos_auth_background_image_url?: string | null;
   service_fee_enabled?: boolean;
   service_fee_percent?: number | string;
+  service_fee_mode?: 'percentage' | 'hourly';
+  service_fee_hourly_rate?: number | string;
   vat_enabled?: boolean;
   vat_percent?: number | string;
   marking_check_enabled?: boolean;
@@ -66,6 +68,9 @@ export function normalizeRestaurantContext(rawContext: RestaurantContextCompat |
     rawContext.posAuthBackgroundImageUrl ?? (rawContext as RestaurantContextCompat).pos_auth_background_image_url;
   const serviceFeeEnabled = rawContext.serviceFeeEnabled ?? (rawContext as RestaurantContextCompat).service_fee_enabled;
   const serviceFeePercent = rawContext.serviceFeePercent ?? (rawContext as RestaurantContextCompat).service_fee_percent;
+  const serviceFeeMode = rawContext.serviceFeeMode ?? (rawContext as RestaurantContextCompat).service_fee_mode;
+  const serviceFeeHourlyRate =
+    rawContext.serviceFeeHourlyRate ?? (rawContext as RestaurantContextCompat).service_fee_hourly_rate;
   const vatEnabled = rawContext.vatEnabled ?? (rawContext as RestaurantContextCompat).vat_enabled;
   const vatPercent = rawContext.vatPercent ?? (rawContext as RestaurantContextCompat).vat_percent;
   const markingCheckEnabled =
@@ -78,6 +83,8 @@ export function normalizeRestaurantContext(rawContext: RestaurantContextCompat |
   if (backgroundImageUrl !== undefined) context.posAuthBackgroundImageUrl = backgroundImageUrl;
   if (serviceFeeEnabled !== undefined) context.serviceFeeEnabled = serviceFeeEnabled;
   if (serviceFeePercent !== undefined) context.serviceFeePercent = serviceFeePercent;
+  if (serviceFeeMode !== undefined) context.serviceFeeMode = serviceFeeMode;
+  if (serviceFeeHourlyRate !== undefined) context.serviceFeeHourlyRate = serviceFeeHourlyRate;
   if (vatEnabled !== undefined) context.vatEnabled = vatEnabled;
   if (vatPercent !== undefined) context.vatPercent = vatPercent;
   if (markingCheckEnabled !== undefined) context.markingCheckEnabled = markingCheckEnabled;

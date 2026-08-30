@@ -34,6 +34,7 @@ export const cashierPaymentGateway = {
         manualCardOverride: Boolean(options?.manualCardOverride),
         manualCardReason: options?.manualCardReason ?? '',
         ...(options?.finalTotal !== undefined ? { finalTotal: options.finalTotal } : {}),
+        ...(options?.serviceFeeQuote ? { serviceFeeQuote: options.serviceFeeQuote } : {}),
       }),
     );
   },

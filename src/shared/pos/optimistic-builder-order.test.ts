@@ -268,7 +268,9 @@ describe('optimistic builder order', () => {
     expect(order?.serviceFeePercent).toBe(10);
     expect(order?.serviceFee).toBe(3000);
     expect(order?.total).toBe(33000);
-    expect(order?.serviceFeeComponents).toEqual([{ scope: 'restaurant', percent: 10, amount: 3000 }]);
+    expect(order?.serviceFeeComponents).toEqual([
+      { scope: 'restaurant', mode: 'percentage', percent: 10, amount: 3000 },
+    ]);
   });
 
   it('calculates restaurant, hall, and table fees independently', () => {

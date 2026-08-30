@@ -75,6 +75,7 @@ export type TableSession = {
   guestCount: number;
   status: string;
   assignedWaiterName?: string | null;
+  openedAt?: string | null;
   serviceFeePercent?: number | string;
   serviceFeeComponents?: PosServiceFeeComponent[];
   tables?: Array<{

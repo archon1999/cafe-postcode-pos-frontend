@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildServiceFeeRows, normalizeServiceFeeComponents } from './service-fees';
+import {
+  buildServiceFeeRows,
+  calculateBillableMinutes,
+  calculateServiceFeeComponents,
+  normalizeServiceFeeComponents,
+} from './service-fees';
 
 const labels = {
   restaurant: 'Restoran xizmati',
@@ -41,5 +46,30 @@ describe('service fee presentation', () => {
     expect(normalizeServiceFeeComponents(undefined)).toBeUndefined();
     expect(normalizeServiceFeeComponents(null)).toBeUndefined();
     expect(normalizeServiceFeeComponents([])).toEqual([]);
+  });
+
+  it('calculates hourly fees for every started minute', () => {
+    const startedAt = '2026-08-30T10:00:00.000Z';
+    expect(calculateBillableMinutes(startedAt, '2026-08-30T11:00:01.000Z')).toBe(61);
+
+    const components = calculateServiceFeeComponents(
+      [
+        { scope: 'restaurant', mode: 'percentage', percent: 10 },
+        { scope: 'table', mode: 'hourly', hourlyRate: 100_000 },
+      ],
+      {
+        subtotal: 30_000,
+        startedAt,
+        frozenAt: '2026-08-30T11:30:00.000Z',
+      },
+    );
+
+    expect(components.map(({ amount }) => amount)).toEqual([3_000, 150_000]);
+    expect(components[1]?.durationMinutes).toBe(90);
+    expect(buildServiceFeeRows(components, labels)[1]).toEqual({
+      scope: 'table',
+      label: `Stol xizmati (${new Intl.NumberFormat('uz-UZ', { maximumFractionDigits: 0 }).format(100_000)} UZS/soat × 90 daq.)`,
+      amount: 150_000,
+    });
   });
 });

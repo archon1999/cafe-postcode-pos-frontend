@@ -31,6 +31,7 @@ type UseOptimisticBuilderOrderOptions<
   defaultServiceFeeEnabled?: boolean;
   defaultServiceFeePercent: number;
   defaultServiceFeeComponents?: PosServiceFeeComponent[];
+  defaultServiceFeeStartedAt?: string | null;
   defaultVatEnabled?: boolean;
   defaultVatPercent?: number | string;
   removeOrderItem: (itemId: string) => Promise<{
@@ -80,6 +81,7 @@ export function useOptimisticBuilderOrder<
     defaultServiceFeeEnabled,
     defaultServiceFeePercent,
     defaultServiceFeeComponents,
+    defaultServiceFeeStartedAt,
     defaultVatEnabled,
     defaultVatPercent,
     removeOrderItem,
@@ -92,6 +94,7 @@ export function useOptimisticBuilderOrder<
     syncErrorMessage,
   } = options;
   const [resolvedBaseOrder, setResolvedBaseOrder] = useState<TOrder | undefined>(baseOrder);
+  const [serviceFeeNow, setServiceFeeNow] = useState(() => Date.now());
   const [pendingAdds, setPendingAdds] = useState<PendingAddOperation<TMenuItem>[]>([]);
   const [pendingRemoves, setPendingRemoves] = useState<PendingRemoveOperation[]>([]);
 
@@ -108,6 +111,11 @@ export function useOptimisticBuilderOrder<
   useEffect(() => {
     pendingRemovesRef.current = pendingRemoves;
   }, [pendingRemoves]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setServiceFeeNow(Date.now()), 15_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     setResolvedBaseOrder(baseOrder);
@@ -448,6 +456,8 @@ export function useOptimisticBuilderOrder<
       defaultServiceFeeEnabled,
       defaultServiceFeePercent,
       defaultServiceFeeComponents,
+      defaultServiceFeeStartedAt,
+      serviceFeeNow,
       defaultVatEnabled,
       defaultVatPercent,
       pendingAdds,
@@ -465,11 +475,13 @@ export function useOptimisticBuilderOrder<
     defaultServiceFeeEnabled,
     defaultServiceFeePercent,
     defaultServiceFeeComponents,
+    defaultServiceFeeStartedAt,
     defaultVatEnabled,
     defaultVatPercent,
     pendingAdds,
     pendingRemoves,
     resolvedBaseOrder,
+    serviceFeeNow,
   ]);
 
   return {

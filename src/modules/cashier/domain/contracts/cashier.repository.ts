@@ -1,4 +1,5 @@
 import type { PosModifierSelection } from 'shared/pos/modifiers';
+import type { PosServiceFeeQuote } from 'shared/pos/service-fees';
 
 import type {
   CashierContext,
@@ -110,6 +111,7 @@ export interface CashierRepository {
       manualCardReason?: string;
       registerFiscal?: boolean;
       finalTotal?: number;
+      serviceFeeQuote?: PosServiceFeeQuote | null;
     },
   ): Promise<CashierPaymentResponse>;
   createPrecheckPrintDocument(orderId: string): Promise<CashierPrecheckPrintDocumentResponse>;

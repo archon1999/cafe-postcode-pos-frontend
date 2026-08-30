@@ -52,6 +52,7 @@ function WaiterMenuCatalogPage({ sessionId }: { sessionId: string | null }) {
     defaultServiceFeeEnabled: Boolean(tableSessionQuery.data?.serviceFeeComponents?.length),
     defaultServiceFeePercent: Number(tableSessionQuery.data?.serviceFeePercent ?? 0),
     defaultServiceFeeComponents: tableSessionQuery.data?.serviceFeeComponents,
+    defaultServiceFeeStartedAt: tableSessionQuery.data?.openedAt,
     defaultVatEnabled: Boolean(session?.restaurantContext?.vatEnabled),
     defaultVatPercent: session?.restaurantContext?.vatPercent ?? 0,
     removeOrderItem: (itemId) => waiterRepository.removeOrderItem(itemId),
