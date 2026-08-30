@@ -39,7 +39,10 @@ import { useScannerInput } from 'shared/pos/useScannerInput';
 import { addPosQuantities } from 'shared/pos/utils';
 import {
   PosBuilderPageSkeleton,
+  PosBuilderHeader,
+  PosBuilderMenuPanel,
   PosItemNoteDialog,
+  PosItemGroupConfiguratorDialog,
   PosProductConfiguratorDialog,
   PosServicePriceDialog,
   PosSettingsMenu,
@@ -47,10 +50,7 @@ import {
 import type { PosCartItem } from 'shared/ui/pos-primitives/PosCartItemGroups';
 
 import { CashierBuilderDesktopCart, CashierBuilderMobileCart } from './CashierBuilderCart';
-import { CashierBuilderHeader } from './CashierBuilderHeader';
-import { CashierBuilderMenuPanel } from './CashierBuilderMenuPanel';
 import { CashierDeliveryDetailsDialog } from './CashierDeliveryDetailsDialog';
-import { CashierItemGroupConfiguratorDialog } from './CashierItemGroupConfiguratorDialog';
 import { CashierWeightDialog } from './CashierWeightDialog';
 import { useCashierBuilderActions } from './useCashierBuilderActions';
 
@@ -373,7 +373,7 @@ export function CashierBuilderPageContent() {
   return (
     <PosPageFrame
       header={
-        <CashierBuilderHeader
+        <PosBuilderHeader
           categoryId={selectedCategory?.id ?? ''}
           categoryTabs={categoryTabs}
           isMobile={isMobile}
@@ -396,9 +396,9 @@ export function CashierBuilderPageContent() {
           },
           gap: { xs: 1.5, md: 1.6, xl: 2.4 },
         }}>
-        <CashierBuilderMenuPanel
+        <PosBuilderMenuPanel<CashierMenuItem, CashierMenuItemGroup>
           category={selectedCategory}
-          groups={groupedOrderItems}
+          itemCount={groupedOrderItems.reduce((sum, [, items]) => sum + items.length, 0)}
           isMobile={isMobile}
           locale={locale}
           menuLabel={copy.menu}
@@ -530,7 +530,7 @@ export function CashierBuilderPageContent() {
         />
       ) : null}
 
-      <CashierItemGroupConfiguratorDialog
+      <PosItemGroupConfiguratorDialog
         group={configuringGroup}
         locale={locale}
         copy={{

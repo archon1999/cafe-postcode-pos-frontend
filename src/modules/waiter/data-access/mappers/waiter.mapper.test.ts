@@ -13,6 +13,47 @@ describe('mapWaiterOrder', () => {
     expect(category.items[0].itemType).toBe('service');
   });
 
+  it('maps the same item groups used by the cashier builder', () => {
+    const category = mapWaiterMenuCategory({
+      id: 'category-1',
+      name: 'Burgerlar',
+      items: [],
+      item_groups: [
+        {
+          id: 'burger-group',
+          name: 'Chizburger',
+          sort_order: 2,
+          members: [
+            {
+              id: 'large',
+              variant_name: 'Katta',
+              sort_order: 1,
+              item: {
+                id: 'burger-large',
+                name: 'Katta chizburger',
+                kind: 'item',
+                price: 44_000,
+                sale_unit: 'piece',
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(category.itemGroups?.[0]).toMatchObject({
+      id: 'burger-group',
+      sortOrder: 2,
+      members: [
+        {
+          variantName: 'Katta',
+          sortOrder: 1,
+          item: { id: 'burger-large', saleUnit: 'piece' },
+        },
+      ],
+    });
+  });
+
   it('preserves missing service fee components for legacy percentage fallback', () => {
     const order = mapWaiterOrder({
       id: 'legacy-fee-order',

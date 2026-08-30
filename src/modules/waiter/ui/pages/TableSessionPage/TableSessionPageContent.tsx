@@ -27,6 +27,7 @@ import {
   getDefaultWaiterMenuCategory,
   getWaiterOrderItemMeta,
   type WaiterMenuItem,
+  type WaiterMenuItemGroup,
 } from 'modules/waiter/domain';
 import { getApiErrorMessage } from 'shared/api/errorMessage';
 import { refreshTransportAndReload } from 'shared/api/transportResolver';
@@ -38,6 +39,9 @@ import { buildServiceFeeRows, type PosServiceFeeComponent } from 'shared/pos/ser
 import { useOptimisticBuilderOrder } from 'shared/pos/useOptimisticBuilderOrder';
 import {
   PosBuilderPageSkeleton,
+  PosBuilderHeader,
+  PosBuilderMenuPanel,
+  PosItemGroupConfiguratorDialog,
   PosItemNoteDialog,
   PosProductConfiguratorDialog,
   PosServicePriceDialog,
@@ -48,7 +52,6 @@ import type { PosCartItem } from 'shared/ui/pos-primitives/PosCartItemGroups';
 
 import { TableSessionDesktopCart } from './TableSessionDesktopCart';
 import { TableSessionMobileCart } from './TableSessionMobileCart';
-import { TableSessionHeader, TableSessionMenuPanel } from './TableSessionPageChrome';
 
 export type TableSessionPageContentProps = {
   sessionId: string | null;
@@ -82,6 +85,7 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
     initialNote?: string;
     initialSelections?: PosModifierSelection[];
   } | null>(null);
+  const [configuringGroup, setConfiguringGroup] = useState<WaiterMenuItemGroup | null>(null);
   const [weighingItem, setWeighingItem] = useState<{
     item: WaiterMenuItem;
     initialNote?: string;
@@ -327,17 +331,16 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
   return (
     <PosPageFrame
       header={
-        <TableSessionHeader
+        <PosBuilderHeader
+          categoryId={selectedCategory?.id ?? ''}
           categoryTabs={categoryTabs}
           isMobile={isMobile}
-          selectedCategoryId={selectedCategory?.id ?? ''}
-          sessionId={sessionId}
-          showCatalogAction={!isTakeawayMode}
+          showMenuAction={!isTakeawayMode && Boolean(sessionId)}
           onCategoryChange={setSelectedCategoryId}
-          onCatalog={() => navigate(`/menu/catalog?source=waiter&sessionId=${encodeURIComponent(sessionId ?? '')}`)}
+          onMenuOpen={() => navigate(`/menu/catalog?source=waiter&sessionId=${encodeURIComponent(sessionId ?? '')}`)}
           onLock={() => navigate('/lock-screen')}
           onRefresh={() => void refreshTransportAndReload()}
-          onSettings={(event) => setSettingsAnchor(event.currentTarget)}
+          onSettingsOpen={(event) => setSettingsAnchor(event.currentTarget)}
         />
       }>
       <Box
@@ -345,21 +348,27 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
           flex: 1,
           minHeight: 0,
           display: 'grid',
-          gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 350px' },
-          gap: { xs: 2, md: 2.5 },
+          gridTemplateColumns: {
+            xs: '1fr',
+            md: 'minmax(0, 1fr) clamp(320px, 34vw, 360px)',
+            xl: 'minmax(0, 1fr) clamp(380px, 24vw, 430px)',
+          },
+          gap: { xs: 1.5, md: 1.6, xl: 2.4 },
         }}>
-        <TableSessionMenuPanel
-          copy={copy}
-          currentTotal={currentOrder?.total}
+        <PosBuilderMenuPanel<WaiterMenuItem, WaiterMenuItemGroup>
+          category={selectedCategory}
           itemCount={groupedOrderItems.reduce((sum, [, items]) => sum + items.length, 0)}
-          latestItemMap={menuItemMeta.latestItemMap}
+          isMobile={isMobile}
           locale={locale}
-          selectedCategory={selectedCategory}
-          selectedCountMap={menuItemMeta.countMap}
-          showMobileSummary={isMobile}
+          menuLabel={copy.menu}
+          itemCounts={menuItemMeta.countMap}
+          latestItemIds={menuItemMeta.latestItemMap}
+          total={currentOrder?.total}
+          billsLabel={copy.bills}
           onAdd={requestAddItem}
           onAddWithNote={requestAddItemWithNote}
-          onOpenCart={() => setCartOpen(true)}
+          onOpenGroup={setConfiguringGroup}
+          onCartOpen={() => setCartOpen(true)}
           onRemove={removeItem}
         />
 
@@ -495,6 +504,31 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
           }}
         />
       ) : null}
+      <PosItemGroupConfiguratorDialog
+        group={configuringGroup}
+        locale={locale}
+        copy={{
+          addToOrder: copy.modifierAddToOrder,
+          free: copy.modifierFree,
+          optional: copy.modifierOptional,
+          required: copy.modifierRequired,
+          selectOne: copy.modifierSelectOne,
+          selectUpTo: copy.modifierSelectUpTo,
+          selectedCount: copy.selectedCount,
+        }}
+        onClose={() => setConfiguringGroup(null)}
+        onConfirm={(lines) => {
+          addItems(
+            lines.map((line) => ({
+              menuItem: line.item,
+              quantity: line.quantity,
+              note: line.note,
+              selectedModifiers: line.selections,
+            })),
+          );
+          setConfiguringGroup(null);
+        }}
+      />
       {pricingService ? (
         <PosServicePriceDialog
           item={pricingService.item}

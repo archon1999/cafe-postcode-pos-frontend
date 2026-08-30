@@ -13,7 +13,6 @@ import {
 } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
 
-import type { CashierMenuItem, CashierMenuItemGroup } from 'modules/cashier/domain';
 import { formatPosCopy, getPosCopy, type PosLocale } from 'shared/locale/copy';
 import {
   defaultModifierSelections,
@@ -23,27 +22,30 @@ import {
   type PosModifierSelection,
 } from 'shared/pos/modifiers';
 import { formatCompactMoney, formatPosQuantity } from 'shared/pos/utils';
-import { PosItemNoteDialog, PosProductConfiguratorDialog } from 'shared/ui/pos-primitives';
 
-export type CashierGroupOrderLine = {
-  item: CashierMenuItem;
+import type { PosBuilderMenuItem, PosBuilderMenuItemGroup } from './PosBuilderCatalog';
+import { PosItemNoteDialog } from './PosItemNoteDialog';
+import { PosProductConfiguratorDialog } from './PosProductConfiguratorDialog';
+
+export type PosGroupOrderLine<TItem extends PosBuilderMenuItem = PosBuilderMenuItem> = {
+  item: TItem;
   note: string;
   quantity: number;
   selections: PosModifierSelection[];
 };
 
-type InternalLine = CashierGroupOrderLine & {
+type InternalLine<TItem extends PosBuilderMenuItem> = PosGroupOrderLine<TItem> & {
   key: string;
   label: string;
   memberId: string;
   quantityInput: string;
 };
 
-type Props = {
-  group: CashierMenuItemGroup | null;
+type Props<TItem extends PosBuilderMenuItem> = {
+  group: PosBuilderMenuItemGroup<TItem> | null;
   locale: PosLocale;
   onClose: () => void;
-  onConfirm: (lines: CashierGroupOrderLine[]) => void;
+  onConfirm: (lines: PosGroupOrderLine<TItem>[]) => void;
   copy: {
     addToOrder: string;
     free: string;
@@ -55,11 +57,17 @@ type Props = {
   };
 };
 
-export function CashierItemGroupConfiguratorDialog({ group, locale, onClose, onConfirm, copy }: Props) {
+export function PosItemGroupConfiguratorDialog<TItem extends PosBuilderMenuItem>({
+  group,
+  locale,
+  onClose,
+  onConfirm,
+  copy,
+}: Props<TItem>) {
   const posCopy = getPosCopy(locale);
   const fullScreen = useMediaQuery('(max-width:700px)');
-  const [lines, setLines] = useState<InternalLine[]>([]);
-  const [customizing, setCustomizing] = useState<{ memberId: string; item: CashierMenuItem } | null>(null);
+  const [lines, setLines] = useState<InternalLine<TItem>[]>([]);
+  const [customizing, setCustomizing] = useState<{ memberId: string; item: TItem } | null>(null);
   const [editingLineKey, setEditingLineKey] = useState<string | null>(null);
 
   useEffect(() => {
@@ -77,7 +85,7 @@ export function CashierItemGroupConfiguratorDialog({ group, locale, onClose, onC
     0,
   );
   const linesByMember = useMemo(() => {
-    const result = new Map<string, InternalLine[]>();
+    const result = new Map<string, InternalLine<TItem>[]>();
     for (const line of lines) result.set(line.memberId, [...(result.get(line.memberId) ?? []), line]);
     return result;
   }, [lines]);
@@ -370,7 +378,7 @@ export function CashierItemGroupConfiguratorDialog({ group, locale, onClose, onC
   );
 }
 
-function buildQuickLines(memberId: string, item: CashierMenuItem): InternalLine[] {
+function buildQuickLines<TItem extends PosBuilderMenuItem>(memberId: string, item: TItem): InternalLine<TItem>[] {
   const groups = item.modifierGroups ?? [];
   if (!groups.length) return [createLine(memberId, item, [], 'Oddiy')];
   if (groups.length === 1 && groups[0].selectionType === 'single') {
@@ -384,12 +392,12 @@ function buildQuickLines(memberId: string, item: CashierMenuItem): InternalLine[
     : [];
 }
 
-function createLine(
+function createLine<TItem extends PosBuilderMenuItem>(
   memberId: string,
-  item: CashierMenuItem,
+  item: TItem,
   selections: PosModifierSelection[],
   label: string,
-): InternalLine {
+): InternalLine<TItem> {
   return {
     key: lineKey(memberId, selections, ''),
     memberId,
@@ -415,7 +423,7 @@ function selectionKey(selections: PosModifierSelection[]) {
   );
 }
 
-function selectionLabel(item: CashierMenuItem, selections: PosModifierSelection[]) {
+function selectionLabel(item: PosBuilderMenuItem, selections: PosModifierSelection[]) {
   const labels = selectedModifierOptions(item.modifierGroups ?? [], selections).map(({ option }) => option.name);
   return labels.join(' + ') || 'Oddiy';
 }

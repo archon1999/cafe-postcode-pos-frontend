@@ -3,9 +3,8 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { CashierMenuItemGroup } from 'modules/cashier/domain';
-
-import { CashierItemGroupConfiguratorDialog } from './CashierItemGroupConfiguratorDialog';
+import type { PosBuilderMenuItemGroup } from './PosBuilderCatalog';
+import { PosItemGroupConfiguratorDialog } from './PosItemGroupConfiguratorDialog';
 
 afterEach(cleanup);
 
@@ -19,18 +18,14 @@ const copy = {
   selectedCount: '{{count}} ta',
 };
 
-const group: CashierMenuItemGroup = {
+const group: PosBuilderMenuItemGroup = {
   id: 'pizza',
   name: 'Pepperoni',
-  sortOrder: 0,
-  members: ['S', 'M'].map((size, memberIndex) => ({
+  members: ['S', 'M'].map((size) => ({
     id: `member-${size}`,
-    variantName: size,
-    sortOrder: memberIndex,
     item: {
       id: `pizza-${size}`,
       name: `Pepperoni ${size}`,
-      kind: 'food',
       price: size === 'S' ? 40_000 : 55_000,
       modifierGroups: [
         {
@@ -49,19 +44,15 @@ const group: CashierMenuItemGroup = {
   })),
 };
 
-const weightedGroup: CashierMenuItemGroup = {
+const weightedGroup: PosBuilderMenuItemGroup = {
   id: 'weighted-products',
   name: 'Tortib sotiladigan mahsulotlar',
-  sortOrder: 1,
   members: [
     {
       id: 'member-fish',
-      variantName: 'Baliq',
-      sortOrder: 0,
       item: {
         id: 'fish',
         name: 'Baliq',
-        kind: 'food',
         price: 100_000,
         saleUnit: 'kg',
       },
@@ -69,17 +60,11 @@ const weightedGroup: CashierMenuItemGroup = {
   ],
 };
 
-describe('CashierItemGroupConfiguratorDialog', () => {
+describe('PosItemGroupConfiguratorDialog', () => {
   it('collects quantities for several sizes and exact modifier configurations', async () => {
     const onConfirm = vi.fn();
     render(
-      <CashierItemGroupConfiguratorDialog
-        group={group}
-        locale="uz"
-        copy={copy}
-        onClose={vi.fn()}
-        onConfirm={onConfirm}
-      />,
+      <PosItemGroupConfiguratorDialog group={group} locale="uz" copy={copy} onClose={vi.fn()} onConfirm={onConfirm} />,
     );
 
     const addButtons = screen.getAllByLabelText('Miqdorni ko‘paytirish');
@@ -107,7 +92,7 @@ describe('CashierItemGroupConfiguratorDialog', () => {
   it('preserves intermediate decimal text and confirms a fractional kilogram quantity', () => {
     const onConfirm = vi.fn();
     render(
-      <CashierItemGroupConfiguratorDialog
+      <PosItemGroupConfiguratorDialog
         group={weightedGroup}
         locale="uz"
         copy={copy}

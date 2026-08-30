@@ -1,4 +1,5 @@
 export * from './PosBottomDock';
+export * from './PosBuilderCatalog';
 export * from './PosDockGlyph';
 export * from './PosIconAction';
 export * from './PosOverviewSkeletons';
@@ -12,4 +13,5 @@ export * from './PosProductConfiguratorDialog';
 export * from './PosWeightedItemDialog';
 export * from './PosItemNoteDialog';
 export * from './PosItemNoteField';
+export * from './PosItemGroupConfiguratorDialog';
 export * from './PosMenuItemCard';

@@ -6,6 +6,7 @@ import type {
   WaiterCreateOrderResponse,
   WaiterMenuCategory,
   WaiterMenuItem,
+  WaiterMenuItemGroup,
   WaiterOrder,
   WaiterOrderItem,
   WaiterSessionResponse,
@@ -19,9 +20,26 @@ type WaiterMenuItemDto = WaiterMenuItem & {
   sale_unit?: 'piece' | 'kg';
   modifier_groups?: Parameters<typeof mapPosModifierGroups>[0];
 };
-type WaiterMenuCategoryDto = Omit<WaiterMenuCategory, 'items'> & {
+type WaiterMenuItemGroupDto = {
+  id: string;
+  name: string;
+  description?: string | null;
+  sortOrder?: number;
+  sort_order?: number;
+  members: Array<{
+    id: string;
+    variantName?: string;
+    variant_name?: string;
+    sortOrder?: number;
+    sort_order?: number;
+    item: WaiterMenuItemDto;
+  }>;
+};
+type WaiterMenuCategoryDto = Omit<WaiterMenuCategory, 'items' | 'itemGroups'> & {
   image_url?: string | null;
   items: WaiterMenuItemDto[];
+  itemGroups?: WaiterMenuItemGroupDto[];
+  item_groups?: WaiterMenuItemGroupDto[];
 };
 type ActiveSessionDto = ActiveSession & {
   guest_count?: number;
@@ -77,16 +95,32 @@ type WaiterSessionResponseDto = WaiterSessionResponse;
 type WaiterCreateOrderResponseDto = WaiterCreateOrderResponse;
 
 export function mapWaiterMenuCategory(dto: WaiterMenuCategoryDto): WaiterMenuCategory {
+  const mapItem = (item: WaiterMenuItemDto): WaiterMenuItem => ({
+    ...item,
+    imageUrl: item.imageUrl ?? item.image_url ?? null,
+    itemType: item.itemType ?? item.item_type ?? 'product',
+    saleUnit: item.saleUnit ?? item.sale_unit ?? 'piece',
+    modifierGroups: mapPosModifierGroups(item.modifierGroups ?? item.modifier_groups),
+  });
+
   return {
     ...dto,
     imageUrl: dto.imageUrl ?? dto.image_url ?? null,
-    items: dto.items.map((item) => ({
-      ...item,
-      imageUrl: item.imageUrl ?? item.image_url ?? null,
-      itemType: item.itemType ?? item.item_type ?? 'product',
-      saleUnit: item.saleUnit ?? item.sale_unit ?? 'piece',
-      modifierGroups: mapPosModifierGroups(item.modifierGroups ?? item.modifier_groups),
-    })),
+    items: dto.items.map(mapItem),
+    itemGroups: (dto.itemGroups ?? dto.item_groups ?? []).map(
+      (group): WaiterMenuItemGroup => ({
+        id: group.id,
+        name: group.name,
+        description: group.description ?? null,
+        sortOrder: Number(group.sortOrder ?? group.sort_order ?? 0),
+        members: group.members.map((member) => ({
+          id: member.id,
+          variantName: member.variantName ?? member.variant_name ?? '',
+          sortOrder: Number(member.sortOrder ?? member.sort_order ?? 0),
+          item: mapItem(member.item),
+        })),
+      }),
+    ),
   };
 }
 

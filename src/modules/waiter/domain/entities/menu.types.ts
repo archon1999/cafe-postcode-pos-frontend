@@ -18,4 +18,20 @@ export type WaiterMenuCategory = {
   name: string;
   imageUrl?: string | null;
   items: WaiterMenuItem[];
+  itemGroups?: WaiterMenuItemGroup[];
+};
+
+export type WaiterMenuItemGroupMember = {
+  id: string;
+  variantName: string;
+  sortOrder: number;
+  item: WaiterMenuItem;
+};
+
+export type WaiterMenuItemGroup = {
+  id: string;
+  name: string;
+  description?: string | null;
+  sortOrder: number;
+  members: WaiterMenuItemGroupMember[];
 };

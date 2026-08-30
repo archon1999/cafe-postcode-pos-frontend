@@ -120,6 +120,26 @@ vi.mock('modules/edge-printing/application', () => ({
 vi.mock('shared/ui/pos-primitives', async (importOriginal) => {
   const actual = await importOriginal<typeof import('shared/ui/pos-primitives')>();
   return {
+    PosBuilderHeader: ({
+      categoryTabs,
+      showMenuAction = true,
+      onMenuOpen,
+    }: {
+      categoryTabs: Array<{ label: string }>;
+      showMenuAction?: boolean;
+      onMenuOpen: () => void;
+    }) => (
+      <div>
+        <span>{categoryTabs.map((item) => item.label).join(', ')}</span>
+        {showMenuAction ? (
+          <button aria-label="solar:chef-hat-bold-duotone" onClick={onMenuOpen}>
+            menu
+          </button>
+        ) : null}
+      </div>
+    ),
+    PosBuilderMenuPanel: actual.PosBuilderMenuPanel,
+    PosItemGroupConfiguratorDialog: actual.PosItemGroupConfiguratorDialog,
     PosMenuItemCard: actual.PosMenuItemCard,
     PosBuilderPageSkeleton: () => <div>loading</div>,
     PosIconAction: ({ icon, onClick }: { icon: string; onClick?: () => void }) => (
