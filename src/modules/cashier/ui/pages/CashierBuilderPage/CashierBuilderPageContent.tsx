@@ -295,6 +295,7 @@ export function CashierBuilderPageContent() {
     restaurant: copy.restaurantServiceFee,
     hall: copy.hallServiceFee,
     table: copy.tableServiceFee,
+    hourly: copy.hourlyServiceFee,
   });
   const vatEnabled = Boolean(currentOrder?.vatEnabled);
   const vatPercent = Number(currentOrder?.vatPercent ?? 0);

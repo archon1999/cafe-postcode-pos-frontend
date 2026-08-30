@@ -202,6 +202,7 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
     restaurant: copy.restaurantServiceFee,
     hall: copy.hallServiceFee,
     table: copy.tableServiceFee,
+    hourly: copy.hourlyServiceFee,
   });
   const vatEnabled = Boolean(currentOrder?.vatEnabled);
   const vatPercent = Number(currentOrder?.vatPercent ?? 0);

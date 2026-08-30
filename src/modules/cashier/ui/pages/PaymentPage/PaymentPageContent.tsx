@@ -245,6 +245,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     restaurant: copy.restaurantServiceFee,
     hall: copy.hallServiceFee,
     table: copy.tableServiceFee,
+    hourly: copy.hourlyServiceFee,
   });
   const vatEnabled = Boolean(orderQuery.data?.vatEnabled);
   const vatPercent = Number(orderQuery.data?.vatPercent ?? 0);

@@ -48,16 +48,19 @@ function formatPercent(value: number) {
   return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/\.?0+$/, '');
 }
 
-function formatMoney(value: number) {
-  return new Intl.NumberFormat('uz-UZ', { maximumFractionDigits: 0 }).format(value);
-}
-
 export function calculateBillableMinutes(startedAt?: string | null, endedAt?: string | null, now = Date.now()) {
   if (!startedAt) return 0;
   const started = Date.parse(startedAt);
   const ended = endedAt ? Date.parse(endedAt) : now;
   if (!Number.isFinite(started) || !Number.isFinite(ended)) return 0;
-  return Math.floor(Math.max(ended - started, 0) / 300_000) * 5;
+  const completeFiveMinuteBlocks = Math.floor(Math.max(ended - started, 0) / 300_000) * 5;
+  return Math.max(60, completeFiveMinuteBlocks);
+}
+
+export function calculateHourlyServiceFee(hourlyRate: number, minutes: number) {
+  if (hourlyRate <= 0 || minutes <= 0) return 0;
+  const amountNumerator = Math.trunc(hourlyRate) * Math.trunc(minutes);
+  return Math.floor((amountNumerator + 29_999) / 60_000) * 1_000;
 }
 
 export function calculateServiceFeeComponents(
@@ -78,7 +81,7 @@ export function calculateServiceFeeComponents(
           ...component,
           mode: 'hourly' as const,
           durationMinutes: minutes,
-          amount: Math.round((Number(component.hourlyRate ?? 0) * minutes) / 60),
+          amount: calculateHourlyServiceFee(Number(component.hourlyRate ?? 0), minutes),
         };
       }
       return {
@@ -92,7 +95,7 @@ export function calculateServiceFeeComponents(
 
 export function buildServiceFeeRows(
   components: PosServiceFeeComponent[] | null | undefined,
-  labels: Record<PosServiceFeeScope, string>,
+  labels: Record<PosServiceFeeScope, string> & { hourly?: string },
 ): PosServiceFeeRow[] {
   return (components ?? [])
     .filter((component) => Number(component.percent ?? 0) > 0 || Number(component.amount) > 0)
@@ -100,7 +103,7 @@ export function buildServiceFeeRows(
       scope: component.scope,
       label:
         (component.mode ?? 'percentage') === 'hourly'
-          ? `${labels[component.scope]} (${formatMoney(Number(component.hourlyRate ?? 0))} UZS/soat × ${Number(component.durationMinutes ?? 0)} daq.)`
+          ? `${labels[component.scope]} (${labels.hourly ?? 'Soatlik'})`
           : `${labels[component.scope]} (${formatPercent(Number(component.percent ?? 0))}%)`,
       amount: Number(component.amount ?? 0),
     }));

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildServiceFeeRows,
   calculateBillableMinutes,
+  calculateHourlyServiceFee,
   calculateServiceFeeComponents,
   normalizeServiceFeeComponents,
 } from './service-fees';
@@ -50,6 +51,11 @@ describe('service fee presentation', () => {
 
   it('calculates hourly fees in complete five-minute blocks', () => {
     const startedAt = '2026-08-30T10:00:00.000Z';
+    expect(calculateBillableMinutes(startedAt, startedAt)).toBe(60);
+    expect(calculateBillableMinutes(startedAt, '2026-08-30T10:05:00.000Z')).toBe(60);
+    expect(calculateBillableMinutes(startedAt, '2026-08-30T10:55:00.000Z')).toBe(60);
+    expect(calculateBillableMinutes(startedAt, '2026-08-30T11:04:59.000Z')).toBe(60);
+    expect(calculateBillableMinutes(startedAt, '2026-08-30T11:05:00.000Z')).toBe(65);
     expect(calculateBillableMinutes(startedAt, '2026-08-30T11:31:00.000Z')).toBe(90);
     expect(calculateBillableMinutes(startedAt, '2026-08-30T11:34:59.000Z')).toBe(90);
     expect(calculateBillableMinutes(startedAt, '2026-08-30T11:35:00.000Z')).toBe(95);
@@ -70,8 +76,13 @@ describe('service fee presentation', () => {
     expect(components[1]?.durationMinutes).toBe(90);
     expect(buildServiceFeeRows(components, labels)[1]).toEqual({
       scope: 'table',
-      label: `Stol xizmati (${new Intl.NumberFormat('uz-UZ', { maximumFractionDigits: 0 }).format(100_000)} UZS/soat × 90 daq.)`,
+      label: 'Stol xizmati (Soatlik)',
       amount: 150_000,
     });
+  });
+
+  it('rounds hourly amounts to thousands with half ties down', () => {
+    expect(calculateHourlyServiceFee(66_000, 15)).toBe(16_000);
+    expect(calculateHourlyServiceFee(66_004, 15)).toBe(17_000);
   });
 });
