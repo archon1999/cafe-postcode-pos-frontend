@@ -48,9 +48,11 @@ describe('service fee presentation', () => {
     expect(normalizeServiceFeeComponents([])).toEqual([]);
   });
 
-  it('calculates hourly fees for every started minute', () => {
+  it('calculates hourly fees in complete five-minute blocks', () => {
     const startedAt = '2026-08-30T10:00:00.000Z';
-    expect(calculateBillableMinutes(startedAt, '2026-08-30T11:00:01.000Z')).toBe(61);
+    expect(calculateBillableMinutes(startedAt, '2026-08-30T11:31:00.000Z')).toBe(90);
+    expect(calculateBillableMinutes(startedAt, '2026-08-30T11:34:59.000Z')).toBe(90);
+    expect(calculateBillableMinutes(startedAt, '2026-08-30T11:35:00.000Z')).toBe(95);
 
     const components = calculateServiceFeeComponents(
       [

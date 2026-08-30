@@ -57,7 +57,7 @@ export function calculateBillableMinutes(startedAt?: string | null, endedAt?: st
   const started = Date.parse(startedAt);
   const ended = endedAt ? Date.parse(endedAt) : now;
   if (!Number.isFinite(started) || !Number.isFinite(ended)) return 0;
-  return Math.ceil(Math.max(ended - started, 0) / 60_000);
+  return Math.floor(Math.max(ended - started, 0) / 300_000) * 5;
 }
 
 export function calculateServiceFeeComponents(
