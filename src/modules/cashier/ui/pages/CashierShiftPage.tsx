@@ -46,7 +46,6 @@ export function CashierShiftPage() {
   const [openingNotes, setOpeningNotes] = useState('');
   const [openShiftDialogOpen, setOpenShiftDialogOpen] = useState(false);
   const [shiftCloseReport, setShiftCloseReport] = useState<CashierShiftCloseResponse | null>(null);
-  const [closeFiscalByShift, setCloseFiscalByShift] = useState<Record<string, boolean>>({});
 
   const canViewShift = canViewCashShift(session?.user);
   const canManageShift = canManageCashShift(session?.user);
@@ -63,7 +62,6 @@ export function CashierShiftPage() {
     [contextQuery.data?.availableCashDesks],
   );
   const availableCashiers = contextQuery.data?.availableCashiers ?? [];
-  const fiscalShiftOpen = Boolean(contextQuery.data?.fiscalShiftOpen);
   const hasFiscalIntegration = availableCashDesks.some((cashDesk) => Boolean(cashDesk.fiscalProvider));
   const activeCashDeskIds = useMemo(() => new Set(activeShifts.map((shift) => shift.cashDesk)), [activeShifts]);
   const cashDesksAvailableToOpen = useMemo(
@@ -116,29 +114,22 @@ export function CashierShiftPage() {
     return <Navigate to={getPosHomePath(session)} replace />;
   }
 
-  const updateCloseFiscal = (shiftId: string, value: boolean) => {
-    setCloseFiscalByShift((prev) => ({ ...prev, [shiftId]: value }));
-  };
-
   const renderManagerShift = (shift: (typeof activeShifts)[number]) => {
     const isLastActiveShift = activeShifts.length === 1;
-    const canCloseFiscalShift = isLastActiveShift && hasFiscalIntegration && fiscalShiftOpen;
-    const shouldCloseFiscalShift = closeFiscalByShift[shift.id] ?? true;
+    const closesFiscalShift = isLastActiveShift && hasFiscalIntegration;
     return (
       <ManagerShiftCard
         key={shift.id}
-        canCloseFiscalShift={canCloseFiscalShift}
-        closeFiscalShift={shouldCloseFiscalShift}
+        closesFiscalShift={closesFiscalShift}
         closing={closeShiftMutation.isPending}
         locale={locale}
         onClose={() =>
           closeShiftMutation.mutate({
             cashShiftId: shift.id,
             notesClose: '',
-            closeFiscalShift: canCloseFiscalShift ? shouldCloseFiscalShift : false,
+            closeFiscalShift: closesFiscalShift,
           })
         }
-        onCloseFiscalChange={(value) => updateCloseFiscal(shift.id, value)}
         onPrint={async () => {
           try {
             const response = await printShiftReportMutation.mutateAsync({ cashShiftId: shift.id });

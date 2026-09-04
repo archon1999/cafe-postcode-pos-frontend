@@ -1,15 +1,4 @@
-import {
-  Box,
-  Button,
-  Checkbox,
-  Divider,
-  FormControlLabel,
-  MenuItem,
-  Stack,
-  TextField,
-  Typography,
-  alpha,
-} from '@mui/material';
+import { Box, Button, Divider, MenuItem, Stack, TextField, Typography, alpha } from '@mui/material';
 
 import type { CashierContextCashDesk, CashierContextCashier, CashShiftSummary } from 'modules/cashier/domain';
 import { getPosCopy, type PosLocale } from 'shared/locale/copy';
@@ -97,24 +86,20 @@ export function CashierShiftTotals({ locale, shift }: ShiftTotalsProps) {
 }
 
 type ManagerShiftCardProps = {
-  canCloseFiscalShift: boolean;
-  closeFiscalShift: boolean;
+  closesFiscalShift: boolean;
   closing: boolean;
   locale: PosLocale;
   onClose: () => void;
-  onCloseFiscalChange: (value: boolean) => void;
   onPrint: () => Promise<void>;
   printing: boolean;
   shift: CashShiftSummary;
 };
 
 export function ManagerShiftCard({
-  canCloseFiscalShift,
-  closeFiscalShift,
+  closesFiscalShift,
   closing,
   locale,
   onClose,
-  onCloseFiscalChange,
   onPrint,
   printing,
   shift,
@@ -139,13 +124,10 @@ export function ManagerShiftCard({
         <Button variant="contained" color="success" onClick={() => void onPrint()}>
           {printing ? copy.processing : copy.printShiftReport}
         </Button>
-        {canCloseFiscalShift ? (
-          <FormControlLabel
-            control={
-              <Checkbox checked={closeFiscalShift} onChange={(event) => onCloseFiscalChange(event.target.checked)} />
-            }
-            label="Fiscal smenani ham yopish"
-          />
+        {closesFiscalShift ? (
+          <Typography variant="body2" color="text.secondary">
+            {copy.closeFiscalWithShift}
+          </Typography>
         ) : null}
         <Button variant="contained" color="error" disabled={closing} onClick={onClose}>
           {closing ? copy.processing : copy.closeShift}

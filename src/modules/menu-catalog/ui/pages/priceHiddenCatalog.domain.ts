@@ -44,6 +44,7 @@ export type CatalogSummaryItem = {
   saleUnit?: 'piece' | 'kg';
   status: string;
   note?: string | null;
+  modifiers?: PosOrderItemModifier[];
   itemIds: string[];
 };
 
@@ -148,6 +149,7 @@ export function aggregateSummaryItems(items: CatalogOrderItemLike[] | undefined,
       saleUnit: item.saleUnit ?? 'piece',
       status: item.status,
       note: item.note,
+      modifiers: item.modifiers,
       itemIds: [item.id],
     });
   }

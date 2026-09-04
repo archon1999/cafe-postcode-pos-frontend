@@ -8,9 +8,11 @@ import { CashierShiftPage } from './CashierShiftPage';
 
 const navigateMock = vi.fn();
 const reportMutateAsyncMock = vi.fn();
+const closeMutateMock = vi.fn();
 const requestEdgePrintDocumentsMock = vi.hoisted(() => vi.fn());
 const shiftContextState = vi.hoisted(() => ({
   fiscalProvider: 'fiscal-drive-service',
+  fiscalShiftOpen: false,
   reportPending: false,
 }));
 
@@ -79,13 +81,13 @@ vi.mock('modules/cashier/application', () => ({
       ],
       availableCashDesks: [{ id: 'desk-1', name: 'Kassa', fiscalProvider: shiftContextState.fiscalProvider }],
       availableCashiers: [],
-      fiscalShiftOpen: true,
+      fiscalShiftOpen: shiftContextState.fiscalShiftOpen,
     },
     isLoading: false,
     refetch: vi.fn(),
   }),
   useOpenCashierShiftMutation: () => ({ isPending: false, mutate: vi.fn() }),
-  useCloseCashierShiftMutation: () => ({ isPending: false, mutate: vi.fn() }),
+  useCloseCashierShiftMutation: () => ({ isPending: false, mutate: closeMutateMock }),
   usePrintCashierShiftReportMutation: () => ({
     isPending: shiftContextState.reportPending,
     mutateAsync: reportMutateAsyncMock,
@@ -116,13 +118,14 @@ describe('CashierShiftPage report printing', () => {
   beforeEach(() => {
     cleanup();
     reportMutateAsyncMock.mockReset();
+    closeMutateMock.mockReset();
     requestEdgePrintDocumentsMock.mockReset();
     shiftContextState.fiscalProvider = 'fiscal-drive-service';
     shiftContextState.reportPending = false;
-    reportMutateAsyncMock.mockResolvedValue({ printDocuments: ['general-1', 'fiscal-1'] });
+    reportMutateAsyncMock.mockResolvedValue({ printDocuments: ['general-1'] });
   });
 
-  it('prints general and fiscal reports in backend order', async () => {
+  it('prints the single general report returned by the backend', async () => {
     render(<CashierShiftPage />);
 
     expect(screen.queryByText("Boshlang'ich naqd")).toBeNull();
@@ -147,7 +150,23 @@ describe('CashierShiftPage report printing', () => {
 
     await waitFor(() => expect(requestEdgePrintDocumentsMock).toHaveBeenCalledTimes(1));
     expect(reportMutateAsyncMock).toHaveBeenCalledWith({ cashShiftId: 'shift-1' });
-    expect(requestEdgePrintDocumentsMock).toHaveBeenCalledWith(['general-1', 'fiscal-1']);
+    expect(requestEdgePrintDocumentsMock).toHaveBeenCalledWith(['general-1']);
+  });
+
+  it('requests fiscal close with the final POS shift even when backend fiscal state is stale', () => {
+    shiftContextState.fiscalShiftOpen = false;
+
+    render(<CashierShiftPage />);
+
+    expect(screen.queryByRole('checkbox')).toBeNull();
+    expect(screen.getByText('POS va fiskal smena birga yopiladi.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Smenani yopish' }));
+
+    expect(closeMutateMock).toHaveBeenCalledWith({
+      cashShiftId: 'shift-1',
+      notesClose: '',
+      closeFiscalShift: true,
+    });
   });
 
   it('keeps the report button enabled while a report request is pending', () => {
