@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1
+
 FROM node:22-alpine AS build
 
 WORKDIR /app
@@ -10,8 +12,6 @@ ARG VITE_CONTROL_APP_URL=https://control.cafe-postcode.uz
 ARG VITE_APP_VERSION=web
 ARG VITE_MONITOR_ANNOUNCEMENT_BASE_URL=/monitor-announcements/v1/uz/female
 ARG FFMPEG_BINARIES_URL=https://cdn.npmmirror.com/binaries/ffmpeg-static
-ARG HTTP_PROXY
-ARG HTTPS_PROXY
 
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL} \
     VITE_REMOTE_API_BASE_URL=${VITE_REMOTE_API_BASE_URL} \
@@ -22,8 +22,10 @@ ENV VITE_API_BASE_URL=${VITE_API_BASE_URL} \
     VITE_MONITOR_ANNOUNCEMENT_BASE_URL=${VITE_MONITOR_ANNOUNCEMENT_BASE_URL}
 
 COPY package*.json ./
-RUN npm_config_proxy=${HTTP_PROXY} \
-    npm_config_https_proxy=${HTTPS_PROXY} \
+RUN --mount=type=secret,id=npm_proxy \
+    NPM_PROXY="$(cat /run/secrets/npm_proxy 2>/dev/null || true)" && \
+    npm_config_proxy=${NPM_PROXY} \
+    npm_config_https_proxy=${NPM_PROXY} \
     HTTP_PROXY= HTTPS_PROXY= http_proxy= https_proxy= \
     FFMPEG_BINARIES_URL=${FFMPEG_BINARIES_URL} \
     npm ci
