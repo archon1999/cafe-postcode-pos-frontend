@@ -1,3 +1,5 @@
+import { isAxiosError } from 'axios';
+
 import type {
   Hall,
   TableSession,
@@ -40,8 +42,14 @@ class WaiterRepositoryImpl implements WaiterRepository {
     await apiPost(`/pos/floor/tables/${tableId}/reserve/`);
   }
 
-  async getTableSession(sessionId: string): Promise<TableSession> {
-    return mapTableSession(await apiGet<TableSession>(`/pos/floor/table-sessions/${sessionId}/`));
+  async getTableSession(sessionId: string): Promise<TableSession | null> {
+    try {
+      return mapTableSession(await apiGet<TableSession>(`/pos/floor/table-sessions/${sessionId}/`));
+    } catch (error) {
+      // Closed sessions leave the Agent's active projection after reconciliation.
+      if (isAxiosError(error) && error.response?.status === 404) return null;
+      throw error;
+    }
   }
 
   async transferTableSession(

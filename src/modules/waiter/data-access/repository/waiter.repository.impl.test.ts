@@ -1,14 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { apiDeleteMock, apiPatchMock, apiPostMock } = vi.hoisted(() => ({
+const { apiDeleteMock, apiGetMock, apiPatchMock, apiPostMock } = vi.hoisted(() => ({
   apiDeleteMock: vi.fn(),
+  apiGetMock: vi.fn(),
   apiPatchMock: vi.fn(),
   apiPostMock: vi.fn(),
 }));
 
 vi.mock('shared/api/client', () => ({
   apiDelete: (...args: unknown[]) => apiDeleteMock(...args),
-  apiGet: vi.fn(),
+  apiGet: (...args: unknown[]) => apiGetMock(...args),
   apiPatch: (...args: unknown[]) => apiPatchMock(...args),
   apiPost: (...args: unknown[]) => apiPostMock(...args),
   unwrapCollection: vi.fn(),
@@ -19,8 +20,21 @@ import { waiterRepository } from './waiter.repository.impl';
 describe('waiter order item delete transport contract', () => {
   beforeEach(() => {
     apiDeleteMock.mockReset();
+    apiGetMock.mockReset();
     apiPatchMock.mockReset();
     apiPostMock.mockReset();
+  });
+
+  it('returns unavailable when a reconciled session is absent from the active projection', async () => {
+    apiGetMock.mockRejectedValueOnce({ isAxiosError: true, response: { status: 404 } });
+    await expect(waiterRepository.getTableSession('closed-session')).resolves.toBeNull();
+    expect(apiGetMock).toHaveBeenCalledWith('/pos/floor/table-sessions/closed-session/');
+  });
+
+  it.each([401, 403, 500, undefined])('preserves a session read failure with status %s', async (status) => {
+    const error = { isAxiosError: true, response: status ? { status } : undefined };
+    apiGetMock.mockRejectedValueOnce(error);
+    await expect(waiterRepository.getTableSession('session-1')).rejects.toBe(error);
   });
 
   it('preserves kitchen cancellation documents from the delete response', async () => {

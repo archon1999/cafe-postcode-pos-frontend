@@ -83,7 +83,11 @@ function WaiterMenuCatalogPage({ sessionId }: { sessionId: string | null }) {
     return <Navigate to={getPosHomePath(session)} replace />;
   }
 
-  if (tableSessionQuery.data?.status === 'closed' || tableSessionQuery.data?.status === 'merged') {
+  if (
+    tableSessionQuery.data === null ||
+    tableSessionQuery.data?.status === 'closed' ||
+    tableSessionQuery.data?.status === 'merged'
+  ) {
     return <Navigate to="/waiter/halls" replace />;
   }
 

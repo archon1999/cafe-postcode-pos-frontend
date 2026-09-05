@@ -103,10 +103,13 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
 
   const sessionQuery = useWaiterTableSessionQuery(sessionId);
   useEffect(() => {
-    if (!isTakeawayMode && ['closed', 'merged'].includes(sessionQuery.data?.status ?? '')) {
+    if (
+      !isTakeawayMode &&
+      (sessionQuery.data === null || ['closed', 'merged'].includes(sessionQuery.data?.status ?? ''))
+    ) {
       void navigate('/waiter/halls', { replace: true });
     }
-  }, [isTakeawayMode, navigate, sessionQuery.data?.status]);
+  }, [isTakeawayMode, navigate, sessionQuery.data]);
   const menuQuery = useWaiterMenuQuery({ enabled: canViewMenu });
   const hallOrderQuery = useCurrentWaiterOrder(sessionId);
   const takeawayOrderQuery = useCurrentWaiterTakeawayOrder(session?.user.id);
@@ -220,8 +223,8 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
   const shouldShowVat = vatEnabled && vatPercent > 0;
   const vatLabel = `${copy.vat} (${formatPercent(vatPercent)}%)`;
   const orderModeMeta = isTakeawayMode ? `${1} ${copy.guests}` : `${sessionQuery.data?.guestCount ?? 0} ${copy.guests}`;
-  const tableNumberLabel = getPosTableNumberLabel(sessionQuery.data);
-  const tableZoneLabel = isTakeawayMode ? '' : getPosZoneContextLabel(sessionQuery.data);
+  const tableNumberLabel = getPosTableNumberLabel(sessionQuery.data ?? undefined);
+  const tableZoneLabel = isTakeawayMode ? '' : getPosZoneContextLabel(sessionQuery.data ?? undefined);
   const tableHallLabel = isTakeawayMode ? '' : String(sessionQuery.data?.hallName ?? '').trim();
   const submitOrderMutation = useSubmitWaiterOrderMutation({
     orderId: currentOrder?.id,

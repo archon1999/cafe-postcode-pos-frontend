@@ -15,7 +15,7 @@ export interface WaiterRepository {
   getHalls(): Promise<Hall[]>;
   openTableSession(tableId: string, guestCount: number): Promise<WaiterSessionResponse>;
   reserveTable(tableId: string): Promise<void>;
-  getTableSession(sessionId: string): Promise<TableSession>;
+  getTableSession(sessionId: string): Promise<TableSession | null>;
   transferTableSession(
     sessionId: string,
     targetTableId: string,

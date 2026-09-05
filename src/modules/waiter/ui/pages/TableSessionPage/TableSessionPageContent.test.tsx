@@ -284,6 +284,18 @@ describe('TableSessionPageContent', () => {
     expect(navigateMock).toHaveBeenCalledWith('/waiter/halls', { replace: true });
   });
 
+  it('leaves a session removed from the active projection after sync', () => {
+    useWaiterTableSessionQueryMock.mockReturnValue({ data: null });
+    render(<TableSessionPageContent sessionId="session-1" mode="hall" />);
+    expect(navigateMock).toHaveBeenCalledWith('/waiter/halls', { replace: true });
+  });
+
+  it('does not interpret an unavailable response during loading or failure as closure', () => {
+    useWaiterTableSessionQueryMock.mockReturnValue({ data: undefined });
+    render(<TableSessionPageContent sessionId="session-1" mode="hall" />);
+    expect(navigateMock).not.toHaveBeenCalled();
+  });
+
   it('keeps the table order note separate from an item-level note', async () => {
     render(<TableSessionPageContent sessionId="session-1" mode="hall" />);
 

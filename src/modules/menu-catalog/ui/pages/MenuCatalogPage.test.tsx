@@ -12,7 +12,7 @@ const useOptimisticBuilderOrderMock = vi.fn();
 const addItemMock = vi.fn();
 const removeItemMock = vi.fn();
 let searchParamsValue = '';
-let tableSessionStatus = 'open';
+let tableSessionStatus: string | null = 'open';
 
 vi.mock('react-router', () => ({
   Navigate: ({ to, replace }: { to: string; replace?: boolean }) => {
@@ -82,12 +82,15 @@ vi.mock('modules/waiter/application', () => ({
     ],
   }),
   useWaiterTableSessionQuery: () => ({
-    data: {
-      id: 'session-1',
-      status: tableSessionStatus,
-      serviceFeePercent: 0,
-      serviceFeeComponents: [],
-    },
+    data:
+      tableSessionStatus === null
+        ? null
+        : {
+            id: 'session-1',
+            status: tableSessionStatus,
+            serviceFeePercent: 0,
+            serviceFeeComponents: [],
+          },
   }),
   waiterKeys: {
     orders: ['waiter', 'orders'],
@@ -190,7 +193,7 @@ describe('MenuCatalogPage', () => {
     expect(navigateElementMock).toHaveBeenCalledWith({ to: '/cashier/builder', replace: true });
   });
 
-  it.each(['closed', 'merged'])('leaves a %s session opened from a stale catalog link', (status) => {
+  it.each(['closed', 'merged', null])('leaves a %s session opened from a stale catalog link', (status) => {
     tableSessionStatus = status;
     render(<MenuCatalogPage />);
     expect(navigateElementMock).toHaveBeenCalledWith({ to: '/waiter/halls', replace: true });
