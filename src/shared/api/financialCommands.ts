@@ -148,13 +148,25 @@ function responseError(error: unknown) {
   return (error as { response?: { status?: number; data?: Record<string, unknown> } })?.response;
 }
 
+function agentUpdatingError(command: StoredCommand | null) {
+  return new FinancialCommandError(
+    command,
+    { state: command ? 'unknown' : 'failed' },
+    command
+      ? 'Local Agent yangilanmoqda. Tugagach saqlangan amal holatini qayta tekshiring.'
+      : 'Local Agent yangilanmoqda. Bir necha soniyadan keyin qayta urinib ko‘ring. To‘lov yuborilmadi.',
+    'AGENT_UPDATING',
+  );
+}
+
 async function requireFinancialCapability(transport: Transport, command: StoredCommand | null = null) {
   try {
     const response = await transport.get<{ status?: { agent?: { financialCommandVersion?: number } } }>(
       '/system/status',
     );
     if (response.status?.agent?.financialCommandVersion === 1) return;
-  } catch {
+  } catch (error) {
+    if (responseError(error)?.data?.code === 'AGENT_UPDATING') throw agentUpdatingError(command);
     // An unavailable capability is not permission to use a legacy financial path.
   }
   throw new FinancialCommandError(
@@ -181,6 +193,7 @@ async function lookup(command: StoredCommand, transport: Transport): Promise<Fin
     return status;
   } catch (error) {
     const response = responseError(error);
+    if (response?.data?.code === 'AGENT_UPDATING') throw agentUpdatingError(command);
     if (response?.status === 404 && response.data?.code === 'FINANCIAL_COMMAND_NOT_FOUND') return null;
     throw new FinancialCommandError(
       command,

@@ -37,7 +37,7 @@ describe('POS diagnostics characterization', () => {
       'failed outbox',
       snapshot({ sync: { ready: true, pendingOutbox: 0, failedOutbox: 1, schemaVersion: 1 } }),
       false,
-      'success',
+      'error',
     ],
     [
       'configured integration offline',

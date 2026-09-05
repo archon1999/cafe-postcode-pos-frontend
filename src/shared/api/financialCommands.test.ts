@@ -233,4 +233,32 @@ describe('durable financial commands', () => {
     });
     expect(transport.post).not.toHaveBeenCalled();
   });
+
+  it('explains a preflight update before creating a payment intent', async () => {
+    const transport = {
+      get: vi.fn().mockRejectedValue({ response: { status: 503, data: { code: 'AGENT_UPDATING' } } }),
+      post: vi.fn(),
+    };
+    await expect(executeFinancialCommand(path, payload, transport)).rejects.toMatchObject({
+      response: { data: { code: 'AGENT_UPDATING' } },
+    });
+    expect(transport.post).not.toHaveBeenCalled();
+    expect(record()).toBeNull();
+  });
+
+  it('retains the original command across update admission and resumes it once', async () => {
+    const updating = { response: { status: 503, data: { code: 'AGENT_UPDATING' } } };
+    const post = vi.fn().mockRejectedValueOnce(updating).mockResolvedValueOnce({ ok: true });
+    const get = vi.fn().mockRejectedValue(updating);
+    await expect(executeFinancialCommand(path, payload, withCapability(get, post))).rejects.toMatchObject({
+      response: { data: { code: 'AGENT_UPDATING' } },
+    });
+    const commandId = record()!.value.commandId;
+    get.mockRejectedValue({ response: { status: 404, data: { code: 'FINANCIAL_COMMAND_NOT_FOUND' } } });
+    await expect(executeFinancialCommand(path, payload, withCapability(get, post))).resolves.toEqual({ ok: true });
+    expect(post).toHaveBeenCalledTimes(2);
+    expect(post.mock.calls[0][2]).toBe(commandId);
+    expect(post.mock.calls[1][2]).toBe(commandId);
+    expect(record()).toBeNull();
+  });
 });
