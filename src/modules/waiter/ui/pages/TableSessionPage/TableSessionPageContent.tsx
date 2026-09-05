@@ -102,6 +102,11 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
     : canAccessTableSessionMenu(session?.user);
 
   const sessionQuery = useWaiterTableSessionQuery(sessionId);
+  useEffect(() => {
+    if (!isTakeawayMode && ['closed', 'merged'].includes(sessionQuery.data?.status ?? '')) {
+      void navigate('/waiter/halls', { replace: true });
+    }
+  }, [isTakeawayMode, navigate, sessionQuery.data?.status]);
   const menuQuery = useWaiterMenuQuery({ enabled: canViewMenu });
   const hallOrderQuery = useCurrentWaiterOrder(sessionId);
   const takeawayOrderQuery = useCurrentWaiterTakeawayOrder(session?.user.id);
@@ -141,6 +146,11 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
     defaultVatEnabled: Boolean(session?.restaurantContext?.vatEnabled),
     defaultVatPercent: session?.restaurantContext?.vatPercent ?? 0,
     removeOrderItem: (itemId) => waiterRepository.removeOrderItem(itemId),
+    onOrderRemoved: (removedOrder) => {
+      if (!isTakeawayMode && removedOrder && removedOrder.status !== 'open') {
+        void navigate('/waiter/halls', { replace: true });
+      }
+    },
     onPrintDocuments: (documentIds) => {
       requestEdgePrintDocuments(documentIds, (error) =>
         toast.error(error instanceof Error ? error.message : 'Oshxona chekini chiqarib bo‘lmadi'),

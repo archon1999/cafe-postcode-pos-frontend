@@ -413,6 +413,7 @@ describe('useOptimisticBuilderOrder', () => {
     await waitFor(() => expect(result.current.hasPendingOperations).toBe(false));
     expect(result.current.currentOrder).toBeUndefined();
     expect(onOrderRemoved).toHaveBeenCalledTimes(1);
+    expect(onOrderRemoved).toHaveBeenCalledWith(baseOrder);
 
     act(() => result.current.addItem(createMenuItem({ id: 'menu-2' }), ''));
     await waitFor(() => expect(createRemoteOrder).toHaveBeenCalledWith());

@@ -57,7 +57,7 @@ type UseOptimisticBuilderOrderOptions<
     }>,
   ) => Promise<{ kitchenPrintDocuments?: string[] } | void>;
   onPrintDocuments?: (documentIds: string[]) => void;
-  onOrderRemoved?: () => void;
+  onOrderRemoved?: (removedOrder: TOrder | undefined) => void;
   resetKey?: unknown;
   syncErrorMessage: string;
 };
@@ -266,7 +266,7 @@ export function useOptimisticBuilderOrder<
           tempOrderIdRef.current = null;
           setResolvedBaseOrder(undefined);
           await queryClient.invalidateQueries({ queryKey: canonicalQueryKey });
-          onOrderRemoved?.();
+          onOrderRemoved?.(resolvedBaseOrder);
         } else {
           await refreshCurrentOrder();
         }
@@ -283,6 +283,7 @@ export function useOptimisticBuilderOrder<
       onPrintDocuments,
       refreshCurrentOrder,
       removeOrderItem,
+      resolvedBaseOrder,
       settleRemoveOperation,
       syncErrorMessage,
     ],

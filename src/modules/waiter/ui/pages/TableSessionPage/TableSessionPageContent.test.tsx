@@ -251,6 +251,39 @@ describe('TableSessionPageContent', () => {
     expect(submitMutateMock).toHaveBeenCalledTimes(1);
   });
 
+  it.each(['submitted', 'ready'])('returns to the floor after the last %s order item closes the table', (status) => {
+    render(<TableSessionPageContent sessionId="session-1" mode="hall" />);
+    const options = useOptimisticBuilderOrderMock.mock.lastCall?.[0];
+    options.onOrderRemoved({ id: 'order-1', status, tableSession: 'session-1' });
+    expect(navigateMock).toHaveBeenCalledWith('/waiter/halls', { replace: true });
+  });
+
+  it('keeps an empty table draft editable because removing it does not close the session', () => {
+    render(<TableSessionPageContent sessionId="session-1" mode="hall" />);
+    useOptimisticBuilderOrderMock.mock.lastCall?.[0].onOrderRemoved({
+      id: 'order-1',
+      status: 'open',
+      tableSession: 'session-1',
+    });
+    expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps takeaway cancellation in the takeaway builder', () => {
+    render(<TableSessionPageContent sessionId={null} mode="takeaway" />);
+    useOptimisticBuilderOrderMock.mock.lastCall?.[0].onOrderRemoved({
+      id: 'order-1',
+      status: 'submitted',
+      tableSession: null,
+    });
+    expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it.each(['closed', 'merged'])('leaves a stale %s table session page', (status) => {
+    useWaiterTableSessionQueryMock.mockReturnValue({ data: { status } });
+    render(<TableSessionPageContent sessionId="session-1" mode="hall" />);
+    expect(navigateMock).toHaveBeenCalledWith('/waiter/halls', { replace: true });
+  });
+
   it('keeps the table order note separate from an item-level note', async () => {
     render(<TableSessionPageContent sessionId="session-1" mode="hall" />);
 

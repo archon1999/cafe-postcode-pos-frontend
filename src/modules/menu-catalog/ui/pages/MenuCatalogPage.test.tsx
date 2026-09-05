@@ -12,6 +12,7 @@ const useOptimisticBuilderOrderMock = vi.fn();
 const addItemMock = vi.fn();
 const removeItemMock = vi.fn();
 let searchParamsValue = '';
+let tableSessionStatus = 'open';
 
 vi.mock('react-router', () => ({
   Navigate: ({ to, replace }: { to: string; replace?: boolean }) => {
@@ -83,6 +84,7 @@ vi.mock('modules/waiter/application', () => ({
   useWaiterTableSessionQuery: () => ({
     data: {
       id: 'session-1',
+      status: tableSessionStatus,
       serviceFeePercent: 0,
       serviceFeeComponents: [],
     },
@@ -149,6 +151,7 @@ describe('MenuCatalogPage', () => {
     addItemMock.mockReset();
     removeItemMock.mockReset();
     searchParamsValue = 'source=waiter&sessionId=session-1';
+    tableSessionStatus = 'open';
     useOptimisticBuilderOrderMock.mockReset();
     useOptimisticBuilderOrderMock.mockReturnValue({
       currentOrder: {
@@ -185,6 +188,24 @@ describe('MenuCatalogPage', () => {
     render(<MenuCatalogPage />);
 
     expect(navigateElementMock).toHaveBeenCalledWith({ to: '/cashier/builder', replace: true });
+  });
+
+  it.each(['closed', 'merged'])('leaves a %s session opened from a stale catalog link', (status) => {
+    tableSessionStatus = status;
+    render(<MenuCatalogPage />);
+    expect(navigateElementMock).toHaveBeenCalledWith({ to: '/waiter/halls', replace: true });
+    expect(screen.queryByRole('button', { name: 'Add one Burger' })).toBeNull();
+  });
+
+  it.each(['open', 'submitted', 'ready'])('handles final item removal from a %s order', (status) => {
+    render(<MenuCatalogPage />);
+    const options = useOptimisticBuilderOrderMock.mock.calls[0][0];
+    options.onOrderRemoved({ ...options.baseOrder, status });
+    if (status === 'open') {
+      expect(navigateMock).not.toHaveBeenCalled();
+    } else {
+      expect(navigateMock).toHaveBeenCalledWith('/waiter/halls', { replace: true });
+    }
   });
 
   it('shows product details and selected quantity without prices or totals', () => {

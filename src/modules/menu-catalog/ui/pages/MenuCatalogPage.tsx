@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Navigate, useSearchParams } from 'react-router';
+import { Navigate, useNavigate, useSearchParams } from 'react-router';
 
 import { canAccessTableSessionMenu, canAccessTakeawayBuilder, getPosHomePath, usePosSession } from 'modules/auth';
 import { cashierKeys, useCashierBuilderOrdersQuery, useCashierMenuQuery } from 'modules/cashier/application';
@@ -29,6 +29,7 @@ import {
 } from './PriceHiddenCatalogContent';
 
 function WaiterMenuCatalogPage({ sessionId }: { sessionId: string | null }) {
+  const navigate = useNavigate();
   const { locale, session } = usePosSession();
   const canViewMenu = canAccessTableSessionMenu(session?.user);
   const menuQuery = useWaiterMenuQuery({ enabled: canViewMenu && Boolean(sessionId) });
@@ -56,6 +57,11 @@ function WaiterMenuCatalogPage({ sessionId }: { sessionId: string | null }) {
     defaultVatEnabled: Boolean(session?.restaurantContext?.vatEnabled),
     defaultVatPercent: session?.restaurantContext?.vatPercent ?? 0,
     removeOrderItem: (itemId) => waiterRepository.removeOrderItem(itemId),
+    onOrderRemoved: (removedOrder) => {
+      if (removedOrder && removedOrder.status !== 'open') {
+        void navigate('/waiter/halls', { replace: true });
+      }
+    },
     selectCurrentOrder: (orders) =>
       orders.find((order) => order.tableSession === sessionId && !['closed', 'cancelled'].includes(order.status)),
     addOrderItem: (orderId, menuItem, note, selectedModifiers) =>
@@ -75,6 +81,10 @@ function WaiterMenuCatalogPage({ sessionId }: { sessionId: string | null }) {
 
   if (!sessionId || !canViewMenu) {
     return <Navigate to={getPosHomePath(session)} replace />;
+  }
+
+  if (tableSessionQuery.data?.status === 'closed' || tableSessionQuery.data?.status === 'merged') {
+    return <Navigate to="/waiter/halls" replace />;
   }
 
   return (
