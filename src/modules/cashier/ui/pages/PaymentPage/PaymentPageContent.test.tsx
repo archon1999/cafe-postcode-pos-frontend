@@ -15,6 +15,8 @@ const addPaymentOrderItemMutateAsyncMock = vi.fn();
 const removePaymentOrderItemMutateAsyncMock = vi.fn();
 const updateDisplayNameMutateAsyncMock = vi.fn();
 const paymentMutateAsyncMock = vi.fn();
+const fiscalRetryMutateMock = vi.fn();
+const recoverPaymentMutateAsyncMock = vi.fn();
 const printPrecheckMutateMock = vi.fn();
 const requestEdgePrintDocumentsMock = vi.hoisted(() => vi.fn());
 const clipboardWriteTextMock = vi.fn();
@@ -23,6 +25,7 @@ let orderTableSessionMock: string | null = null;
 let orderTotalMock = 30000;
 let enabledPaymentMethodsMock: Array<'cash' | 'card' | 'mixed'> = ['cash'];
 let paymentTotalEditableMock = false;
+let orderEditPendingMock = false;
 let paymentMutationStateMock = {
   isPending: false,
   isError: false,
@@ -58,8 +61,12 @@ vi.mock('modules/auth', () => ({
 }));
 
 vi.mock('modules/cashier/application', () => ({
-  useAddCashierPaymentOrderItemMutation: () => ({
+  useCashierFiscalRetryMutation: (options: { onSuccess?: (response: unknown) => void }) => ({
     isPending: false,
+    mutate: (id: string) => options.onSuccess?.(fiscalRetryMutateMock(id)),
+  }),
+  useAddCashierPaymentOrderItemMutation: () => ({
+    isPending: orderEditPendingMock,
     mutateAsync: addPaymentOrderItemMutateAsyncMock,
   }),
   useRemoveCashierPaymentOrderItemMutation: () => ({
@@ -84,6 +91,10 @@ vi.mock('modules/cashier/application', () => ({
   useCashierPaymentMutation: () => ({
     ...paymentMutationStateMock,
     mutateAsync: paymentMutateAsyncMock,
+  }),
+  useRecoverCashierPaymentMutation: () => ({
+    isPending: false,
+    mutateAsync: recoverPaymentMutateAsyncMock,
   }),
   usePrintCashierPrecheckMutation: () => ({
     isPending: false,
@@ -143,7 +154,8 @@ vi.mock('modules/cashier/application', () => ({
   }),
 }));
 
-vi.mock('modules/cashier/domain', () => ({
+vi.mock('modules/cashier/domain', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('modules/cashier/domain')>()),
   aggregateCashierOrderItems: (items: Array<Record<string, unknown>>) => [
     {
       ...items[0],
@@ -180,6 +192,47 @@ vi.mock('modules/edge-printing/application', () => ({
 }));
 
 describe('PaymentPageContent', () => {
+  it('checks an unknown card result without offering manual completion or another card payment', async () => {
+    enabledPaymentMethodsMock = ['card'];
+    paymentMutateAsyncMock.mockRejectedValueOnce({
+      response: {
+        data: {
+          detail: 'Terminal javobi yo‘qoldi',
+          financialCommand: {
+            commandId: 'original-command',
+            state: 'unknown',
+            stage: 'payment',
+            manualConfirmationAllowed: false,
+          },
+        },
+      },
+    });
+    render(<PaymentPageContent orderId="order-1" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Chek' }));
+    expect(await screen.findByRole('dialog', { name: 'Amal natijasi noma’lum' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Manual card' })).toBeNull();
+    recoverPaymentMutateAsyncMock.mockResolvedValueOnce({
+      order: { status: 'closed', items: [] },
+      payment: { id: 'payment-1', method: 'card', amount: 30000 },
+      receipt: null,
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Amal holatini tekshirish' }));
+    await waitFor(() => expect(recoverPaymentMutateAsyncMock).toHaveBeenLastCalledWith(true));
+    expect(paymentMutateAsyncMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('restores a completed payment on reload by looking up the saved command', async () => {
+    recoverPaymentMutateAsyncMock.mockResolvedValueOnce({
+      order: { status: 'closed', items: [] },
+      payment: { id: 'payment-restored', method: 'cash', amount: 30000 },
+      receipt: null,
+    });
+    render(<PaymentPageContent orderId="order-1" />);
+    expect(await screen.findByText('Chek tayyor')).toBeTruthy();
+    expect(recoverPaymentMutateAsyncMock).toHaveBeenCalledWith(false);
+    expect(paymentMutateAsyncMock).not.toHaveBeenCalled();
+  });
+
   beforeEach(() => {
     cleanup();
     navigateMock.mockReset();
@@ -191,6 +244,9 @@ describe('PaymentPageContent', () => {
     removePaymentOrderItemMutateAsyncMock.mockReset();
     updateDisplayNameMutateAsyncMock.mockReset();
     paymentMutateAsyncMock.mockReset();
+    fiscalRetryMutateMock.mockReset();
+    recoverPaymentMutateAsyncMock.mockReset();
+    recoverPaymentMutateAsyncMock.mockResolvedValue(null);
     printPrecheckMutateMock.mockReset();
     requestEdgePrintDocumentsMock.mockClear();
     clipboardWriteTextMock.mockReset();
@@ -209,10 +265,23 @@ describe('PaymentPageContent', () => {
     orderTotalMock = 30000;
     enabledPaymentMethodsMock = ['cash'];
     paymentTotalEditableMock = false;
+    orderEditPendingMock = false;
     canAddCashierPaymentOrderItemsMock.mockReturnValue(true);
     canAccessWaiterTablesMock.mockReturnValue(false);
     canRemoveCashierPaymentOrderItemsMock.mockReturnValue(false);
     canSkipFiscalReceiptsMock.mockReturnValue(false);
+  });
+
+  it('blocks payment and precheck until item edits and the refreshed total settle', () => {
+    orderEditPendingMock = true;
+    const view = render(<PaymentPageContent orderId="order-1" />);
+    expect((screen.getByRole('button', { name: 'Chek' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: 'Prechek' }) as HTMLButtonElement).disabled).toBe(true);
+    orderEditPendingMock = false;
+    orderTotalMock = 60000;
+    view.rerender(<PaymentPageContent orderId="order-1" />);
+    expect((screen.getByRole('spinbutton', { name: 'Summa' }) as HTMLInputElement).value).toBe('60000');
+    expect((screen.getByRole('button', { name: 'Chek' }) as HTMLButtonElement).disabled).toBe(false);
   });
 
   it('shows the add-one-more action only when the separate permission is present', () => {
@@ -475,6 +544,8 @@ describe('PaymentPageContent', () => {
       });
     });
     expect(await screen.findByText('Chek tayyor')).toBeTruthy();
+    expect(screen.getByRole('dialog').textContent).toMatch(/30[\s,]000 so'm/);
+    expect(screen.getByRole('dialog').textContent).not.toMatch(/20[\s,]000 so'm/);
   });
 
   it('uses one split editor for cash and card parts', async () => {
@@ -568,6 +639,12 @@ describe('PaymentPageContent', () => {
         response: {
           data: {
             detail: 'Canceled',
+            financialCommand: {
+              commandId: 'declined-command',
+              state: 'failed',
+              stage: 'payment',
+              manualConfirmationAllowed: true,
+            },
             payment: {
               provider_payload: {
                 provider: 'marta-softpos',
@@ -612,7 +689,7 @@ describe('PaymentPageContent', () => {
     expect((screen.getByLabelText("To'lov 1") as HTMLInputElement).disabled).toBe(true);
     expect((screen.getByLabelText("To'lov 2") as HTMLInputElement).disabled).toBe(false);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Fiscalga qayta yuborish' }));
+    fireEvent.click(screen.getByRole('button', { name: 'To‘lovni qayta boshlash' }));
 
     await waitFor(() => {
       expect(paymentMutateAsyncMock).toHaveBeenNthCalledWith(3, {
@@ -648,6 +725,12 @@ describe('PaymentPageContent', () => {
         response: {
           data: {
             detail: 'MARTA sozlanmagan',
+            financialCommand: {
+              commandId: 'declined-command',
+              state: 'failed',
+              stage: 'payment',
+              manualConfirmationAllowed: true,
+            },
             payment: {
               provider_payload: {
                 provider: 'marta-softpos',
@@ -719,6 +802,12 @@ describe('PaymentPageContent', () => {
         response: {
           data: {
             detail: 'MARTA sozlanmagan',
+            financialCommand: {
+              commandId: 'declined-command',
+              state: 'failed',
+              stage: 'payment',
+              manualConfirmationAllowed: true,
+            },
             payment: {
               provider_payload: {
                 provider: 'marta-softpos',
@@ -782,7 +871,7 @@ describe('PaymentPageContent', () => {
       });
     });
     await waitFor(() => {
-      expect(screen.queryByRole('dialog', { name: "Karta to'lovi yakunlanmadi" })).toBeNull();
+      expect(screen.queryByRole('dialog', { name: "To'lov bajarilmadi." })).toBeNull();
     });
     await waitFor(() => {
       expect((screen.getByLabelText('Summa') as HTMLInputElement).value).toBe('20000');
@@ -827,6 +916,12 @@ describe('PaymentPageContent', () => {
         response: {
           data: {
             detail: 'MARTA sozlanmagan',
+            financialCommand: {
+              commandId: 'declined-command',
+              state: 'failed',
+              stage: 'payment',
+              manualConfirmationAllowed: true,
+            },
             payment: {
               provider_payload: {
                 provider: 'marta-softpos',
@@ -890,7 +985,7 @@ describe('PaymentPageContent', () => {
       expect(paymentMutateAsyncMock).toHaveBeenCalledTimes(3);
     });
     await waitFor(() => {
-      expect(screen.queryByRole('dialog', { name: "Karta to'lovi yakunlanmadi" })).toBeNull();
+      expect(screen.queryByRole('dialog', { name: "To'lov bajarilmadi." })).toBeNull();
     });
     expect(screen.queryByText('Chek tayyor')).toBeNull();
     expect((screen.getByLabelText("To'lov 1") as HTMLInputElement).disabled).toBe(true);
@@ -1052,6 +1147,35 @@ describe('PaymentPageContent', () => {
     expect(navigateMock).toHaveBeenCalledWith('/cashier/open-checks', { replace: true });
   });
 
+  it('recovers a failed fiscal receipt without accepting the payment again', async () => {
+    paymentMutateAsyncMock.mockResolvedValueOnce({
+      order: { orderNumber: 102, items: [], subtotal: 30000, serviceFee: 0, total: 30000, note: '', status: 'closed' },
+      payment: { id: 'already-paid-1', method: 'cash', amount: 30000 },
+      receipt: { id: 'fiscal-pending-1', kind: 'fiscal', status: 'failed', payload: {} },
+    });
+    fiscalRetryMutateMock.mockReturnValue({
+      receipt: {
+        id: 'fiscal-pending-1',
+        kind: 'fiscal',
+        status: 'sent',
+        printDocument: 'recovered-document',
+        payload: { receiptNumber: '219' },
+      },
+    });
+    render(<PaymentPageContent orderId="order-1" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Chek' }));
+    expect(await screen.findByRole('heading', { name: 'Fiskal chek chiqarilmadi' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Chek tayyor' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Amal holatini tekshirish' }));
+    expect(fiscalRetryMutateMock).toHaveBeenCalledWith('already-paid-1');
+    expect(paymentMutateAsyncMock).toHaveBeenCalledTimes(1);
+    expect(await screen.findByRole('heading', { name: 'Chek tayyor' })).toBeTruthy();
+    expect(screen.getByText('219')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Yakunlash' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ha, chiqarish' }));
+    expect(requestEdgePrintDocumentsMock).toHaveBeenCalledWith(['recovered-document']);
+  });
+
   it('shows a fiscal device error without offering a non-fiscal print fallback', async () => {
     paymentMutateAsyncMock.mockResolvedValueOnce({
       order: {
@@ -1080,7 +1204,7 @@ describe('PaymentPageContent', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Chek' }));
 
     expect(await screen.findByText('Fiskal chek chiqarilmadi')).toBeTruthy();
-    expect(screen.getByText('Fiscal qurilma topilmadi.')).toBeTruthy();
+    expect(screen.getByText(/To‘lov qabul qilingan/)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Yakunlash' }));
 
     expect(screen.queryByText('Chek kerakmi?')).toBeNull();
@@ -1228,5 +1352,20 @@ describe('PaymentPageContent', () => {
       receipt: { id: 'receipt-submit-guard', payload: {} },
     });
     expect(await screen.findByText('Chek tayyor')).toBeTruthy();
+  });
+
+  it('blocks fractional payment and split amounts before sending money commands', () => {
+    render(<PaymentPageContent orderId="order-1" />);
+    fireEvent.change(screen.getByLabelText('Summa'), { target: { value: '1.5' } });
+    expect((screen.getByRole('button', { name: 'Chek' }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText('Summa'), { target: { value: '30000' } });
+    fireEvent.click(screen.getByRole('button', { name: "Bo'lak qo'shish" }));
+    fireEvent.change(screen.getByLabelText("To'lov 1"), { target: { value: '14999.5' } });
+    fireEvent.change(screen.getByLabelText("To'lov 2"), { target: { value: '15000.5' } });
+    expect((screen.getByRole('button', { name: 'Chek' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(paymentMutateAsyncMock).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText("To'lov 1"), { target: { value: '15000' } });
+    fireEvent.change(screen.getByLabelText("To'lov 2"), { target: { value: '15000' } });
+    expect((screen.getByRole('button', { name: 'Chek' }) as HTMLButtonElement).disabled).toBe(false);
   });
 });

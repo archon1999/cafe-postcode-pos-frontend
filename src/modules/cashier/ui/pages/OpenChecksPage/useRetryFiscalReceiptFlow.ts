@@ -35,6 +35,17 @@ export function useRetryFiscalReceiptFlow({ copy, latestPayment, onFinished, pri
             ? [response.receipt]
             : []) as RetryFiscalReceipt[]
       ).filter(Boolean);
+      if (
+        receipts.length === 0 ||
+        receipts.some(
+          (receipt) =>
+            ['unknown', 'registering', 'created', 'failed'].includes(receipt.status ?? '') ||
+            ['unknown', 'pending', 'failed'].includes(receipt.fiscalState ?? ''),
+        )
+      ) {
+        toast.error(copy.fiscalReceiptUnknown);
+        return;
+      }
       setDialog({
         receipts,
         receiptNumber:

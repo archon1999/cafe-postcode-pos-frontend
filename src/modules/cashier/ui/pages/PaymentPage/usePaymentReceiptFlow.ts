@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 
+import { useCashierFiscalRetryMutation } from 'modules/cashier/application';
 import type { CashierPaymentResponse } from 'modules/cashier/domain';
+import { getApiErrorMessage } from 'shared/api/errorMessage';
 
 export function usePaymentReceiptFlow({
   afterPaymentPath,
@@ -22,6 +24,14 @@ export function usePaymentReceiptFlow({
   const [receiptData, setReceiptData] = useState<CashierPaymentResponse | null>(null);
   const [printToastOpen, setPrintToastOpen] = useState(false);
   const [receiptPrintPromptOpen, setReceiptPrintPromptOpen] = useState(false);
+  const fiscalRetry = useCashierFiscalRetryMutation({
+    onSuccess: (response) => {
+      setReceiptData((current) =>
+        current ? { ...current, receipt: response.receipt, receipts: response.receipts } : current,
+      );
+    },
+    onError: (error) => onPrintError(getApiErrorMessage(error, 'Fiskal chek holatini tekshirib bo‘lmadi.')),
+  });
   const receipts = useMemo(
     () => receiptData?.receipts?.filter(Boolean) ?? (receiptData?.receipt ? [receiptData.receipt] : []),
     [receiptData?.receipt, receiptData?.receipts],
@@ -63,6 +73,10 @@ export function usePaymentReceiptFlow({
     receiptPrintPromptOpen,
     setReceiptPrintPromptOpen,
     isReceiptPrintConfirming: false,
+    isFiscalRetrying: fiscalRetry.isPending,
+    retryFiscalReceipt: () => {
+      if (receiptData?.payment.id && !fiscalRetry.isPending) fiscalRetry.mutate(receiptData.payment.id);
+    },
     finishReceiptFlow: finish,
     handleSuccessfulPaymentResponse: handleSuccessfulPayment,
     handleReceiptPromptPrint: printAndFinish,

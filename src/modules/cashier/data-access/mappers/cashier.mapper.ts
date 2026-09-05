@@ -73,7 +73,19 @@ type CashierOrderDto = Omit<CashierOrder, 'items' | 'orderNumber' | 'displayName
   service_fee_billable_minutes?: number;
   service_fee_quote?: CashierOrder['serviceFeeQuote'];
 };
-type CashierPaymentResponseDto = CashierPaymentResponse;
+type CashierFiscalReceiptDto = Omit<NonNullable<CashierPaymentResponse['receipt']>, 'payload'> & {
+  payload?: {
+    receiptNumber?: string;
+    receipt_number?: string;
+    issuedAt?: string;
+    issued_at?: string;
+    response?: Record<string, unknown>;
+  };
+};
+type CashierPaymentResponseDto = Omit<CashierPaymentResponse, 'receipt' | 'receipts'> & {
+  receipt: CashierFiscalReceiptDto | null;
+  receipts?: Array<CashierFiscalReceiptDto | null>;
+};
 type CashierCreateOrderResponseDto = CashierCreateOrderResponse;
 
 export function mapCashierMenuCategory(dto: CashierMenuCategoryDto): CashierMenuCategory {
@@ -148,10 +160,37 @@ export function mapCashierOrders(dtos: CashierOrderDto[]) {
   return dtos.map(mapCashierOrder);
 }
 
+export function mapCashierReceipt<T extends { payload?: object | null }>(receipt: T): T {
+  if (!receipt.payload) return receipt;
+  const payload = receipt.payload as Record<string, unknown>;
+  const response = payload.response as Record<string, unknown> | undefined;
+  const number =
+    response?.ReceiptSeq ??
+    response?.receiptSeq ??
+    response?.receipt_seq ??
+    payload.receiptNumber ??
+    payload.receipt_number;
+  const issuedAt =
+    payload.issuedAt ?? payload.issued_at ?? response?.DateTime ?? response?.dateTime ?? response?.date_time;
+  return {
+    ...receipt,
+    ...(typeof payload.detail === 'string' ? { fiscalErrorMessage: payload.detail } : {}),
+    payload: {
+      ...payload,
+      ...(number === undefined || number === null || number === '' ? {} : { receiptNumber: String(number) }),
+      ...(typeof issuedAt === 'string' ? { issuedAt } : {}),
+    },
+  };
+}
+
 export function mapCashierPaymentResponse(dto: CashierPaymentResponseDto): CashierPaymentResponse {
   return {
     ...dto,
     order: mapCashierOrder(dto.order),
+    receipt: dto.receipt ? mapCashierReceipt(dto.receipt) : dto.receipt,
+    ...(dto.receipts
+      ? { receipts: dto.receipts.map((receipt) => (receipt ? mapCashierReceipt(receipt) : receipt)) }
+      : {}),
   };
 }
 

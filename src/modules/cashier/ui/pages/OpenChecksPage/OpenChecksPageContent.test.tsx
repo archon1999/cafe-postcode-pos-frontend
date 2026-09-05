@@ -502,16 +502,24 @@ describe('OpenChecksPageContent', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Oddiy chekni qayta chiqarish' }));
     fireEvent.click(screen.getByRole('button', { name: "To'lovni qaytarish" }));
+    expect(refundMutateAsyncMock).not.toHaveBeenCalled();
+    expect((screen.getByRole('button', { name: 'Qaytarishni tasdiqlash' }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Karta/QR puli mijozga qaytarilganini tasdiqlayman' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Qaytarishni tasdiqlash' }));
     fireEvent.click(screen.getByRole('button', { name: 'Chek chiqarish' }));
 
     await waitFor(() => {
       expect(ensurePrintDocumentMutateAsyncMock).toHaveBeenCalledWith('payment-card-newest-succeeded');
-      expect(refundMutateAsyncMock).toHaveBeenCalledWith({ paymentId: 'payment-card-newest-succeeded' });
+      expect(refundMutateAsyncMock).toHaveBeenCalledWith({
+        paymentId: 'payment-card-newest-succeeded',
+        manualSettlementConfirmed: true,
+        refundWholeOrder: true,
+      });
       expect(retryFiscalMutateMock).toHaveBeenCalledWith('payment-card-newest-succeeded');
     });
   });
 
-  it('refunds split tenders newest-first and hides refund only after every succeeded tender is refunded', async () => {
+  it('confirms one full-order refund with all tenders and hides it after completion', async () => {
     openOrdersMock.mockReturnValue([]);
     refundMutateAsyncMock.mockResolvedValue({});
     let cardRefunded = false;
@@ -562,25 +570,18 @@ describe('OpenChecksPageContent', () => {
     const { rerender } = render(<OpenChecksPageContent />);
     fireEvent.click(screen.getByRole('button', { name: /Oddiy cheklar/ }));
     fireEvent.click(screen.getByRole('button', { name: "To'lovni qaytarish" }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Karta/QR puli mijozga qaytarilganini tasdiqlayman' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Qaytarishni tasdiqlash' }));
 
     await waitFor(() => {
-      expect(refundMutateAsyncMock).toHaveBeenNthCalledWith(1, { paymentId: 'payment-card-10' });
+      expect(refundMutateAsyncMock).toHaveBeenNthCalledWith(1, {
+        paymentId: 'payment-card-10',
+        manualSettlementConfirmed: true,
+        refundWholeOrder: true,
+      });
     });
 
     cardRefunded = true;
-    rerender(<OpenChecksPageContent />);
-
-    expect(screen.getByRole('button', { name: "To'lovni qaytarish" })).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Oddiy chekni qayta chiqarish' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Chek chiqarish' }));
-    fireEvent.click(screen.getByRole('button', { name: "To'lovni qaytarish" }));
-
-    await waitFor(() => {
-      expect(ensurePrintDocumentMutateAsyncMock).toHaveBeenCalledWith('payment-card-10');
-      expect(retryFiscalMutateMock).toHaveBeenCalledWith('payment-card-10');
-      expect(refundMutateAsyncMock).toHaveBeenNthCalledWith(2, { paymentId: 'payment-cash-20' });
-    });
-
     cashRefunded = true;
     rerender(<OpenChecksPageContent />);
 

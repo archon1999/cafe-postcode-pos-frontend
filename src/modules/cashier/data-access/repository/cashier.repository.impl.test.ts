@@ -202,7 +202,7 @@ describe('cashier repository transport contract', () => {
     const response = { payment: { id: 'payment-1' }, receipt: null, result: { success: false } };
     apiPostMock.mockResolvedValueOnce(response);
 
-    await expect(cashierRepository.retryFiscalPayment('payment-1')).resolves.toBe(response);
+    await expect(cashierRepository.retryFiscalPayment('payment-1')).resolves.toEqual(response);
     expect(apiPostMock).toHaveBeenCalledWith('/pos/billing/payments/payment-1/retry-fiscal/');
   });
 

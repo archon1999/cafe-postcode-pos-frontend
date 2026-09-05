@@ -10,6 +10,7 @@ const removeOrderItemMock = vi.hoisted(() => vi.fn());
 const payOrderMock = vi.hoisted(() => vi.fn());
 const requestEdgePrintDocumentsMock = vi.hoisted(() => vi.fn());
 const invalidateQueriesInBackgroundMock = vi.hoisted(() => vi.fn());
+const invalidateQueriesMock = vi.hoisted(() => vi.fn());
 
 vi.mock('../data-access', () => ({
   cashierRepository: {
@@ -25,6 +26,7 @@ vi.mock('modules/edge-printing/application', () => ({
 }));
 
 vi.mock('shared/api/query-client', () => ({
+  queryClient: { invalidateQueries: invalidateQueriesMock },
   invalidateQueriesInBackground: invalidateQueriesInBackgroundMock,
 }));
 
@@ -52,6 +54,7 @@ describe('useCashierOrderScanMutation', () => {
     payOrderMock.mockReset();
     requestEdgePrintDocumentsMock.mockReset();
     invalidateQueriesInBackgroundMock.mockReset();
+    invalidateQueriesMock.mockReset();
   });
 
   it('queues top-level kitchen documents and invalidates using the mapped order', async () => {
@@ -123,6 +126,7 @@ describe('useCashierOrderScanMutation', () => {
 
     expect(removeOrderItemMock).toHaveBeenCalledWith('item-2');
     expect(requestEdgePrintDocumentsMock).toHaveBeenCalledWith(['cancel-document-payment'], onPrintError);
+    expect(invalidateQueriesMock).toHaveBeenCalledWith({ queryKey: ['cashier', 'payment-order', 'order-1'] });
   });
 
   it('invalidates the halls projection after a successful payment', async () => {

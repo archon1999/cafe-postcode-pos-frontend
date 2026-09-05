@@ -1,6 +1,6 @@
-import { Box, Stack, Typography, alpha, useMediaQuery } from '@mui/material';
+import { Alert, Box, Button, Stack, Typography, alpha, useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 
@@ -17,8 +17,9 @@ import {
   useCloseCashierShiftMutation,
   useOpenCashierShiftMutation,
   usePrintCashierShiftReportMutation,
+  useRecoverCashierShiftMutation,
 } from 'modules/cashier/application';
-import type { CashierShiftCloseResponse } from 'modules/cashier/domain';
+import { type CashierShiftCloseResponse, getPaymentFailureState } from 'modules/cashier/domain';
 import { requestEdgePrintDocuments } from 'modules/edge-printing/application';
 import { getApiErrorMessage } from 'shared/api/errorMessage';
 import { POS_CONTEXT_POLL_INTERVAL_MS } from 'shared/api/polling';
@@ -46,6 +47,13 @@ export function CashierShiftPage() {
   const [openingNotes, setOpeningNotes] = useState('');
   const [openShiftDialogOpen, setOpenShiftDialogOpen] = useState(false);
   const [shiftCloseReport, setShiftCloseReport] = useState<CashierShiftCloseResponse | null>(null);
+  const [recoveryErrors, setRecoveryErrors] = useState<Partial<Record<'open' | 'close', string>>>({});
+  const [validationError, setValidationError] = useState<{
+    operation: 'open' | 'close';
+    detail: string;
+    showChecks: boolean;
+  } | null>(null);
+  const recoveryOperation = recoveryErrors.open ? 'open' : recoveryErrors.close ? 'close' : null;
 
   const canViewShift = canViewCashShift(session?.user);
   const canManageShift = canManageCashShift(session?.user);
@@ -57,6 +65,7 @@ export function CashierShiftPage() {
     searchParams.get('next') || (isCashierBuilderMode(session?.user) ? '/cashier/builder' : '/cashier/open-checks');
   const currentShift = contextQuery.data?.currentShift ?? null;
   const activeShifts = useMemo(() => contextQuery.data?.activeShifts ?? [], [contextQuery.data?.activeShifts]);
+  const pendingClosedShifts = contextQuery.data?.pendingClosedShifts ?? [];
   const availableCashDesks = useMemo(
     () => contextQuery.data?.availableCashDesks ?? [],
     [contextQuery.data?.availableCashDesks],
@@ -69,8 +78,23 @@ export function CashierShiftPage() {
     [activeCashDeskIds, availableCashDesks],
   );
 
+  const clearRecoveryError = (operation: 'open' | 'close') => {
+    setRecoveryErrors((previous) => ({ ...previous, [operation]: undefined }));
+    setValidationError((previous) => (previous?.operation === operation ? null : previous));
+  };
+  const onShiftError = (operation: 'open' | 'close', error: unknown) => {
+    const detail = getApiErrorMessage(error, copy.financialResultUnknown);
+    const failure = getPaymentFailureState(error);
+    if (failure.state === 'failed') {
+      clearRecoveryError(operation);
+      setValidationError({ operation, detail, showChecks: failure.code === 'EDGE_SHIFT_HAS_OPEN_ORDERS' });
+      return;
+    }
+    setRecoveryErrors((previous) => ({ ...previous, [operation]: detail }));
+  };
   const openShiftMutation = useOpenCashierShiftMutation({
     onSuccess: () => {
+      clearRecoveryError('open');
       setSelectedCashDeskId('');
       setSelectedCashierId('');
       setOpeningCash('0');
@@ -80,10 +104,12 @@ export function CashierShiftPage() {
         void navigate(nextPath, { replace: true });
       }
     },
+    onError: (error) => onShiftError('open', error),
   });
   const printShiftReportMutation = usePrintCashierShiftReportMutation();
   const closeShiftMutation = useCloseCashierShiftMutation({
     onSuccess: (response) => {
+      clearRecoveryError('close');
       void contextQuery.refetch();
       if (response.printDocuments?.length) {
         requestEdgePrintDocuments(response.printDocuments);
@@ -91,14 +117,35 @@ export function CashierShiftPage() {
       if (response.printReportError) {
         toast.error(`Smena yopildi, lekin hisobot tayyorlanmadi: ${response.printReportError}`);
       }
+      if (response.syncState === 'pending' || response.closeState === 'closed_local') {
+        toast.info(copy.shiftClosedLocal);
+      }
       if (response.report || response.fiscalShift || response.fiscal_shift) {
         setShiftCloseReport(response);
       }
     },
-    onError: (error) => {
-      toast.error(getApiErrorMessage(error, 'Smenani yopishda xatolik bor.'));
-    },
+    onError: (error) => onShiftError('close', error),
   });
+
+  const onRecoveredShift = (operation: 'open' | 'close', response: CashierShiftCloseResponse | null) => {
+    clearRecoveryError(operation);
+    if (!response) return;
+    void contextQuery.refetch();
+    if (response.report || response.fiscalShift || response.fiscal_shift) setShiftCloseReport(response);
+  };
+  const { mutate: recoverOpenShift, isPending: recoveringOpen } = useRecoverCashierShiftMutation('open', {
+    onSuccess: (response) => onRecoveredShift('open', response),
+    onError: (error) => onShiftError('open', error),
+  });
+  const { mutate: recoverCloseShift, isPending: recoveringClose } = useRecoverCashierShiftMutation('close', {
+    onSuccess: (response) => onRecoveredShift('close', response),
+    onError: (error) => onShiftError('close', error),
+  });
+  useEffect(() => {
+    if (!canManageShift) return;
+    recoverOpenShift(false);
+    recoverCloseShift(false);
+  }, [canManageShift, recoverOpenShift, recoverCloseShift]);
 
   const selectedCashDeskIdValue =
     selectedCashDeskId || (cashDesksAvailableToOpen.length === 1 ? (cashDesksAvailableToOpen[0]?.id ?? '') : '');
@@ -107,7 +154,8 @@ export function CashierShiftPage() {
     canManageShift &&
       selectedCashDeskIdValue &&
       (!requiresCashierSelection || selectedCashierId) &&
-      !openShiftMutation.isPending,
+      !openShiftMutation.isPending &&
+      !recoveryOperation,
   );
 
   if (!canViewShift) {
@@ -123,13 +171,17 @@ export function CashierShiftPage() {
         closesFiscalShift={closesFiscalShift}
         closing={closeShiftMutation.isPending}
         locale={locale}
-        onClose={() =>
+        onClose={() => {
+          if (recoveryErrors.close) {
+            recoverCloseShift(true);
+            return;
+          }
           closeShiftMutation.mutate({
             cashShiftId: shift.id,
             notesClose: '',
             closeFiscalShift: closesFiscalShift,
-          })
-        }
+          });
+        }}
         onPrint={async () => {
           try {
             const response = await printShiftReportMutation.mutateAsync({ cashShiftId: shift.id });
@@ -207,13 +259,42 @@ export function CashierShiftPage() {
             border: `1px solid ${alpha('#ffffff', theme.palette.mode === 'dark' ? 0.05 : 0.32)}`,
             boxShadow: 'var(--pos-content-panel-shadow)',
           })}>
+          {validationError ? (
+            <Alert
+              severity="warning"
+              sx={{ mb: 2 }}
+              action={
+                validationError.showChecks ? (
+                  <Button onClick={() => navigate('/cashier/open-checks')}>{copy.openChecks}</Button>
+                ) : undefined
+              }>
+              {validationError.detail}
+            </Alert>
+          ) : null}
+          {recoveryOperation ? (
+            <Alert
+              severity="warning"
+              sx={{ mb: 2 }}
+              action={
+                <Button
+                  disabled={recoveringOpen || recoveringClose}
+                  onClick={() => (recoveryOperation === 'open' ? recoverOpenShift(true) : recoverCloseShift(true))}>
+                  {copy.checkFinancialResult}
+                </Button>
+              }>
+              {recoveryErrors[recoveryOperation]}
+            </Alert>
+          ) : null}
           {contextQuery.isLoading && !contextQuery.data ? (
             <Typography variant="h6" color="text.secondary">
               {copy.processing}
             </Typography>
           ) : canManageShift ? (
             <ManagerShiftPanel
-              activeShifts={activeShifts}
+              activeShifts={[
+                ...activeShifts,
+                ...pendingClosedShifts.filter((pending) => !activeShifts.some((active) => active.id === pending.id)),
+              ]}
               availableCashDeskCount={cashDesksAvailableToOpen.length}
               canOpenShift={canOpenShift}
               isMobile={isMobile}

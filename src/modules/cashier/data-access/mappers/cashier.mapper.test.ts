@@ -1,8 +1,49 @@
 import { describe, expect, it } from 'vitest';
 
-import { mapCashierMenuCategory, mapCashierOrder } from './cashier.mapper';
+import {
+  mapCashierMenuCategory,
+  mapCashierOrder,
+  mapCashierPaymentResponse,
+  mapCashierReceipt,
+} from './cashier.mapper';
 
 describe('mapCashierOrder', () => {
+  it('maps the durable Agent fiscal failure detail for the receipt dialog', () => {
+    expect(
+      mapCashierReceipt({ status: 'failed', payload: { ok: false, detail: 'Fiskal servis bilan aloqa yo‘q.' } }),
+    ).toMatchObject({
+      status: 'failed',
+      fiscalErrorMessage: 'Fiskal servis bilan aloqa yo‘q.',
+    });
+  });
+  it('uses fiscal device receipt identity rather than the different order display number', () => {
+    const proof = { ReceiptSeq: 42, DateTime: '2026-09-05 02:03:29', FiscalSign: 'verified-proof' };
+    const receipt = { id: 'receipt-1', status: 'sent' as const, payload: { receipt_number: '42', response: proof } };
+    const response = mapCashierPaymentResponse({
+      order: {
+        id: 'order-1',
+        orderNumber: 3,
+        displayName: '3',
+        status: 'closed',
+        subtotal: 30000,
+        serviceFee: 0,
+        total: 30000,
+        channel: 'takeaway',
+        note: '',
+        items: [],
+      },
+      payment: { id: 'payment-1', method: 'cash', amount: 30000 },
+      receipt,
+      receipts: [receipt],
+    });
+    expect(response.receipt?.payload?.receiptNumber).toBe('42');
+    expect(response.receipts?.[0]?.payload?.receiptNumber).toBe('42');
+    expect(response.order.displayName).toBe('3');
+    expect(response.receipt?.payload).toMatchObject({ receipt_number: '42', response: proof });
+    expect(receipt.payload).not.toHaveProperty('receiptNumber');
+    expect(mapCashierReceipt({ payload: { receiptNumber: '43' } }).payload.receiptNumber).toBe('43');
+    expect(mapCashierReceipt({ payload: { receipt_number: '44' } }).payload).toMatchObject({ receiptNumber: '44' });
+  });
   it('maps the backend service item type', () => {
     const category = mapCashierMenuCategory({
       id: 'category-1',

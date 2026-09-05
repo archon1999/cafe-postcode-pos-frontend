@@ -42,6 +42,8 @@ function componentPresentation(
 ) {
   if (!component) return { label: copy.unknown, color: 'default' as ChipColor };
   if (!component.configured) return { label: copy.notConfigured, color: 'default' as ChipColor };
+  if (component.state === 'unknown' || component.state.includes('unknown'))
+    return { label: copy.unknown, color: 'warning' as ChipColor };
   return component.online
     ? { label: copy.online, color: 'success' as ChipColor }
     : { label: copy.offline, color: 'warning' as ChipColor };
@@ -146,11 +148,24 @@ export function SystemHealthPanel({
             color={agentRequestFailed || status?.agent.online === false ? 'error' : status ? 'success' : 'default'}
           />
           <StatusRow label={copy.fiscal} value={fiscal.label} color={fiscal.color} />
+          {status?.fiscal.configured ? (
+            <StatusRow
+              label={copy.fiscalQueue}
+              value={
+                status.fiscalQueue?.known ? String(status.fiscalQueue.pendingReceipts ?? copy.unknown) : copy.unknown
+              }
+              color={
+                !status.fiscalQueue?.known || status.fiscalQueue.lastError || status.fiscalQueue.stale
+                  ? 'warning'
+                  : 'default'
+              }
+            />
+          ) : null}
           {status?.marta.configured ? <StatusRow label={copy.marta} value={marta.label} color={marta.color} /> : null}
           <StatusRow
             label={copy.connectionAndSync}
-            value={connectionPresentation.label}
-            color={connectionPresentation.color}
+            value={`${connectionPresentation.label} · ${syncPresentation.label}`}
+            color={syncPresentation.color}
           />
         </Stack>
       </Box>
@@ -196,6 +211,25 @@ export function SystemHealthPanel({
               <Detail label={copy.lastSuccess} value={formatDate(status?.sync.lastSuccessAt, locale, copy.noData)} />
               <Detail label={copy.lastAttempt} value={formatDate(status?.sync.lastAttemptAt, locale, copy.noData)} />
               <Detail label={copy.pending} value={String(status?.sync.pendingOutbox ?? 0)} />
+              {status?.fiscal.configured ? (
+                <>
+                  <Detail
+                    label={copy.fiscalQueue}
+                    value={
+                      status.fiscalQueue?.known
+                        ? String(status.fiscalQueue.pendingReceipts ?? copy.unknown)
+                        : copy.unknown
+                    }
+                  />
+                  <Detail
+                    label={copy.fiscalOldest}
+                    value={formatDate(status.fiscalQueue?.firstUnacknowledgedReceiptTime, locale, copy.unknown)}
+                  />
+                  {status.fiscalQueue?.lastError ? (
+                    <Typography color="warning.main">{status.fiscalQueue.lastError}</Typography>
+                  ) : null}
+                </>
+              ) : null}
               <Detail label={copy.actionRequired} value={String(status ? actionRequiredOutboxCount(status.sync) : 0)} />
               <Detail label={copy.quarantined} value={String(status ? quarantinedOutboxCount(status.sync) : 0)} />
               <Detail label={copy.resolved} value={String(status?.sync.resolvedOutbox ?? 0)} />

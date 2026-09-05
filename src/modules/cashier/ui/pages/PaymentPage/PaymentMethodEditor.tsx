@@ -138,7 +138,7 @@ export function PaymentMethodEditor({
             fullWidth
           />
         ) : (
-          <Tooltip title={!isPaymentAmountValid ? copy.zeroAmountNotAllowed : ''} arrow>
+          <Tooltip title={!isPaymentAmountValid ? copy.invalidPaymentAmount : ''} arrow>
             <TextField
               label={totalEditable ? copy.finalPaymentTotal : copy.total}
               value={amount}
@@ -229,11 +229,13 @@ export function PaymentMethodEditor({
             const isPartPaid = part.status === 'paid';
             const partHasZeroAmount = !isPartPaid && Number(part.amount || 0) <= 0;
             const partHasError = !isPartPaid && (partHasZeroAmount || (!hasZeroSplitAmount && !isSplitPaymentValid));
-            const validationMessage = partHasZeroAmount
-              ? copy.zeroAmountNotAllowed
-              : !isPartPaid && !isSplitPaymentValid
-                ? splitValidationMessage
-                : '';
+            const validationMessage = !Number.isSafeInteger(Number(part.amount))
+              ? copy.invalidPaymentAmount
+              : partHasZeroAmount
+                ? copy.zeroAmountNotAllowed
+                : !isPartPaid && !isSplitPaymentValid
+                  ? splitValidationMessage
+                  : '';
 
             return (
               <Stack key={part.id} direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems="center">

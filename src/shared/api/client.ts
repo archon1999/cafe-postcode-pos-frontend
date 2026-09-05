@@ -17,6 +17,7 @@ import {
   resetLocalAxiosRequestForRetry,
   unprotectLocalAxiosResponse,
 } from './edgeSecureChannel';
+import { executeFinancialCommand, isFinancialMutation, recoverFinancialCommand } from './financialCommands';
 
 export const apiClient = axios.create({
   baseURL: resolveApiBaseUrl(),
@@ -219,8 +220,28 @@ export async function apiGetRemote<T>(url: string, config?: AxiosRequestConfig) 
 }
 
 export async function apiPost<T>(url: string, payload?: unknown, config?: AxiosRequestConfig) {
+  if (isFinancialMutation(url)) {
+    return executeFinancialCommand<T>(url, payload, financialTransport(config));
+  }
   const response = await apiClient.post<T>(url, payload, config);
   return response.data;
+}
+
+function financialTransport(config?: AxiosRequestConfig) {
+  return {
+    get: apiGet,
+    post: async <T>(url: string, payload: unknown, commandId: string) => {
+      const response = await apiClient.post<T>(url, payload, {
+        ...config,
+        headers: { ...config?.headers, 'X-Edge-Operation-ID': commandId },
+      });
+      return response.data;
+    },
+  };
+}
+
+export function apiRecoverFinancialCommand<T>(url: string, allowRetry = false) {
+  return recoverFinancialCommand<T>(url, financialTransport(), allowRetry);
 }
 
 export async function apiPatch<T>(url: string, payload?: unknown) {

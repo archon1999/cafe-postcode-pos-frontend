@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 
 import { enqueueEdgePrintDocuments, requestEdgePrintDocuments } from 'modules/edge-printing/application';
-import { invalidateQueriesInBackground } from 'shared/api/query-client';
+import { invalidateQueriesInBackground, queryClient } from 'shared/api/query-client';
 import type { PosModifierSelection } from 'shared/pos/modifiers';
 import type { PosServiceFeeQuote } from 'shared/pos/service-fees';
 
@@ -206,6 +206,39 @@ export function useCashierPaymentMutation(options: {
   });
 }
 
+export function useRecoverCashierPaymentMutation(orderId: string | null) {
+  return useMutation({
+    mutationFn: (allowRetry: boolean = false) =>
+      orderId ? cashierRepository.recoverPayment(orderId, allowRetry) : Promise.resolve(null),
+    onSuccess: () => {
+      invalidateQueriesInBackground([
+        cashierKeys.context,
+        cashierKeys.checks('open'),
+        cashierKeys.checks('closed'),
+        cashierKeys.checks('fiscal_closed'),
+        cashierKeys.paymentOrder(orderId),
+      ]);
+    },
+  });
+}
+
+export function useRecoverCashierShiftMutation(
+  operation: 'open' | 'close',
+  options: {
+    onSuccess?: (response: CashierShiftCloseResponse | null) => void;
+    onError?: (error: unknown) => void;
+  },
+) {
+  return useMutation({
+    mutationFn: (allowRetry: boolean = false) => cashierRepository.recoverShift(operation, allowRetry),
+    onSuccess: (response) => {
+      if (response) invalidateQueriesInBackground([cashierKeys.context]);
+      options.onSuccess?.(response);
+    },
+    onError: options.onError,
+  });
+}
+
 export function usePrintCashierPrecheckMutation(options?: { onSuccess?: () => void }) {
   return useMutation({
     mutationFn: async (orderId: string) => {
@@ -240,13 +273,13 @@ export function useAddCashierPaymentOrderItemMutation(options: { orderId: string
         payload.selectedModifiers,
       );
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: cashierKeys.paymentOrder(orderId) });
       invalidateQueriesInBackground([
         cashierKeys.builderOrders,
         cashierKeys.checks('open'),
         cashierKeys.checks('closed'),
         cashierKeys.checks('fiscal_closed'),
-        cashierKeys.paymentOrder(orderId),
         ['kitchen', 'queue'],
       ]);
       onSuccess?.();
@@ -267,13 +300,13 @@ export function useRemoveCashierPaymentOrderItemMutation(options: {
       requestEdgePrintDocuments(result.kitchenPrintDocuments, onPrintError);
       return result;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: cashierKeys.paymentOrder(orderId) });
       invalidateQueriesInBackground([
         cashierKeys.builderOrders,
         cashierKeys.checks('open'),
         cashierKeys.checks('closed'),
         cashierKeys.checks('fiscal_closed'),
-        cashierKeys.paymentOrder(orderId),
         ['kitchen', 'queue'],
       ]);
       onSuccess?.();
@@ -281,10 +314,11 @@ export function useRemoveCashierPaymentOrderItemMutation(options: {
   });
 }
 
-export function useOpenCashierShiftMutation(options?: { onSuccess?: () => void }) {
+export function useOpenCashierShiftMutation(options?: { onSuccess?: () => void; onError?: (error: unknown) => void }) {
   return useMutation({
     mutationFn: (payload: { cashDeskId?: string; cashierId?: string; openingCashAmount: number; notesOpen?: string }) =>
       cashierRepository.openShift(payload),
+    onError: options?.onError,
     onSuccess: () => {
       invalidateQueriesInBackground([cashierKeys.context]);
       options?.onSuccess?.();
@@ -350,8 +384,18 @@ export function usePrintCashierShiftReportMutation(options?: { onError?: (error:
 
 export function useCashierRefundMutation(options?: { onSuccess?: () => void }) {
   return useMutation({
-    mutationFn: (payload: { paymentId: string; reason?: string }) =>
-      cashierRepository.refundPayment(payload.paymentId, payload.reason),
+    mutationFn: (payload: {
+      paymentId: string;
+      reason?: string;
+      manualSettlementConfirmed?: boolean;
+      refundWholeOrder?: boolean;
+    }) =>
+      cashierRepository.refundPayment(
+        payload.paymentId,
+        payload.reason,
+        payload.manualSettlementConfirmed,
+        payload.refundWholeOrder,
+      ),
     onSuccess: () => {
       invalidateQueriesInBackground([
         cashierKeys.context,

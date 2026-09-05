@@ -1,7 +1,7 @@
 import type { CashierRepository } from 'modules/cashier/domain';
-import { apiPost } from 'shared/api/client';
+import { apiPost, apiRecoverFinancialCommand } from 'shared/api/client';
 
-import { mapCashierPaymentResponse } from '../mappers';
+import { mapCashierPaymentResponse, mapCashierReceipt } from '../mappers';
 
 type PayOrderMethod = Parameters<CashierRepository['payOrder']>[1];
 type PayOrderAmount = Parameters<CashierRepository['payOrder']>[2];
@@ -14,6 +14,13 @@ type PaymentPrintDocumentResponse = Awaited<ReturnType<CashierRepository['ensure
 type PrecheckPrintDocumentResponse = Awaited<ReturnType<CashierRepository['createPrecheckPrintDocument']>>;
 
 export const cashierPaymentGateway = {
+  async recoverPayment(orderId: string, allowRetry = false) {
+    const response = await apiRecoverFinancialCommand<PayOrderResponse>(
+      `/pos/billing/orders/${orderId}/pay/`,
+      allowRetry,
+    );
+    return response ? mapCashierPaymentResponse(response) : null;
+  },
   createPrecheckPrintDocument(orderId: string) {
     return apiPost<PrecheckPrintDocumentResponse>(`/pos/billing/orders/${orderId}/precheck/print-document/`);
   },
@@ -39,12 +46,26 @@ export const cashierPaymentGateway = {
     );
   },
 
-  retryFiscalPayment(paymentId: string) {
-    return apiPost<RetryFiscalPaymentResponse>(`/pos/billing/payments/${paymentId}/retry-fiscal/`);
+  async retryFiscalPayment(paymentId: string) {
+    const response = await apiPost<RetryFiscalPaymentResponse>(`/pos/billing/payments/${paymentId}/retry-fiscal/`);
+    return {
+      ...response,
+      receipt: response.receipt ? mapCashierReceipt(response.receipt) : response.receipt,
+      ...(response.receipts ? { receipts: response.receipts.map(mapCashierReceipt) } : {}),
+    };
   },
 
-  refundPayment(paymentId: string, reason: RefundReason = '') {
-    return apiPost<RefundPaymentResponse>(`/pos/billing/${paymentId}/refund/`, { reason });
+  refundPayment(
+    paymentId: string,
+    reason: RefundReason = '',
+    manualSettlementConfirmed?: boolean,
+    refundWholeOrder?: boolean,
+  ) {
+    return apiPost<RefundPaymentResponse>(`/pos/billing/${paymentId}/refund/`, {
+      reason,
+      ...(manualSettlementConfirmed === undefined ? {} : { manualSettlementConfirmed }),
+      ...(refundWholeOrder ? { refundWholeOrder } : {}),
+    });
   },
 
   ensurePaymentPrintDocument(paymentId: string) {

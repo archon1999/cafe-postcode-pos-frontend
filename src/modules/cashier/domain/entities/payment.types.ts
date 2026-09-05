@@ -4,7 +4,10 @@ export type PaymentMethod = 'cash' | 'card' | 'mixed';
 
 export type CashierFiscalReceipt = {
   id: string;
-  status?: 'created' | 'sent' | 'failed';
+  kind?: 'plain' | 'fiscal' | 'refund';
+  status?: 'created' | 'sent' | 'failed' | 'unknown' | 'registering';
+  fiscalState?: 'pending' | 'registered' | 'unknown' | 'failed';
+  ofdState?: 'pending' | 'acknowledged' | 'unknown';
   printDocument?: string | null;
   fiscalErrorMessage?: string | null;
   payload?: {
@@ -15,6 +18,8 @@ export type CashierFiscalReceipt = {
 } | null;
 
 export type CashierPaymentResponse = {
+  financialCommand?: { commandId: string; state: 'processing' | 'succeeded' | 'failed' | 'unknown'; stage?: string };
+  syncState?: 'pending' | 'acknowledged' | 'action_required';
   order: CashierOrder;
   payment: {
     id: string;

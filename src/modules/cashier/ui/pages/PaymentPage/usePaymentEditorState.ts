@@ -52,10 +52,14 @@ export function usePaymentEditorState({ remainingTotal, enabledMethods, cashLabe
     [pendingSplitParts],
   );
   const hasZeroSplitAmount = pendingSplitParts.some((part) => Number(part.amount || 0) <= 0);
-  const isPaymentAmountValid = paymentAmount > 0;
+  const isPaymentAmountValid = Number.isSafeInteger(paymentAmount) && paymentAmount > 0;
   const isSplitPaymentValid =
     !splitParts ||
-    (splitParts.length >= 2 && !hasZeroSplitAmount && pendingSplitTotal > 0 && splitTotal === paymentAmount);
+    (splitParts.length >= 2 &&
+      !hasZeroSplitAmount &&
+      pendingSplitParts.every((part) => Number.isSafeInteger(Number(part.amount))) &&
+      pendingSplitTotal > 0 &&
+      splitTotal === paymentAmount);
 
   const createInitialSplitParts = () => {
     const defaultPartMethod = method === 'card' ? 'card' : 'cash';

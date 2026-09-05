@@ -57,7 +57,10 @@ export type CashExpense = {
 
 export type CashShiftSummary = {
   id: string;
-  status: 'open' | 'closed';
+  status: 'open' | 'closing' | 'closed_local' | 'closed-local' | 'closed';
+  closeState?: 'open' | 'draining' | 'fiscal_closing' | 'fiscal_unknown' | 'closed_local' | 'closed';
+  syncState?: 'pending' | 'acknowledged' | 'action_required';
+  closeBlockers?: Array<{ code: string; detail: string }>;
   cashDesk?: string | null;
   cashier?: string | null;
   openedBy?: string | null;
@@ -102,6 +105,7 @@ export type FiscalDeviceStatus = {
 };
 
 export type CashierContext = {
+  pendingClosedShifts?: CashShiftSummary[];
   branchFiscalProfile: BranchFiscalProfile;
   availableCashDesks: CashierContextCashDesk[];
   availableCashiers: CashierContextCashier[];
@@ -114,6 +118,9 @@ export type CashierContext = {
 };
 
 export type CashierShiftCloseResponse = CashierContext & {
+  closedShift?: CashShiftSummary;
+  closeState?: CashShiftSummary['closeState'];
+  syncState?: CashShiftSummary['syncState'];
   report?: Record<string, unknown>;
   fiscalShift?: Record<string, unknown>;
   fiscal_shift?: Record<string, unknown>;

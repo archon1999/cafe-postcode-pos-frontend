@@ -81,13 +81,37 @@ describe('deriveSystemHealthTone', () => {
     ).toBe('error');
   });
 
-  it('ignores sync failures, pending operations, and readiness for badge tone', () => {
+  it('keeps quarantined failures visible even when routine sync is ignored for the badge', () => {
     expect(
       deriveSystemHealthTone(
         status({ sync: { ready: false, pendingOutbox: 2, failedOutbox: 1, schemaVersion: 1 } }),
         false,
         { ignoreSync: true },
       ),
-    ).toBe('success');
+    ).toBe('error');
+  });
+
+  it('does not paint a reachable fiscal device green while its result is unknown', () => {
+    expect(deriveSystemHealthTone(status({ fiscal: { configured: true, online: true, state: 'unknown' } }))).toBe(
+      'warning',
+    );
+  });
+
+  it('shows unknown financial commands even with an empty backend outbox', () => {
+    expect(
+      deriveSystemHealthTone(
+        status({
+          sync: { ready: true, pendingOutbox: 0, failedOutbox: 0, schemaVersion: 1, unknownFinancialCommands: 1 },
+        }),
+        false,
+        { ignoreSync: true },
+      ),
+    ).toBe('error');
+  });
+
+  it('does not equate an unavailable OFD queue count with an empty queue', () => {
+    expect(
+      deriveSystemHealthTone(status({ fiscalQueue: { known: false, pendingReceipts: null, lastError: 'timeout' } })),
+    ).toBe('warning');
   });
 });

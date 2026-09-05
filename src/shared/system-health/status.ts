@@ -19,15 +19,22 @@ export function deriveSystemHealthTone(
   if (!status) {
     return 'checking';
   }
-  if (!options?.ignoreSync && quarantinedOutboxCount(status.sync) > 0) {
+  if (quarantinedOutboxCount(status.sync) > 0 || (status.sync.unknownFinancialCommands ?? 0) > 0) {
     return 'error';
   }
-  if (!options?.ignoreSync && actionRequiredOutboxCount(status.sync) > 0) {
+  if (actionRequiredOutboxCount(status.sync) > 0) {
     return 'warning';
   }
   if ((status.fiscal.configured && !status.fiscal.online) || (status.marta.configured && !status.marta.online)) {
     return 'warning';
   }
+  if (status.fiscal.configured && status.fiscal.state !== 'online') return 'warning';
+  if (
+    status.fiscal.configured &&
+    status.fiscalQueue &&
+    (!status.fiscalQueue.known || status.fiscalQueue.lastError || status.fiscalQueue.stale)
+  )
+    return 'warning';
   if (status.backend.offlineMode) {
     return 'offline';
   }

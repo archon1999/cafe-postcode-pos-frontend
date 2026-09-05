@@ -1,7 +1,12 @@
-import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 
-import { useCashierPaymentMutation } from 'modules/cashier/application';
-import type { CashierPaymentResponse, PaymentMethod } from 'modules/cashier/domain';
+import { useCashierPaymentMutation, useRecoverCashierPaymentMutation } from 'modules/cashier/application';
+import {
+  getPaymentFailureState,
+  type CashierPaymentResponse,
+  type PaymentFailureState,
+  type PaymentMethod,
+} from 'modules/cashier/domain';
 import type { PosServiceFeeQuote } from 'shared/pos/service-fees';
 
 import { getMartaNon2xxDebugJson, getMutationErrorDetail } from './payment-error-debug';
@@ -61,6 +66,10 @@ export function usePaymentSubmission({
   const [cardFailureMessage, setCardFailureMessage] = useState('');
   const [cardFailureDebugJson, setCardFailureDebugJson] = useState('');
   const [failedPaymentAttempt, setFailedPaymentAttempt] = useState<FailedPaymentAttempt | null>(null);
+  const [failureState, setFailureState] = useState<PaymentFailureState | null>(null);
+  const submitting = useRef(false);
+  const recoveredOrder = useRef<string | null>(null);
+  const recoverMutation = useRecoverCashierPaymentMutation(orderId);
 
   const isServiceFeeQuoteStale = (error: unknown) => {
     const responseData = (error as { response?: { data?: { code?: string } } })?.response?.data;
@@ -79,10 +88,12 @@ export function usePaymentSubmission({
     const detail = getMutationErrorDetail(error) || fallback;
     setErrorMessage(detail);
     setErrorToastOpen(true);
-    if (failedAttempt?.method === 'card') {
+    const financialFailure = getPaymentFailureState(error);
+    if (failedAttempt || financialFailure.commandId) {
+      setFailureState(financialFailure);
       setCardFailureMessage(detail);
       setCardFailureDebugJson(getMartaNon2xxDebugJson(error));
-      setFailedPaymentAttempt(failedAttempt);
+      if (failedAttempt) setFailedPaymentAttempt(failedAttempt);
       setCardFailureOpen(true);
     }
   };
@@ -92,6 +103,23 @@ export function usePaymentSubmission({
     onPrintError: (error) => reportError(error, "Oshxona chekini chiqarib bo'lmadi."),
   });
   const executePayment = (command: PaymentCommand) => paymentMutation.mutateAsync(command);
+
+  useEffect(() => {
+    if (!orderId || recoveredOrder.current === orderId) return;
+    recoveredOrder.current = orderId;
+    void recoverMutation
+      .mutateAsync(false)
+      .then((response) => {
+        if (response) onPaymentComplete(response, Number(response.payment.amount));
+      })
+      .catch((error: unknown) => {
+        const original = (error as { response?: { data?: { originalCommand?: FailedPaymentAttempt } } })?.response?.data
+          ?.originalCommand;
+        reportError(error, paymentFailedMessage, original);
+      });
+    // Recover once per order. Query polling and receipt state updates must not re-run a financial recovery.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderId]);
 
   useEffect(() => {
     if (paymentMutation.isError) {
@@ -139,7 +167,8 @@ export function usePaymentSubmission({
   };
 
   const submitPayment = async (registerFiscal: boolean) => {
-    if (isSubmitting) return;
+    if (submitting.current) return;
+    submitting.current = true;
     setIsSubmitting(true);
     setPendingRegisterFiscal(registerFiscal);
     setFailedPaymentAttempt(null);
@@ -165,13 +194,15 @@ export function usePaymentSubmission({
     } catch (error) {
       reportError(error, paymentFailedMessage);
     } finally {
+      submitting.current = false;
       setIsSubmitting(false);
     }
   };
 
   const completeCardManually = async () => {
     const attempt = failedPaymentAttempt;
-    if (attempt?.method !== 'card' || isSubmitting) return;
+    if (attempt?.method !== 'card' || submitting.current || !failureState?.manualConfirmationAllowed) return;
+    submitting.current = true;
     setIsSubmitting(true);
     try {
       const response = await executePayment({
@@ -202,6 +233,7 @@ export function usePaymentSubmission({
     } catch (error) {
       reportError(error, paymentFailedMessage, attempt);
     } finally {
+      submitting.current = false;
       setIsSubmitting(false);
     }
   };
@@ -210,16 +242,65 @@ export function usePaymentSubmission({
     if (cardFailureDebugJson) await navigator.clipboard?.writeText(cardFailureDebugJson);
   };
 
+  const retryPayment = async () => {
+    if (submitting.current) return;
+    const attempt = failedPaymentAttempt;
+    submitting.current = true;
+    setIsSubmitting(true);
+    try {
+      const command = attempt
+        ? {
+            method: attempt.method,
+            amount: attempt.amount,
+            registerFiscal: attempt.registerFiscal,
+            serviceFeeQuote: attempt.serviceFeeQuote,
+            ...(attempt.finalTotal !== undefined ? { finalTotal: attempt.finalTotal } : {}),
+          }
+        : null;
+      const response =
+        failureState?.state === 'unknown'
+          ? await recoverMutation.mutateAsync(true)
+          : command
+            ? await executePayment(command)
+            : null;
+      if (response) {
+        setCardFailureOpen(false);
+        setFailedPaymentAttempt(null);
+        setFailureState(null);
+        if (attempt?.splitPartId) {
+          const pending = splitParts?.some((part) => part.id !== attempt.splitPartId && part.status !== 'paid');
+          setSplitParts(
+            (parts) =>
+              parts?.map((part) => (part.id === attempt.splitPartId ? { ...part, status: 'paid' } : part)) ?? null,
+          );
+          if (pending) return;
+        }
+        onPaymentComplete(response, Number(response.payment.amount));
+      } else {
+        setCardFailureMessage(
+          'Saqlangan amal topilmadi. Buyurtma holatini yangilang va administrator bilan tekshiring.',
+        );
+      }
+    } catch (error) {
+      reportError(error, paymentFailedMessage, attempt ?? undefined);
+    } finally {
+      submitting.current = false;
+      setIsSubmitting(false);
+    }
+  };
+
   return {
     cardFailureDebugJson,
     cardFailureMethod: failedPaymentAttempt?.method ?? null,
     cardFailureMessage,
     cardFailureOpen,
+    failureState,
     closeCardFailure: () => {
       setCardFailureOpen(false);
       setFailedPaymentAttempt(null);
     },
     completeCardManually,
+    retryPayment,
     copyCardFailureDebug,
     errorMessage,
     errorToastOpen,

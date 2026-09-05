@@ -8,7 +8,6 @@ import { canCreateCashExpense, canManageCashierPayments, canViewCashShift, usePo
 import {
   useCashierEnsurePaymentPrintDocumentMutation,
   useCashierOpenChecksQuery,
-  useCashierRefundMutation,
   useCashierUpdateOrderDisplayNameMutation,
   usePrintCashierPrecheckMutation,
 } from 'modules/cashier/application';
@@ -33,6 +32,7 @@ import {
   selectLatestSucceededPayment,
   selectLatestUnrefundedSucceededPayment,
 } from './openChecksPayments';
+import { RefundPaymentDialog } from './RefundPaymentDialog';
 import { useRetryFiscalReceiptFlow } from './useRetryFiscalReceiptFlow';
 type ChecksQueryData = { orders?: CashierOrder[]; count?: number; numPages?: number } | CashierOrder[] | undefined;
 type MutationErrorPayload = {
@@ -76,11 +76,11 @@ export function OpenChecksPageContent() {
   const [renameOrder, setRenameOrder] = useState<CashierOrder | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [renameError, setRenameError] = useState('');
+  const [refundPayment, setRefundPayment] = useState<NonNullable<CashierOrder['payments']>[number] | null>(null);
   const [closedSearch, setClosedSearch] = useState('');
   const [closedPage, setClosedPage] = useState(1);
   const [fiscalSearch, setFiscalSearch] = useState('');
   const [fiscalPage, setFiscalPage] = useState(1);
-  const refundMutation = useCashierRefundMutation();
   const ensurePrintDocumentMutation = useCashierEnsurePaymentPrintDocumentMutation();
   const printPrecheckMutation = usePrintCashierPrecheckMutation({
     onSuccess: () => toast.success(copy.receiptPrinted),
@@ -195,19 +195,10 @@ export function OpenChecksPageContent() {
         });
       }}
       onRefund={() => {
-        if (!latestRefundablePayment?.id || refundMutation.isPending) {
+        if (!latestRefundablePayment?.id) {
           return;
         }
-        refundMutation
-          .mutateAsync({ paymentId: latestRefundablePayment.id })
-          .then((response) => {
-            if (response.receipt?.printDocument) {
-              requestEdgePrintDocuments([response.receipt.printDocument]);
-            }
-          })
-          .catch((error) =>
-            toast.error(error instanceof Error ? error.message : 'Qaytarish chekini chiqarib bo‘lmadi'),
-          );
+        setRefundPayment(latestRefundablePayment);
       }}
       onReprint={() => {
         if (ensurePrintDocumentMutation.isPending || !latestSucceededPayment?.id) {
@@ -360,6 +351,15 @@ export function OpenChecksPageContent() {
         onClose={() => setMobileDetailOpen(false)}
       />
 
+      {refundPayment ? (
+        <RefundPaymentDialog
+          key={refundPayment.id}
+          payment={refundPayment}
+          payments={selectedOrder?.payments}
+          locale={locale}
+          onClose={() => setRefundPayment(null)}
+        />
+      ) : null}
       <RetryFiscalReceiptDialogs
         copy={copy}
         dialog={retryReceiptFlow.dialog}

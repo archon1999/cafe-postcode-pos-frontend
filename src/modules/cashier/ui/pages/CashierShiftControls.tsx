@@ -11,6 +11,7 @@ type ShiftTotalsProps = {
 
 export function CashierShiftTotals({ locale, shift }: ShiftTotalsProps) {
   const copy = getPosCopy(locale);
+
   const saleTotal = Number(shift.totalSaleAmount ?? shift.cashTotal + shift.cardTotal + shift.qrTotal);
   const refundTotal = Number(shift.refundTotal ?? 0);
   const saleRows = [
@@ -105,6 +106,19 @@ export function ManagerShiftCard({
   shift,
 }: ManagerShiftCardProps) {
   const copy = getPosCopy(locale);
+  const closeStatus =
+    shift.closeState === 'fiscal_unknown'
+      ? copy.shiftCloseUnknown
+      : shift.closeState === 'closed_local' ||
+          shift.status === 'closed_local' ||
+          shift.status === 'closed-local' ||
+          (shift.status === 'closed' && shift.syncState === 'pending')
+        ? copy.shiftClosedLocal
+        : shift.status === 'closing' || shift.closeState === 'draining' || shift.closeState === 'fiscal_closing'
+          ? copy.shiftClosing
+          : shift.status === 'closed'
+            ? copy.shiftSyncComplete
+            : '';
 
   return (
     <Box
@@ -120,6 +134,16 @@ export function ManagerShiftCard({
             {shift.cashierName || copy.cashier}
           </Typography>
         </Box>
+        {closeStatus ? (
+          <Typography color={shift.closeState === 'fiscal_unknown' ? 'error.main' : 'warning.main'}>
+            {closeStatus}
+          </Typography>
+        ) : null}
+        {shift.closeBlockers?.map((blocker) => (
+          <Typography key={blocker.code} color="error.main">
+            {blocker.detail}
+          </Typography>
+        ))}
         <CashierShiftTotals locale={locale} shift={shift} />
         <Button variant="contained" color="success" onClick={() => void onPrint()}>
           {printing ? copy.processing : copy.printShiftReport}
@@ -129,8 +153,18 @@ export function ManagerShiftCard({
             {copy.closeFiscalWithShift}
           </Typography>
         ) : null}
-        <Button variant="contained" color="error" disabled={closing} onClick={onClose}>
-          {closing ? copy.processing : copy.closeShift}
+        <Button
+          variant="contained"
+          color="error"
+          disabled={
+            closing || shift.status === 'closed_local' || shift.status === 'closed-local' || shift.status === 'closed'
+          }
+          onClick={onClose}>
+          {closing
+            ? copy.processing
+            : shift.status === 'closing' || shift.closeState === 'fiscal_unknown'
+              ? copy.checkFinancialResult
+              : copy.closeShift}
         </Button>
       </Stack>
     </Box>

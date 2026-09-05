@@ -52,6 +52,7 @@ export interface CashierRepository {
     closeFiscalShift?: boolean;
   }): Promise<CashierShiftCloseResponse>;
   printShiftReport(payload: { cashShiftId?: string }): Promise<CashierShiftReportResponse>;
+  recoverShift(operation: 'open' | 'close', allowRetry?: boolean): Promise<CashierShiftCloseResponse | null>;
   getExpenses(cashShiftId?: string): Promise<CashExpense[]>;
   createExpense(payload: {
     cashShiftId?: string;
@@ -114,16 +115,22 @@ export interface CashierRepository {
       serviceFeeQuote?: PosServiceFeeQuote | null;
     },
   ): Promise<CashierPaymentResponse>;
+  recoverPayment(orderId: string, allowRetry?: boolean): Promise<CashierPaymentResponse | null>;
   createPrecheckPrintDocument(orderId: string): Promise<CashierPrecheckPrintDocumentResponse>;
   retryFiscalPayment(paymentId: string): Promise<{
     payment: unknown;
-    receipt: CashierReceipt | null;
-    receipts?: CashierReceipt[];
+    receipt: CashierPaymentResponse['receipt'];
+    receipts?: NonNullable<CashierPaymentResponse['receipt']>[];
     result?: Record<string, unknown>;
     results?: Record<string, unknown>[];
   }>;
   openFiscalShift(payload?: { cashDeskId?: string }): Promise<Record<string, unknown>>;
   closeFiscalShift(payload?: { cashDeskId?: string }): Promise<Record<string, unknown>>;
-  refundPayment(paymentId: string, reason?: string): Promise<{ refund: unknown; receipt: CashierReceipt | null }>;
+  refundPayment(
+    paymentId: string,
+    reason?: string,
+    manualSettlementConfirmed?: boolean,
+    refundWholeOrder?: boolean,
+  ): Promise<{ refund: unknown; receipt: CashierReceipt | null }>;
   ensurePaymentPrintDocument(paymentId: string): Promise<{ receipt: CashierReceipt | null }>;
 }

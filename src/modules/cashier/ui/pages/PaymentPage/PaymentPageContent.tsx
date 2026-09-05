@@ -191,6 +191,8 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     receiptPrintPromptOpen,
     setReceiptPrintPromptOpen,
     isReceiptPrintConfirming,
+    isFiscalRetrying,
+    retryFiscalReceipt,
     finishReceiptFlow,
     handleSuccessfulPaymentResponse,
     handleReceiptPromptPrint,
@@ -221,6 +223,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   const isSplitPayment = Boolean(splitParts);
   const splitValidationMessage = hasZeroSplitAmount ? copy.zeroAmountNotAllowed : copy.mixedAmountMismatch;
   const isPaymentProcessing = paymentSubmission.isSubmitting;
+  const isOrderEditing = orderEditing.addPending || orderEditing.removePending || orderEditing.renamePending;
   const canSubmitPayment = Boolean(
     normalizedOrderId &&
       canProcessPayments &&
@@ -230,11 +233,16 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
       isPercentageDiscountValid &&
       (isSplitPayment ? pendingSplitTotal <= effectiveRemainingTotal : paymentAmount <= effectiveRemainingTotal) &&
       isSplitPaymentValid &&
+      !isOrderEditing &&
       !isPaymentProcessing &&
       !printPrecheckMutation.isPending,
   );
   const canPrintPrecheck = Boolean(
-    normalizedOrderId && canProcessPayments && !isPaymentProcessing && !printPrecheckMutation.isPending,
+    normalizedOrderId &&
+      canProcessPayments &&
+      !isOrderEditing &&
+      !isPaymentProcessing &&
+      !printPrecheckMutation.isPending,
   );
   const serviceFeePercent = Number(orderQuery.data?.serviceFeePercent ?? 0);
   const serviceFeeAmount = Number(orderQuery.data?.serviceFee ?? 0);
@@ -400,16 +408,14 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
         debugJson={paymentSubmission.cardFailureDebugJson}
         failureMessage={paymentSubmission.cardFailureMessage}
         failedMethod={paymentSubmission.cardFailureMethod}
+        failureState={paymentSubmission.failureState}
         fullScreen={isMobile}
         isPaymentProcessing={isPaymentProcessing}
         open={paymentSubmission.cardFailureOpen}
         onClose={paymentSubmission.closeCardFailure}
         onCopyDebug={() => void paymentSubmission.copyCardFailureDebug()}
         onManualComplete={() => void paymentSubmission.completeCardManually()}
-        onRetry={() => {
-          paymentSubmission.closeCardFailure();
-          void paymentSubmission.submitPayment(paymentSubmission.pendingRegisterFiscal);
-        }}
+        onRetry={() => void paymentSubmission.retryPayment()}
       />
 
       <RenameOrderDialog
@@ -430,6 +436,8 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
         copy={copy}
         fullScreen={isMobile}
         isPrintConfirming={isReceiptPrintConfirming}
+        isFiscalRetrying={isFiscalRetrying}
+        onRetryFiscal={retryFiscalReceipt}
         locale={locale}
         printPromptOpen={receiptPrintPromptOpen}
         receiptData={receiptData}

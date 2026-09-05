@@ -10,7 +10,12 @@ import {
   Typography,
 } from '@mui/material';
 
-import { getCashierOrderDisplayName, type CashierPaymentResponse, type PaymentMethod } from 'modules/cashier/domain';
+import {
+  getCashierOrderDisplayName,
+  type CashierPaymentResponse,
+  type PaymentFailureState,
+  type PaymentMethod,
+} from 'modules/cashier/domain';
 import { getPosCopy, type PosLocale } from 'shared/locale/copy';
 import { formatCompactMoney, formatTime } from 'shared/pos/utils';
 
@@ -23,6 +28,7 @@ type CardFailureDialogProps = {
   fullScreen: boolean;
   isPaymentProcessing: boolean;
   failedMethod: PaymentMethod | null;
+  failureState: PaymentFailureState | null;
   open: boolean;
   onClose: () => void;
   onCopyDebug: () => void;
@@ -37,6 +43,7 @@ export function CardFailureDialog({
   fullScreen,
   isPaymentProcessing,
   failedMethod,
+  failureState,
   open,
   onClose,
   onCopyDebug,
@@ -45,14 +52,14 @@ export function CardFailureDialog({
 }: CardFailureDialogProps) {
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth fullScreen={fullScreen}>
-      <DialogTitle>{copy.cardPaymentFailedTitle}</DialogTitle>
+      <DialogTitle>{failureState?.state === 'unknown' ? copy.financialResultUnknown : copy.paymentFailed}</DialogTitle>
       <DialogContent>
         <Stack spacing={1.4} sx={{ pt: 1 }}>
           <Typography variant="body2" color="text.secondary">
             {failureMessage || copy.paymentFailed}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            {copy.cardPaymentFailedDescription}
+            {failureState?.state === 'unknown' ? copy.financialResultUnknownHint : copy.financialPaymentRetryHint}
           </Typography>
           {debugJson ? (
             <Stack spacing={1}>
@@ -84,10 +91,13 @@ export function CardFailureDialog({
         </Stack>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 3 }}>
-        <Button variant="contained" onClick={onRetry} disabled={isPaymentProcessing}>
-          {copy.retryFiscal}
+        <Button onClick={onClose} disabled={isPaymentProcessing}>
+          {copy.close}
         </Button>
-        {failedMethod === 'card' ? (
+        <Button variant="contained" onClick={onRetry} disabled={isPaymentProcessing}>
+          {failureState?.state === 'unknown' ? copy.checkFinancialResult : copy.retryPayment}
+        </Button>
+        {failedMethod === 'card' && failureState?.manualConfirmationAllowed ? (
           <Button variant="contained" onClick={onManualComplete} disabled={isPaymentProcessing}>
             {copy.manualCard}
           </Button>
@@ -167,6 +177,8 @@ type ReceiptDialogsProps = {
   copy: PaymentCopy;
   fullScreen: boolean;
   isPrintConfirming: boolean;
+  isFiscalRetrying: boolean;
+  onRetryFiscal: () => void;
   locale: PosLocale;
   printPromptOpen: boolean;
   receiptData: CashierPaymentResponse | null;
@@ -180,6 +192,8 @@ export function ReceiptDialogs({
   copy,
   fullScreen,
   isPrintConfirming,
+  isFiscalRetrying,
+  onRetryFiscal,
   locale,
   printPromptOpen,
   receiptData,
@@ -190,8 +204,21 @@ export function ReceiptDialogs({
 }: ReceiptDialogsProps) {
   const receipts = receiptData?.receipts?.filter(Boolean) ?? (receiptData?.receipt ? [receiptData.receipt] : []);
   const primaryReceipt = receipts[0] ?? receiptData?.receipt ?? null;
-  const fiscalReceiptError = receipts.find((receipt) => receipt?.status === 'failed')?.fiscalErrorMessage;
-  const hasPrintableReceipt = receipts.some((receipt) => Boolean(receipt?.printDocument));
+  const receiptNumbers = receipts
+    .map((receipt) => receipt?.payload?.receiptNumber)
+    .filter(Boolean)
+    .join(', ');
+  const hasFiscalReceipt = receipts.some(
+    (receipt) => receipt?.kind === 'fiscal' || receipt?.status === 'sent' || receipt?.fiscalState === 'registered',
+  );
+  const failedReceipt = receipts.find((receipt) => receipt?.status === 'failed');
+  const fiscalReceiptError = failedReceipt ? copy.fiscalReceiptRetryHint : null;
+  const fiscalUnknown = receipts.some(
+    (receipt) =>
+      receipt?.status === 'unknown' || receipt?.status === 'registering' || receipt?.fiscalState === 'unknown',
+  );
+  const hasPrintableReceipt =
+    !fiscalUnknown && !failedReceipt && receipts.some((receipt) => Boolean(receipt?.printDocument));
 
   return (
     <>
@@ -201,9 +228,16 @@ export function ReceiptDialogs({
         maxWidth="xs"
         fullWidth
         fullScreen={fullScreen}>
-        <DialogTitle>{fiscalReceiptError ? copy.fiscalReceiptFailed : copy.receiptTitle}</DialogTitle>
+        <DialogTitle>
+          {fiscalUnknown
+            ? copy.fiscalReceiptUnknown
+            : fiscalReceiptError
+              ? copy.fiscalReceiptFailed
+              : copy.receiptTitle}
+        </DialogTitle>
         <DialogContent>
           <Stack spacing={1.5} sx={{ pt: 1 }}>
+            {fiscalUnknown ? <Typography color="warning.main">{copy.financialResultUnknownHint}</Typography> : null}
             {fiscalReceiptError ? (
               <Typography color="error.main" sx={{ fontWeight: 700 }}>
                 {fiscalReceiptError}
@@ -212,16 +246,10 @@ export function ReceiptDialogs({
             <Stack direction="row" justifyContent="space-between">
               <Typography color="text.secondary">{copy.receiptNumber}</Typography>
               <Typography>
-                {receipts.length > 1
-                  ? receipts
-                      .map((receipt) => receipt?.payload?.receiptNumber)
-                      .filter(Boolean)
-                      .join(', ') ||
-                    receiptData?.order.displayName ||
-                    `#${receiptData?.order.orderNumber ?? '-'}`
-                  : (primaryReceipt?.payload?.receiptNumber ??
-                    receiptData?.order.displayName ??
-                    `#${receiptData?.order.orderNumber ?? '-'}`)}
+                {receiptNumbers ||
+                  (hasFiscalReceipt
+                    ? '-'
+                    : receiptData?.order.displayName || `#${receiptData?.order.orderNumber ?? '-'}`)}
               </Typography>
             </Stack>
             <Stack direction="row" justifyContent="space-between">
@@ -236,7 +264,12 @@ export function ReceiptDialogs({
             </Stack>
             <Stack direction="row" justifyContent="space-between">
               <Typography color="text.secondary">{copy.receiptAmount}</Typography>
-              <Typography>{formatCompactMoney(receiptData?.payment.amount, locale)}</Typography>
+              <Typography>
+                {formatCompactMoney(
+                  receiptData?.order.status === 'closed' ? receiptData.order.total : receiptData?.payment.amount,
+                  locale,
+                )}
+              </Typography>
             </Stack>
             <Stack direction="row" justifyContent="space-between">
               <Typography color="text.secondary">{copy.receiptTime}</Typography>
@@ -245,8 +278,14 @@ export function ReceiptDialogs({
               </Typography>
             </Stack>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.2} sx={{ pt: 1 }}>
+              {fiscalUnknown || failedReceipt ? (
+                <Button variant="contained" disabled={isFiscalRetrying} onClick={onRetryFiscal}>
+                  {isFiscalRetrying ? copy.processing : copy.checkFinancialResult}
+                </Button>
+              ) : null}
               <Button
                 variant="contained"
+                disabled={isFiscalRetrying}
                 sx={{ flex: 1 }}
                 onClick={() => (hasPrintableReceipt ? onSetPrintPromptOpen(true) : onFinish())}>
                 {copy.finishReceipt}

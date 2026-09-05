@@ -9,11 +9,13 @@ import { CashierShiftPage } from './CashierShiftPage';
 const navigateMock = vi.fn();
 const reportMutateAsyncMock = vi.fn();
 const closeMutateMock = vi.fn();
+const recoverShiftMock = vi.fn();
 const requestEdgePrintDocumentsMock = vi.hoisted(() => vi.fn());
 const shiftContextState = vi.hoisted(() => ({
   fiscalProvider: 'fiscal-drive-service',
   fiscalShiftOpen: false,
   reportPending: false,
+  closedLocally: false,
 }));
 
 vi.mock('react-router', () => ({
@@ -44,10 +46,11 @@ vi.mock('modules/cashier/application', () => ({
   useCashierContextQuery: () => ({
     data: {
       currentShift: null,
-      activeShifts: [
+      [shiftContextState.closedLocally ? 'pendingClosedShifts' : 'activeShifts']: [
         {
           id: 'shift-1',
-          status: 'open',
+          status: shiftContextState.closedLocally ? 'closed-local' : 'open',
+          syncState: shiftContextState.closedLocally ? 'pending' : undefined,
           cashDesk: 'desk-1',
           cashDeskName: 'Kassa',
           cashierName: 'Manager',
@@ -88,6 +91,7 @@ vi.mock('modules/cashier/application', () => ({
   }),
   useOpenCashierShiftMutation: () => ({ isPending: false, mutate: vi.fn() }),
   useCloseCashierShiftMutation: () => ({ isPending: false, mutate: closeMutateMock }),
+  useRecoverCashierShiftMutation: () => ({ isPending: false, mutate: recoverShiftMock }),
   usePrintCashierShiftReportMutation: () => ({
     isPending: shiftContextState.reportPending,
     mutateAsync: reportMutateAsyncMock,
@@ -122,6 +126,7 @@ describe('CashierShiftPage report printing', () => {
     requestEdgePrintDocumentsMock.mockReset();
     shiftContextState.fiscalProvider = 'fiscal-drive-service';
     shiftContextState.reportPending = false;
+    shiftContextState.closedLocally = false;
     reportMutateAsyncMock.mockResolvedValue({ printDocuments: ['general-1'] });
   });
 
@@ -185,5 +190,14 @@ describe('CashierShiftPage report printing', () => {
 
     const button = screen.getByRole('button', { name: 'Chek chiqarish' }) as HTMLButtonElement;
     expect(button.disabled).toBe(false);
+  });
+
+  it('keeps a locally closed shift visible as pending sync and prevents a second close', () => {
+    shiftContextState.closedLocally = true;
+    render(<CashierShiftPage />);
+
+    expect(screen.getByText('Smena qurilmada yopildi; serverga yuborish kutilmoqda')).toBeTruthy();
+    expect((screen.getByRole('button', { name: 'Smenani yopish' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(closeMutateMock).not.toHaveBeenCalled();
   });
 });

@@ -31,6 +31,7 @@ export type EdgeSystemStatus = {
     online: boolean;
     version: string;
     protocolVersion?: number;
+    financialCommandVersion?: number;
     restaurantId?: string;
   };
   backend: {
@@ -45,6 +46,7 @@ export type EdgeSystemStatus = {
     lastAttemptAt?: string;
     lastError?: string;
     pendingOutbox: number;
+    unknownFinancialCommands?: number;
     failedOutbox: number;
     actionRequiredOutbox?: number;
     quarantinedOutbox?: number;
@@ -56,6 +58,14 @@ export type EdgeSystemStatus = {
     restaurantId?: string;
   };
   fiscal: SystemHealthComponent;
+  fiscalQueue?: {
+    known: boolean;
+    pendingReceipts: number | null;
+    firstUnacknowledgedReceiptTime?: string;
+    checkedAt?: string;
+    lastError?: string;
+    stale?: boolean;
+  };
   marta: SystemHealthComponent;
   printer: SystemHealthComponent;
   alerts?: Array<{

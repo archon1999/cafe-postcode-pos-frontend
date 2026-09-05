@@ -5,6 +5,8 @@ import { formatCompactMoney } from 'shared/pos/utils';
 
 export type RetryFiscalReceipt = {
   id?: string;
+  status?: string;
+  fiscalState?: string;
   printDocument?: string | null;
   payload?: Record<string, unknown> | null;
 };
