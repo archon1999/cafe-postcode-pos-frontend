@@ -3,6 +3,7 @@ import type {
   CashierChecksParams,
   CashierChecksResult,
   CashierContext,
+  CashierContextCashDesk,
   CashierMenuCategory,
   CashierOrder,
 } from 'modules/cashier/domain';
@@ -22,8 +23,17 @@ type ChecksPayload<T> =
     };
 
 export const cashierQueryGateway = {
-  getCashierContext() {
-    return apiGet<CashierContext>('/pos/billing/context/');
+  async getCashierContext(): Promise<CashierContext> {
+    const context = await apiGet<CashierContext>('/pos/billing/context/');
+    return {
+      ...context,
+      availableCashDesks: context.availableCashDesks?.map(
+        (desk: CashierContextCashDesk & { paymentIntegrationId?: string }) => ({
+          ...desk,
+          paymentIntegration: desk.paymentIntegrationId ?? desk.paymentIntegration,
+        }),
+      ),
+    };
   },
 
   async getMenu(): Promise<CashierMenuCategory[]> {

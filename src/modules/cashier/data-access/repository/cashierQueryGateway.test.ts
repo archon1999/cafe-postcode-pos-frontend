@@ -39,12 +39,24 @@ describe('cashier query transport contract', () => {
     expect(cashierRepository.getOrder).toBe(cashierQueryGateway.getOrder);
   });
 
-  it('returns the cashier context response by identity', async () => {
+  it('preserves cashier context data', async () => {
     const response = { restaurant: { id: 'restaurant-1' }, shift: { id: 'shift-1' } };
     apiGetMock.mockResolvedValueOnce(response);
 
-    await expect(cashierRepository.getCashierContext()).resolves.toBe(response);
+    await expect(cashierRepository.getCashierContext()).resolves.toEqual(response);
     expect(apiGetMock).toHaveBeenCalledWith('/pos/billing/context/');
+  });
+
+  it.each([
+    [{ paymentIntegrationId: 'marta-1' }, 'marta-1'],
+    [{ paymentIntegrationId: '' }, ''],
+    [{ paymentIntegration: 'marta-1' }, 'marta-1'],
+    [{ paymentIntegration: null }, null],
+    [{}, undefined],
+  ])('normalizes the owner and backend terminal configuration %j', async (fields, integration) => {
+    apiGetMock.mockResolvedValueOnce({ availableCashDesks: [{ id: 'desk-1', ...fields }] });
+    const context = await cashierRepository.getCashierContext();
+    expect(context.availableCashDesks[0].paymentIntegration).toBe(integration);
   });
 
   it('unwraps and maps a wrapped menu collection', async () => {
