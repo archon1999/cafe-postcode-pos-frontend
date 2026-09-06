@@ -196,7 +196,7 @@ describe('CashierShiftPage report printing', () => {
     shiftContextState.closedLocally = true;
     render(<CashierShiftPage />);
 
-    expect(screen.getByText('Smena qurilmada yopildi; serverga yuborish kutilmoqda')).toBeTruthy();
+    expect(screen.getByText('Smena yopildi. Holat avtomatik yangilanadi.')).toBeTruthy();
     expect((screen.getByRole('button', { name: 'Smenani yopish' }) as HTMLButtonElement).disabled).toBe(true);
     expect(closeMutateMock).not.toHaveBeenCalled();
   });
