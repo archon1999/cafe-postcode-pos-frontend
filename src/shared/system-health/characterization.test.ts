@@ -1,12 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { apiGetMock, useQueryMock } = vi.hoisted(() => ({
+const { apiGetMock, useQueryMock, resolveApiBaseUrlMock } = vi.hoisted(() => ({
   apiGetMock: vi.fn(),
+  resolveApiBaseUrlMock: vi.fn(),
   useQueryMock: vi.fn((options) => options),
 }));
 
 vi.mock('@tanstack/react-query', () => ({ useQuery: useQueryMock }));
 vi.mock('shared/api/client', () => ({ apiGet: apiGetMock }));
+vi.mock('shared/api/apiUrl', () => ({
+  resolveApiBaseUrl: resolveApiBaseUrlMock,
+  resolveRemoteApiBaseUrl: () => 'https://backend.test/api/v1',
+}));
 
 import { systemHealthQueryKey, useSystemHealthQuery } from './queries';
 import { deriveSystemHealthTone } from './status';
@@ -27,6 +32,7 @@ function snapshot(overrides?: Partial<EdgeSystemStatus>): EdgeSystemStatus {
 describe('POS diagnostics characterization', () => {
   beforeEach(() => {
     apiGetMock.mockReset();
+    resolveApiBaseUrlMock.mockReturnValue('https://backend.test/api/v1');
     useQueryMock.mockClear();
   });
 
@@ -68,7 +74,12 @@ describe('POS diagnostics characterization', () => {
     expect(deriveSystemHealthTone(status, requestFailed, { ignoreSync: true })).toBe(expected);
   });
 
-  it('polls the transport-selected system status only while the page is foregrounded', async () => {
+  it.each([
+    ['cloud phone', 'https://backend.test/api/v1', '/system/status/'],
+    ['local cashier', 'http://127.0.0.1:18181/v1', '/system/status'],
+    ['LAN phone', 'http://192.168.1.20:18181/v1', '/system/status'],
+  ])('polls %s without a redirect and only in the foreground', async (_name, baseUrl, path) => {
+    resolveApiBaseUrlMock.mockReturnValue(baseUrl);
     const options = useSystemHealthQuery({ enabled: true }) as unknown as {
       queryKey: readonly string[];
       queryFn: () => Promise<unknown>;
@@ -85,6 +96,6 @@ describe('POS diagnostics characterization', () => {
     expect(options.refetchInterval).toBe(60_000);
     expect(options.refetchIntervalInBackground).toBe(false);
     await options.queryFn();
-    expect(apiGetMock).toHaveBeenCalledWith('/system/status');
+    expect(apiGetMock).toHaveBeenCalledWith(path);
   });
 });

@@ -206,6 +206,11 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   });
   const paymentSubmission = usePaymentSubmission({
     method,
+    recordCardWithoutTerminal: Boolean(
+      selectedCashDesk &&
+        selectedCashDesk.id === cashierContextQuery.data?.currentShift?.cashDesk &&
+        (selectedCashDesk.paymentIntegration === null || selectedCashDesk.paymentIntegration === ''),
+    ),
     orderId: normalizedOrderId,
     paymentAmount,
     paymentFailedMessage: copy.paymentFailed,

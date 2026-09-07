@@ -60,6 +60,7 @@ export function CashierShiftPage() {
   const contextQuery = useCashierContextQuery({
     enabled: canViewShift,
     refetchInterval: POS_CONTEXT_POLL_INTERVAL_MS,
+    refreshClosingShifts: true,
   });
   const nextPath =
     searchParams.get('next') || (isCashierBuilderMode(session?.user) ? '/cashier/builder' : '/cashier/open-checks');

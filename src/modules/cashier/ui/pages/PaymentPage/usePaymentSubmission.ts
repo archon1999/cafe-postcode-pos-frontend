@@ -33,6 +33,7 @@ type PaymentFailure = {
 
 type Options = {
   method: PaymentMethod;
+  recordCardWithoutTerminal: boolean;
   orderId: string | null;
   paymentAmount: number;
   paymentFailedMessage: string;
@@ -47,6 +48,7 @@ type Options = {
 
 export function usePaymentSubmission({
   method,
+  recordCardWithoutTerminal,
   orderId,
   paymentAmount,
   paymentFailedMessage,
@@ -102,7 +104,12 @@ export function usePaymentSubmission({
     orderId,
     onPrintError: (error) => reportError(error, "Oshxona chekini chiqarib bo'lmadi."),
   });
-  const executePayment = (command: PaymentCommand) => paymentMutation.mutateAsync(command);
+  const executePayment = (command: PaymentCommand) =>
+    paymentMutation.mutateAsync(
+      command.method === 'card' && recordCardWithoutTerminal && !command.manualCardOverride
+        ? { ...command, manualCardOverride: true, manualCardReason: 'external_terminal' }
+        : command,
+    );
 
   useEffect(() => {
     if (!orderId || recoveredOrder.current === orderId) return;

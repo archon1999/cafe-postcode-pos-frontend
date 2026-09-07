@@ -5,12 +5,36 @@ import type { CashierCheckStatus, CashierChecksParams } from '../domain';
 
 import { cashierKeys } from './keys';
 
-export function useCashierContextQuery(options?: { enabled?: boolean; refetchInterval?: number | false }) {
+export function useCashierContextQuery(options?: {
+  enabled?: boolean;
+  refetchInterval?: number | false;
+  refreshClosingShifts?: boolean;
+}) {
   return useQuery({
     queryKey: cashierKeys.context,
     queryFn: () => cashierRepository.getCashierContext(),
     enabled: options?.enabled,
-    refetchInterval: options?.refetchInterval,
+    refetchInterval: (query) => {
+      if (options?.refreshClosingShifts && options.refetchInterval !== false) {
+        const context = query.state.data;
+        const shifts = [
+          context?.currentShift,
+          ...(context?.activeShifts ?? []),
+          ...(context?.pendingClosedShifts ?? []),
+        ];
+        const awaitingClose = shifts.some(
+          (shift) =>
+            shift &&
+            (shift.syncState === 'pending' ||
+              shift.status === 'closing' ||
+              shift.status === 'closed-local' ||
+              shift.status === 'closed_local' ||
+              ['draining', 'fiscal_closing', 'fiscal_unknown', 'closed_local'].includes(shift.closeState ?? '')),
+        );
+        if (awaitingClose) return 2_000;
+      }
+      return options?.refetchInterval;
+    },
     retry: false,
   });
 }

@@ -24,6 +24,8 @@ let orderChannelMock = 'takeaway';
 let orderTableSessionMock: string | null = null;
 let orderTotalMock = 30000;
 let enabledPaymentMethodsMock: Array<'cash' | 'card' | 'mixed'> = ['cash'];
+let paymentIntegrationMock: string | null = 'terminal-1';
+let activeCashDeskIdMock = 'desk-1';
 let paymentTotalEditableMock = false;
 let orderEditPendingMock = false;
 let paymentMutationStateMock = {
@@ -80,11 +82,12 @@ vi.mock('modules/cashier/application', () => ({
           id: 'desk-1',
           name: 'Main cash desk',
           enabledPaymentMethods: enabledPaymentMethodsMock,
+          paymentIntegration: paymentIntegrationMock,
           fiscalProvider: 'fiscal-drive-service',
           printerIntegration: 'printer-1',
         },
       ],
-      currentShift: { cashDesk: 'desk-1' },
+      currentShift: { cashDesk: activeCashDeskIdMock },
       fiscalDeviceStatus: { online: false },
     },
   }),
@@ -192,6 +195,44 @@ vi.mock('modules/edge-printing/application', () => ({
 }));
 
 describe('PaymentPageContent', () => {
+  it.each([null, 'terminal-1'])('records card payment with optional terminal %s', async (integration) => {
+    enabledPaymentMethodsMock = ['card'];
+    paymentIntegrationMock = integration;
+    paymentMutateAsyncMock.mockResolvedValueOnce({
+      order: { status: 'closed', items: [] },
+      payment: { id: 'payment-1', method: 'card', amount: 30000 },
+      receipt: null,
+    });
+    render(<PaymentPageContent orderId="order-1" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Chek' }));
+    await waitFor(() =>
+      expect(paymentMutateAsyncMock).toHaveBeenCalledWith({
+        method: 'card',
+        amount: 30000,
+        registerFiscal: true,
+        finalTotal: undefined,
+        serviceFeeQuote: undefined,
+        ...(integration ? {} : { manualCardOverride: true, manualCardReason: 'external_terminal' }),
+      }),
+    );
+    expect(await screen.findByText('Chek tayyor')).toBeTruthy();
+  });
+
+  it('does not use another cash desk to bypass an unknown terminal configuration', async () => {
+    enabledPaymentMethodsMock = ['card'];
+    paymentIntegrationMock = null;
+    activeCashDeskIdMock = 'unloaded-desk';
+    paymentMutateAsyncMock.mockResolvedValueOnce({
+      order: { status: 'closed', items: [] },
+      payment: { id: 'payment-1', method: 'card', amount: 30000 },
+      receipt: null,
+    });
+    render(<PaymentPageContent orderId="order-1" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Chek' }));
+    await waitFor(() => expect(paymentMutateAsyncMock).toHaveBeenCalledTimes(1));
+    expect(paymentMutateAsyncMock.mock.calls[0][0]).not.toHaveProperty('manualCardOverride');
+  });
+
   it('checks an unknown card result without offering manual completion or another card payment', async () => {
     enabledPaymentMethodsMock = ['card'];
     paymentMutateAsyncMock.mockRejectedValueOnce({
@@ -264,6 +305,8 @@ describe('PaymentPageContent', () => {
     orderTableSessionMock = null;
     orderTotalMock = 30000;
     enabledPaymentMethodsMock = ['cash'];
+    paymentIntegrationMock = 'terminal-1';
+    activeCashDeskIdMock = 'desk-1';
     paymentTotalEditableMock = false;
     orderEditPendingMock = false;
     canAddCashierPaymentOrderItemsMock.mockReturnValue(true);
@@ -548,7 +591,8 @@ describe('PaymentPageContent', () => {
     expect(screen.getByRole('dialog').textContent).not.toMatch(/20[\s,]000 so'm/);
   });
 
-  it('uses one split editor for cash and card parts', async () => {
+  it.each([null, 'terminal-1'])('uses one split editor with optional terminal %s', async (integration) => {
+    paymentIntegrationMock = integration;
     enabledPaymentMethodsMock = ['cash', 'card', 'mixed'];
     paymentMutateAsyncMock
       .mockResolvedValueOnce({
@@ -611,6 +655,7 @@ describe('PaymentPageContent', () => {
         method: 'card',
         amount: 15000,
         registerFiscal: true,
+        ...(integration ? {} : { manualCardOverride: true, manualCardReason: 'external_terminal' }),
       });
     });
   });
