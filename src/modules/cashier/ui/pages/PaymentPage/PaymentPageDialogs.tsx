@@ -12,6 +12,7 @@ import {
 
 import {
   getCashierOrderDisplayName,
+  receiptPaymentMethod,
   type CashierPaymentResponse,
   type PaymentFailureState,
   type PaymentMethod,
@@ -255,9 +256,9 @@ export function ReceiptDialogs({
             <Stack direction="row" justifyContent="space-between">
               <Typography color="text.secondary">{copy.receiptMethod}</Typography>
               <Typography>
-                {receiptData?.payment.method === 'card'
+                {receiptPaymentMethod(receiptData) === 'card'
                   ? copy.card
-                  : receiptData?.payment.method === 'mixed'
+                  : receiptPaymentMethod(receiptData) === 'mixed'
                     ? copy.mixed
                     : copy.cash}
               </Typography>

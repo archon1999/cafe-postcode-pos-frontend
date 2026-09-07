@@ -9,6 +9,7 @@ import { CashierShiftPage } from './CashierShiftPage';
 const navigateMock = vi.fn();
 const reportMutateAsyncMock = vi.fn();
 const closeMutateMock = vi.fn();
+const openMutateMock = vi.fn();
 const recoverShiftMock = vi.fn();
 const requestEdgePrintDocumentsMock = vi.hoisted(() => vi.fn());
 const shiftContextState = vi.hoisted(() => ({
@@ -16,6 +17,7 @@ const shiftContextState = vi.hoisted(() => ({
   fiscalShiftOpen: false,
   reportPending: false,
   closedLocally: false,
+  noShift: false,
 }));
 
 vi.mock('react-router', () => ({
@@ -46,42 +48,44 @@ vi.mock('modules/cashier/application', () => ({
   useCashierContextQuery: () => ({
     data: {
       currentShift: null,
-      [shiftContextState.closedLocally ? 'pendingClosedShifts' : 'activeShifts']: [
-        {
-          id: 'shift-1',
-          status: shiftContextState.closedLocally ? 'closed-local' : 'open',
-          syncState: shiftContextState.closedLocally ? 'pending' : undefined,
-          cashDesk: 'desk-1',
-          cashDeskName: 'Kassa',
-          cashierName: 'Manager',
-          openedAt: '2026-07-13T08:00:00Z',
-          openingCashAmount: 0,
-          actualClosingCashAmount: 0,
-          expectedClosingCashAmount: 50000,
-          cashDifferenceAmount: 0,
-          cashTotal: 50000,
-          cardTotal: 0,
-          cashPrecheckTotal: 18000,
-          cashReceiptTotal: 32000,
-          cardPrecheckTotal: 0,
-          cardReceiptTotal: 0,
-          qrTotal: 0,
-          refundTotal: 0,
-          expenseTotal: 0,
-          saleCount: 1,
-          refundCount: 0,
-          totalSaleAmount: 50000,
-          cashRefundTotal: 0,
-          cardRefundTotal: 0,
-          qrRefundTotal: 0,
-          vatSaleTotal: 0,
-          vatRefundTotal: 0,
-          firstReceipt: '41',
-          lastReceipt: '41',
-          receiptCount: 1,
-          reprintCount: 0,
-        },
-      ],
+      [shiftContextState.closedLocally ? 'pendingClosedShifts' : 'activeShifts']: shiftContextState.noShift
+        ? []
+        : [
+            {
+              id: 'shift-1',
+              status: shiftContextState.closedLocally ? 'closed-local' : 'open',
+              syncState: shiftContextState.closedLocally ? 'pending' : undefined,
+              cashDesk: 'desk-1',
+              cashDeskName: 'Kassa',
+              cashierName: 'Manager',
+              openedAt: '2026-07-13T08:00:00Z',
+              openingCashAmount: 0,
+              actualClosingCashAmount: 0,
+              expectedClosingCashAmount: 50000,
+              cashDifferenceAmount: 0,
+              cashTotal: 50000,
+              cardTotal: 0,
+              cashPrecheckTotal: 18000,
+              cashReceiptTotal: 32000,
+              cardPrecheckTotal: 0,
+              cardReceiptTotal: 0,
+              qrTotal: 0,
+              refundTotal: 0,
+              expenseTotal: 0,
+              saleCount: 1,
+              refundCount: 0,
+              totalSaleAmount: 50000,
+              cashRefundTotal: 0,
+              cardRefundTotal: 0,
+              qrRefundTotal: 0,
+              vatSaleTotal: 0,
+              vatRefundTotal: 0,
+              firstReceipt: '41',
+              lastReceipt: '41',
+              receiptCount: 1,
+              reprintCount: 0,
+            },
+          ],
       availableCashDesks: [{ id: 'desk-1', name: 'Kassa', fiscalProvider: shiftContextState.fiscalProvider }],
       availableCashiers: [],
       fiscalShiftOpen: shiftContextState.fiscalShiftOpen,
@@ -89,7 +93,7 @@ vi.mock('modules/cashier/application', () => ({
     isLoading: false,
     refetch: vi.fn(),
   }),
-  useOpenCashierShiftMutation: () => ({ isPending: false, mutate: vi.fn() }),
+  useOpenCashierShiftMutation: () => ({ isPending: false, mutate: openMutateMock }),
   useCloseCashierShiftMutation: () => ({ isPending: false, mutate: closeMutateMock }),
   useRecoverCashierShiftMutation: () => ({ isPending: false, mutate: recoverShiftMock }),
   usePrintCashierShiftReportMutation: () => ({
@@ -123,11 +127,29 @@ describe('CashierShiftPage report printing', () => {
     cleanup();
     reportMutateAsyncMock.mockReset();
     closeMutateMock.mockReset();
+    openMutateMock.mockReset();
+    shiftContextState.noShift = false;
     requestEdgePrintDocumentsMock.mockReset();
     shiftContextState.fiscalProvider = 'fiscal-drive-service';
     shiftContextState.reportPending = false;
     shiftContextState.closedLocally = false;
     reportMutateAsyncMock.mockResolvedValue({ printDocuments: ['general-1'] });
+  });
+
+  it('blocks negative opening cash before submitting and accepts zero', () => {
+    shiftContextState.noShift = true;
+    render(<CashierShiftPage />);
+    const input = screen.getByRole('spinbutton', { name: "Boshlang'ich naqd" });
+    const button = screen.getByRole('button', { name: 'Smenani ochish' }) as HTMLButtonElement;
+    fireEvent.change(input, { target: { value: '-1' } });
+    expect(button.disabled).toBe(true);
+    fireEvent.click(button);
+    expect(openMutateMock).not.toHaveBeenCalled();
+    expect(screen.getByText(/0 yoki undan katta/)).toBeTruthy();
+    fireEvent.change(input, { target: { value: '0' } });
+    expect(button.disabled).toBe(false);
+    fireEvent.click(button);
+    expect(openMutateMock).toHaveBeenCalledWith(expect.objectContaining({ openingCashAmount: 0 }));
   });
 
   it('prints the single general report returned by the backend', async () => {
@@ -158,19 +180,19 @@ describe('CashierShiftPage report printing', () => {
     expect(requestEdgePrintDocumentsMock).toHaveBeenCalledWith(['general-1']);
   });
 
-  it('requests fiscal close with the final POS shift even when backend fiscal state is stale', () => {
-    shiftContextState.fiscalShiftOpen = false;
+  it.each([true, false])('closes the POS shift independently when fiscalShiftOpen is %s', (fiscalShiftOpen) => {
+    shiftContextState.fiscalShiftOpen = fiscalShiftOpen;
 
     render(<CashierShiftPage />);
 
     expect(screen.queryByRole('checkbox')).toBeNull();
-    expect(screen.getByText('POS va fiskal smena birga yopiladi.')).toBeTruthy();
+    expect(screen.queryByText('POS va fiskal smena birga yopiladi.')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Smenani yopish' }));
 
     expect(closeMutateMock).toHaveBeenCalledWith({
       cashShiftId: 'shift-1',
       notesClose: '',
-      closeFiscalShift: true,
+      closeFiscalShift: false,
     });
   });
 

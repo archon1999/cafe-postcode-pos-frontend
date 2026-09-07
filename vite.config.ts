@@ -1,8 +1,9 @@
+import fs from 'node:fs';
 import path from 'path';
 
 import legacy from '@vitejs/plugin-legacy';
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vite';
+import { defineConfig, searchForWorkspaceRoot } from 'vite';
 
 export default defineConfig({
   plugins: [
@@ -17,10 +18,11 @@ export default defineConfig({
     }),
   ],
   server: {
+    fs: { allow: [searchForWorkspaceRoot(process.cwd()), fs.realpathSync(path.resolve(__dirname, 'node_modules'))] },
     port: 4300,
     proxy: {
       '/api/v1': {
-        target: 'http://127.0.0.1:8000',
+        target: process.env.VITE_DEV_PROXY_TARGET || 'http://127.0.0.1:8000',
         changeOrigin: true,
       },
     },

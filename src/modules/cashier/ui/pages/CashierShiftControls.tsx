@@ -1,6 +1,7 @@
 import { Box, Button, Divider, MenuItem, Stack, TextField, Typography, alpha } from '@mui/material';
 
 import type { CashierContextCashDesk, CashierContextCashier, CashShiftSummary } from 'modules/cashier/domain';
+import { isValidOpeningCash } from 'modules/cashier/domain';
 import { getPosCopy, type PosLocale } from 'shared/locale/copy';
 import { formatCompactMoney, formatDateTime } from 'shared/pos/utils';
 
@@ -233,6 +234,9 @@ export function OpenShiftFields({
         type="number"
         label={copy.openingCash}
         value={openingCash}
+        error={!isValidOpeningCash(openingCash)}
+        helperText={!isValidOpeningCash(openingCash) ? copy.invalidOpeningCash : undefined}
+        slotProps={{ htmlInput: { min: 0, max: 2_147_483_647, step: 1 } }}
         onChange={(event) => onOpeningCashChange(event.target.value)}
       />
       <TextField

@@ -19,7 +19,7 @@ import {
   usePrintCashierShiftReportMutation,
   useRecoverCashierShiftMutation,
 } from 'modules/cashier/application';
-import { type CashierShiftCloseResponse, getPaymentFailureState } from 'modules/cashier/domain';
+import { type CashierShiftCloseResponse, getPaymentFailureState, isValidOpeningCash } from 'modules/cashier/domain';
 import { requestEdgePrintDocuments } from 'modules/edge-printing/application';
 import { getApiErrorMessage } from 'shared/api/errorMessage';
 import { POS_CONTEXT_POLL_INTERVAL_MS } from 'shared/api/polling';
@@ -71,7 +71,6 @@ export function CashierShiftPage() {
     [contextQuery.data?.availableCashDesks],
   );
   const availableCashiers = contextQuery.data?.availableCashiers ?? [];
-  const hasFiscalIntegration = availableCashDesks.some((cashDesk) => Boolean(cashDesk.fiscalProvider));
   const activeCashDeskIds = useMemo(() => new Set(activeShifts.map((shift) => shift.cashDesk)), [activeShifts]);
   const cashDesksAvailableToOpen = useMemo(
     () => availableCashDesks.filter((cashDesk) => !activeCashDeskIds.has(cashDesk.id)),
@@ -152,6 +151,7 @@ export function CashierShiftPage() {
   const requiresCashierSelection = availableCashDesks.length > 1;
   const canOpenShift = Boolean(
     canManageShift &&
+      isValidOpeningCash(openingCash) &&
       selectedCashDeskIdValue &&
       (!requiresCashierSelection || selectedCashierId) &&
       !openShiftMutation.isPending &&
@@ -163,8 +163,7 @@ export function CashierShiftPage() {
   }
 
   const renderManagerShift = (shift: (typeof activeShifts)[number]) => {
-    const isLastActiveShift = activeShifts.length === 1;
-    const closesFiscalShift = isLastActiveShift && hasFiscalIntegration;
+    const closesFiscalShift = false;
     return (
       <ManagerShiftCard
         key={shift.id}
@@ -213,13 +212,15 @@ export function CashierShiftPage() {
     />
   );
 
-  const openShift = () =>
+  const openShift = () => {
+    if (!canOpenShift) return;
     openShiftMutation.mutate({
       cashDeskId: selectedCashDeskIdValue || undefined,
       cashierId: requiresCashierSelection ? selectedCashierId || undefined : undefined,
       openingCashAmount: Number(openingCash || 0),
       notesOpen: openingNotes,
     });
+  };
 
   return (
     <PosPageFrame
