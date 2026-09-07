@@ -282,6 +282,29 @@ describe('CashierBuilderPageContent', () => {
     expect(addOrderItemMock).toHaveBeenCalledWith('created-order-1', 'item-1', 'Piyozsiz', undefined, undefined);
   });
 
+  it('retains a typed note when a pending new order receives its server ID', () => {
+    const initial = useOptimisticBuilderOrderMock({ channel: 'hall' });
+    useOptimisticBuilderOrderMock.mockReturnValue({
+      ...initial,
+      currentOrder: { ...initial.currentOrder, id: 'temp-builder-note' },
+    });
+    const view = render(<CashierBuilderPageContent />);
+    fireEvent.change(screen.getByLabelText('Butun buyurtma uchun izoh'), {
+      target: { value: 'Umumiy: tezroq' },
+    });
+
+    useOptimisticBuilderOrderMock.mockReturnValue(initial);
+    view.rerender(<CashierBuilderPageContent />);
+    expect((screen.getByLabelText('Butun buyurtma uchun izoh') as HTMLInputElement).value).toBe('Umumiy: tezroq');
+
+    useOptimisticBuilderOrderMock.mockReturnValue({
+      ...initial,
+      currentOrder: { ...initial.currentOrder, id: 'different-order', note: 'Boshqa buyurtma' },
+    });
+    view.rerender(<CashierBuilderPageContent />);
+    expect((screen.getByLabelText('Butun buyurtma uchun izoh') as HTMLInputElement).value).toBe('Boshqa buyurtma');
+  });
+
   it('opens a note dialog after swiping a simple cashier menu item and adds only after note save', () => {
     render(<CashierBuilderPageContent />);
 

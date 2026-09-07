@@ -103,6 +103,11 @@ export function CashierBuilderPageContent() {
     selections: PosModifierSelection[];
   } | null>(null);
   const noteOrderIdRef = useRef<string | null>(null);
+  const noteEditedRef = useRef(false);
+  const changeKitchenNote = (value: string) => {
+    noteEditedRef.current = true;
+    setKitchenNote(value);
+  };
 
   const menuQuery = useCashierMenuQuery();
   const ordersQuery = useCashierBuilderOrdersQuery();
@@ -182,9 +187,17 @@ export function CashierBuilderPageContent() {
     if (!orderId || noteOrderIdRef.current === orderId) {
       return;
     }
+    const resolvedPendingOrder =
+      !editOrderId &&
+      noteOrderIdRef.current !== null &&
+      isTemporaryBuilderId(noteOrderIdRef.current) &&
+      !isTemporaryBuilderId(orderId);
     noteOrderIdRef.current = orderId;
-    setKitchenNote(currentOrder?.note ?? '');
-  }, [currentOrder?.id, currentOrder?.note]);
+    if (!resolvedPendingOrder || !noteEditedRef.current) {
+      noteEditedRef.current = false;
+      setKitchenNote(currentOrder?.note ?? '');
+    }
+  }, [currentOrder?.id, currentOrder?.note, editOrderId]);
 
   const submitOrderMutation = useSubmitCashierOrderMutation({
     orderId: currentOrder?.id,
@@ -442,7 +455,7 @@ export function CashierBuilderPageContent() {
           onEditItemNote={setEditingItemNote}
           onChannelChange={(channel) => void builderActions.changeChannel(channel)}
           onCheckout={() => void builderActions.runOrderAction('checkout')}
-          onKitchenNoteChange={setKitchenNote}
+          onKitchenNoteChange={changeKitchenNote}
           onRemove={removeItem}
           onSelect={(key) => setSelectedCartItemKey((current) => (current === key ? null : key))}
           onSendOrder={() => void builderActions.runOrderAction('submit')}
@@ -479,7 +492,7 @@ export function CashierBuilderPageContent() {
         onChannelChange={(channel) => void builderActions.changeChannel(channel)}
         onCheckout={() => void builderActions.runOrderAction('checkout')}
         onClose={() => setCartOpen(false)}
-        onKitchenNoteChange={setKitchenNote}
+        onKitchenNoteChange={changeKitchenNote}
         onRemove={removeItem}
         onSelect={(key) => setSelectedCartItemKey((current) => (current === key ? null : key))}
         onSendOrder={() => void builderActions.runOrderAction('submit')}
