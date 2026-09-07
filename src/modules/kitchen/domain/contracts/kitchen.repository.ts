@@ -20,5 +20,9 @@ export interface KitchenRepository {
   forgetTvMonitorDevice(): Promise<void>;
   replayTicketAnnouncement(ticketId: string): Promise<void>;
   updateTicketStatus(ticketId: string, status: KitchenTicketStatus): Promise<void>;
-  updateItemStatus(itemId: string, status: KitchenItemStatus): Promise<void>;
+  updateItemStatus(
+    itemId: string,
+    status: KitchenItemStatus,
+    inventoryDisposition?: import('shared/pos/inventory').InventoryDisposition,
+  ): Promise<void>;
 }

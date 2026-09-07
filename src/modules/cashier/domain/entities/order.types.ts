@@ -2,6 +2,7 @@ import type { PosOrderItemModifier } from 'shared/pos/modifiers';
 import type { PosServiceFeeComponent, PosServiceFeeQuote } from 'shared/pos/service-fees';
 
 export type CashierOrderItem = {
+  inventoryConsumed?: boolean;
   id: string;
   catalogItem: string;
   catalogItemName: string;

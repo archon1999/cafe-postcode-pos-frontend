@@ -32,6 +32,7 @@ import { getPosCopy } from 'shared/locale/copy';
 import { buildServiceFeeRows } from 'shared/pos/service-fees';
 import { useScannerInput } from 'shared/pos/useScannerInput';
 import { PosSettingsMenu } from 'shared/ui/pos-primitives';
+import { useInventoryCancellation } from 'shared/ui/pos-primitives/useInventoryCancellation';
 
 import { calculatePercentageDiscount } from './payment-total-adjustment';
 import { PaymentCheckoutSummary } from './PaymentCheckoutSummary';
@@ -229,6 +230,11 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   const splitValidationMessage = hasZeroSplitAmount ? copy.zeroAmountNotAllowed : copy.mixedAmountMismatch;
   const isPaymentProcessing = paymentSubmission.isSubmitting;
   const isOrderEditing = orderEditing.addPending || orderEditing.removePending || orderEditing.renamePending;
+  const { removeItem: removeInventoryItem, inventoryCancellationDialog } = useInventoryCancellation(
+    orderQuery.data?.items ?? [],
+    orderEditing.removeItem,
+    locale,
+  );
   const canSubmitPayment = Boolean(
     normalizedOrderId &&
       canProcessPayments &&
@@ -317,7 +323,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
           items={aggregatedOrderItems}
           locale={locale}
           onAddItem={(item) => void orderEditing.addItem(item.id, item.catalogItem, item.note, item.modifiers)}
-          onRemoveItem={(itemId) => void orderEditing.removeItem(itemId)}
+          onRemoveItem={removeInventoryItem}
           onRename={orderEditing.openRenameDialog}
           order={orderQuery.data}
           orderDisplayName={orderDisplayName}
@@ -481,6 +487,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
         themeColor={themeColor}
         themeMode={themeMode}
       />
+      {inventoryCancellationDialog}
     </PosPageFrame>
   );
 }

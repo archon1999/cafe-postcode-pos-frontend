@@ -48,6 +48,7 @@ import {
   PosSettingsMenu,
 } from 'shared/ui/pos-primitives';
 import type { PosCartItem } from 'shared/ui/pos-primitives/PosCartItemGroups';
+import { useInventoryCancellation } from 'shared/ui/pos-primitives/useInventoryCancellation';
 
 import { CashierBuilderDesktopCart, CashierBuilderMobileCart } from './CashierBuilderCart';
 import { CashierDeliveryDetailsDialog } from './CashierDeliveryDetailsDialog';
@@ -126,7 +127,13 @@ export function CashierBuilderPageContent() {
     () => editOrderQuery.data ?? getCurrentCashierBuilderOrder(ordersQuery.data, session?.user.id),
     [editOrderQuery.data, ordersQuery.data, session?.user.id],
   );
-  const { currentOrder, addItem, addItems, removeItem, hasPendingOperations } = useOptimisticBuilderOrder({
+  const {
+    currentOrder,
+    addItem,
+    addItems,
+    removeItem: removeItemDirect,
+    hasPendingOperations,
+  } = useOptimisticBuilderOrder({
     baseOrder: serverOrder,
     canonicalQueryKey: editOrderId ? cashierKeys.paymentOrder(editOrderId) : cashierKeys.builderOrders,
     canonicalQueryFn: async () =>
@@ -142,7 +149,7 @@ export function CashierBuilderPageContent() {
     defaultServiceFeeComponents: builderChannel === 'hall' ? restaurantServiceFeeComponents : [],
     defaultVatEnabled: Boolean(session?.restaurantContext?.vatEnabled),
     defaultVatPercent: session?.restaurantContext?.vatPercent ?? 0,
-    removeOrderItem: (itemId) => cashierRepository.removeOrderItem(itemId),
+    removeOrderItem: (itemId, disposition) => cashierRepository.removeOrderItem(itemId, disposition),
     onOrderRemoved: () => {
       if (editOrderId) {
         void navigate('/cashier/open-checks', { replace: true });
@@ -173,6 +180,11 @@ export function CashierBuilderPageContent() {
       ),
     syncErrorMessage: copy.itemSyncFailed,
   });
+  const { removeItem, inventoryCancellationDialog } = useInventoryCancellation(
+    currentOrder?.items,
+    removeItemDirect,
+    locale,
+  );
   const updateItemNoteMutation = useUpdateCashierOrderItemNoteMutation({
     orderId: currentOrder?.id,
     onSuccess: () => {
@@ -652,6 +664,7 @@ export function CashierBuilderPageContent() {
         message={scanToast}
         onClose={() => setScanToast('')}
       />
+      {inventoryCancellationDialog}
     </PosPageFrame>
   );
 }

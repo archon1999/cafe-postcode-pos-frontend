@@ -1,6 +1,8 @@
+import type { PosInventoryAvailability } from 'shared/pos/inventory';
 import type { PosModifierGroup } from 'shared/pos/modifiers';
 
 export type CashierMenuItem = {
+  inventory?: PosInventoryAvailability;
   id: string;
   name: string;
   description?: string | null;

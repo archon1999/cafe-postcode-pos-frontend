@@ -18,6 +18,8 @@ export function useWaiterMenuQuery(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: waiterKeys.menu,
     queryFn: () => waiterRepository.getMenu(),
+    refetchInterval: 5000,
+    refetchIntervalInBackground: false,
     enabled: options?.enabled,
   });
 }

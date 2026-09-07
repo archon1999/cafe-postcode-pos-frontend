@@ -81,8 +81,14 @@ export const cashierOrderGateway = {
     };
   },
 
-  async removeOrderItem(itemId: string): Promise<RemoveOrderItemResponse> {
-    const payload = await apiDelete<Partial<RemoveOrderItemResponse> | undefined>(`/pos/sales/orders/items/${itemId}/`);
+  async removeOrderItem(
+    itemId: string,
+    inventoryDisposition?: import('shared/pos/inventory').InventoryDisposition,
+  ): Promise<RemoveOrderItemResponse> {
+    const payload = await apiDelete<Partial<RemoveOrderItemResponse> | undefined>(
+      `/pos/sales/orders/items/${itemId}/`,
+      ...(inventoryDisposition ? [{ inventoryDisposition }] : []),
+    );
     return {
       kitchenPrintDocuments: payload?.kitchenPrintDocuments ?? [],
       ...(payload?.orderRemoved ? { orderRemoved: true } : {}),

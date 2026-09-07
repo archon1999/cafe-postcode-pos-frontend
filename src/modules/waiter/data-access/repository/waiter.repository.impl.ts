@@ -131,9 +131,10 @@ class WaiterRepositoryImpl implements WaiterRepository {
     });
   }
 
-  async removeOrderItem(itemId: string) {
+  async removeOrderItem(itemId: string, inventoryDisposition?: import('shared/pos/inventory').InventoryDisposition) {
     const payload = await apiDelete<{ kitchenPrintDocuments?: string[]; orderRemoved?: boolean } | undefined>(
       `/pos/sales/orders/items/${itemId}/`,
+      ...(inventoryDisposition ? [{ inventoryDisposition }] : []),
     );
     return {
       kitchenPrintDocuments: payload?.kitchenPrintDocuments ?? [],

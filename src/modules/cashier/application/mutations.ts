@@ -295,8 +295,13 @@ export function useRemoveCashierPaymentOrderItemMutation(options: {
   const { orderId, onSuccess, onPrintError } = options;
 
   return useMutation({
-    mutationFn: async (itemId: string) => {
-      const result = await cashierRepository.removeOrderItem(itemId);
+    mutationFn: async (
+      input: string | { itemId: string; inventoryDisposition?: import('shared/pos/inventory').InventoryDisposition },
+    ) => {
+      const result =
+        typeof input === 'string'
+          ? await cashierRepository.removeOrderItem(input)
+          : await cashierRepository.removeOrderItem(input.itemId, input.inventoryDisposition);
       requestEdgePrintDocuments(result.kitchenPrintDocuments, onPrintError);
       return result;
     },

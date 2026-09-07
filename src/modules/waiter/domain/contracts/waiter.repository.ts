@@ -45,7 +45,10 @@ export interface WaiterRepository {
       manualPrice?: number;
     }>,
   ): Promise<{ kitchenPrintDocuments?: string[] }>;
-  removeOrderItem(itemId: string): Promise<{ kitchenPrintDocuments: string[]; orderRemoved?: boolean }>;
+  removeOrderItem(
+    itemId: string,
+    inventoryDisposition?: import('shared/pos/inventory').InventoryDisposition,
+  ): Promise<{ kitchenPrintDocuments: string[]; orderRemoved?: boolean }>;
   updateOrderItemNote(itemId: string, note: string): Promise<void>;
   updateOrderNote(orderId: string, note: string): Promise<WaiterOrder>;
   submitOrder(orderId: string): Promise<WaiterOrder>;

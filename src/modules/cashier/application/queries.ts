@@ -51,6 +51,8 @@ export function useCashierMenuQuery() {
   return useQuery({
     queryKey: cashierKeys.menu,
     queryFn: () => cashierRepository.getMenu(),
+    refetchInterval: 5000,
+    refetchIntervalInBackground: false,
   });
 }
 

@@ -4,9 +4,11 @@ import { useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 
 import { resolveApiBaseUrl } from 'shared/api/apiUrl';
 import { getPosCopy, type PosLocale } from 'shared/locale/copy';
+import { inventoryAvailabilityLabel, type PosInventoryAvailability } from 'shared/pos/inventory';
 import { formatMoneyParts, formatPosQuantity, type PosSaleUnit } from 'shared/pos/utils';
 
 export type PosMenuItemCardItem = {
+  inventory?: PosInventoryAvailability;
   name: string;
   description?: string | null;
   imageUrl?: string | null;
@@ -49,18 +51,20 @@ export function PosMenuItemCard({
 }: PosMenuItemCardProps) {
   const imageUrl = resolveImageUrl(item.imageUrl);
   const copy = getPosCopy(locale);
+  const blocked = Boolean(item.inventory?.blocked);
+  const stockLabel = inventoryAvailabilityLabel(item.inventory, locale);
   const price = formatMoneyParts(Number(item.price ?? 0), locale);
   const [noteActionVisible, setNoteActionVisible] = useState(false);
   const swipeStartRef = useRef<{ pointerId: number; x: number; y: number } | null>(null);
   const suppressClickUntilRef = useRef(0);
-  const noteSwipeEnabled = Boolean(onAddWithNote);
+  const noteSwipeEnabled = Boolean(onAddWithNote) && !blocked;
 
   const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key !== 'Enter' && event.key !== ' ') {
       return;
     }
     event.preventDefault();
-    onAdd();
+    if (!blocked) onAdd();
   };
 
   const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
@@ -98,9 +102,10 @@ export function PosMenuItemCard({
   return (
     <Box
       role="button"
-      tabIndex={0}
+      tabIndex={blocked ? -1 : 0}
+      aria-disabled={blocked}
       onClick={() => {
-        if (Date.now() < suppressClickUntilRef.current) return;
+        if (blocked || Date.now() < suppressClickUntilRef.current) return;
         onAdd();
       }}
       onKeyDown={handleKeyDown}
@@ -120,7 +125,8 @@ export function PosMenuItemCard({
         minHeight: { xs: 112, md: 118, xl: 126 },
         overflow: 'visible',
         borderRadius: '10px',
-        cursor: 'pointer',
+        cursor: blocked ? 'not-allowed' : 'pointer',
+        opacity: blocked ? 0.65 : 1,
         textAlign: 'left',
         touchAction: noteSwipeEnabled ? 'pan-y' : 'auto',
         transition: 'transform 0.16s ease',
@@ -226,6 +232,11 @@ export function PosMenuItemCard({
               <Typography variant="h6" sx={{ pr: 1 }}>
                 {item.name}
               </Typography>
+              {stockLabel ? (
+                <Typography variant="caption" color={blocked ? 'error' : 'warning.main'}>
+                  {stockLabel}
+                </Typography>
+              ) : null}
               {item.description ? (
                 <Typography
                   variant="body2"
@@ -259,7 +270,7 @@ export function PosMenuItemCard({
               {selectedCount > 0 ? (
                 <Stack data-testid="menu-item-controls" direction="row" spacing={0.8} alignItems="center">
                   <QuantityButton icon="solar:minus-circle-bold" onClick={onRemove} />
-                  <QuantityButton icon="solar:add-circle-bold" onClick={onAdd} />
+                  {!blocked ? <QuantityButton icon="solar:add-circle-bold" onClick={onAdd} /> : null}
                 </Stack>
               ) : null}
               <Typography

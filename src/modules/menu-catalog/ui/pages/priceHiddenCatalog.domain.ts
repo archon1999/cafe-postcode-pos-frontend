@@ -2,11 +2,13 @@ import type { KeyboardEvent } from 'react';
 
 import type { CashierBuilderOrderChannel } from 'modules/cashier/domain';
 import { resolveApiBaseUrl } from 'shared/api/apiUrl';
+import type { PosInventoryAvailability } from 'shared/pos/inventory';
 import type { PosModifierGroup, PosOrderItemModifier } from 'shared/pos/modifiers';
 import { orderItemModifierSignature } from 'shared/pos/modifiers';
 import { addPosQuantities, normalizePosQuantity } from 'shared/pos/utils';
 
 export type CatalogMenuItemLike = {
+  inventory?: PosInventoryAvailability;
   id: string;
   name: string;
   description?: string | null;

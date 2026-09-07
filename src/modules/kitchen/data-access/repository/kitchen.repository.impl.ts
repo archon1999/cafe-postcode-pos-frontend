@@ -423,8 +423,15 @@ class KitchenRepositoryImpl implements KitchenRepository {
     await apiPost(`/pos/kitchen/tickets/${ticketId}/status/`, { status });
   }
 
-  async updateItemStatus(itemId: string, status: KitchenItemStatus) {
-    await apiPost(`/pos/kitchen/items/${itemId}/status/`, { status });
+  async updateItemStatus(
+    itemId: string,
+    status: KitchenItemStatus,
+    inventoryDisposition?: import('shared/pos/inventory').InventoryDisposition,
+  ) {
+    await apiPost(`/pos/kitchen/items/${itemId}/status/`, {
+      status,
+      ...(inventoryDisposition ? { inventoryDisposition } : {}),
+    });
   }
 }
 

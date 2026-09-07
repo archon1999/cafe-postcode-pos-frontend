@@ -76,14 +76,17 @@ export function usePaymentOrderEditing({
     }
   };
 
-  const removeItem = async (itemId: string) => {
+  const removeItem = async (
+    itemId: string,
+    inventoryDisposition?: import('shared/pos/inventory').InventoryDisposition,
+  ) => {
     if (!canRemoveItems || removeMutation.isPending) {
       return;
     }
 
     setRemovingItemId(itemId);
     try {
-      await removeMutation.mutateAsync(itemId);
+      await removeMutation.mutateAsync(inventoryDisposition ? { itemId, inventoryDisposition } : itemId);
     } catch {
       setRemovingItemId(null);
     }

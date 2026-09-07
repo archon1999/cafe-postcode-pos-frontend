@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { queryClient } from 'shared/api/query-client';
+import type { InventoryDisposition } from 'shared/pos/inventory';
 import type { PosModifierSelection } from 'shared/pos/modifiers';
 import { selectedModifierOptions } from 'shared/pos/modifiers';
 import type { PosServiceFeeComponent } from 'shared/pos/service-fees';
@@ -34,7 +35,10 @@ type UseOptimisticBuilderOrderOptions<
   defaultServiceFeeStartedAt?: string | null;
   defaultVatEnabled?: boolean;
   defaultVatPercent?: number | string;
-  removeOrderItem: (itemId: string) => Promise<{
+  removeOrderItem: (
+    itemId: string,
+    inventoryDisposition?: InventoryDisposition,
+  ) => Promise<{
     kitchenPrintDocuments?: string[];
     orderRemoved?: boolean;
   } | void>;
@@ -257,7 +261,9 @@ export function useOptimisticBuilderOrder<
   const runRemoveOperation = useCallback(
     async (operation: PendingRemoveOperation) => {
       try {
-        const mutationResult = await removeOrderItem(operation.itemId);
+        const mutationResult = await (operation.inventoryDisposition
+          ? removeOrderItem(operation.itemId, operation.inventoryDisposition)
+          : removeOrderItem(operation.itemId));
         if (mutationResult?.kitchenPrintDocuments?.length) {
           onPrintDocuments?.(mutationResult.kitchenPrintDocuments);
         }
@@ -374,6 +380,7 @@ export function useOptimisticBuilderOrder<
 
   const addItem = useCallback(
     (menuItem: TMenuItem, note: string, selectedModifiers: PosModifierSelection[] = [], manualPrice?: number) => {
+      if (menuItem.inventory?.blocked) return;
       const opId = createOperationId();
       const tempItemId = createOperationId();
 
@@ -396,6 +403,10 @@ export function useOptimisticBuilderOrder<
         manualPrice?: number;
       }>,
     ) => {
+      if (items.some((item) => item.quantity > 0 && item.menuItem.inventory?.blocked)) {
+        toast.error(syncErrorMessage);
+        return;
+      }
       if (!addOrderItems) {
         for (const item of items) {
           for (let index = 0; index < item.quantity; index += 1) {
@@ -422,11 +433,11 @@ export function useOptimisticBuilderOrder<
       setPendingAdds((current) => [...current, ...operations]);
       enqueue(() => runBatchAddOperation(operations.map((operation) => operation.opId)));
     },
-    [addItem, addOrderItems, enqueue, runBatchAddOperation],
+    [addItem, addOrderItems, enqueue, runBatchAddOperation, syncErrorMessage],
   );
 
   const removeItem = useCallback(
-    (itemId: string) => {
+    (itemId: string, inventoryDisposition?: InventoryDisposition) => {
       const pendingAdd = pendingAddsRef.current.find((operation) => operation.tempItemId === itemId);
 
       if (pendingAdd) {
@@ -438,7 +449,7 @@ export function useOptimisticBuilderOrder<
         return;
       }
 
-      const operation = { opId: createOperationId(), itemId };
+      const operation = { opId: createOperationId(), itemId, inventoryDisposition };
       pendingRemovesRef.current = [...pendingRemovesRef.current, operation];
       setPendingRemoves((current) => [...current, operation]);
       enqueue(() => runRemoveOperation(operation));

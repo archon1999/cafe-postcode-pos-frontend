@@ -72,6 +72,7 @@ export function PriceHiddenCatalogContent<TMenuItem extends CatalogMenuItemLike>
   const selectedItems = useMemo(() => aggregateSummaryItems(orderItems, copy.menu), [copy.menu, orderItems]);
   const selectedCount = selectedItems.length;
   const requestAdd = (item: TMenuItem) => {
+    if (item.inventory?.blocked || hasPendingOperations) return;
     if (item.modifierGroups?.length) {
       setConfiguringItem(item);
       return;

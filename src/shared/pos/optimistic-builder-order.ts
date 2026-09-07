@@ -1,8 +1,10 @@
+import type { PosInventoryAvailability, InventoryDisposition } from './inventory';
 import type { PosModifierSelection, PosOrderItemModifier } from './modifiers';
 import { modifierPriceDelta, orderItemModifierSignature, selectedModifierOptions } from './modifiers';
 import { calculateServiceFeeComponents, type PosServiceFeeComponent } from './service-fees';
 
 export type BuilderMenuItemLike = {
+  inventory?: PosInventoryAvailability;
   id: string;
   name: string;
   prepStationName?: string | null;
@@ -13,6 +15,7 @@ export type BuilderMenuItemLike = {
 };
 
 export type BuilderOrderItemLike = {
+  inventoryConsumed?: boolean;
   id: string;
   catalogItem: string;
   catalogItemName: string;
@@ -57,6 +60,7 @@ export type PendingAddOperation<TMenuItem extends BuilderMenuItemLike> = {
 };
 
 export type PendingRemoveOperation = {
+  inventoryDisposition?: InventoryDisposition;
   opId: string;
   itemId: string;
 };

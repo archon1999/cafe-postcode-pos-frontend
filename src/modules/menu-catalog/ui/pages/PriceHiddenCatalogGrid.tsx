@@ -2,6 +2,7 @@ import { Icon } from '@iconify/react';
 import { Box, IconButton, Stack, Typography } from '@mui/material';
 
 import type { PosLocale } from 'shared/locale/copy';
+import { inventoryAvailabilityLabel } from 'shared/pos/inventory';
 import { formatPosQuantity } from 'shared/pos/utils';
 
 import { createActionKeyHandler, resolveMenuItemImageUrl, type CatalogMenuItemLike } from './priceHiddenCatalog.domain';
@@ -61,7 +62,7 @@ export function PriceHiddenItemControls<TMenuItem extends CatalogMenuItemLike>({
       </Box>
       <IconButton
         aria-label={`Add one ${item.name}`}
-        disabled={disabled}
+        disabled={disabled || Boolean(item.inventory?.blocked)}
         onClick={() => onAdd(item, '')}
         sx={{
           width: 38,
@@ -149,14 +150,17 @@ export function PriceHiddenCatalogGrid<TMenuItem extends CatalogMenuItemLike>({
           }}>
           {items.map((item) => {
             const selectedCount = countMap.get(item.id) ?? 0;
+            const blocked = Boolean(item.inventory?.blocked);
+            const stockLabel = inventoryAvailabilityLabel(item.inventory, locale);
             return (
               <Box
                 key={item.id}
                 role="button"
-                tabIndex={0}
+                tabIndex={blocked ? -1 : 0}
+                aria-disabled={blocked || hasPendingOperations}
                 aria-label={`Add ${item.name}`}
-                onClick={() => onAdd(item, '')}
-                onKeyDown={createActionKeyHandler(() => onAdd(item, ''))}
+                onClick={() => !blocked && !hasPendingOperations && onAdd(item, '')}
+                onKeyDown={createActionKeyHandler(() => !blocked && !hasPendingOperations && onAdd(item, ''))}
                 sx={{
                   height: { xs: 200, lg: 400 },
                   minHeight: { xs: 200, lg: 400 },
@@ -165,7 +169,8 @@ export function PriceHiddenCatalogGrid<TMenuItem extends CatalogMenuItemLike>({
                   gridTemplateRows: { xs: 'minmax(0, 1fr)', lg: 'minmax(190px, 1fr) auto 58px' },
                   borderRight: '1px solid rgba(255,255,255,0.12)',
                   borderBottom: '1px solid rgba(255,255,255,0.12)',
-                  cursor: 'pointer',
+                  cursor: blocked ? 'not-allowed' : 'pointer',
+                  opacity: blocked ? 0.6 : 1,
                   backgroundColor: '#050505',
                   transition: 'background-color 0.16s ease, transform 0.16s ease',
                   '&:hover': { backgroundColor: '#0a0b0c' },
@@ -226,6 +231,11 @@ export function PriceHiddenCatalogGrid<TMenuItem extends CatalogMenuItemLike>({
                     }}>
                     {item.name}
                   </Typography>
+                  {stockLabel ? (
+                    <Typography variant="caption" sx={{ color: blocked ? '#ff8c8c' : '#e4c772' }}>
+                      {stockLabel}
+                    </Typography>
+                  ) : null}
                   {item.description ? (
                     <Typography
                       variant="body2"

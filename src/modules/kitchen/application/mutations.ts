@@ -26,8 +26,15 @@ export function useUpdateKitchenTicketStatusMutation() {
 
 export function useUpdateKitchenItemStatusMutation() {
   return useMutation({
-    mutationFn: ({ itemId, status }: { itemId: string; status: KitchenItemStatus }) =>
-      kitchenRepository.updateItemStatus(itemId, status),
+    mutationFn: ({
+      itemId,
+      status,
+      inventoryDisposition,
+    }: {
+      itemId: string;
+      status: KitchenItemStatus;
+      inventoryDisposition?: import('shared/pos/inventory').InventoryDisposition;
+    }) => kitchenRepository.updateItemStatus(itemId, status, inventoryDisposition),
     onSuccess: invalidateKitchenRelatedQueries,
   });
 }

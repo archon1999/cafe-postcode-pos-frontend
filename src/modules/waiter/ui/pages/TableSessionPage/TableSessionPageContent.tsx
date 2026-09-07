@@ -49,6 +49,7 @@ import {
   PosWeightedItemDialog,
 } from 'shared/ui/pos-primitives';
 import type { PosCartItem } from 'shared/ui/pos-primitives/PosCartItemGroups';
+import { useInventoryCancellation } from 'shared/ui/pos-primitives/useInventoryCancellation';
 
 import { TableSessionDesktopCart } from './TableSessionDesktopCart';
 import { TableSessionMobileCart } from './TableSessionMobileCart';
@@ -128,7 +129,13 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
     ? restaurantServiceFeeComponents
     : (sessionQuery.data?.serviceFeeComponents ?? []);
   const currentOperatorName = session?.user.fullName ?? '';
-  const { currentOrder, addItem, addItems, removeItem, hasPendingOperations } = useOptimisticBuilderOrder({
+  const {
+    currentOrder,
+    addItem,
+    addItems,
+    removeItem: removeItemDirect,
+    hasPendingOperations,
+  } = useOptimisticBuilderOrder({
     baseOrder: serverOrder,
     canonicalQueryKey: waiterKeys.orders,
     canonicalQueryFn: () => waiterRepository.getOrders(),
@@ -148,7 +155,7 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
     defaultServiceFeeStartedAt: sessionQuery.data?.openedAt,
     defaultVatEnabled: Boolean(session?.restaurantContext?.vatEnabled),
     defaultVatPercent: session?.restaurantContext?.vatPercent ?? 0,
-    removeOrderItem: (itemId) => waiterRepository.removeOrderItem(itemId),
+    removeOrderItem: (itemId, disposition) => waiterRepository.removeOrderItem(itemId, disposition),
     onOrderRemoved: (removedOrder) => {
       if (!isTakeawayMode && removedOrder && removedOrder.status !== 'open') {
         void navigate('/waiter/halls', { replace: true });
@@ -184,6 +191,11 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
       ),
     syncErrorMessage: copy.itemSyncFailed,
   });
+  const { removeItem, inventoryCancellationDialog } = useInventoryCancellation(
+    currentOrder?.items,
+    removeItemDirect,
+    locale,
+  );
   const updateItemNoteMutation = useUpdateWaiterOrderItemNoteMutation({
     sessionId,
     onSuccess: () => {
@@ -597,6 +609,7 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
         open={Boolean(editingItemNote)}
         saving={updateItemNoteMutation.isPending}
       />
+      {inventoryCancellationDialog}
     </PosPageFrame>
   );
 }

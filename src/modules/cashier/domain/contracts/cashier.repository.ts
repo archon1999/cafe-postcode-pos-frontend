@@ -92,7 +92,10 @@ export interface CashierRepository {
     rawCode: string,
     mode: 'add' | 'attach' | 'remove',
   ): Promise<CashierScanOrderMarkingResponse>;
-  removeOrderItem(itemId: string): Promise<{ kitchenPrintDocuments: string[]; orderRemoved?: boolean }>;
+  removeOrderItem(
+    itemId: string,
+    inventoryDisposition?: import('shared/pos/inventory').InventoryDisposition,
+  ): Promise<{ kitchenPrintDocuments: string[]; orderRemoved?: boolean }>;
   updateOrderItemNote(itemId: string, note: string): Promise<void>;
   updateOrderNote(orderId: string, note: string): Promise<CashierOrder>;
   updateOrderDisplayName(orderId: string, displayName: string): Promise<CashierOrder>;

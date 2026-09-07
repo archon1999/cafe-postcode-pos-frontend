@@ -29,6 +29,46 @@ describe('PosMenuItemCard', () => {
     cleanup();
   });
 
+  it('blocks touch, click and keyboard additions when ingredients run out while keeping removal available', () => {
+    const onAdd = vi.fn();
+    const onAddWithNote = vi.fn();
+    const onRemove = vi.fn();
+    render(
+      <PosMenuItemCard
+        item={{
+          ...item,
+          inventory: {
+            tracked: true,
+            blocked: true,
+            lowStock: true,
+            availableQuantity: '0',
+            reason: 'shortage',
+            updatedAt: null,
+          },
+        }}
+        locale="uz"
+        menuLabel="Menyu"
+        selectedCount={1}
+        onAdd={onAdd}
+        onAddWithNote={onAddWithNote}
+        onRemove={onRemove}
+      />,
+    );
+    const card = screen.getByRole('button', { name: /Choyxona osh/ });
+    expect(card.getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(card);
+    fireEvent.keyDown(card, { key: 'Enter' });
+    dispatchPointer(card, 'pointerdown', 180, 40);
+    dispatchPointer(card, 'pointermove', 90, 40);
+    dispatchPointer(card, 'pointerup', 90, 40);
+    expect(onAdd).not.toHaveBeenCalled();
+    expect(onAddWithNote).not.toHaveBeenCalled();
+    const buttons = screen.getByTestId('menu-item-controls').querySelectorAll('button');
+    expect(buttons).toHaveLength(1);
+    fireEvent.click(buttons[0]);
+    expect(onRemove).toHaveBeenCalledOnce();
+  });
+
   it('renders the selected item count as a corner badge outside the footer controls', () => {
     render(
       <PosMenuItemCard

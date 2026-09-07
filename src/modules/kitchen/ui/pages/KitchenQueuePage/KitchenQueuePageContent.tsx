@@ -18,6 +18,7 @@ import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { getPosCopy } from 'shared/locale/copy';
 import { formatTime } from 'shared/pos/utils';
 import { PosKitchenQueueSkeleton, PosSettingsMenu } from 'shared/ui/pos-primitives';
+import { useInventoryCancellation } from 'shared/ui/pos-primitives/useInventoryCancellation';
 
 import { KitchenQueueHeader, type KitchenQueueTab } from './KitchenQueueHeader';
 import { getKitchenTicketContextLabel, getKitchenTicketDisplayNumber } from './kitchenTicketContext';
@@ -43,6 +44,12 @@ export function KitchenQueuePageContent() {
   const updateItemStatusMutation = useUpdateKitchenItemStatusMutation();
   const replayAnnouncementMutation = useReplayKitchenAnnouncementMutation();
   const isInitialLoading = queueQuery.isLoading && !queueQuery.data;
+  const { removeItem: cancelItem, inventoryCancellationDialog } = useInventoryCancellation(
+    (queueQuery.data ?? []).flatMap((ticket) => ticket.items).map((item) => ({ ...item, inventoryConsumed: true })),
+    (itemId, inventoryDisposition) =>
+      updateItemStatusMutation.mutate({ itemId, status: 'cancelled', inventoryDisposition }),
+    locale,
+  );
 
   const activeTickets = useMemo(
     () => (queueQuery.data ?? []).filter((ticket) => ticket.status === 'new' || ticket.status === 'cooking'),
@@ -183,7 +190,11 @@ export function KitchenQueuePageContent() {
                           onSelect={(itemId) =>
                             setSelectedItemId((currentValue) => (currentValue === itemId ? null : itemId))
                           }
-                          onUpdateStatus={(itemId, status) => updateItemStatusMutation.mutate({ itemId, status })}
+                          onUpdateStatus={(itemId, status) =>
+                            status === 'cancelled'
+                              ? cancelItem(itemId)
+                              : updateItemStatusMutation.mutate({ itemId, status })
+                          }
                           selectedTab={selectedTab}
                         />
                       ))}
@@ -305,6 +316,7 @@ export function KitchenQueuePageContent() {
         themeColor={themeColor}
         themeMode={themeMode}
       />
+      {inventoryCancellationDialog}
     </PosPageFrame>
   );
 }

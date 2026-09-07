@@ -14,6 +14,7 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 
 import { formatPosCopy, getPosCopy, type PosLocale } from 'shared/locale/copy';
+import { inventoryAvailabilityLabel } from 'shared/pos/inventory';
 import {
   defaultModifierSelections,
   modifierPriceDelta,
@@ -96,7 +97,7 @@ export function PosItemGroupConfiguratorDialog<TItem extends PosBuilderMenuItem>
   const changeQuantity = (key: string, delta: number) => {
     setLines((current) =>
       current.map((line) => {
-        if (line.key !== key) return line;
+        if (line.key !== key || (delta > 0 && line.item.inventory?.blocked)) return line;
         const quantity = Math.max(0, line.quantity + delta);
         return { ...line, quantity, quantityInput: quantity ? String(quantity) : '' };
       }),
@@ -108,7 +109,9 @@ export function PosItemGroupConfiguratorDialog<TItem extends PosBuilderMenuItem>
     const quantity = Math.max(0, Number(normalized || 0));
     if (!Number.isFinite(quantity) || quantity > 999_999_999.999) return;
     setLines((current) =>
-      current.map((line) => (line.key === key ? { ...line, quantity, quantityInput: value } : line)),
+      current.map((line) =>
+        line.key === key && !line.item.inventory?.blocked ? { ...line, quantity, quantityInput: value } : line,
+      ),
     );
   };
   const setLineNote = (key: string, note: string) => {
@@ -225,6 +228,11 @@ export function PosItemGroupConfiguratorDialog<TItem extends PosBuilderMenuItem>
                               <Typography fontWeight={line.quantity ? 750 : 550} sx={{ minWidth: 0 }}>
                                 {line.label}
                               </Typography>
+                              {inventoryAvailabilityLabel(line.item.inventory, locale) ? (
+                                <Typography variant="caption" color="warning.main">
+                                  {inventoryAvailabilityLabel(line.item.inventory, locale)}
+                                </Typography>
+                              ) : null}
                               <Typography variant="body2" color="text.secondary" sx={{ flexShrink: 0 }}>
                                 {formatCompactMoney(unitPrice, locale)}
                               </Typography>
@@ -250,6 +258,7 @@ export function PosItemGroupConfiguratorDialog<TItem extends PosBuilderMenuItem>
                           {line.item.saleUnit === 'kg' ? (
                             <TextField
                               size="small"
+                              disabled={Boolean(line.item.inventory?.blocked)}
                               value={line.quantityInput}
                               onChange={(event) => setQuantity(line.key, event.target.value)}
                               placeholder="0"
@@ -280,7 +289,11 @@ export function PosItemGroupConfiguratorDialog<TItem extends PosBuilderMenuItem>
                                 }}>
                                 {line.quantity}
                               </Typography>
-                              <CounterButton icon="solar:add-circle-bold" onClick={() => changeQuantity(line.key, 1)} />
+                              <CounterButton
+                                icon="solar:add-circle-bold"
+                                disabled={Boolean(line.item.inventory?.blocked)}
+                                onClick={() => changeQuantity(line.key, 1)}
+                              />
                             </>
                           )}
                         </Stack>
@@ -291,6 +304,7 @@ export function PosItemGroupConfiguratorDialog<TItem extends PosBuilderMenuItem>
                   {member.item.modifierGroups?.length ? (
                     <Button
                       color="inherit"
+                      disabled={Boolean(member.item.inventory?.blocked)}
                       startIcon={<Icon icon="solar:tuning-2-bold-duotone" width={19} />}
                       onClick={() => setCustomizing({ memberId: member.id, item: member.item })}
                       sx={{ m: 1, justifyContent: 'flex-start' }}>

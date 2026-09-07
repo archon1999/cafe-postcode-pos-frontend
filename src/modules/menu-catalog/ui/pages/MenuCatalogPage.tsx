@@ -21,6 +21,7 @@ import { waiterRepository } from 'modules/waiter/data-access';
 import type { WaiterMenuCategory, WaiterMenuItem, WaiterOrderItem } from 'modules/waiter/domain';
 import { getPosCopy } from 'shared/locale/copy';
 import { useOptimisticBuilderOrder } from 'shared/pos/useOptimisticBuilderOrder';
+import { useInventoryCancellation } from 'shared/ui/pos-primitives/useInventoryCancellation';
 
 import {
   type CatalogCategoryLike,
@@ -36,7 +37,13 @@ function WaiterMenuCatalogPage({ sessionId }: { sessionId: string | null }) {
   const orderQuery = useCurrentWaiterOrder(sessionId);
   const tableSessionQuery = useWaiterTableSessionQuery(sessionId);
   const copy = getPosCopy(locale);
-  const { currentOrder, addItem, addItems, removeItem, hasPendingOperations } = useOptimisticBuilderOrder<
+  const {
+    currentOrder,
+    addItem,
+    addItems,
+    removeItem: removeItemDirect,
+    hasPendingOperations,
+  } = useOptimisticBuilderOrder<
     WaiterMenuItem,
     WaiterOrderItem,
     NonNullable<typeof orderQuery.currentOrder>,
@@ -56,7 +63,7 @@ function WaiterMenuCatalogPage({ sessionId }: { sessionId: string | null }) {
     defaultServiceFeeStartedAt: tableSessionQuery.data?.openedAt,
     defaultVatEnabled: Boolean(session?.restaurantContext?.vatEnabled),
     defaultVatPercent: session?.restaurantContext?.vatPercent ?? 0,
-    removeOrderItem: (itemId) => waiterRepository.removeOrderItem(itemId),
+    removeOrderItem: (itemId, disposition) => waiterRepository.removeOrderItem(itemId, disposition),
     onOrderRemoved: (removedOrder) => {
       if (removedOrder && removedOrder.status !== 'open') {
         void navigate('/waiter/halls', { replace: true });
@@ -78,6 +85,11 @@ function WaiterMenuCatalogPage({ sessionId }: { sessionId: string | null }) {
       ),
     syncErrorMessage: copy.itemSyncFailed,
   });
+  const { removeItem, inventoryCancellationDialog } = useInventoryCancellation(
+    currentOrder?.items,
+    removeItemDirect,
+    locale,
+  );
 
   if (!sessionId || !canViewMenu) {
     return <Navigate to={getPosHomePath(session)} replace />;
@@ -92,16 +104,19 @@ function WaiterMenuCatalogPage({ sessionId }: { sessionId: string | null }) {
   }
 
   return (
-    <PriceHiddenCatalogContent
-      categories={(menuQuery.data ?? []) as Array<WaiterMenuCategory & CatalogCategoryLike<WaiterMenuItem>>}
-      orderItems={currentOrder?.items}
-      isLoading={menuQuery.isLoading && !menuQuery.data}
-      hasPendingOperations={hasPendingOperations}
-      returnPath={`/waiter/table-session?sessionId=${encodeURIComponent(sessionId)}`}
-      addItem={addItem}
-      addItems={addItems}
-      removeItem={removeItem}
-    />
+    <>
+      {inventoryCancellationDialog}
+      <PriceHiddenCatalogContent
+        categories={(menuQuery.data ?? []) as Array<WaiterMenuCategory & CatalogCategoryLike<WaiterMenuItem>>}
+        orderItems={currentOrder?.items}
+        isLoading={menuQuery.isLoading && !menuQuery.data}
+        hasPendingOperations={hasPendingOperations}
+        returnPath={`/waiter/table-session?sessionId=${encodeURIComponent(sessionId)}`}
+        addItem={addItem}
+        addItems={addItems}
+        removeItem={removeItem}
+      />
+    </>
   );
 }
 
@@ -115,7 +130,13 @@ function CashierMenuCatalogPage({ channel }: { channel: CashierBuilderOrderChann
     [ordersQuery.data, session?.user.id],
   );
   const copy = getPosCopy(locale);
-  const { currentOrder, addItem, addItems, removeItem, hasPendingOperations } = useOptimisticBuilderOrder({
+  const {
+    currentOrder,
+    addItem,
+    addItems,
+    removeItem: removeItemDirect,
+    hasPendingOperations,
+  } = useOptimisticBuilderOrder({
     baseOrder: serverOrder,
     canonicalQueryKey: cashierKeys.builderOrders,
     canonicalQueryFn: () => cashierRepository.getOpenOrders(),
@@ -128,7 +149,7 @@ function CashierMenuCatalogPage({ channel }: { channel: CashierBuilderOrderChann
     defaultServiceFeePercent: Number(session?.restaurantContext?.serviceFeePercent ?? 0),
     defaultVatEnabled: Boolean(session?.restaurantContext?.vatEnabled),
     defaultVatPercent: session?.restaurantContext?.vatPercent ?? 0,
-    removeOrderItem: (itemId) => cashierRepository.removeOrderItem(itemId),
+    removeOrderItem: (itemId, disposition) => cashierRepository.removeOrderItem(itemId, disposition),
     resetKey: channel,
     selectCurrentOrder: (orders) => getCurrentCashierBuilderOrder(orders, session?.user.id),
     addOrderItem: (orderId, menuItem, note, selectedModifiers) =>
@@ -145,22 +166,30 @@ function CashierMenuCatalogPage({ channel }: { channel: CashierBuilderOrderChann
       ),
     syncErrorMessage: copy.itemSyncFailed,
   });
+  const { removeItem, inventoryCancellationDialog } = useInventoryCancellation(
+    currentOrder?.items,
+    removeItemDirect,
+    locale,
+  );
 
   if (!canViewMenu) {
     return <Navigate to={getPosHomePath(session)} replace />;
   }
 
   return (
-    <PriceHiddenCatalogContent
-      categories={(menuQuery.data ?? []) as Array<CashierMenuCategory & CatalogCategoryLike<CashierMenuItem>>}
-      orderItems={currentOrder?.items as CashierOrderItem[] | undefined}
-      isLoading={(menuQuery.isLoading && !menuQuery.data) || (ordersQuery.isLoading && !ordersQuery.data)}
-      hasPendingOperations={hasPendingOperations}
-      returnPath={`/cashier/builder?channel=${channel}`}
-      addItem={addItem}
-      addItems={addItems}
-      removeItem={removeItem}
-    />
+    <>
+      {inventoryCancellationDialog}
+      <PriceHiddenCatalogContent
+        categories={(menuQuery.data ?? []) as Array<CashierMenuCategory & CatalogCategoryLike<CashierMenuItem>>}
+        orderItems={currentOrder?.items as CashierOrderItem[] | undefined}
+        isLoading={(menuQuery.isLoading && !menuQuery.data) || (ordersQuery.isLoading && !ordersQuery.data)}
+        hasPendingOperations={hasPendingOperations}
+        returnPath={`/cashier/builder?channel=${channel}`}
+        addItem={addItem}
+        addItems={addItems}
+        removeItem={removeItem}
+      />
+    </>
   );
 }
 

@@ -249,8 +249,8 @@ export async function apiPatch<T>(url: string, payload?: unknown) {
   return response.data;
 }
 
-export async function apiDelete<T = void>(url: string) {
-  const response = await apiClient.delete<T>(url);
+export async function apiDelete<T = void>(url: string, data?: unknown) {
+  const response = await (data === undefined ? apiClient.delete<T>(url) : apiClient.delete<T>(url, { data }));
   return response.data;
 }
 
