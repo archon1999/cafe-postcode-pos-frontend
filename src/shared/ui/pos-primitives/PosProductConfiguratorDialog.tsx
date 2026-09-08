@@ -104,13 +104,25 @@ export function PosProductConfiguratorDialog<TItem extends ConfigurablePosMenuIt
       PaperProps={{
         sx: {
           borderRadius: fullScreen ? 0 : '28px',
-          maxHeight: fullScreen ? '100%' : 'min(860px, 92vh)',
+          height: fullScreen ? '100dvh' : 'min(860px, calc(100dvh - 32px))',
+          maxHeight: fullScreen ? '100dvh' : 'calc(100dvh - 32px)',
+          display: 'flex',
+          flexDirection: 'column',
           overflow: 'hidden',
           backgroundImage: 'none',
           boxShadow: '0 32px 90px rgba(16, 24, 40, 0.26)',
         },
       }}>
-      <DialogContent sx={{ p: 0, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+      <DialogContent
+        sx={{
+          p: 0,
+          height: '100%',
+          minHeight: 0,
+          display: 'flex',
+          flex: '1 1 auto',
+          flexDirection: 'column',
+          overflow: 'hidden',
+        }}>
         <Box sx={{ px: { xs: 2.2, sm: 3.4 }, pt: { xs: 2, sm: 2.6 }, pb: 2, flexShrink: 0 }}>
           <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={2}>
             <Box sx={{ minWidth: 0, pt: 0.25 }}>
@@ -152,6 +164,8 @@ export function PosProductConfiguratorDialog<TItem extends ConfigurablePosMenuIt
             overflowY: 'auto',
             overflowX: 'hidden',
             overscrollBehavior: 'contain',
+            WebkitOverflowScrolling: 'touch',
+            touchAction: 'pan-y',
             scrollbarWidth: 'thin',
           }}>
           {groups.map((group) => {
