@@ -120,7 +120,7 @@ export function CashierShiftPage() {
       if (response.syncState === 'pending' || response.closeState === 'closed_local') {
         toast.info(copy.shiftClosedLocal);
       }
-      if (response.report || response.fiscalShift || response.fiscal_shift) {
+      if (response.closedShift || response.report || response.fiscalShift || response.fiscal_shift) {
         setShiftCloseReport(response);
       }
     },
@@ -131,7 +131,8 @@ export function CashierShiftPage() {
     clearRecoveryError(operation);
     if (!response) return;
     void contextQuery.refetch();
-    if (response.report || response.fiscalShift || response.fiscal_shift) setShiftCloseReport(response);
+    if (response.closedShift || response.report || response.fiscalShift || response.fiscal_shift)
+      setShiftCloseReport(response);
   };
   const { mutate: recoverOpenShift, isPending: recoveringOpen } = useRecoverCashierShiftMutation('open', {
     onSuccess: (response) => onRecoveredShift('open', response),
@@ -171,7 +172,7 @@ export function CashierShiftPage() {
         closesFiscalShift={closesFiscalShift}
         closing={closeShiftMutation.isPending}
         locale={locale}
-        onClose={() => {
+        onClose={(includeSoldItems) => {
           if (recoveryErrors.close) {
             recoverCloseShift(true);
             return;
@@ -180,6 +181,7 @@ export function CashierShiftPage() {
             cashShiftId: shift.id,
             notesClose: '',
             closeFiscalShift: closesFiscalShift,
+            includeSoldItems,
           });
         }}
         onPrint={async () => {

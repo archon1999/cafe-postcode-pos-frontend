@@ -1,7 +1,24 @@
-import { Box, Button, Divider, MenuItem, Stack, TextField, Typography, alpha } from '@mui/material';
+import {
+  Box,
+  Button,
+  Checkbox,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControlLabel,
+  Divider,
+  MenuItem,
+  Stack,
+  TextField,
+  Typography,
+  alpha,
+} from '@mui/material';
+import { useState } from 'react';
 
 import type { CashierContextCashDesk, CashierContextCashier, CashShiftSummary } from 'modules/cashier/domain';
 import { isValidOpeningCash } from 'modules/cashier/domain';
+import { getSaleUnit, saleUnitLabel } from 'shared/domain/sale-units';
 import { getPosCopy, type PosLocale } from 'shared/locale/copy';
 import { formatCompactMoney, formatDateTime } from 'shared/pos/utils';
 
@@ -9,6 +26,31 @@ type ShiftTotalsProps = {
   locale: PosLocale;
   shift: CashShiftSummary;
 };
+
+export function CashierShiftSoldItems({ locale, shift }: ShiftTotalsProps) {
+  const copy = getPosCopy(locale);
+
+  return (
+    <Stack spacing={1.1}>
+      <Typography variant="subtitle2">{copy.shiftSoldItems}</Typography>
+      {(shift.soldItems ?? []).map((item) => (
+        <Stack
+          key={`${item.catalogItemId}-${item.saleUnit}`}
+          direction="row"
+          justifyContent="space-between"
+          spacing={2}>
+          <Typography sx={{ overflowWrap: 'anywhere' }}>{item.name}</Typography>
+          <Typography sx={{ flexShrink: 0 }}>
+            {Number(item.quantity)}{' '}
+            {getSaleUnit(item.saleUnit).quantityInput ? saleUnitLabel(item.saleUnit, locale) : copy.pieceUnit} ·{' '}
+            {formatCompactMoney(item.revenue, locale)}
+          </Typography>
+        </Stack>
+      ))}
+      {!shift.soldItems?.length && <Typography color="text.secondary">{copy.noShiftSoldItems}</Typography>}
+    </Stack>
+  );
+}
 
 export function CashierShiftTotals({ locale, shift }: ShiftTotalsProps) {
   const copy = getPosCopy(locale);
@@ -68,6 +110,8 @@ export function CashierShiftTotals({ locale, shift }: ShiftTotalsProps) {
       </Typography>
       {renderRows(saleRows)}
       <Divider />
+      <CashierShiftSoldItems locale={locale} shift={shift} />
+      <Divider />
       <Typography variant="subtitle2" textAlign="center">
         {copy.shiftRefundSection}
       </Typography>
@@ -91,7 +135,7 @@ type ManagerShiftCardProps = {
   closesFiscalShift: boolean;
   closing: boolean;
   locale: PosLocale;
-  onClose: () => void;
+  onClose: (includeSoldItems: boolean) => void;
   onPrint: () => Promise<void>;
   printing: boolean;
   shift: CashShiftSummary;
@@ -107,6 +151,8 @@ export function ManagerShiftCard({
   shift,
 }: ManagerShiftCardProps) {
   const copy = getPosCopy(locale);
+  const [closeDialogOpen, setCloseDialogOpen] = useState(false);
+  const [includeSoldItems, setIncludeSoldItems] = useState(false);
   const closeStatus =
     shift.closeState === 'fiscal_unknown'
       ? copy.shiftCloseUnknown
@@ -160,7 +206,14 @@ export function ManagerShiftCard({
           disabled={
             closing || shift.status === 'closed_local' || shift.status === 'closed-local' || shift.status === 'closed'
           }
-          onClick={onClose}>
+          onClick={() => {
+            if (shift.status === 'closing' || shift.closeState === 'fiscal_unknown') {
+              onClose(false);
+              return;
+            }
+            setIncludeSoldItems(false);
+            setCloseDialogOpen(true);
+          }}>
           {closing
             ? copy.processing
             : shift.status === 'closing' || shift.closeState === 'fiscal_unknown'
@@ -168,6 +221,30 @@ export function ManagerShiftCard({
               : copy.closeShift}
         </Button>
       </Stack>
+      <Dialog open={closeDialogOpen} onClose={() => setCloseDialogOpen(false)} fullWidth maxWidth="xs">
+        <DialogTitle>{copy.closeShift}</DialogTitle>
+        <DialogContent>
+          <FormControlLabel
+            label={copy.includeSoldItems}
+            control={
+              <Checkbox checked={includeSoldItems} onChange={(event) => setIncludeSoldItems(event.target.checked)} />
+            }
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCloseDialogOpen(false)}>{copy.back}</Button>
+          <Button
+            color="error"
+            variant="contained"
+            disabled={closing}
+            onClick={() => {
+              setCloseDialogOpen(false);
+              onClose(includeSoldItems);
+            }}>
+            {copy.closeShift}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

@@ -56,6 +56,7 @@ export type CashExpense = {
 };
 
 export type CashShiftSummary = {
+  soldItems?: Array<{ catalogItemId: string; name: string; quantity: number; saleUnit: string; revenue: number }>;
   id: string;
   status: 'open' | 'closing' | 'closed_local' | 'closed-local' | 'closed';
   closeState?: 'open' | 'draining' | 'fiscal_closing' | 'fiscal_unknown' | 'closed_local' | 'closed';

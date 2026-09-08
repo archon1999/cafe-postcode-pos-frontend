@@ -15,6 +15,8 @@ import type { CashierShiftCloseResponse } from 'modules/cashier/domain';
 import { getPosCopy, type PosLocale } from 'shared/locale/copy';
 import { formatCompactMoney } from 'shared/pos/utils';
 
+import { CashierShiftSoldItems, CashierShiftTotals } from './CashierShiftControls';
+
 type CashierShiftReportDialogProps = {
   fullScreen: boolean;
   locale: PosLocale;
@@ -215,7 +217,14 @@ export function CashierShiftReportDialog({ fullScreen, locale, onClose, report }
       <DialogTitle>{copy.shiftReportTitle}</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={1.5}>
-          <PosReport locale={locale} report={posReport} />
+          {posReport ? (
+            <>
+              <PosReport locale={locale} report={posReport} />
+              {report?.closedShift && <CashierShiftSoldItems locale={locale} shift={report.closedShift} />}
+            </>
+          ) : report?.closedShift ? (
+            <CashierShiftTotals locale={locale} shift={report.closedShift} />
+          ) : null}
           <ProviderReport locale={locale} report={zInfo} />
           <FiscalMemoryReport locale={locale} report={fiscalMemory} />
         </Stack>

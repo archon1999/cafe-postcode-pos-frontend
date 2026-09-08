@@ -50,6 +50,7 @@ export interface CashierRepository {
     actualClosingCashAmount?: number;
     notesClose?: string;
     closeFiscalShift?: boolean;
+    includeSoldItems?: boolean;
   }): Promise<CashierShiftCloseResponse>;
   printShiftReport(payload: { cashShiftId?: string }): Promise<CashierShiftReportResponse>;
   recoverShift(operation: 'open' | 'close', allowRetry?: boolean): Promise<CashierShiftCloseResponse | null>;

@@ -363,6 +363,7 @@ export function useCloseCashierShiftMutation(options?: {
       actualClosingCashAmount?: number;
       notesClose?: string;
       closeFiscalShift?: boolean;
+      includeSoldItems?: boolean;
     }) => cashierRepository.closeShift(payload),
     onSuccess: (response) => {
       invalidateQueriesInBackground([

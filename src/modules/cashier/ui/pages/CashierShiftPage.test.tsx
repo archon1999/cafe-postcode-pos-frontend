@@ -189,11 +189,23 @@ describe('CashierShiftPage report printing', () => {
     expect(screen.queryByText('POS va fiskal smena birga yopiladi.')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Smenani yopish' }));
 
+    expect((screen.getByRole('checkbox') as HTMLInputElement).checked).toBe(false);
+    fireEvent.click(screen.getByRole('dialog').querySelector('button:last-child')!);
+
     expect(closeMutateMock).toHaveBeenCalledWith({
       cashShiftId: 'shift-1',
       notesClose: '',
       closeFiscalShift: false,
+      includeSoldItems: false,
     });
+  });
+
+  it('includes sold products only when selected in the close dialog', () => {
+    render(<CashierShiftPage />);
+    fireEvent.click(screen.getByRole('button', { name: 'Smenani yopish' }));
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByRole('dialog').querySelector('button:last-child')!);
+    expect(closeMutateMock).toHaveBeenCalledWith(expect.objectContaining({ includeSoldItems: true }));
   });
 
   it('keeps the report button enabled while a report request is pending', () => {
