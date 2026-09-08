@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
 
+import { getSaleUnit, isValidSaleQuantity, saleUnitLabel } from 'shared/domain/sale-units';
 import { formatPosCopy, getPosCopy, type PosLocale } from 'shared/locale/copy';
 import { inventoryAvailabilityLabel } from 'shared/pos/inventory';
 import {
@@ -78,6 +79,7 @@ export function PosItemGroupConfiguratorDialog<TItem extends PosBuilderMenuItem>
   }, [group]);
 
   const selectedLines = lines.filter((line) => line.quantity > 0);
+  const invalidQuantity = lines.some((line) => !isValidSaleQuantity(line.quantity, line.item.saleUnit, true));
   const totalQuantity = selectedLines.reduce((sum, line) => sum + line.quantity, 0);
   const totalPrice = selectedLines.reduce(
     (sum, line) =>
@@ -199,7 +201,7 @@ export function PosItemGroupConfiguratorDialog<TItem extends PosBuilderMenuItem>
                     </Stack>
                     {memberQuantity > 0 ? (
                       <Typography color="primary.main" fontWeight={850}>
-                        {member.item.saleUnit === 'kg'
+                        {getSaleUnit(member.item.saleUnit).quantityInput
                           ? formatPosQuantity(memberQuantity, member.item.saleUnit, locale)
                           : formatPosCopy(posCopy.selectedCount, { count: memberQuantity })}
                       </Typography>
@@ -255,22 +257,32 @@ export function PosItemGroupConfiguratorDialog<TItem extends PosBuilderMenuItem>
                               <Icon icon="solar:notes-bold-duotone" width={21} />
                             </IconButton>
                           ) : null}
-                          {line.item.saleUnit === 'kg' ? (
+                          {getSaleUnit(line.item.saleUnit).quantityInput ? (
                             <TextField
                               size="small"
                               disabled={Boolean(line.item.inventory?.blocked)}
                               value={line.quantityInput}
+                              error={!isValidSaleQuantity(line.quantity, line.item.saleUnit, true)}
+                              helperText={
+                                !isValidSaleQuantity(line.quantity, line.item.saleUnit, true)
+                                  ? posCopy[getSaleUnit(line.item.saleUnit).posInvalidKey]
+                                  : undefined
+                              }
                               onChange={(event) => setQuantity(line.key, event.target.value)}
                               placeholder="0"
                               slotProps={{
                                 htmlInput: {
                                   inputMode: 'decimal',
-                                  'aria-label': `${line.label} ${posCopy.kilogramUnit}`,
+                                  min: 0,
+                                  step: getSaleUnit(line.item.saleUnit).step,
+                                  'aria-label': `${line.label} ${saleUnitLabel(line.item.saleUnit, locale)}`,
                                 },
                               }}
                               sx={{ width: 104, '& input': { textAlign: 'center', fontWeight: 850 } }}
                               InputProps={{
-                                endAdornment: <Typography variant="caption">{posCopy.kilogramUnit}</Typography>,
+                                endAdornment: (
+                                  <Typography variant="caption">{saleUnitLabel(line.item.saleUnit, locale)}</Typography>
+                                ),
                               }}
                             />
                           ) : (
@@ -327,7 +339,7 @@ export function PosItemGroupConfiguratorDialog<TItem extends PosBuilderMenuItem>
               fullWidth
               size="large"
               variant="contained"
-              disabled={!totalQuantity}
+              disabled={!totalQuantity || invalidQuantity}
               onClick={() =>
                 onConfirm(
                   selectedLines.map(({ item, note, quantity, selections }) => ({ item, note, quantity, selections })),
@@ -335,8 +347,8 @@ export function PosItemGroupConfiguratorDialog<TItem extends PosBuilderMenuItem>
               }
               sx={{ minHeight: 58, borderRadius: '16px', fontWeight: 850 }}>
               {totalQuantity
-                ? `${selectedLines.some((line) => line.item.saleUnit === 'kg') ? selectedLines.length : totalQuantity} ${
-                    selectedLines.some((line) => line.item.saleUnit === 'kg') ? 'tur' : 'ta'
+                ? `${selectedLines.some((line) => getSaleUnit(line.item.saleUnit).quantityInput) ? selectedLines.length : totalQuantity} ${
+                    selectedLines.some((line) => getSaleUnit(line.item.saleUnit).quantityInput) ? 'tur' : 'ta'
                   } qo‘shish · ${formatCompactMoney(totalPrice, locale)}`
                 : 'Miqdorni tanlang'}
             </Button>

@@ -1,6 +1,7 @@
 import type { KitchenItem, KitchenMonitorQueue, KitchenMonitorTicket, KitchenTicket } from 'modules/kitchen/domain';
+import type { SaleUnit } from 'shared/domain/sale-units';
 
-type KitchenItemDto = KitchenItem & { sale_unit?: 'piece' | 'kg' };
+type KitchenItemDto = KitchenItem & { sale_unit?: SaleUnit };
 type KitchenTicketDto = Omit<KitchenTicket, 'items'> & {
   items: KitchenItemDto[];
   table_number?: number | null;

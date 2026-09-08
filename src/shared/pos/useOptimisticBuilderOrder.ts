@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { queryClient } from 'shared/api/query-client';
+import { getSaleUnit, isValidSaleQuantity } from 'shared/domain/sale-units';
 import type { InventoryDisposition } from 'shared/pos/inventory';
 import type { PosModifierSelection } from 'shared/pos/modifiers';
 import { selectedModifierOptions } from 'shared/pos/modifiers';
@@ -322,7 +323,7 @@ export function useOptimisticBuilderOrder<
           orderId,
           operationsBeforeAdd.map((operation) => ({
             menuItem: operation.menuItem,
-            quantity: Math.max(operation.menuItem.saleUnit === 'kg' ? 0.001 : 1, Number(operation.quantity ?? 1)),
+            quantity: Math.max(getSaleUnit(operation.menuItem.saleUnit).step, Number(operation.quantity ?? 1)),
             note: operation.note,
             selectedModifiers: operation.selectedModifiers,
             manualPrice: operation.manualPrice,
@@ -403,11 +404,21 @@ export function useOptimisticBuilderOrder<
         manualPrice?: number;
       }>,
     ) => {
-      if (items.some((item) => item.quantity > 0 && item.menuItem.inventory?.blocked)) {
+      if (
+        items.some(
+          (item) =>
+            !isValidSaleQuantity(item.quantity, item.menuItem.saleUnit, true) ||
+            (item.quantity > 0 && item.menuItem.inventory?.blocked),
+        )
+      ) {
         toast.error(syncErrorMessage);
         return;
       }
       if (!addOrderItems) {
+        if (items.some((item) => !Number.isInteger(item.quantity))) {
+          toast.error(syncErrorMessage);
+          return;
+        }
         for (const item of items) {
           for (let index = 0; index < item.quantity; index += 1) {
             addItem(item.menuItem, item.note, item.selectedModifiers, item.manualPrice);

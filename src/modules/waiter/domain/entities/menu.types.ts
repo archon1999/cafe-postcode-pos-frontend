@@ -1,3 +1,4 @@
+import type { SaleUnit } from 'shared/domain/sale-units';
 import type { PosInventoryAvailability } from 'shared/pos/inventory';
 import type { PosModifierGroup } from 'shared/pos/modifiers';
 
@@ -11,7 +12,7 @@ export type WaiterMenuItem = {
   prepStationName?: string | null;
   price: number | string;
   itemType?: 'product' | 'service';
-  saleUnit?: 'piece' | 'kg';
+  saleUnit?: SaleUnit;
   modifierGroups?: PosModifierGroup[];
 };
 

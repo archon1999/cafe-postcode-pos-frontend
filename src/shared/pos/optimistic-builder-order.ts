@@ -1,3 +1,6 @@
+import { getSaleUnit } from 'shared/domain/sale-units';
+import type { SaleUnit } from 'shared/domain/sale-units';
+
 import type { PosInventoryAvailability, InventoryDisposition } from './inventory';
 import type { PosModifierSelection, PosOrderItemModifier } from './modifiers';
 import { modifierPriceDelta, orderItemModifierSignature, selectedModifierOptions } from './modifiers';
@@ -10,7 +13,7 @@ export type BuilderMenuItemLike = {
   prepStationName?: string | null;
   price: number | string;
   itemType?: 'product' | 'service';
-  saleUnit?: 'piece' | 'kg';
+  saleUnit?: SaleUnit;
   modifierGroups?: import('./modifiers').PosModifierGroup[];
 };
 
@@ -20,7 +23,7 @@ export type BuilderOrderItemLike = {
   catalogItem: string;
   catalogItemName: string;
   quantity: number | string;
-  saleUnit?: 'piece' | 'kg';
+  saleUnit?: SaleUnit;
   lineTotal: number | string;
   status: string;
   prepStationName?: string | null;
@@ -128,7 +131,7 @@ function createOptimisticItem<TMenuItem extends BuilderMenuItemLike, TItem exten
   const baseUnitPrice = operation.manualPrice ?? toMoneyNumber(operation.menuItem.price);
   const unitPrice = baseUnitPrice + modifierDelta;
 
-  const quantity = Math.max(operation.menuItem.saleUnit === 'kg' ? 0.001 : 1, Number(operation.quantity ?? 1));
+  const quantity = Math.max(getSaleUnit(operation.menuItem.saleUnit).step, Number(operation.quantity ?? 1));
   return {
     id: operation.tempItemId,
     catalogItem: operation.menuItem.id,

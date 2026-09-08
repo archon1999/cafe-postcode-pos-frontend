@@ -118,3 +118,28 @@ describe('PosItemGroupConfiguratorDialog', () => {
     ]);
   });
 });
+
+it('validates portion steps in grouped products and preserves zero as unselected', () => {
+  const onConfirm = vi.fn();
+  const portionGroup: PosBuilderMenuItemGroup = {
+    ...weightedGroup,
+    members: weightedGroup.members.map((member) => ({ ...member, item: { ...member.item, saleUnit: 'pors' } })),
+  };
+  render(
+    <PosItemGroupConfiguratorDialog
+      group={portionGroup}
+      locale="uz"
+      copy={copy}
+      onClose={vi.fn()}
+      onConfirm={onConfirm}
+    />,
+  );
+  const input = screen.getByRole('textbox', { name: /oddiy pors/i });
+  fireEvent.change(input, { target: { value: '0.25' } });
+  expect(screen.getByRole('button', { name: /1 tur qo‘shish/i })).toHaveProperty('disabled', true);
+  fireEvent.change(input, { target: { value: '0' } });
+  expect(screen.getByRole('button', { name: /miqdorni tanlang/i })).toHaveProperty('disabled', true);
+  fireEvent.change(input, { target: { value: '0.5' } });
+  fireEvent.click(screen.getByRole('button', { name: /1 tur qo‘shish/i }));
+  expect(onConfirm).toHaveBeenCalledWith([expect.objectContaining({ quantity: 0.5 })]);
+});

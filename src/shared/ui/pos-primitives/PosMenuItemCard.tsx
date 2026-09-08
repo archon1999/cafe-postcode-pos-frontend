@@ -3,6 +3,7 @@ import { Box, Stack, Typography, alpha } from '@mui/material';
 import { useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 
 import { resolveApiBaseUrl } from 'shared/api/apiUrl';
+import { getSaleUnit, saleUnitLabel } from 'shared/domain/sale-units';
 import { getPosCopy, type PosLocale } from 'shared/locale/copy';
 import { inventoryAvailabilityLabel, type PosInventoryAvailability } from 'shared/pos/inventory';
 import { formatMoneyParts, formatPosQuantity, type PosSaleUnit } from 'shared/pos/utils';
@@ -298,9 +299,9 @@ export function PosMenuItemCard({
                     </Box>
                   </>
                 )}
-                {item.itemType !== 'service' && item.saleUnit === 'kg' ? (
+                {item.itemType !== 'service' && getSaleUnit(item.saleUnit).quantityInput ? (
                   <Box component="span" sx={{ fontSize: { xs: 12, md: 14 }, color: 'text.secondary' }}>
-                    / {copy.kilogramUnit}
+                    / {saleUnitLabel(item.saleUnit, locale)}
                   </Box>
                 ) : null}
               </Typography>

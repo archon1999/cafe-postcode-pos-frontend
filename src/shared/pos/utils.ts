@@ -1,3 +1,6 @@
+import { getSaleUnit, saleUnitLabel } from 'shared/domain/sale-units';
+import type { SaleUnit } from 'shared/domain/sale-units';
+
 import type { PosLocale } from '../locale/copy';
 
 const localeMap: Record<PosLocale, string> = {
@@ -14,13 +17,7 @@ const currencyLabelMap: Record<PosLocale, string> = {
   ru: 'сум',
 };
 
-export type PosSaleUnit = 'piece' | 'kg';
-
-const kilogramLabelMap: Record<PosLocale, string> = {
-  uz: 'kg',
-  'uz-crl': 'кг',
-  ru: 'кг',
-};
+export type PosSaleUnit = SaleUnit;
 
 export function formatMoney(value: number | string | null | undefined, locale: PosLocale) {
   const { amount, currency } = formatMoneyParts(value, locale);
@@ -55,7 +52,7 @@ export function formatPosQuantityNumber(
 ) {
   return new Intl.NumberFormat(quantityNumberLocale, {
     minimumFractionDigits: 0,
-    maximumFractionDigits: saleUnit === 'kg' ? 3 : 0,
+    maximumFractionDigits: getSaleUnit(saleUnit).precision,
   }).format(normalizePosQuantity(value));
 }
 
@@ -66,7 +63,7 @@ export function formatPosQuantity(
 ) {
   const formatted = formatPosQuantityNumber(value, saleUnit, locale);
 
-  return saleUnit === 'kg' ? `${formatted} ${kilogramLabelMap[locale]}` : formatted;
+  return getSaleUnit(saleUnit).quantityInput ? `${formatted} ${saleUnitLabel(saleUnit, locale)}` : formatted;
 }
 
 export function formatPosItemQuantityLabel(
@@ -77,7 +74,7 @@ export function formatPosItemQuantityLabel(
 ) {
   const quantity = formatPosQuantity(value, saleUnit, locale);
 
-  return saleUnit === 'kg' ? `${name} (${quantity})` : `${name} (x${quantity})`;
+  return getSaleUnit(saleUnit).quantityInput ? `${name} (${quantity})` : `${name} (x${quantity})`;
 }
 
 export function formatTime(value: string | null | undefined, locale: PosLocale) {

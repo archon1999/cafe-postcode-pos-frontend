@@ -2,6 +2,8 @@ import { Icon } from '@iconify/react';
 import { Box, Button, Dialog, DialogContent, IconButton, Stack, TextField, Typography, alpha } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
 
+import type { SaleUnit } from 'shared/domain/sale-units';
+import { getSaleUnit, isValidSaleQuantity, saleUnitLabel } from 'shared/domain/sale-units';
 import { getPosCopy, type PosLocale } from 'shared/locale/copy';
 import { modifierPriceDelta, type PosModifierGroup, type PosModifierSelection } from 'shared/pos/modifiers';
 import { formatCompactMoney } from 'shared/pos/utils';
@@ -12,6 +14,7 @@ type WeightedMenuItem = {
   id: string;
   name: string;
   price: number | string;
+  saleUnit?: SaleUnit;
   modifierGroups?: PosModifierGroup[];
 };
 
@@ -26,11 +29,11 @@ type Props = {
   onConfirm: (quantity: number, note: string) => void;
 };
 
-function parseWeight(value: string) {
+function parseQuantity(value: string, unit: SaleUnit) {
   const normalized = value.trim().replace(',', '.');
-  if (!/^\d+(?:\.\d{1,3})?$/.test(normalized)) return null;
+  if (!/^\d+(?:\.\d+)?$/.test(normalized)) return null;
   const quantity = Number(normalized);
-  return Number.isFinite(quantity) && quantity > 0 && quantity <= 999_999_999.999 ? quantity : null;
+  return isValidSaleQuantity(quantity, unit, getSaleUnit(unit).allowZero) ? quantity : null;
 }
 
 export function PosWeightedItemDialog({
@@ -46,7 +49,9 @@ export function PosWeightedItemDialog({
   const copy = getPosCopy(locale);
   const [value, setValue] = useState('1');
   const [note, setNote] = useState('');
-  const quantity = useMemo(() => parseWeight(value), [value]);
+  const saleUnit = item.saleUnit ?? 'kg';
+  const rule = getSaleUnit(saleUnit);
+  const quantity = useMemo(() => parseQuantity(value, saleUnit), [value, saleUnit]);
   const unitPrice = Number(item.price || 0) + modifierPriceDelta(item.modifierGroups ?? [], selections);
 
   useEffect(() => {
@@ -65,7 +70,7 @@ export function PosWeightedItemDialog({
               </Typography>
               {showPrice ? (
                 <Typography color="text.secondary">
-                  {copy.pricePerKilogram}: {formatCompactMoney(unitPrice, locale)}
+                  {copy[rule.posPriceKey]}: {formatCompactMoney(unitPrice, locale)}
                 </Typography>
               ) : null}
             </Box>
@@ -79,12 +84,12 @@ export function PosWeightedItemDialog({
 
           <TextField
             autoFocus
-            label={`${copy.weightLabel} (${copy.kilogramUnit})`}
+            label={`${copy.weightLabel} (${saleUnitLabel(saleUnit, locale)})`}
             value={value}
             onChange={(event) => setValue(event.target.value)}
             error={value.length > 0 && quantity === null}
-            helperText={quantity === null ? copy.weightInvalid : copy.weightTitle}
-            slotProps={{ htmlInput: { inputMode: 'decimal' } }}
+            helperText={quantity === null ? copy[rule.posInvalidKey] : copy[rule.posTitleKey]}
+            slotProps={{ htmlInput: { inputMode: 'decimal', min: 0, step: rule.step } }}
             fullWidth
           />
 
@@ -112,7 +117,10 @@ export function PosWeightedItemDialog({
             variant="contained"
             size="large"
             disabled={quantity === null}
-            onClick={() => quantity !== null && onConfirm(quantity, note.trim())}
+            onClick={() => {
+              if (quantity === 0) onClose();
+              else if (quantity !== null) onConfirm(quantity, note.trim());
+            }}
             sx={{ minHeight: 52 }}>
             {copy.addWeightedItem}
           </Button>

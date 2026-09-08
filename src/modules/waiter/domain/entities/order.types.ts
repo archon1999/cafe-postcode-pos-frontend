@@ -1,3 +1,4 @@
+import type { SaleUnit } from 'shared/domain/sale-units';
 import type { PosOrderItemModifier } from 'shared/pos/modifiers';
 import type { PosServiceFeeComponent, PosServiceFeeQuote } from 'shared/pos/service-fees';
 
@@ -7,7 +8,7 @@ export type WaiterOrderItem = {
   catalogItem: string;
   catalogItemName: string;
   quantity: number | string;
-  saleUnit?: 'piece' | 'kg';
+  saleUnit?: SaleUnit;
   lineTotal: number | string;
   baseUnitPrice?: number | string;
   unitPrice?: number | string;

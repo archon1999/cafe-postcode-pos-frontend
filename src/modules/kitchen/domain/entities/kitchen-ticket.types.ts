@@ -1,10 +1,12 @@
+import type { SaleUnit } from 'shared/domain/sale-units';
+
 import type { KitchenItemStatus, KitchenTicketStatus } from '../enums';
 
 export type KitchenItem = {
   id: string;
   catalogItemName: string;
   quantity: number | string;
-  saleUnit?: 'piece' | 'kg';
+  saleUnit?: SaleUnit;
   lineTotal: number | string;
   note?: string;
   status: KitchenItemStatus;

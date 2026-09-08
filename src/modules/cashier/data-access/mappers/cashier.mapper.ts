@@ -6,13 +6,14 @@ import type {
   CashierOrderItem,
   CashierPaymentResponse,
 } from 'modules/cashier/domain';
+import type { SaleUnit } from 'shared/domain/sale-units';
 import { mapPosModifierGroups, mapPosOrderItemModifiers } from 'shared/pos/modifiers';
 import { normalizeServiceFeeComponents } from 'shared/pos/service-fees';
 
 type CashierMenuItemDto = CashierMenuItem & {
   image_url?: string | null;
   item_type?: 'product' | 'service';
-  sale_unit?: 'piece' | 'kg';
+  sale_unit?: SaleUnit;
   modifier_groups?: Parameters<typeof mapPosModifierGroups>[0];
 };
 type CashierMenuItemGroupDto = {
@@ -46,7 +47,7 @@ type CashierOrderItemDto = Omit<CashierOrderItem, 'markings'> & {
   marking_scanned_count?: number;
   base_unit_price?: number | string;
   unit_price?: number | string;
-  sale_unit?: 'piece' | 'kg';
+  sale_unit?: SaleUnit;
   modifiers?: Parameters<typeof mapPosOrderItemModifiers>[0];
 };
 type CashierOrderDto = Omit<CashierOrder, 'items' | 'orderNumber' | 'displayName'> & {

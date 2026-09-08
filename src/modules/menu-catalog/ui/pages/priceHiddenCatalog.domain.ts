@@ -2,6 +2,7 @@ import type { KeyboardEvent } from 'react';
 
 import type { CashierBuilderOrderChannel } from 'modules/cashier/domain';
 import { resolveApiBaseUrl } from 'shared/api/apiUrl';
+import type { SaleUnit } from 'shared/domain/sale-units';
 import type { PosInventoryAvailability } from 'shared/pos/inventory';
 import type { PosModifierGroup, PosOrderItemModifier } from 'shared/pos/modifiers';
 import { orderItemModifierSignature } from 'shared/pos/modifiers';
@@ -15,7 +16,7 @@ export type CatalogMenuItemLike = {
   imageUrl?: string | null;
   prepStationName?: string | null;
   price: number | string;
-  saleUnit?: 'piece' | 'kg';
+  saleUnit?: SaleUnit;
   modifierGroups?: PosModifierGroup[];
 };
 
@@ -31,7 +32,7 @@ export type CatalogOrderItemLike = {
   catalogItem: string;
   catalogItemName: string;
   quantity: number | string;
-  saleUnit?: 'piece' | 'kg';
+  saleUnit?: SaleUnit;
   status: string;
   prepStationName?: string | null;
   note?: string | null;
@@ -43,7 +44,7 @@ export type CatalogSummaryItem = {
   catalogItem: string;
   catalogItemName: string;
   quantity: number;
-  saleUnit?: 'piece' | 'kg';
+  saleUnit?: SaleUnit;
   status: string;
   note?: string | null;
   modifiers?: PosOrderItemModifier[];

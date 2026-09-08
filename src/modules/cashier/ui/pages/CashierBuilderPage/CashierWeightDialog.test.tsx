@@ -74,3 +74,52 @@ describe('CashierWeightDialog', () => {
     expect(screen.getByRole('button', { name: "Buyurtmaga qo'shish" })).toHaveProperty('disabled', true);
   });
 });
+
+describe('portion quantities', () => {
+  afterEach(cleanup);
+  it.each(['0.5', '1', '1.5', '2', '2.5', '0,5'])('accepts %s pors', (value) => {
+    const onConfirm = vi.fn();
+    render(
+      <CashierWeightDialog
+        item={{ id: 'soup', name: 'Soup', price: 10000, saleUnit: 'pors' }}
+        selections={[]}
+        locale="uz"
+        onClose={vi.fn()}
+        onConfirm={onConfirm}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText('Miqdor (pors)'), { target: { value } });
+    fireEvent.click(screen.getByRole('button', { name: "Buyurtmaga qo'shish" }));
+    expect(onConfirm).toHaveBeenCalledWith(Number(value.replace(',', '.')), '');
+  });
+  it.each(['0.25', '1.2', '-0.5', '0.501'])('rejects %s pors', (value) => {
+    render(
+      <CashierWeightDialog
+        item={{ id: 'soup', name: 'Soup', price: 10000, saleUnit: 'pors' }}
+        selections={[]}
+        locale="uz"
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText('Miqdor (pors)'), { target: { value } });
+    expect(screen.getByRole('button', { name: "Buyurtmaga qo'shish" })).toHaveProperty('disabled', true);
+  });
+  it('accepts zero as an empty selection without creating an order row', () => {
+    const onConfirm = vi.fn();
+    const onClose = vi.fn();
+    render(
+      <CashierWeightDialog
+        item={{ id: 'soup', name: 'Soup', price: 10000, saleUnit: 'pors' }}
+        selections={[]}
+        locale="uz"
+        onClose={onClose}
+        onConfirm={onConfirm}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText('Miqdor (pors)'), { target: { value: '0' } });
+    fireEvent.click(screen.getByRole('button', { name: "Buyurtmaga qo'shish" }));
+    expect(onConfirm).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+});

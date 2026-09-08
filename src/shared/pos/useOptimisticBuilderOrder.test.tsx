@@ -5,6 +5,7 @@ import { StrictMode, type PropsWithChildren } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { queryClient } from 'shared/api/query-client';
+import type { SaleUnit } from 'shared/domain/sale-units';
 
 import { useOptimisticBuilderOrder } from './useOptimisticBuilderOrder';
 
@@ -19,7 +20,7 @@ type TestMenuItem = {
   name: string;
   prepStationName?: string | null;
   price: number | string;
-  saleUnit?: 'piece' | 'kg';
+  saleUnit?: SaleUnit;
 };
 
 type TestOrderItem = {
@@ -507,7 +508,10 @@ describe('useOptimisticBuilderOrder', () => {
     expect(result.current.currentOrder?.total).toBe(19800);
   });
 
-  it('preserves sub-kilogram quantities when adding items in a batch', async () => {
+  it.each([
+    { saleUnit: 'kg' as const, quantity: 0.1, total: 10000 },
+    { saleUnit: 'pors' as const, quantity: 0.5, total: 50000 },
+  ])('preserves fractional $saleUnit quantities in a batch', async ({ saleUnit, quantity, total }) => {
     const baseOrder = createOrder({ items: [], subtotal: 0, serviceFee: 0, total: 0 });
     let canonicalOrders = [baseOrder];
     const addOrderItems = vi.fn(
@@ -550,22 +554,22 @@ describe('useOptimisticBuilderOrder', () => {
     act(() => {
       result.current.addItems([
         {
-          menuItem: createMenuItem({ id: 'fish', name: 'Fish', price: 100000, saleUnit: 'kg' }),
-          quantity: 0.1,
+          menuItem: createMenuItem({ id: 'fish', name: 'Fish', price: 100000, saleUnit }),
+          quantity,
           note: '',
         },
       ]);
     });
 
-    expect(result.current.currentOrder?.items[0]?.quantity).toBe(0.1);
-    expect(result.current.currentOrder?.items[0]?.lineTotal).toBe(10000);
+    expect(result.current.currentOrder?.items[0]?.quantity).toBe(quantity);
+    expect(result.current.currentOrder?.items[0]?.lineTotal).toBe(total);
 
     await waitFor(() => {
       expect(result.current.hasPendingOperations).toBe(false);
     });
 
-    expect(addOrderItems).toHaveBeenCalledWith(baseOrder.id, [expect.objectContaining({ quantity: 0.1 })]);
-    expect(result.current.currentOrder?.items[0]?.quantity).toBe(0.1);
-    expect(result.current.currentOrder?.items[0]?.lineTotal).toBe(10000);
+    expect(addOrderItems).toHaveBeenCalledWith(baseOrder.id, [expect.objectContaining({ quantity })]);
+    expect(result.current.currentOrder?.items[0]?.quantity).toBe(quantity);
+    expect(result.current.currentOrder?.items[0]?.lineTotal).toBe(total);
   });
 });

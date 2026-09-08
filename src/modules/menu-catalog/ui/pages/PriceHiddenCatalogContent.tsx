@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { usePosSession } from 'modules/auth';
+import { getSaleUnit } from 'shared/domain/sale-units';
 import { getPosCopy } from 'shared/locale/copy';
 import type { PosModifierSelection } from 'shared/pos/modifiers';
 import { PosBuilderPageSkeleton, PosProductConfiguratorDialog, PosWeightedItemDialog } from 'shared/ui/pos-primitives';
@@ -77,7 +78,7 @@ export function PriceHiddenCatalogContent<TMenuItem extends CatalogMenuItemLike>
       setConfiguringItem(item);
       return;
     }
-    if (item.saleUnit === 'kg') {
+    if (getSaleUnit(item.saleUnit).quantityInput) {
       setWeighingItem({ item, selections: [] });
       return;
     }
@@ -161,7 +162,7 @@ export function PriceHiddenCatalogContent<TMenuItem extends CatalogMenuItemLike>
           }}
           onClose={() => setConfiguringItem(null)}
           onConfirm={(item, selections) => {
-            if (item.saleUnit === 'kg') {
+            if (getSaleUnit(item.saleUnit).quantityInput) {
               setWeighingItem({ item, selections });
             } else {
               addItem(item, '', selections);

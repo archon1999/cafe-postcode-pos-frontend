@@ -1,6 +1,7 @@
 import { Box, Button, Stack, Typography, alpha } from '@mui/material';
 import type { MouseEvent } from 'react';
 
+import { getSaleUnit } from 'shared/domain/sale-units';
 import { formatPosCopy, getPosCopy, type PosLocale } from 'shared/locale/copy';
 import type { PosModifierGroup } from 'shared/pos/modifiers';
 import {
@@ -178,7 +179,9 @@ export function PosBuilderMenuPanel<TItem extends PosBuilderMenuItem, TGroup ext
               selectedCount={itemCounts.get(menuItem.id) ?? 0}
               onAdd={() => onAdd(menuItem)}
               onAddWithNote={
-                !menuItem.modifierGroups?.length && menuItem.itemType !== 'service' && menuItem.saleUnit !== 'kg'
+                !menuItem.modifierGroups?.length &&
+                menuItem.itemType !== 'service' &&
+                !getSaleUnit(menuItem.saleUnit).quantityInput
                   ? () => onAddWithNote(menuItem)
                   : undefined
               }
@@ -254,7 +257,7 @@ export function PosMenuItemGroupCard<TItem extends PosBuilderMenuItem>({
   const copy = getPosCopy(locale);
   const minimumPrice = Math.min(...group.members.map((member) => Number(member.item.price || 0)));
   const price = formatMoneyParts(Number.isFinite(minimumPrice) ? minimumPrice : 0, locale);
-  const groupSaleUnit = group.members.every((member) => member.item.saleUnit === 'kg') ? 'kg' : 'piece';
+  const groupSaleUnit = group.members[0]?.item.saleUnit ?? 'piece';
 
   return (
     <Box

@@ -2,6 +2,7 @@ import { Icon } from '@iconify/react';
 import { Box, Button, Stack, Typography, alpha } from '@mui/material';
 import type { KeyboardEvent } from 'react';
 
+import type { SaleUnit } from 'shared/domain/sale-units';
 import { formatPosCopy, type PosLocale } from 'shared/locale/copy';
 import type { PosOrderItemModifier } from 'shared/pos/modifiers';
 import { isTemporaryBuilderId } from 'shared/pos/optimistic-builder-order';
@@ -14,7 +15,7 @@ export type PosCartItem = {
   catalogItemName: string;
   note?: string | null;
   quantity: number;
-  saleUnit?: 'piece' | 'kg';
+  saleUnit?: SaleUnit;
   lineTotal: number;
   status: string;
   itemIds: string[];

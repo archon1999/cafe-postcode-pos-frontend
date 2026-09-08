@@ -1,3 +1,4 @@
+import type { SaleUnit } from 'shared/domain/sale-units';
 import { orderItemModifierSignature } from 'shared/pos/modifiers';
 import { addPosQuantities, normalizePosQuantity } from 'shared/pos/utils';
 
@@ -10,7 +11,7 @@ export type AggregatedCashierCartItem = {
   catalogItemName: string;
   note?: string | null;
   quantity: number;
-  saleUnit?: 'piece' | 'kg';
+  saleUnit?: SaleUnit;
   lineTotal: number;
   status: string;
   itemIds: string[];

@@ -15,3 +15,10 @@ describe('POS quantity formatting', () => {
     expect(formatPosItemQuantityLabel('Baliq', '1.400', 'kg', 'uz')).toBe('Baliq (1,4 kg)');
   });
 });
+
+it('preserves half portions and the pors label in every POS locale', () => {
+  for (const locale of ['uz', 'ru', 'uz-crl'] as const) {
+    expect(formatPosQuantity('0.500', 'pors', locale)).toBe('0,5 pors');
+    expect(formatPosItemQuantityLabel('Soup', '1.500', 'pors', locale)).toBe('Soup (1,5 pors)');
+  }
+});

@@ -29,6 +29,7 @@ import {
 import { requestEdgePrintDocuments } from 'modules/edge-printing/application';
 import { getApiErrorMessage } from 'shared/api/errorMessage';
 import { refreshTransportAndReload } from 'shared/api/transportResolver';
+import { getSaleUnit } from 'shared/domain/sale-units';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { getPosCopy } from 'shared/locale/copy';
 import { selectionsFromOrderModifiers, type PosModifierSelection } from 'shared/pos/modifiers';
@@ -289,14 +290,18 @@ export function CashierBuilderPageContent() {
       setPricingService({ item: menuItem, initialNote: sourceItem?.note ?? '', selections: [] });
       return;
     }
-    if (menuItem.saleUnit === 'kg') {
+    if (getSaleUnit(menuItem.saleUnit).quantityInput) {
       setWeighingItem({ item: menuItem, initialNote: sourceItem?.note ?? '', selections: [] });
       return;
     }
     addItem(menuItem, sourceItem?.note ?? '');
   };
   const requestAddItemWithNote = (menuItem: CashierMenuItem) => {
-    if (menuItem.modifierGroups?.length || menuItem.itemType === 'service' || menuItem.saleUnit === 'kg') {
+    if (
+      menuItem.modifierGroups?.length ||
+      menuItem.itemType === 'service' ||
+      getSaleUnit(menuItem.saleUnit).quantityInput
+    ) {
       requestAddItem(menuItem);
       return;
     }
@@ -546,7 +551,7 @@ export function CashierBuilderPageContent() {
           onConfirm={(menuItem, selections, note) => {
             if (menuItem.itemType === 'service') {
               setPricingService({ item: menuItem, initialNote: note, selections });
-            } else if (menuItem.saleUnit === 'kg') {
+            } else if (getSaleUnit(menuItem.saleUnit).quantityInput) {
               setWeighingItem({ item: menuItem, initialNote: note, selections });
             } else {
               addItem(menuItem, note, selections);

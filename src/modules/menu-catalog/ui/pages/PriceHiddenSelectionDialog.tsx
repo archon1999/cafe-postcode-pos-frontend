@@ -2,6 +2,7 @@ import { Icon } from '@iconify/react';
 import { Dialog, DialogContent, DialogTitle, Divider, IconButton, Stack, Typography } from '@mui/material';
 import type { ReactNode } from 'react';
 
+import { getSaleUnit } from 'shared/domain/sale-units';
 import { formatPosCopy, type PosLocale, type getPosCopy } from 'shared/locale/copy';
 import { formatPosQuantity, formatPosQuantityNumber } from 'shared/pos/utils';
 
@@ -92,7 +93,7 @@ export function PriceHiddenSelectionDialog({
                   ) : null}
                 </Stack>
                 <Typography variant="h6" sx={{ minWidth: 42, color: '#d4df36', textAlign: 'right', fontWeight: 900 }}>
-                  {item.saleUnit === 'kg'
+                  {getSaleUnit(item.saleUnit).quantityInput
                     ? formatPosQuantity(item.quantity, item.saleUnit, locale)
                     : formatPosCopy(copy.quantityOnlyLabel, {
                         quantity: formatPosQuantityNumber(item.quantity, item.saleUnit, locale),
