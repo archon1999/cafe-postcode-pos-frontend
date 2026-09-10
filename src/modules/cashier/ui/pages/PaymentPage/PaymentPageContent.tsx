@@ -199,9 +199,13 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     handleReceiptPromptPrint,
   } = usePaymentReceiptFlow({
     afterPaymentPath,
+    successMessage: copy.orderClosed,
     remainingTotal,
     clearSplitParts: () => setSplitParts(null),
-    onPrintDocuments: (documentIds) => requestEdgePrintDocuments(documentIds),
+    onPrintDocuments: (documentIds) =>
+      requestEdgePrintDocuments(documentIds, (error) =>
+        toast.error(getApiErrorMessage(error, 'Chekni printerga yuborib bo‘lmadi.')),
+      ),
     onPrintError: (message) => toast.error(message),
     setAmount,
   });

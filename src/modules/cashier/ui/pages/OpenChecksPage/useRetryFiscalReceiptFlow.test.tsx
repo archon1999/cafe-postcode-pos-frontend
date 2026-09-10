@@ -35,15 +35,15 @@ describe('fiscal retry result visibility', () => {
     expect(mocks.error).toHaveBeenCalledWith(getPosCopy('uz').fiscalReceiptUnknown);
   });
 
-  it('offers the durable print document after a confirmed receipt', () => {
+  it('automatically prints the durable document after a confirmed receipt', () => {
     mocks.response = { receipts: [{ id: 'r1', status: 'sent', printDocument: 'doc1' }] };
     const printDocuments = vi.fn();
     const { result } = renderHook(() =>
       useRetryFiscalReceiptFlow({ copy: getPosCopy('uz'), onFinished: vi.fn(), printDocuments }),
     );
     act(() => result.current.retry('payment1'));
-    expect(result.current.dialog?.receipts).toHaveLength(1);
-    act(() => result.current.print());
+    expect(result.current.dialog).toBeNull();
+    expect(printDocuments).toHaveBeenCalledTimes(1);
     expect(printDocuments).toHaveBeenCalledWith(['doc1']);
   });
 });

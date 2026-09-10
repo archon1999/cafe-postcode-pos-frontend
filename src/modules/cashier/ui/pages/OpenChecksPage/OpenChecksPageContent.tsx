@@ -19,6 +19,7 @@ import {
 } from 'modules/cashier/domain';
 import type { CashierCheckStatus, CashierOrder } from 'modules/cashier/domain/entities/order.types';
 import { requestEdgePrintDocuments, requestEdgeReprintDocuments } from 'modules/edge-printing/application';
+import { getApiErrorMessage } from 'shared/api/errorMessage';
 import { refreshTransportAndReload } from 'shared/api/transportResolver';
 import { PosPageFrame } from 'shared/layout/PosPageFrame';
 import { getPosCopy } from 'shared/locale/copy';
@@ -148,7 +149,10 @@ export function OpenChecksPageContent() {
       void closedOrdersQuery.refetch();
       void fiscalClosedQuery.refetch();
     },
-    printDocuments: (documentIds) => requestEdgePrintDocuments(documentIds),
+    printDocuments: (documentIds) =>
+      requestEdgePrintDocuments(documentIds, (error) =>
+        toast.error(getApiErrorMessage(error, 'Chekni printerga yuborib bo‘lmadi.')),
+      ),
   });
   const canRefund = Boolean(selectedTab !== 'open' && latestRefundablePayment?.id && canOperatePayments);
   const canReprint = Boolean(selectedTab !== 'open' && canOperatePayments && latestSucceededPayment?.id);

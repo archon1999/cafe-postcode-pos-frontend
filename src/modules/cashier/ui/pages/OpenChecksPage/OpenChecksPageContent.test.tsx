@@ -690,7 +690,7 @@ describe('OpenChecksPageContent', () => {
     expect((await screen.findAllByText('VIP mijoz')).length).toBeGreaterThan(0);
   });
 
-  it('asks whether to print after finishing the retry receipt dialog', async () => {
+  it('automatically refreshes checks after successful fiscal retry', async () => {
     openOrdersMock.mockReturnValue([]);
     closedOrdersMock.mockReturnValue([
       {
@@ -717,23 +717,17 @@ describe('OpenChecksPageContent', () => {
     render(<OpenChecksPageContent />);
     fireEvent.click(screen.getByRole('button', { name: /Oddiy cheklar/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Chek chiqarish' }));
-
-    expect(await screen.findByText('Chek tayyor')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Chekni chiqarish' })).toBeNull();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Yakunlash' }));
-    expect(await screen.findByText('Chek kerakmi?')).toBeTruthy();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Ha, chiqarish' }));
-
     await waitFor(() => {
-      expect(requestEdgePrintDocumentsMock).toHaveBeenCalledWith(['document-2']);
       expect(closedRefetchMock).toHaveBeenCalled();
       expect(fiscalClosedRefetchMock).toHaveBeenCalled();
     });
+    expect(screen.queryByText('Chek tayyor')).toBeNull();
+    expect(screen.queryByText('Chek kerakmi?')).toBeNull();
+    expect(requestEdgePrintDocumentsMock).toHaveBeenCalledTimes(1);
+    expect(requestEdgePrintDocumentsMock.mock.calls[0][0]).toEqual(['document-2']);
   });
 
-  it('can finish the retry receipt dialog without printing', async () => {
+  it('finishes fiscal retry without receipt or printing prompts', async () => {
     openOrdersMock.mockReturnValue([]);
     closedOrdersMock.mockReturnValue([
       {
@@ -759,11 +753,13 @@ describe('OpenChecksPageContent', () => {
     render(<OpenChecksPageContent />);
     fireEvent.click(screen.getByRole('button', { name: /Oddiy cheklar/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Chek chiqarish' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Yakunlash' }));
-    fireEvent.click(await screen.findByRole('button', { name: "Yo'q" }));
-
-    expect(requestEdgePrintDocumentsMock).not.toHaveBeenCalled();
-    expect(closedRefetchMock).toHaveBeenCalled();
-    expect(fiscalClosedRefetchMock).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(closedRefetchMock).toHaveBeenCalled();
+      expect(fiscalClosedRefetchMock).toHaveBeenCalled();
+    });
+    expect(screen.queryByText('Chek tayyor')).toBeNull();
+    expect(screen.queryByText('Chek kerakmi?')).toBeNull();
+    expect(requestEdgePrintDocumentsMock).toHaveBeenCalledTimes(1);
+    expect(requestEdgePrintDocumentsMock.mock.calls[0][0]).toEqual(['document-2']);
   });
 });

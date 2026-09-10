@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { toast } from 'sonner';
 
 import { useCashierFiscalRetryMutation } from 'modules/cashier/application';
 import type { CashierPaymentResponse } from 'modules/cashier/domain';
@@ -7,6 +8,7 @@ import { getApiErrorMessage } from 'shared/api/errorMessage';
 
 export function usePaymentReceiptFlow({
   afterPaymentPath,
+  successMessage,
   remainingTotal,
   clearSplitParts,
   onPrintDocuments,
@@ -14,6 +16,7 @@ export function usePaymentReceiptFlow({
   setAmount,
 }: {
   afterPaymentPath: string;
+  successMessage: string;
   remainingTotal: number;
   clearSplitParts: () => void;
   onPrintDocuments: (documentIds: string[]) => void;
@@ -26,9 +29,9 @@ export function usePaymentReceiptFlow({
   const [receiptPrintPromptOpen, setReceiptPrintPromptOpen] = useState(false);
   const fiscalRetry = useCashierFiscalRetryMutation({
     onSuccess: (response) => {
-      setReceiptData((current) =>
-        current ? { ...current, receipt: response.receipt, receipts: response.receipts } : current,
-      );
+      if (receiptData) {
+        handleSuccessfulPayment({ ...receiptData, receipt: response.receipt, receipts: response.receipts }, 0);
+      }
     },
     onError: (error) => onPrintError(getApiErrorMessage(error, 'Fiskal chek holatini tekshirib bo‘lmadi.')),
   });
@@ -45,7 +48,26 @@ export function usePaymentReceiptFlow({
 
   const handleSuccessfulPayment = (response: CashierPaymentResponse, paidAmount: number) => {
     if (response.receipt || response.receipts?.length || response.order.status === 'closed') {
-      setReceiptData(response);
+      const paymentReceipts = (
+        response.receipts?.length ? response.receipts : response.receipt ? [response.receipt] : []
+      ).filter((receipt) => receipt !== null);
+      const needsAttention = paymentReceipts.some(
+        (receipt) =>
+          ['failed', 'unknown', 'registering'].includes(receipt.status ?? '') ||
+          ['failed', 'unknown', 'pending'].includes(receipt.fiscalState ?? ''),
+      );
+      if (needsAttention) {
+        setReceiptData(response);
+        return;
+      }
+      const documentIds = paymentReceipts.flatMap((receipt) => (receipt.printDocument ? [receipt.printDocument] : []));
+      if (documentIds.length > 0) {
+        onPrintDocuments(documentIds);
+      } else if (paymentReceipts.length > 0) {
+        onPrintError('Chek uchun print hujjati tayyor emas.');
+      }
+      toast.success(successMessage);
+      finish();
       return;
     }
 

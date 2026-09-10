@@ -17,7 +17,7 @@ type Options = {
   printDocuments: (documentIds: string[]) => void;
 };
 
-export function useRetryFiscalReceiptFlow({ copy, latestPayment, onFinished, printDocuments }: Options) {
+export function useRetryFiscalReceiptFlow({ copy, onFinished, printDocuments }: Options) {
   const [dialog, setDialog] = useState<RetryFiscalReceiptDialogState | null>(null);
   const [printPromptOpen, setPrintPromptOpen] = useState(false);
 
@@ -46,20 +46,14 @@ export function useRetryFiscalReceiptFlow({ copy, latestPayment, onFinished, pri
         toast.error(copy.fiscalReceiptUnknown);
         return;
       }
-      setDialog({
-        receipts,
-        receiptNumber:
-          receipts
-            .map((receipt) => receipt.payload?.receiptNumber)
-            .filter(Boolean)
-            .join(', ') ||
-          latestPayment?.id ||
-          '-',
-        methodLabel:
-          latestPayment?.method === 'card' ? copy.card : latestPayment?.method === 'qr' ? copy.qr : copy.cash,
-        amount: Number(latestPayment?.amount ?? 0),
-      });
+      const documentIds = receipts.flatMap((receipt) => (receipt.printDocument ? [receipt.printDocument] : []));
+      if (documentIds.length > 0) {
+        printDocuments(documentIds);
+      } else {
+        toast.error('Chek uchun print hujjati tayyor emas');
+      }
       toast.success('Fiscal bilan yopildi');
+      onFinished();
     },
     onError: (error) => toast.error(getApiErrorMessage(error, 'Fiscal bilan yopishda xatolik bor.')),
   });

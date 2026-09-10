@@ -166,6 +166,7 @@ const localeDictionary = {
     qrSubtitle: 'Mijoz QR ni skan qilmoqda',
     qrCountdown: 'Avtomatik tasdiqlash',
     cancelQr: 'QR oynasini yopish',
+    orderClosed: 'Hisob yopildi',
     receiptTitle: 'Chek tayyor',
     fiscalReceiptFailed: 'Fiskal chek chiqarilmadi',
     fiscalReceiptRetryHint:
@@ -484,6 +485,7 @@ const localeDictionary = {
     qrSubtitle: 'Мижоз QR ни скан қилмоқда',
     qrCountdown: 'Автоматик тасдиқлаш',
     cancelQr: 'QR ойнасини ёпиш',
+    orderClosed: 'Ҳисоб ёпилди',
     receiptTitle: 'Чек тайёр',
     fiscalReceiptFailed: 'Фискал чек чиқарилмади',
     fiscalReceiptRetryHint:
@@ -802,6 +804,7 @@ const localeDictionary = {
     qrSubtitle: 'Клиент сканирует QR',
     qrCountdown: 'Автоподтверждение',
     cancelQr: 'Закрыть окно QR',
+    orderClosed: 'Счёт закрыт',
     receiptTitle: 'Чек готов',
     fiscalReceiptFailed: 'Фискальный чек не выдан',
     fiscalReceiptRetryHint:

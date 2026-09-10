@@ -7,6 +7,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PaymentPageContent } from './PaymentPageContent';
 
 const navigateMock = vi.fn();
+const successToastMock = vi.hoisted(() => vi.fn());
+vi.mock('sonner', () => ({ toast: { success: successToastMock, error: vi.fn(), info: vi.fn() } }));
+
+async function expectAutomaticFinish() {
+  await waitFor(() => expect(navigateMock).toHaveBeenCalledWith('/cashier/open-checks', { replace: true }));
+  expect(successToastMock).toHaveBeenCalledWith('Hisob yopildi');
+  await waitFor(() => expect(screen.queryByText('Chek tayyor')).toBeNull());
+  expect(screen.queryByText('Chek kerakmi?')).toBeNull();
+}
 const canAddCashierPaymentOrderItemsMock = vi.fn();
 const canAccessWaiterTablesMock = vi.fn();
 const canRemoveCashierPaymentOrderItemsMock = vi.fn();
@@ -215,7 +224,7 @@ describe('PaymentPageContent', () => {
         ...(integration ? {} : { manualCardOverride: true, manualCardReason: 'external_terminal' }),
       }),
     );
-    expect(await screen.findByText('Chek tayyor')).toBeTruthy();
+    await expectAutomaticFinish();
   });
 
   it('does not use another cash desk to bypass an unknown terminal configuration', async () => {
@@ -269,7 +278,7 @@ describe('PaymentPageContent', () => {
       receipt: null,
     });
     render(<PaymentPageContent orderId="order-1" />);
-    expect(await screen.findByText('Chek tayyor')).toBeTruthy();
+    await expectAutomaticFinish();
     expect(recoverPaymentMutateAsyncMock).toHaveBeenCalledWith(false);
     expect(paymentMutateAsyncMock).not.toHaveBeenCalled();
   });
@@ -277,6 +286,7 @@ describe('PaymentPageContent', () => {
   beforeEach(() => {
     cleanup();
     navigateMock.mockReset();
+    successToastMock.mockReset();
     canAddCashierPaymentOrderItemsMock.mockReset();
     canAccessWaiterTablesMock.mockReset();
     canRemoveCashierPaymentOrderItemsMock.mockReset();
@@ -586,9 +596,7 @@ describe('PaymentPageContent', () => {
         registerFiscal: true,
       });
     });
-    expect(await screen.findByText('Chek tayyor')).toBeTruthy();
-    expect(screen.getByRole('dialog').textContent).toMatch(/30[\s,]000 so'm/);
-    expect(screen.getByRole('dialog').textContent).not.toMatch(/20[\s,]000 so'm/);
+    await expectAutomaticFinish();
   });
 
   it.each([null, 'terminal-1'])('uses one split editor with optional terminal %s', async (integration) => {
@@ -837,7 +845,7 @@ describe('PaymentPageContent', () => {
         manualCardReason: 'MARTA sozlanmagan',
       });
     });
-    expect(await screen.findByText('Chek tayyor')).toBeTruthy();
+    await expectAutomaticFinish();
   });
 
   it('returns a partial manual card payment to the remaining payment state', async () => {
@@ -934,7 +942,7 @@ describe('PaymentPageContent', () => {
         registerFiscal: true,
       });
     });
-    expect(await screen.findByText('Chek tayyor')).toBeTruthy();
+    await expectAutomaticFinish();
   });
 
   it('keeps later split parts pending after manually completing a failed middle card part', async () => {
@@ -1064,7 +1072,7 @@ describe('PaymentPageContent', () => {
         registerFiscal: true,
       });
     });
-    expect(await screen.findByText('Chek tayyor')).toBeTruthy();
+    await expectAutomaticFinish();
   });
 
   it('rejects zero split part amounts without submitting', () => {
@@ -1091,7 +1099,7 @@ describe('PaymentPageContent', () => {
     ).toBeNull();
   });
 
-  it('asks whether to print after finishing the payment receipt dialog', async () => {
+  it('automatically finishes fiscal payment with a toast and no receipt prompts', async () => {
     paymentMutateAsyncMock.mockResolvedValueOnce({
       order: {
         orderNumber: 101,
@@ -1114,21 +1122,12 @@ describe('PaymentPageContent', () => {
     render(<PaymentPageContent orderId="order-1" />);
     fireEvent.click(screen.getByRole('button', { name: 'Chek' }));
 
-    expect(await screen.findByText('Chek tayyor')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Chekni chiqarish' })).toBeNull();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Yakunlash' }));
-    expect(await screen.findByText('Chek kerakmi?')).toBeTruthy();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Ha, chiqarish' }));
-
-    await waitFor(() => {
-      expect(requestEdgePrintDocumentsMock).toHaveBeenCalledWith(['document-1']);
-      expect(navigateMock).toHaveBeenCalledWith('/cashier/open-checks', { replace: true });
-    });
+    await expectAutomaticFinish();
+    expect(requestEdgePrintDocumentsMock).toHaveBeenCalledTimes(1);
+    expect(requestEdgePrintDocumentsMock.mock.calls[0][0]).toEqual(['document-1']);
   });
 
-  it('prints the canonical plain document returned by the backend', async () => {
+  it('automatically prints and finishes a plain receipt', async () => {
     paymentMutateAsyncMock.mockResolvedValueOnce({
       order: {
         orderNumber: 101,
@@ -1153,17 +1152,12 @@ describe('PaymentPageContent', () => {
 
     render(<PaymentPageContent orderId="order-1" />);
     fireEvent.click(screen.getByRole('button', { name: 'Chek' }));
-    expect(await screen.findByText('Chek tayyor')).toBeTruthy();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Yakunlash' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Ha, chiqarish' }));
-
-    await waitFor(() => {
-      expect(requestEdgePrintDocumentsMock).toHaveBeenCalledWith(['document-plain']);
-    });
+    await expectAutomaticFinish();
+    expect(requestEdgePrintDocumentsMock).toHaveBeenCalledTimes(1);
+    expect(requestEdgePrintDocumentsMock.mock.calls[0][0]).toEqual(['document-plain']);
   });
 
-  it('can finish the payment receipt dialog without printing', async () => {
+  it('finishes payment without a manual confirmation', async () => {
     paymentMutateAsyncMock.mockResolvedValueOnce({
       order: {
         orderNumber: 101,
@@ -1185,11 +1179,9 @@ describe('PaymentPageContent', () => {
     render(<PaymentPageContent orderId="order-1" />);
     fireEvent.click(screen.getByRole('button', { name: 'Chek' }));
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Yakunlash' }));
-    fireEvent.click(await screen.findByRole('button', { name: "Yo'q" }));
-
-    expect(requestEdgePrintDocumentsMock).not.toHaveBeenCalled();
-    expect(navigateMock).toHaveBeenCalledWith('/cashier/open-checks', { replace: true });
+    await expectAutomaticFinish();
+    expect(requestEdgePrintDocumentsMock).toHaveBeenCalledTimes(1);
+    expect(requestEdgePrintDocumentsMock.mock.calls[0][0]).toEqual(['document-1']);
   });
 
   it('recovers a failed fiscal receipt without accepting the payment again', async () => {
@@ -1214,11 +1206,9 @@ describe('PaymentPageContent', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Amal holatini tekshirish' }));
     expect(fiscalRetryMutateMock).toHaveBeenCalledWith('already-paid-1');
     expect(paymentMutateAsyncMock).toHaveBeenCalledTimes(1);
-    expect(await screen.findByRole('heading', { name: 'Chek tayyor' })).toBeTruthy();
-    expect(screen.getByText('219')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Yakunlash' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Ha, chiqarish' }));
-    expect(requestEdgePrintDocumentsMock).toHaveBeenCalledWith(['recovered-document']);
+    await expectAutomaticFinish();
+    expect(requestEdgePrintDocumentsMock).toHaveBeenCalledTimes(1);
+    expect(requestEdgePrintDocumentsMock.mock.calls[0][0]).toEqual(['recovered-document']);
   });
 
   it('shows a fiscal device error without offering a non-fiscal print fallback', async () => {
@@ -1352,7 +1342,7 @@ describe('PaymentPageContent', () => {
         registerFiscal: false,
       });
     });
-    expect(await screen.findByText('Chek tayyor')).toBeTruthy();
+    await expectAutomaticFinish();
   });
 
   it('prints a precheck without starting payment or closing the order', () => {
@@ -1396,7 +1386,7 @@ describe('PaymentPageContent', () => {
       payment: { method: 'cash', amount: 30000, paidAt: '2026-07-15T12:00:00Z' },
       receipt: { id: 'receipt-submit-guard', payload: {} },
     });
-    expect(await screen.findByText('Chek tayyor')).toBeTruthy();
+    await expectAutomaticFinish();
   });
 
   it('blocks fractional payment and split amounts before sending money commands', () => {
