@@ -15,7 +15,7 @@ import {
 import { getPosThemeColorOptions, type PosThemeColor } from 'app/theme';
 import { persistSession } from 'modules/auth/data-access';
 import { queryClient } from 'shared/api/query-client';
-import { refreshTransportMode } from 'shared/api/transportResolver';
+import { refreshTransportAndSync } from 'shared/api/transportResolver';
 import { SystemHealthPanel } from 'shared/system-health';
 
 import type { PosLocale } from '../../locale/copy';
@@ -55,7 +55,7 @@ export function PosSettingsMenu({
   const selectedThemeColor = themeOptions.some((option) => option.id === themeColor) ? themeColor : themeOptions[0]?.id;
 
   const refresh = async () => {
-    const selection = await refreshTransportMode();
+    const selection = await refreshTransportAndSync();
     if (selection.requiresRelogin) {
       persistSession(null);
       queryClient.clear();

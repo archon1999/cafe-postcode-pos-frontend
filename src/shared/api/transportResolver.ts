@@ -2,7 +2,7 @@ import { readStoredDeviceIdentity } from 'modules/auth/data-access/device/device
 import { persistSession, readStoredSession } from 'modules/auth/data-access/storage/session.storage';
 import type { PosRestaurantContext } from 'modules/auth/domain';
 
-import { apiPostRemote } from './client';
+import { apiPost, apiPostRemote } from './client';
 import {
   DEFAULT_EDGE_ORIGIN,
   isLoopbackEdgeOrigin,
@@ -248,8 +248,16 @@ export async function refreshTransportMode() {
   return { changed: current.mode !== next.mode, requiresRelogin: currentGroup !== nextGroup, mode: next.mode };
 }
 
-export async function refreshTransportAndReload() {
+export async function refreshTransportAndSync() {
   const selection = await refreshTransportMode();
+  if (selection.mode !== 'remote') {
+    await apiPost('/sync/refresh', {}, { timeout: 60_000 });
+  }
+  return selection;
+}
+
+export async function refreshTransportAndReload() {
+  const selection = await refreshTransportAndSync();
   if (selection.requiresRelogin) {
     persistSession(null);
     window.location.assign('/pin-login');

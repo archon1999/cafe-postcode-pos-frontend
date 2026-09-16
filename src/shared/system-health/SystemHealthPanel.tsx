@@ -16,6 +16,7 @@ import {
 import { useMemo, useState } from 'react';
 
 import { readTransportConnection } from '../api/edgeConnection';
+import { refreshTransportAndSync } from '../api/transportResolver';
 import type { PosLocale } from '../locale/copy';
 
 import { getSystemHealthCopy } from './copy';
@@ -120,6 +121,11 @@ export function SystemHealthPanel({
   const copyDiagnostics = async () => {
     await navigator.clipboard.writeText(diagnosticsText(status));
     setCopied(true);
+  };
+
+  const refreshDiagnostics = async () => {
+    await refreshTransportAndSync();
+    await query.refetch();
   };
 
   return (
@@ -255,6 +261,55 @@ export function SystemHealthPanel({
               ) : null}
             </Stack>
 
+            {status?.fiscal.configured ? (
+              <>
+                <Divider />
+                <Stack spacing={0.8}>
+                  <Typography variant="subtitle2">{copy.fiscalDetails}</Typography>
+                  <Detail label={copy.fiscal} value={fiscal.label} />
+                  <Detail
+                    label={copy.fiscalProvider}
+                    value={
+                      status.fiscal.items
+                        ?.map((item) => item.provider || item.name)
+                        .filter(Boolean)
+                        .join(', ') || copy.noData
+                    }
+                  />
+                  <Detail label={copy.fiscalDevice} value={status.fiscalQueue?.factoryId || copy.noData} />
+                  <Detail
+                    label={copy.fiscalCheckedAt}
+                    value={formatDate(status.fiscal.checkedAt, locale, copy.noData)}
+                  />
+                  <Detail
+                    label={copy.fiscalQueueAttempt}
+                    value={formatDate(status.fiscalQueue?.lastAttemptAt, locale, copy.noData)}
+                  />
+                  <Detail
+                    label={copy.fiscalQueueRecovered}
+                    value={formatDate(status.fiscalQueue?.lastRecoveredAt, locale, copy.noData)}
+                  />
+                  <Detail label={copy.fiscalRecovered} value={String(status.fiscalRecovery?.recovered ?? 0)} />
+                  <Detail
+                    label={copy.fiscalNeedsReview}
+                    value={String(
+                      Math.max(status.fiscalRecovery?.needsReview ?? 0, status.sync.unknownFinancialCommands ?? 0),
+                    )}
+                  />
+                  {status.fiscal.detail ? (
+                    <Typography variant="body2" color="warning.main" sx={{ overflowWrap: 'anywhere' }}>
+                      {status.fiscal.detail}
+                    </Typography>
+                  ) : null}
+                  {status.fiscalRecovery?.lastError ? (
+                    <Typography variant="body2" color="warning.main" sx={{ overflowWrap: 'anywhere' }}>
+                      {copy.fiscalRecovery}: {status.fiscalRecovery.lastError}
+                    </Typography>
+                  ) : null}
+                </Stack>
+              </>
+            ) : null}
+
             {status?.alerts?.length ? (
               <>
                 <Divider />
@@ -337,7 +392,7 @@ export function SystemHealthPanel({
           </Button>
           <Box sx={{ flex: 1 }} />
           <Button
-            onClick={() => void query.refetch()}
+            onClick={() => void refreshDiagnostics()}
             disabled={query.isFetching}
             startIcon={<Icon icon="solar:refresh-bold-duotone" width={18} />}>
             {copy.refresh}

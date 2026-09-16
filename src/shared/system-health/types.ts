@@ -60,11 +60,22 @@ export type EdgeSystemStatus = {
   fiscal: SystemHealthComponent;
   fiscalQueue?: {
     known: boolean;
+    factoryId?: string;
     pendingReceipts: number | null;
     firstUnacknowledgedReceiptTime?: string;
     checkedAt?: string;
+    lastAttemptAt?: string;
+    lastRecoveredAt?: string;
     lastError?: string;
+    errorCode?: string;
     stale?: boolean;
+  };
+  fiscalRecovery?: {
+    checkedAt?: string;
+    attempted: number;
+    recovered: number;
+    needsReview: number;
+    lastError?: string;
   };
   marta: SystemHealthComponent;
   printer: SystemHealthComponent;

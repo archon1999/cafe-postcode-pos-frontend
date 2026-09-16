@@ -5,15 +5,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { persistSession } from 'modules/auth/data-access/storage/session.storage';
 
 import { persistTransportConnection, readTransportConnection } from './edgeConnection';
-import { refreshTransportMode } from './transportResolver';
+import { refreshTransportAndSync, refreshTransportMode } from './transportResolver';
 
+const apiPostMock = vi.hoisted(() => vi.fn());
 const apiPostRemoteMock = vi.hoisted(() => vi.fn());
 const secureChannelMock = vi.hoisted(() => vi.fn());
 const readDeviceIdentityMock = vi.hoisted(() => vi.fn());
 vi.mock('modules/auth/data-access/device/device-identity.store', () => ({
   readStoredDeviceIdentity: (...args: unknown[]) => readDeviceIdentityMock(...args),
 }));
-vi.mock('./client', () => ({ apiPostRemote: (...args: unknown[]) => apiPostRemoteMock(...args) }));
+vi.mock('./client', () => ({
+  apiPost: (...args: unknown[]) => apiPostMock(...args),
+  apiPostRemote: (...args: unknown[]) => apiPostRemoteMock(...args),
+}));
 vi.mock('./edgeSecureChannel', () => ({
   ensureLocalAgentSecureChannel: (...args: unknown[]) => secureChannelMock(...args),
   readBoundedJSONResponse: (response: Response) => response.json(),
@@ -25,12 +29,32 @@ describe('paired-device transport resolver', () => {
   beforeEach(() => {
     window.localStorage.clear();
     window.sessionStorage.clear();
+    apiPostMock.mockReset();
     apiPostRemoteMock.mockReset();
     secureChannelMock.mockReset();
     readDeviceIdentityMock.mockReset();
     readDeviceIdentityMock.mockResolvedValue(null);
     secureChannelMock.mockResolvedValue(true);
     vi.stubGlobal('fetch', vi.fn());
+  });
+
+  it('asks the selected Local Agent to recover fiscal work during a manual refresh', async () => {
+    persistTransportConnection({
+      mode: 'local',
+      restaurantId: 'new-york',
+      origin: 'http://127.0.0.1:18181',
+      backendOnline: true,
+    });
+    fetchMock().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ protocolVersion: 1 }),
+    } as Response);
+    apiPostMock.mockResolvedValueOnce({ ok: true });
+
+    const result = await refreshTransportAndSync();
+
+    expect(result).toMatchObject({ mode: 'local', requiresRelogin: false });
+    expect(apiPostMock).toHaveBeenCalledWith('/sync/refresh', {}, { timeout: 60_000 });
   });
 
   it('refreshes a tokenless loopback connection without falling back to remote', async () => {
