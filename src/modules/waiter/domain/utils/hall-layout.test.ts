@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { DiningTable, Hall } from '../entities';
 
 import {
+  clampGuestCount,
   getAvailableSeatCount,
   getHallGridColumns,
   getHallGridRows,
@@ -33,12 +34,19 @@ function createTable(overrides: Partial<DiningTable> = {}): DiningTable {
 }
 
 describe('waiter hall layout utils', () => {
-  it('normalizes seat counts into constructor-supported shapes', () => {
+  it('normalizes seat counts into the supported capacity range', () => {
     expect(getSupportedSeatCount(1)).toBe(2);
     expect(getSupportedSeatCount(3)).toBe(3);
     expect(getSupportedSeatCount(4)).toBe(4);
     expect(getSupportedSeatCount(5)).toBe(5);
-    expect(getSupportedSeatCount(9)).toBe(6);
+    expect(getSupportedSeatCount(9)).toBe(9);
+    expect(getSupportedSeatCount(24)).toBe(24);
+    expect(getSupportedSeatCount(101)).toBe(100);
+  });
+
+  it('allows guest counts up to a custom table capacity', () => {
+    expect(clampGuestCount(18, 24)).toBe(18);
+    expect(clampGuestCount(25, 24)).toBe(24);
   });
 
   it('derives available seats from multi-session table counters', () => {

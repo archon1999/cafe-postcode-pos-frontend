@@ -1,6 +1,8 @@
 import type { DiningTable, DiningTableShapeVariant, DiningTableStatus, Hall } from '../entities';
 
-export type SupportedSeatCount = 2 | 3 | 4 | 5 | 6;
+export type SupportedSeatCount = number;
+const MIN_TABLE_SEAT_COUNT = 2;
+const MAX_TABLE_SEAT_COUNT = 100;
 export type TableVisualState =
   | 'available'
   | 'reserved'
@@ -35,23 +37,8 @@ export function toNumeric(value: number | string | null | undefined, fallback = 
 }
 
 export function getSupportedSeatCount(seatCount: number): SupportedSeatCount {
-  if (seatCount <= 2) {
-    return 2;
-  }
-
-  if (seatCount === 3) {
-    return 3;
-  }
-
-  if (seatCount === 4) {
-    return 4;
-  }
-
-  if (seatCount === 5) {
-    return 5;
-  }
-
-  return 6;
+  const normalized = Number.isFinite(seatCount) ? Math.trunc(seatCount) : MIN_TABLE_SEAT_COUNT;
+  return Math.min(Math.max(normalized, MIN_TABLE_SEAT_COUNT), MAX_TABLE_SEAT_COUNT);
 }
 
 export function clampGuestCount(value: number, seatCount: number) {
