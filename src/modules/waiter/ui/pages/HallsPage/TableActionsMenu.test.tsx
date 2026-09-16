@@ -27,7 +27,7 @@ describe('TableActionsMenu', () => {
     const table: DiningTable = {
       id: 'table-1',
       name: 'A1',
-      tableNumber: 1,
+      tableNumber: '1',
       seatCount: 4,
       status: 'occupied',
       activeSessions: [
@@ -54,7 +54,7 @@ describe('TableActionsMenu', () => {
     const table: DiningTable = {
       id: 'table-2',
       name: 'A2',
-      tableNumber: 2,
+      tableNumber: '2',
       seatCount: 4,
       status: 'occupied',
       activeSessions: [

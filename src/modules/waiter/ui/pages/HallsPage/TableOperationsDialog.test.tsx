@@ -15,23 +15,23 @@ const sourceSession: ActiveSession = {
   status: 'open',
   primaryTableId: 'table-1',
   tableIds: ['table-1'],
-  tableNumbers: [1],
+  tableNumbers: ['1'],
 };
 const halls: Hall[] = [
   {
     id: 'hall-1',
     name: 'Main',
     tables: [
-      { id: 'table-1', name: 'Main 1', tableNumber: 1, seatCount: 4, status: 'occupied' },
+      { id: 'table-1', name: 'Main 1', tableNumber: '1', seatCount: 4, status: 'occupied' },
       {
         id: 'table-2',
         name: 'Main 2',
-        tableNumber: 2,
+        tableNumber: '2',
         seatCount: 4,
         status: 'occupied',
         activeSessions: [{ id: 'session-2', guestCount: 2, status: 'open' }],
       },
-      { id: 'table-3', name: 'Main 3', tableNumber: 3, seatCount: 4, status: 'available' },
+      { id: 'table-3', name: 'Main 3', tableNumber: '3', seatCount: 4, status: 'available' },
     ],
   },
 ];

@@ -18,7 +18,7 @@ function createTable(overrides: Partial<DiningTable> = {}): DiningTable {
   return {
     id: 'table-1',
     name: 'Table 1',
-    tableNumber: 1,
+    tableNumber: '1',
     seatCount: 4,
     status: 'available',
     shapeVariant: 'seat4_square',
@@ -96,7 +96,7 @@ describe('waiter hall layout utils', () => {
       gridColumns: 10,
       tables: [
         createTable({ id: 'table-1', positionX: 0, positionY: 0, width: 1, height: 1 }),
-        createTable({ id: 'table-2', tableNumber: 2, positionX: 6, positionY: 2, width: 2, height: 2 }),
+        createTable({ id: 'table-2', tableNumber: '2', positionX: 6, positionY: 2, width: 2, height: 2 }),
       ],
     };
 

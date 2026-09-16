@@ -42,18 +42,25 @@ type WaiterMenuCategoryDto = Omit<WaiterMenuCategory, 'items' | 'itemGroups'> & 
   itemGroups?: WaiterMenuItemGroupDto[];
   item_groups?: WaiterMenuItemGroupDto[];
 };
-type ActiveSessionDto = ActiveSession & {
+type ActiveSessionDto = Omit<ActiveSession, 'tableNumbers'> & {
+  tableNumbers?: (string | number)[];
   guest_count?: number;
   created_at?: string;
   service_state?: string;
   primary_table_id?: string;
   table_ids?: string[];
-  table_numbers?: number[];
+  table_numbers?: (string | number)[];
 };
 type DiningTableDto = Omit<
   DiningTable,
-  'activeSession' | 'activeSessions' | 'activeSessionCount' | 'occupiedGuestCount' | 'availableSeatCount'
+  | 'activeSession'
+  | 'activeSessions'
+  | 'activeSessionCount'
+  | 'occupiedGuestCount'
+  | 'availableSeatCount'
+  | 'tableNumber'
 > & {
+  tableNumber: string | number;
   activeSession?: ActiveSessionDto | null;
   active_session?: ActiveSessionDto | null;
   activeSessions?: ActiveSessionDto[];
@@ -66,9 +73,10 @@ type DiningTableDto = Omit<
   available_seat_count?: number;
 };
 type HallDto = Omit<Hall, 'tables'> & { tables: DiningTableDto[] };
-type TableSessionDto = Omit<TableSession, 'tableNumber'> & {
-  tableNumber?: number;
-  table_number?: number;
+type TableSessionDto = Omit<TableSession, 'tableNumber' | 'tables'> & {
+  tableNumber?: string | number;
+  table_number?: string | number;
+  tables?: (Omit<NonNullable<TableSession['tables']>[number], 'tableNumber'> & { tableNumber: string | number })[];
   zone_name?: string | null;
   show_zone_name?: boolean;
   service_fee_percent?: number | string;
@@ -138,7 +146,7 @@ function mapActiveSession(dto: ActiveSessionDto): ActiveSession {
     serviceState: dto.serviceState ?? dto.service_state,
     primaryTableId: dto.primaryTableId ?? dto.primary_table_id ?? tableIds[0],
     tableIds,
-    tableNumbers: dto.tableNumbers ?? dto.table_numbers ?? [],
+    tableNumbers: (dto.tableNumbers ?? dto.table_numbers ?? []).map(String),
   };
 }
 
@@ -147,6 +155,7 @@ export function mapHall(dto: HallDto): Hall {
     ...dto,
     tables: dto.tables.map((table) => ({
       ...table,
+      tableNumber: String(table.tableNumber),
       activeSession: table.activeSession
         ? mapActiveSession(table.activeSession)
         : table.active_session
@@ -167,7 +176,9 @@ export function mapHalls(dtos: HallDto[]) {
 export function mapTableSession(dto: TableSessionDto): TableSession {
   return {
     ...dto,
-    tableNumber: dto.tableNumber ?? dto.table_number,
+    tableNumber:
+      (dto.tableNumber ?? dto.table_number ?? null) === null ? undefined : String(dto.tableNumber ?? dto.table_number),
+    tables: dto.tables?.map((table) => ({ ...table, tableNumber: String(table.tableNumber) })),
     zoneName: dto.zoneName ?? dto.zone_name ?? null,
     showZoneName: dto.showZoneName ?? dto.show_zone_name ?? false,
     serviceFeePercent: dto.serviceFeePercent ?? dto.service_fee_percent ?? 0,

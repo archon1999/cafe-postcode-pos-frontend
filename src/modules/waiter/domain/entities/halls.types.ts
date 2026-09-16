@@ -22,7 +22,7 @@ export type ActiveSession = {
   serviceState?: ActiveSessionServiceState;
   primaryTableId?: string;
   tableIds?: string[];
-  tableNumbers?: number[];
+  tableNumbers?: string[];
 };
 
 export type HallZone = {
@@ -39,7 +39,7 @@ export type DiningTable = {
   zone?: string | null;
   zoneName?: string | null;
   zoneIsPrivate?: boolean | null;
-  tableNumber: number;
+  tableNumber: string;
   seatCount: number;
   status: DiningTableStatus;
   shape?: string;
@@ -68,7 +68,7 @@ export type Hall = {
 export type TableSession = {
   id: string;
   tableName: string;
-  tableNumber?: number;
+  tableNumber?: string;
   hallName: string;
   zoneName?: string | null;
   showZoneName?: boolean;
@@ -81,7 +81,7 @@ export type TableSession = {
   tables?: Array<{
     id: string;
     name: string;
-    tableNumber: number;
+    tableNumber: string;
     hallId: string;
     isPrimary: boolean;
   }>;

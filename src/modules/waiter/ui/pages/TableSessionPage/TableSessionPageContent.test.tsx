@@ -207,7 +207,7 @@ describe('TableSessionPageContent', () => {
       data: {
         guestCount: 2,
         tableName: 'VIP stol',
-        tableNumber: 7,
+        tableNumber: '7',
         hallName: 'VIP zal',
         zoneName: 'VIP kabina',
         showZoneName: true,
@@ -412,7 +412,7 @@ describe('TableSessionPageContent', () => {
       data: {
         guestCount: 2,
         tableName: 'VIP stol',
-        tableNumber: 7,
+        tableNumber: '7',
         hallName: 'VIP zal',
         zoneName: 'VIP kabina',
         showZoneName: true,

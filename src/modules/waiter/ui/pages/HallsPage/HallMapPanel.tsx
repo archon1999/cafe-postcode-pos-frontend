@@ -133,7 +133,9 @@ export function HallMapPanel({
               }}>
               {tables
                 .slice()
-                .sort((leftTable, rightTable) => leftTable.tableNumber - rightTable.tableNumber)
+                .sort((leftTable, rightTable) =>
+                  String(leftTable.tableNumber).localeCompare(String(rightTable.tableNumber), 'en', { numeric: true }),
+                )
                 .map((table) => {
                   const placement = getTableGridPlacement(table, gridColumns);
                   return (

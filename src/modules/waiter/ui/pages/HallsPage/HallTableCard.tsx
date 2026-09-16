@@ -320,7 +320,12 @@ export function HallTableCard({
               position: 'relative',
               boxShadow: `0 14px 28px ${palette.numberGlow}`,
             }}>
-            {table.tableNumber}
+            <Box
+              component="span"
+              title={table.tableNumber}
+              sx={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {table.tableNumber}
+            </Box>
             {shouldShowAttentionDot(table) ? (
               <Box
                 sx={{

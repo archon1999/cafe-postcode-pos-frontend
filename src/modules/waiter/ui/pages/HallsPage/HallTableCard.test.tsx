@@ -15,7 +15,7 @@ describe('HallTableCard', () => {
     const table: DiningTable = {
       id: 'table-1',
       name: 'A1',
-      tableNumber: 1,
+      tableNumber: '1',
       seatCount: 4,
       status: 'occupied',
       activeSession: { id: 'session-1', guestCount: 4, status: 'open' },

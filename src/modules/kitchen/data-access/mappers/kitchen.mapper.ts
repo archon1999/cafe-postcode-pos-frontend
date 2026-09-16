@@ -2,9 +2,10 @@ import type { KitchenItem, KitchenMonitorQueue, KitchenMonitorTicket, KitchenTic
 import type { SaleUnit } from 'shared/domain/sale-units';
 
 type KitchenItemDto = KitchenItem & { sale_unit?: SaleUnit };
-type KitchenTicketDto = Omit<KitchenTicket, 'items'> & {
+type KitchenTicketDto = Omit<KitchenTicket, 'items' | 'tableNumber'> & {
+  tableNumber?: string | number | null;
   items: KitchenItemDto[];
-  table_number?: number | null;
+  table_number?: string | number | null;
   zone_name?: string | null;
   show_zone_name?: boolean;
 };
@@ -14,7 +15,8 @@ type KitchenMonitorQueueDto = Omit<KitchenMonitorQueue, 'monitorVariant'> & { mo
 export function mapKitchenTicket(dto: KitchenTicketDto): KitchenTicket {
   return {
     ...dto,
-    tableNumber: dto.tableNumber ?? dto.table_number ?? null,
+    tableNumber:
+      (dto.tableNumber ?? dto.table_number ?? null) === null ? null : String(dto.tableNumber ?? dto.table_number),
     zoneName: dto.zoneName ?? dto.zone_name ?? null,
     showZoneName: dto.showZoneName ?? dto.show_zone_name ?? false,
     items: dto.items.map((item) => ({

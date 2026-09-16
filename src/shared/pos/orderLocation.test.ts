@@ -4,7 +4,7 @@ import { getPosOrderLocationLabel, getPosTableNumberLabel, getPosZoneContextLabe
 
 describe('POS order location', () => {
   it('uses the canonical table number before the legacy name fallback', () => {
-    expect(getPosTableNumberLabel({ tableNumber: 23, tableName: 'VIP 7-stol' })).toBe('23');
+    expect(getPosTableNumberLabel({ tableNumber: '23', tableName: 'VIP 7-stol' })).toBe('23');
     expect(getPosTableNumberLabel({ tableName: 'VIP 7-stol' })).toBe('7');
   });
 

@@ -86,7 +86,7 @@ describe('mapCashierOrder', () => {
       items: [],
     });
 
-    expect(order).toMatchObject({ tableNumber: 23, zoneName: 'VIP kabina', showZoneName: true });
+    expect(order).toMatchObject({ tableNumber: '23', zoneName: 'VIP kabina', showZoneName: true });
   });
 
   it('preserves missing service fee components for legacy percentage fallback', () => {

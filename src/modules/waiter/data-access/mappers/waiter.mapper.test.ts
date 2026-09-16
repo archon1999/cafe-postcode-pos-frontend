@@ -76,7 +76,7 @@ describe('mapWaiterOrder', () => {
 });
 
 describe('mapHall', () => {
-  it('maps grouped physical table metadata on active sessions', () => {
+  it.each([1, '001', 'VIP-02'])('preserves table number %s and normalizes legacy grouped numbers', (tableNumber) => {
     const hall = mapHall({
       id: 'hall-1',
       name: 'Main',
@@ -84,7 +84,7 @@ describe('mapHall', () => {
         {
           id: 'table-1',
           name: 'Main 1',
-          tableNumber: 1,
+          tableNumber,
           seatCount: 4,
           status: 'occupied',
           active_session: {
@@ -99,10 +99,11 @@ describe('mapHall', () => {
       ],
     });
 
+    expect(hall.tables[0].tableNumber).toBe(String(tableNumber));
     expect(hall.tables[0].activeSession).toMatchObject({
       primaryTableId: 'table-1',
       tableIds: ['table-1', 'table-2'],
-      tableNumbers: [1, 2],
+      tableNumbers: ['1', '2'],
     });
   });
 });

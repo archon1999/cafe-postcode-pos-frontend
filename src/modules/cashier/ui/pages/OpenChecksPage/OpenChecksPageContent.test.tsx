@@ -194,7 +194,7 @@ describe('OpenChecksPageContent', () => {
         items: [],
         tableSession: 'session-1',
         tableName: 'Stol 7',
-        tableNumber: 7,
+        tableNumber: '7',
         zoneName: 'VIP kabina',
         showZoneName: true,
         guestCount: 3,

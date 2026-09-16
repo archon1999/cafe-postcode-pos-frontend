@@ -16,7 +16,7 @@ describe('OpenTableDialog', () => {
     const table: DiningTable = {
       id: 'table-1',
       name: 'A1',
-      tableNumber: 1,
+      tableNumber: '1',
       seatCount: 4,
       status: 'available',
       activeSessions: [{ id: 'stale-session', guestCount: 1, status: 'closed' }],

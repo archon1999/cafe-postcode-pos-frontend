@@ -128,7 +128,7 @@ vi.mock('modules/cashier/application', () => ({
       channel: orderChannelMock,
       tableSession: orderTableSessionMock,
       tableName: 'V1-1',
-      tableNumber: 1,
+      tableNumber: '1',
       hallName: 'VIP 1',
       zoneName: 'VIP zona',
       showZoneName: true,
