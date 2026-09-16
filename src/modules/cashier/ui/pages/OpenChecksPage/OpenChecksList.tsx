@@ -1,6 +1,6 @@
 import { Icon } from '@iconify/react';
 import { Box, Stack, Typography } from '@mui/material';
-import { useRef, useState, type KeyboardEvent, type TouchEvent } from 'react';
+import { useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 
 import type { CashierCheckStatus, CashierOrder } from 'modules/cashier/domain/entities/order.types';
 import { type PosLocale, getPosCopy } from 'shared/locale/copy';
@@ -26,45 +26,50 @@ export function OpenChecksList({
   onSelect: (orderId: string) => void;
   onSwipeEdit: (order: CashierOrder) => void;
 }) {
-  const swipeStartRef = useRef<{ orderId: string; x: number; y: number } | null>(null);
+  const swipeStartRef = useRef<{ orderId: string; pointerId: number; x: number; y: number } | null>(null);
+  const suppressClickUntilRef = useRef(0);
   const [swipedOrderId, setSwipedOrderId] = useState<string | null>(null);
 
-  const handleTouchStart = (event: TouchEvent<HTMLDivElement>, order: CashierOrder) => {
-    const touch = event.touches[0];
-    swipeStartRef.current = { orderId: order.id, x: touch.clientX, y: touch.clientY };
+  const handlePointerDown = (event: PointerEvent<HTMLDivElement>, order: CashierOrder) => {
+    if (selectedTab !== 'open') return;
+    if (event.isPrimary === false || (event.pointerType === 'mouse' && event.button !== 0)) return;
+    if ((event.target as Element).closest('button')) return;
+
+    swipeStartRef.current = {
+      orderId: order.id,
+      pointerId: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+    };
+    event.currentTarget.setPointerCapture?.(event.pointerId);
     setSwipedOrderId(null);
   };
 
-  const handleTouchMove = (event: TouchEvent<HTMLDivElement>, order: CashierOrder) => {
+  const handlePointerMove = (event: PointerEvent<HTMLDivElement>, order: CashierOrder) => {
     const start = swipeStartRef.current;
-    const touch = event.touches[0];
-    if (!start || start.orderId !== order.id || !touch) return;
+    if (!start || start.orderId !== order.id || start.pointerId !== event.pointerId) return;
 
-    const deltaX = touch.clientX - start.x;
-    const deltaY = touch.clientY - start.y;
+    const deltaX = event.clientX - start.x;
+    const deltaY = event.clientY - start.y;
     if (Math.abs(deltaY) > Math.abs(deltaX)) return;
 
-    if (deltaX < -28 && selectedTab === 'open') {
-      setSwipedOrderId(order.id);
-    }
+    setSwipedOrderId(deltaX < -28 ? order.id : null);
   };
 
-  const handleTouchEnd = (event: TouchEvent<HTMLDivElement>, order: CashierOrder) => {
+  const handlePointerEnd = (event: PointerEvent<HTMLDivElement>, order: CashierOrder) => {
     const start = swipeStartRef.current;
-    const touch = event.changedTouches[0];
     swipeStartRef.current = null;
-    if (!start || start.orderId !== order.id || !touch || selectedTab !== 'open') {
-      setSwipedOrderId(null);
+    setSwipedOrderId(null);
+    if (!start || start.orderId !== order.id || start.pointerId !== event.pointerId || selectedTab !== 'open') {
       return;
     }
 
-    const deltaX = touch.clientX - start.x;
-    const deltaY = touch.clientY - start.y;
+    const deltaX = event.clientX - start.x;
+    const deltaY = event.clientY - start.y;
     if (deltaX < -72 && Math.abs(deltaX) > Math.abs(deltaY) * 1.4) {
+      suppressClickUntilRef.current = Date.now() + 500;
       onSwipeEdit(order);
-      return;
     }
-    setSwipedOrderId(null);
   };
 
   return (
@@ -85,10 +90,19 @@ export function OpenChecksList({
             component="div"
             role="button"
             tabIndex={0}
-            onTouchStart={(event) => handleTouchStart(event, order)}
-            onTouchMove={(event) => handleTouchMove(event, order)}
-            onTouchEnd={(event) => handleTouchEnd(event, order)}
-            onClick={() => onSelect(order.id)}
+            data-swipe-revealed={swipedOrderId === order.id ? 'true' : undefined}
+            onPointerDown={(event) => handlePointerDown(event, order)}
+            onPointerMove={(event) => handlePointerMove(event, order)}
+            onPointerUp={(event) => handlePointerEnd(event, order)}
+            onPointerCancel={() => {
+              swipeStartRef.current = null;
+              setSwipedOrderId(null);
+            }}
+            onDragStart={(event) => event.preventDefault()}
+            onClick={() => {
+              if (Date.now() < suppressClickUntilRef.current) return;
+              onSelect(order.id);
+            }}
             onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
               if (event.key === 'Enter' || event.key === ' ') {
                 event.preventDefault();
@@ -106,6 +120,7 @@ export function OpenChecksList({
               ...getOpenChecksCardSx(selectedOrderId === order.id)(theme),
               transform: swipedOrderId === order.id ? 'translateX(-54px)' : 'translateX(0)',
               transition: 'transform 140ms ease',
+              userSelect: 'none',
               touchAction: 'pan-y',
               '&::after': {
                 content: '""',

@@ -9,11 +9,12 @@ vi.mock('@iconify/react', () => ({
   Icon: ({ icon }: { icon: string }) => <span data-icon={icon} />,
 }));
 
-function dispatchPointer(element: Element, type: string, clientX: number, clientY: number) {
+function dispatchPointer(element: Element, type: string, clientX: number, clientY: number, pointerType = 'touch') {
   const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX, clientY });
   Object.defineProperties(event, {
     pointerId: { value: 1 },
-    pointerType: { value: 'touch' },
+    pointerType: { value: pointerType },
+    isPrimary: { value: true },
   });
   fireEvent(element, event);
 }
@@ -134,6 +135,33 @@ describe('PosMenuItemCard', () => {
     fireEvent.click(card);
 
     expect(onAddWithNote).toHaveBeenCalledTimes(1);
+    expect(onAdd).not.toHaveBeenCalled();
+  });
+
+  it('opens note-first addition when the card is dragged left with a mouse', () => {
+    const onAdd = vi.fn();
+    const onAddWithNote = vi.fn();
+    render(
+      <PosMenuItemCard
+        item={item}
+        locale="uz"
+        menuLabel="Menyu"
+        selectedCount={0}
+        onAdd={onAdd}
+        onAddWithNote={onAddWithNote}
+        onRemove={vi.fn()}
+      />,
+    );
+
+    const card = screen.getByRole('button', { name: /Choyxona osh/ });
+    dispatchPointer(card, 'pointerdown', 180, 40, 'mouse');
+    dispatchPointer(card, 'pointermove', 120, 41, 'mouse');
+    expect(screen.getByTestId('menu-item-card-surface').getAttribute('data-swipe-revealed')).toBe('true');
+
+    dispatchPointer(card, 'pointerup', 90, 42, 'mouse');
+    fireEvent.click(card);
+
+    expect(onAddWithNote).toHaveBeenCalledOnce();
     expect(onAdd).not.toHaveBeenCalled();
   });
 });

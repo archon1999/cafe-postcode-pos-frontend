@@ -70,6 +70,7 @@ export function PosMenuItemCard({
 
   const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (!noteSwipeEnabled) return;
+    if (event.isPrimary === false || (event.pointerType === 'mouse' && event.button !== 0)) return;
     if ((event.target as Element).closest('button')) return;
     swipeStartRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
     event.currentTarget.setPointerCapture?.(event.pointerId);
@@ -117,6 +118,7 @@ export function PosMenuItemCard({
         swipeStartRef.current = null;
         setNoteActionVisible(false);
       }}
+      onDragStart={(event) => event.preventDefault()}
       sx={(theme) => ({
         border: 0,
         p: 0,
@@ -129,6 +131,7 @@ export function PosMenuItemCard({
         cursor: blocked ? 'not-allowed' : 'pointer',
         opacity: blocked ? 0.65 : 1,
         textAlign: 'left',
+        userSelect: 'none',
         touchAction: noteSwipeEnabled ? 'pan-y' : 'auto',
         transition: 'transform 0.16s ease',
         '&:hover': {
@@ -206,6 +209,7 @@ export function PosMenuItemCard({
               component="img"
               src={imageUrl}
               alt={item.name}
+              draggable={false}
               loading="lazy"
               sx={{
                 position: 'absolute',
