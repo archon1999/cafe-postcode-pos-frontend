@@ -262,9 +262,17 @@ export function useOptimisticBuilderOrder<
   const runRemoveOperation = useCallback(
     async (operation: PendingRemoveOperation) => {
       try {
-        const mutationResult = await (operation.inventoryDisposition
-          ? removeOrderItem(operation.itemId, operation.inventoryDisposition)
-          : removeOrderItem(operation.itemId));
+        let mutationResult: Awaited<ReturnType<typeof removeOrderItem>>;
+        try {
+          mutationResult = await (operation.inventoryDisposition
+            ? removeOrderItem(operation.itemId, operation.inventoryDisposition)
+            : removeOrderItem(operation.itemId));
+        } catch {
+          await refreshCurrentOrder().catch(() => undefined);
+          toast.error(syncErrorMessage);
+          return;
+        }
+
         if (mutationResult?.kitchenPrintDocuments?.length) {
           onPrintDocuments?.(mutationResult.kitchenPrintDocuments);
         }
@@ -275,11 +283,13 @@ export function useOptimisticBuilderOrder<
           await queryClient.invalidateQueries({ queryKey: canonicalQueryKey });
           onOrderRemoved?.(resolvedBaseOrder);
         } else {
-          await refreshCurrentOrder();
+          setResolvedBaseOrder((current) =>
+            current
+              ? ({ ...current, items: current.items.filter((item) => item.id !== operation.itemId) } as TOrder)
+              : current,
+          );
+          await refreshCurrentOrder().catch(() => refreshCurrentOrder().catch(() => undefined));
         }
-      } catch {
-        await refreshCurrentOrder().catch(() => undefined);
-        toast.error(syncErrorMessage);
       } finally {
         settleRemoveOperation(operation.opId);
       }

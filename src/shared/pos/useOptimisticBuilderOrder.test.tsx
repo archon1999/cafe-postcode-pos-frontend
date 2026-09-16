@@ -2,6 +2,7 @@
 
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { StrictMode, type PropsWithChildren } from 'react';
+import { toast } from 'sonner';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { queryClient } from 'shared/api/query-client';
@@ -315,6 +316,50 @@ describe('useOptimisticBuilderOrder', () => {
     });
 
     expect(result.current.currentOrder?.items).toHaveLength(1);
+    expect(toast.error).toHaveBeenCalledWith('sync failed');
+  });
+
+  it('does not report a rollback when delete succeeds and a follow-up refresh recovers on retry', async () => {
+    const baseOrder = createOrder();
+    const refreshedOrder = createOrder({
+      items: [createOrderItem({ status: 'cancelled' })],
+      subtotal: 0,
+      serviceFee: 0,
+      total: 0,
+    });
+    const canonicalQueryFn = vi
+      .fn<() => Promise<TestOrder[]>>()
+      .mockRejectedValueOnce(new Error('temporary refresh failure'))
+      .mockResolvedValue([refreshedOrder]);
+    const queryKey = ['test', 'remove-refresh-retry'] as const;
+    queryClient.setQueryDefaults(queryKey, { retry: false });
+
+    const { result } = renderHook(() =>
+      useOptimisticBuilderOrder<TestMenuItem, TestOrderItem, TestOrder, TestOrder[]>({
+        baseOrder,
+        canonicalQueryKey: queryKey,
+        canonicalQueryFn,
+        channel: 'hall',
+        createOrder: async () => baseOrder.id,
+        defaultServiceFeePercent: 10,
+        removeOrderItem: async () => undefined,
+        selectCurrentOrder: (orders) => orders[0],
+        addOrderItem: async () => undefined,
+        syncErrorMessage: 'sync failed',
+      }),
+    );
+
+    act(() => {
+      result.current.removeItem('item-1');
+    });
+
+    await waitFor(() => {
+      expect(result.current.hasPendingOperations).toBe(false);
+    });
+
+    expect(canonicalQueryFn).toHaveBeenCalledTimes(2);
+    expect(result.current.currentOrder?.items[0]?.status).toBe('cancelled');
+    expect(toast.error).not.toHaveBeenCalled();
   });
 
   it('clears the projected order after the final server-backed item is removed successfully', async () => {
