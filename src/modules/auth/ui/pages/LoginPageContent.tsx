@@ -144,7 +144,7 @@ export function LoginPageContent() {
   return (
     <Box
       sx={{
-        minHeight: '100vh',
+        minHeight: '100dvh',
         display: 'grid',
         gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1.42fr) minmax(520px, 0.96fr)' },
         backgroundColor: '#1a1c1f',
@@ -164,31 +164,42 @@ export function LoginPageContent() {
 
       <Box
         sx={(theme) => ({
-          minHeight: '100vh',
+          minHeight: '100dvh',
+          maxHeight: { xs: '100dvh', lg: 'none' },
           display: 'flex',
-          alignItems: 'center',
+          alignItems: { xs: 'flex-start', sm: 'center' },
           justifyContent: 'center',
-          px: { xs: 2.5, sm: 4.5 },
-          py: 4,
+          px: { xs: 2, sm: 4.5 },
+          py: { xs: 2, sm: 4 },
+          overflowX: 'hidden',
+          overflowY: { xs: 'auto', lg: 'visible' },
+          overscrollBehaviorY: 'contain',
+          WebkitOverflowScrolling: 'touch',
           backgroundColor: theme.palette.mode === 'dark' ? '#1b1d20' : '#f7f1e7',
           borderLeft: {
             lg: `1px solid ${alpha('#ffffff', theme.palette.mode === 'dark' ? 0.04 : 0.18)}`,
           },
         })}>
-        <Stack spacing={4} sx={{ width: '100%', maxWidth: 440 }}>
+        <Stack spacing={{ xs: 2.25, sm: 4 }} sx={{ width: '100%', maxWidth: 440, my: { sm: 'auto' } }}>
           <Stack direction="row" justifyContent="space-between" spacing={2}>
-            <Stack spacing={0.75}>
-              <PosLogo isSingle={false} sx={{ width: 178, height: 50, mb: 0.5 }} />
+            <Stack spacing={0.75} sx={{ minWidth: 0 }}>
+              <PosLogo
+                isSingle={false}
+                sx={{ width: { xs: 156, sm: 178 }, height: { xs: 44, sm: 50 }, mb: { xs: 0, sm: 0.5 } }}
+              />
               <Typography
                 variant="h3"
                 sx={{
-                  fontSize: { xs: 44, lg: 54 },
+                  fontSize: { xs: 38, sm: 44, lg: 54 },
                   lineHeight: 1.02,
                   letterSpacing: '-0.04em',
                 }}>
                 {copy.signInTitle}
               </Typography>
-              <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 360, fontSize: 16, lineHeight: 1.5 }}>
+              <Typography
+                variant="body1"
+                color="text.secondary"
+                sx={{ maxWidth: 360, fontSize: { xs: 14, sm: 16 }, lineHeight: 1.45 }}>
                 {restaurantContext
                   ? `${restaurantContext.restaurantName}. ${copy.signInSubtitle}`
                   : copy.signInSubtitle}
@@ -199,9 +210,10 @@ export function LoginPageContent() {
               variant="contained"
               onClick={() => setThemeMode(themeMode === 'dark' ? 'light' : 'dark')}
               sx={(theme) => ({
-                minWidth: 56,
-                width: 56,
-                height: 56,
+                minWidth: { xs: 48, sm: 56 },
+                width: { xs: 48, sm: 56 },
+                height: { xs: 48, sm: 56 },
+                flexShrink: 0,
                 p: 0,
                 borderRadius: '10px',
                 backgroundImage: 'none',
@@ -215,7 +227,7 @@ export function LoginPageContent() {
             </Button>
           </Stack>
 
-          <Stack direction="row" spacing={1.5} justifyContent="space-between">
+          <Stack direction="row" spacing={{ xs: 1, sm: 1.5 }} justifyContent="space-between">
             {Array.from({ length: PIN_LENGTH }).map((_, index) => {
               const filled = index < pin.length;
               const active = index === Math.min(pin.length, PIN_LENGTH - 1);
@@ -225,7 +237,7 @@ export function LoginPageContent() {
                   key={index}
                   sx={(theme) => ({
                     flex: 1,
-                    height: 64,
+                    height: { xs: 56, sm: 64 },
                     borderRadius: '12px',
                     border: `2px solid ${active ? theme.palette.primary.main : alpha('#ffffff', theme.palette.mode === 'dark' ? 0.08 : 0.22)}`,
                     backgroundColor: theme.palette.mode === 'dark' ? '#25272b' : alpha('#efe7db', 0.88),
@@ -253,7 +265,7 @@ export function LoginPageContent() {
             sx={{
               display: 'grid',
               gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
-              gap: 1.5,
+              gap: { xs: 1, sm: 1.5 },
             }}>
             {keypad.map((key, index) => {
               if (!key) {
@@ -279,8 +291,9 @@ export function LoginPageContent() {
                     appendDigit(key);
                   }}
                   sx={(theme) => ({
-                    height: 112,
-                    fontSize: 36,
+                    minHeight: { xs: 76, sm: 96, md: 112 },
+                    height: { xs: 76, sm: 96, md: 112 },
+                    fontSize: { xs: 30, sm: 34, md: 36 },
                     fontWeight: 700,
                     backgroundImage: 'none',
                     borderRadius: '12px',
