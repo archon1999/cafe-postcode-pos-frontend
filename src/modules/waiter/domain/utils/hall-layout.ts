@@ -62,8 +62,17 @@ export function getTableStatus(table: DiningTable): DiningTableStatus {
   return table.activeSession ? 'occupied' : table.status;
 }
 
+function hasPendingPaymentSession(table: DiningTable) {
+  const sessions = table.activeSessions?.length
+    ? table.activeSessions
+    : table.activeSession
+      ? [table.activeSession]
+      : [];
+  return sessions.some((session) => session.status === 'pending_payment' || session.serviceState === 'pending_payment');
+}
+
 export function getTableVisualState(table: DiningTable): TableVisualState {
-  if (table.activeSession?.status === 'pending_payment' || table.activeSession?.serviceState === 'pending_payment') {
+  if (hasPendingPaymentSession(table)) {
     return 'pending_payment';
   }
 
@@ -102,7 +111,7 @@ export function getTableMeta(
   },
   formatElapsedMinutes: (value?: string) => string,
 ) {
-  if (table.activeSession?.status === 'pending_payment' || table.activeSession?.serviceState === 'pending_payment') {
+  if (hasPendingPaymentSession(table)) {
     return '';
   }
 

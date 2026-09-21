@@ -243,6 +243,9 @@ export function usePrintWaiterPrecheckMutation(options: {
       }
       return response;
     },
-    onSuccess,
+    onSuccess: () => {
+      invalidateQueriesInBackground([waiterKeys.halls]);
+      onSuccess?.();
+    },
   });
 }

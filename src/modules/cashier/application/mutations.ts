@@ -249,7 +249,10 @@ export function usePrintCashierPrecheckMutation(options?: { onSuccess?: () => vo
       }
       return response;
     },
-    onSuccess: () => options?.onSuccess?.(),
+    onSuccess: () => {
+      invalidateQueriesInBackground([['waiter', 'halls']]);
+      options?.onSuccess?.();
+    },
   });
 }
 

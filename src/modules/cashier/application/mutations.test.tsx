@@ -8,12 +8,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const scanOrderMarkingMock = vi.hoisted(() => vi.fn());
 const removeOrderItemMock = vi.hoisted(() => vi.fn());
 const payOrderMock = vi.hoisted(() => vi.fn());
+const createPrecheckPrintDocumentMock = vi.hoisted(() => vi.fn());
+const enqueueEdgePrintDocumentsMock = vi.hoisted(() => vi.fn());
 const requestEdgePrintDocumentsMock = vi.hoisted(() => vi.fn());
 const invalidateQueriesInBackgroundMock = vi.hoisted(() => vi.fn());
 const invalidateQueriesMock = vi.hoisted(() => vi.fn());
 
 vi.mock('../data-access', () => ({
   cashierRepository: {
+    createPrecheckPrintDocument: createPrecheckPrintDocumentMock,
     removeOrderItem: removeOrderItemMock,
     payOrder: payOrderMock,
     scanOrderMarking: scanOrderMarkingMock,
@@ -21,7 +24,7 @@ vi.mock('../data-access', () => ({
 }));
 
 vi.mock('modules/edge-printing/application', () => ({
-  enqueueEdgePrintDocuments: vi.fn(),
+  enqueueEdgePrintDocuments: enqueueEdgePrintDocumentsMock,
   requestEdgePrintDocuments: requestEdgePrintDocumentsMock,
 }));
 
@@ -33,6 +36,7 @@ vi.mock('shared/api/query-client', () => ({
 import {
   useCashierOrderScanMutation,
   useCashierPaymentMutation,
+  usePrintCashierPrecheckMutation,
   useRemoveCashierOrderItemMutation,
   useRemoveCashierPaymentOrderItemMutation,
 } from './mutations';
@@ -52,6 +56,8 @@ describe('useCashierOrderScanMutation', () => {
     scanOrderMarkingMock.mockReset();
     removeOrderItemMock.mockReset();
     payOrderMock.mockReset();
+    createPrecheckPrintDocumentMock.mockReset();
+    enqueueEdgePrintDocumentsMock.mockReset();
     requestEdgePrintDocumentsMock.mockReset();
     invalidateQueriesInBackgroundMock.mockReset();
     invalidateQueriesMock.mockReset();
@@ -143,5 +149,19 @@ describe('useCashierOrderScanMutation', () => {
     });
 
     expect(invalidateQueriesInBackgroundMock).toHaveBeenCalledWith(expect.arrayContaining([['waiter', 'halls']]));
+  });
+
+  it('invalidates the halls projection after printing a precheck', async () => {
+    createPrecheckPrintDocumentMock.mockResolvedValue({ printDocument: 'precheck-document-1' });
+    enqueueEdgePrintDocumentsMock.mockResolvedValue({ errors: [] });
+    const { result } = renderHook(() => usePrintCashierPrecheckMutation(), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync('order-1');
+    });
+
+    expect(invalidateQueriesInBackgroundMock).toHaveBeenCalledWith([['waiter', 'halls']]);
   });
 });

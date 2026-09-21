@@ -97,6 +97,52 @@ describe('waiter hall layout utils', () => {
     ).toBe('cooking');
   });
 
+  it('uses the payment-pending visual state after a table precheck', () => {
+    expect(
+      getTableVisualState(
+        createTable({
+          status: 'occupied',
+          activeSession: {
+            id: 'session-precheck',
+            guestCount: 2,
+            status: 'pending_payment',
+            serviceState: 'pending_payment',
+          },
+        }),
+      ),
+    ).toBe('pending_payment');
+  });
+
+  it('keeps a shared table payment-pending when any active session has a precheck', () => {
+    expect(
+      getTableVisualState(
+        createTable({
+          status: 'occupied',
+          activeSession: {
+            id: 'session-latest',
+            guestCount: 2,
+            status: 'open',
+            serviceState: 'done',
+          },
+          activeSessions: [
+            {
+              id: 'session-latest',
+              guestCount: 2,
+              status: 'open',
+              serviceState: 'done',
+            },
+            {
+              id: 'session-precheck',
+              guestCount: 1,
+              status: 'pending_payment',
+              serviceState: 'pending_payment',
+            },
+          ],
+        }),
+      ),
+    ).toBe('pending_payment');
+  });
+
   it('builds hall grid metrics from constructor coordinates', () => {
     const hall: Hall = {
       id: 'hall-1',
