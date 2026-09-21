@@ -98,6 +98,7 @@ type WaiterOrderDto = Omit<WaiterOrder, 'items' | 'displayName'> & {
   service_fee_started_at?: string | null;
   service_fee_frozen_at?: string | null;
   service_fee_billable_minutes?: number;
+  service_fee_error?: WaiterOrder['serviceFeeError'];
   service_fee_quote?: WaiterOrder['serviceFeeQuote'];
 };
 type WaiterSessionResponseDto = WaiterSessionResponse;
@@ -196,6 +197,7 @@ export function mapWaiterOrder(dto: WaiterOrderDto): WaiterOrder {
     serviceFeeStartedAt: dto.serviceFeeStartedAt ?? dto.service_fee_started_at ?? null,
     serviceFeeFrozenAt: dto.serviceFeeFrozenAt ?? dto.service_fee_frozen_at ?? null,
     serviceFeeBillableMinutes: dto.serviceFeeBillableMinutes ?? dto.service_fee_billable_minutes,
+    serviceFeeError: dto.serviceFeeError ?? dto.service_fee_error ?? null,
     serviceFeeQuote: dto.serviceFeeQuote ?? dto.service_fee_quote ?? null,
     items: dto.items.map((item) => ({
       ...item,

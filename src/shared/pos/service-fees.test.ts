@@ -9,12 +9,29 @@ import {
 } from './service-fees';
 
 const labels = {
+  serviceFee: 'Xizmat haqi',
   restaurant: 'Restoran xizmati',
   hall: 'Zal xizmati',
   table: 'Stol xizmati',
 };
 
 describe('service fee presentation', () => {
+  it('keeps the authoritative amount without exposing the formula name, including a valid zero fee', () => {
+    const components = normalizeServiceFeeComponents([
+      {
+        scope: 'table',
+        mode: 'formula',
+        amount: 0,
+        time_dependent: true,
+        formula: { name: 'Free first hour', parameters: { dayRate: '60000', day_rate: '120000' } },
+      },
+    ]);
+    const calculated = calculateServiceFeeComponents(components, { subtotal: 500000, now: Date.now() + 99999999 });
+    expect(calculated[0].amount).toBe(0);
+    expect(calculated[0].formula).toEqual(components?.[0].formula);
+    expect(calculated[0].timeDependent).toBe(true);
+    expect(buildServiceFeeRows(calculated, labels)).toEqual([{ scope: 'table', label: 'Xizmat haqi', amount: 0 }]);
+  });
   it('keeps restaurant, hall, and table charges as separate rows', () => {
     expect(
       buildServiceFeeRows(

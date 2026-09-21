@@ -33,6 +33,8 @@ export type WaiterOrder = {
   serviceFeeStartedAt?: string | null;
   serviceFeeFrozenAt?: string | null;
   serviceFeeBillableMinutes?: number;
+  serviceFeePending?: boolean;
+  serviceFeeError?: import('shared/pos/service-fees').PosServiceFeeError | null;
   serviceFeeQuote?: PosServiceFeeQuote | null;
   vatEnabled?: boolean;
   vatPercent?: number | string;

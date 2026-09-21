@@ -70,6 +70,26 @@ function createPendingAdd(
 }
 
 describe('optimistic builder order', () => {
+  it('keeps authoritative formula totals while showing pending item changes', () => {
+    const baseOrder = createOrder({
+      serviceFee: 60000,
+      total: 72000,
+      serviceFeeComponents: [{ scope: 'table', mode: 'formula', amount: 60000, formula: { name: 'Technical tariff' } }],
+    });
+    const options = {
+      baseOrder,
+      channel: 'hall',
+      defaultServiceFeePercent: 0,
+      pendingAdds: [createPendingAdd()],
+      pendingRemoves: [],
+    };
+    const pending = deriveOptimisticBuilderOrder(options);
+    expect(pending?.items).toHaveLength(2);
+    expect(pending?.total).toBe(72000);
+    expect(pending?.serviceFee).toBe(60000);
+    expect(pending?.serviceFeePending).toBe(true);
+    expect(deriveOptimisticBuilderOrder({ ...options, pendingAdds: [] })?.serviceFeePending).toBe(false);
+  });
   it('adds pending menu items on top of an existing order immediately', () => {
     const order = deriveOptimisticBuilderOrder<TestMenuItem, TestOrderItem, TestOrder>({
       baseOrder: createOrder(),

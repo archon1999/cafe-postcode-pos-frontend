@@ -64,7 +64,8 @@ export function useCashierBuilderActions({
   const normalizedDeliveryAddress = normalizeDeliveryAddress(deliveryAddress);
   const isDeliveryPhoneValid = isValidDeliveryPhone(deliveryPhone);
   const isDeliveryAddressValid = normalizedDeliveryAddress.length > 0;
-  const busy = submitPending || hasPendingOperations;
+  const busy =
+    submitPending || hasPendingOperations || !!currentOrder?.serviceFeeError || !!currentOrder?.serviceFeePending;
 
   const runDeliveryAction = async (action: PendingDeliveryAction) => {
     if (!currentOrder) return;

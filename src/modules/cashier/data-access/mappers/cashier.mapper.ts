@@ -73,6 +73,7 @@ type CashierOrderDto = Omit<CashierOrder, 'items' | 'orderNumber' | 'displayName
   service_fee_started_at?: string | null;
   service_fee_frozen_at?: string | null;
   service_fee_billable_minutes?: number;
+  service_fee_error?: CashierOrder['serviceFeeError'];
   service_fee_quote?: CashierOrder['serviceFeeQuote'];
 };
 type CashierFiscalReceiptDto = Omit<NonNullable<CashierPaymentResponse['receipt']>, 'payload'> & {
@@ -141,6 +142,7 @@ export function mapCashierOrder(dto: CashierOrderDto): CashierOrder {
     serviceFeeStartedAt: dto.serviceFeeStartedAt ?? dto.service_fee_started_at ?? null,
     serviceFeeFrozenAt: dto.serviceFeeFrozenAt ?? dto.service_fee_frozen_at ?? null,
     serviceFeeBillableMinutes: dto.serviceFeeBillableMinutes ?? dto.service_fee_billable_minutes,
+    serviceFeeError: dto.serviceFeeError ?? dto.service_fee_error ?? null,
     serviceFeeQuote: dto.serviceFeeQuote ?? dto.service_fee_quote ?? null,
     items: dto.items.map((item) => ({
       ...item,

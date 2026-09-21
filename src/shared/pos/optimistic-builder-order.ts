@@ -42,6 +42,8 @@ export type BuilderOrderLike<TItem extends BuilderOrderItemLike = BuilderOrderIt
   serviceFeeComponents?: PosServiceFeeComponent[];
   serviceFeeStartedAt?: string | null;
   serviceFeeFrozenAt?: string | null;
+  serviceFeePending?: boolean;
+  serviceFeeError?: import('./service-fees').PosServiceFeeError | null;
   vatEnabled?: boolean;
   vatPercent?: number | string;
   vatAmount?: number | string;
@@ -202,6 +204,12 @@ export function deriveOptimisticBuilderOrder<
     : legacyServiceFeePercent > 0
       ? [{ scope: 'restaurant' as const, percent: legacyServiceFeePercent }]
       : [];
+  const hasFormula = sourceServiceFeeComponents.some((component) => component.mode === 'formula');
+  if (baseOrder && hasFormula) {
+    // Keep the last authoritative totals while item mutations are being acknowledged.
+    // A formula may depend on subtotal, time, guests or all of them; do not guess here.
+    return { ...baseOrder, items, serviceFeePending: pendingAdds.length > 0 || pendingRemoves.length > 0 } as TOrder;
+  }
   const serviceFeeComponents = calculateServiceFeeComponents(sourceServiceFeeComponents, {
     subtotal,
     startedAt: baseOrder?.serviceFeeStartedAt ?? defaultServiceFeeStartedAt,
@@ -239,6 +247,7 @@ export function deriveOptimisticBuilderOrder<
     serviceFeeEnabled,
     serviceFeePercent,
     serviceFeeComponents,
+    serviceFeePending: hasFormula,
     vatEnabled,
     vatPercent: vatEnabled ? vatPercent : 0,
     vatAmount,

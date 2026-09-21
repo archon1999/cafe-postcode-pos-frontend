@@ -75,7 +75,8 @@ export type PosRestaurantContext = {
   posAuthBackgroundImageUrl?: string | null;
   serviceFeeEnabled?: boolean;
   serviceFeePercent?: number | string;
-  serviceFeeMode?: 'percentage' | 'hourly';
+  serviceFeeMode?: 'percentage' | 'hourly' | 'formula';
+  serviceFeeFormula?: import('shared/pos/service-fees').PosServiceFeeFormula;
   serviceFeeHourlyRate?: number | string;
   vatEnabled?: boolean;
   vatPercent?: number | string;

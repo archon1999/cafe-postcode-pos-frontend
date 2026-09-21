@@ -34,6 +34,9 @@ const localeDictionary = {
     hallServiceFee: 'Zal xizmat haqi',
     tableServiceFee: 'Stol xizmat haqi',
     hourlyServiceFee: 'Soatlik',
+    serviceFeeCalculating: 'Xizmat haqi qayta hisoblanmoqda. Oxirgi tasdiqlangan summa ko‘rsatilgan.',
+    serviceFeeCalculationFailed:
+      'Hisobni tasdiqlab bo‘lmadi. To‘lovdan oldin qayta yuklang yoki administratorga murojaat qiling.',
     vat: 'QQS',
     grandTotal: 'Jami summa',
     pay: "To'lov",
@@ -354,6 +357,9 @@ const localeDictionary = {
     hallServiceFee: 'Зал хизмат ҳақи',
     tableServiceFee: 'Стол хизмат ҳақи',
     hourlyServiceFee: 'Соатлик',
+    serviceFeeCalculating: 'Хизмат ҳақи қайта ҳисобланмоқда. Охирги тасдиқланган сумма кўрсатилган.',
+    serviceFeeCalculationFailed:
+      'Ҳисобни тасдиқлаб бўлмади. Тўловдан олдин қайта юкланг ёки администраторга мурожаат қилинг.',
     vat: 'ҚҚС',
     grandTotal: 'Жами сумма',
     pay: 'Тўлов',
@@ -673,6 +679,9 @@ const localeDictionary = {
     hallServiceFee: 'Сервис зала',
     tableServiceFee: 'Сервис стола',
     hourlyServiceFee: 'Почасовой',
+    serviceFeeCalculating: 'Сервисный сбор пересчитывается. Показана последняя подтверждённая сумма.',
+    serviceFeeCalculationFailed:
+      'Не удалось подтвердить расчёт. Обновите данные или обратитесь к администратору перед оплатой.',
     vat: 'НДС',
     grandTotal: 'Итого',
     pay: 'Оплата',

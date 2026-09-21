@@ -1,4 +1,4 @@
-import { Box, Stack, alpha, useMediaQuery } from '@mui/material';
+import { Alert, Box, Stack, alpha, useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -239,8 +239,10 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     orderEditing.removeItem,
     locale,
   );
+  const feeBlocked = !!orderQuery.error || !!orderQuery.data?.serviceFeeError;
   const canSubmitPayment = Boolean(
-    normalizedOrderId &&
+    !feeBlocked &&
+      normalizedOrderId &&
       canProcessPayments &&
       cashierContextQuery.data?.currentShift &&
       (!markingCheckEnabled || markingMissingCount === 0) &&
@@ -253,7 +255,8 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
       !printPrecheckMutation.isPending,
   );
   const canPrintPrecheck = Boolean(
-    normalizedOrderId &&
+    !feeBlocked &&
+      normalizedOrderId &&
       canProcessPayments &&
       !isOrderEditing &&
       !isPaymentProcessing &&
@@ -269,6 +272,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     hall: copy.hallServiceFee,
     table: copy.tableServiceFee,
     hourly: copy.hourlyServiceFee,
+    serviceFee: copy.serviceFee,
   });
   const vatEnabled = Boolean(orderQuery.data?.vatEnabled);
   const vatPercent = Number(orderQuery.data?.vatPercent ?? 0);
@@ -300,6 +304,12 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
           onSettings={(event) => setSettingsAnchor(event.currentTarget)}
         />
       }>
+      {feeBlocked && (
+        <Alert severity="error">
+          {copy.serviceFeeCalculationFailed}
+          {orderQuery.data?.serviceFeeError?.message ? `: ${orderQuery.data.serviceFeeError.message}` : ''}
+        </Alert>
+      )}
       <Box
         sx={{
           flex: 1,

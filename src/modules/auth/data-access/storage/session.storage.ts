@@ -33,7 +33,8 @@ type RestaurantContextCompat = PosRestaurantContext & {
   pos_auth_background_image_url?: string | null;
   service_fee_enabled?: boolean;
   service_fee_percent?: number | string;
-  service_fee_mode?: 'percentage' | 'hourly';
+  service_fee_mode?: 'percentage' | 'hourly' | 'formula';
+  service_fee_formula?: PosRestaurantContext['serviceFeeFormula'];
   service_fee_hourly_rate?: number | string;
   vat_enabled?: boolean;
   vat_percent?: number | string;
@@ -71,6 +72,7 @@ export function normalizeRestaurantContext(rawContext: RestaurantContextCompat |
   const serviceFeeMode = rawContext.serviceFeeMode ?? (rawContext as RestaurantContextCompat).service_fee_mode;
   const serviceFeeHourlyRate =
     rawContext.serviceFeeHourlyRate ?? (rawContext as RestaurantContextCompat).service_fee_hourly_rate;
+  const serviceFeeFormula = rawContext.serviceFeeFormula ?? (rawContext as RestaurantContextCompat).service_fee_formula;
   const vatEnabled = rawContext.vatEnabled ?? (rawContext as RestaurantContextCompat).vat_enabled;
   const vatPercent = rawContext.vatPercent ?? (rawContext as RestaurantContextCompat).vat_percent;
   const markingCheckEnabled =
@@ -83,6 +85,7 @@ export function normalizeRestaurantContext(rawContext: RestaurantContextCompat |
   if (backgroundImageUrl !== undefined) context.posAuthBackgroundImageUrl = backgroundImageUrl;
   if (serviceFeeEnabled !== undefined) context.serviceFeeEnabled = serviceFeeEnabled;
   if (serviceFeePercent !== undefined) context.serviceFeePercent = serviceFeePercent;
+  if (serviceFeeFormula !== undefined) context.serviceFeeFormula = serviceFeeFormula;
   if (serviceFeeMode !== undefined) context.serviceFeeMode = serviceFeeMode;
   if (serviceFeeHourlyRate !== undefined) context.serviceFeeHourlyRate = serviceFeeHourlyRate;
   if (vatEnabled !== undefined) context.vatEnabled = vatEnabled;

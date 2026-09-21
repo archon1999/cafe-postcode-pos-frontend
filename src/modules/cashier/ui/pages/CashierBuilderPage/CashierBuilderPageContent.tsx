@@ -1,4 +1,4 @@
-import { Box, Snackbar, useMediaQuery } from '@mui/material';
+import { Alert, Box, Snackbar, useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
@@ -119,6 +119,7 @@ export function CashierBuilderPageContent() {
         {
           scope: 'restaurant',
           mode: session.restaurantContext.serviceFeeMode ?? 'percentage',
+          formula: session.restaurantContext.serviceFeeFormula,
           percent: session.restaurantContext.serviceFeePercent ?? 0,
           hourlyRate: session.restaurantContext.serviceFeeHourlyRate ?? 0,
         },
@@ -326,6 +327,7 @@ export function CashierBuilderPageContent() {
     hall: copy.hallServiceFee,
     table: copy.tableServiceFee,
     hourly: copy.hourlyServiceFee,
+    serviceFee: copy.serviceFee,
   });
   const vatEnabled = Boolean(currentOrder?.vatEnabled);
   const vatPercent = Number(currentOrder?.vatPercent ?? 0);
@@ -359,7 +361,9 @@ export function CashierBuilderPageContent() {
     setBuilderChannel,
     clearSelectedCartItem: () => setSelectedCartItemKey(null),
   });
+  const feeBlocked = !!(currentOrder?.serviceFeeError || currentOrder?.serviceFeePending);
   const isSubmitDisabled =
+    feeBlocked ||
     !currentOrder ||
     submitOrderMutation.isPending ||
     hasPendingOperations ||
@@ -415,6 +419,12 @@ export function CashierBuilderPageContent() {
           onLock={() => navigate('/lock-screen')}
         />
       }>
+      {currentOrder?.serviceFeeError && (
+        <Alert severity="error">
+          {copy.serviceFeeCalculationFailed}: {currentOrder.serviceFeeError.message}
+        </Alert>
+      )}
+      {currentOrder?.serviceFeePending && <Alert severity="info">{copy.serviceFeeCalculating}</Alert>}
       <Box
         sx={{
           flex: 1,

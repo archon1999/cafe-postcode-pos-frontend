@@ -1,5 +1,7 @@
 export type PosServiceFeeScope = 'restaurant' | 'hall' | 'table';
-export type PosServiceFeeMode = 'percentage' | 'hourly';
+export type PosServiceFeeMode = 'percentage' | 'hourly' | 'formula';
+export type PosServiceFeeFormula = Record<string, unknown> & { name?: string };
+export type PosServiceFeeError = { code: string; message: string };
 
 export type PosServiceFeeComponent = {
   scope: PosServiceFeeScope;
@@ -9,6 +11,8 @@ export type PosServiceFeeComponent = {
   hourlyRate?: number | string;
   durationMinutes?: number;
   amount?: number | string;
+  formula?: PosServiceFeeFormula;
+  timeDependent?: boolean;
 };
 
 export type PosServiceFeeQuote = {
@@ -28,6 +32,7 @@ type PosServiceFeeComponentDto = PosServiceFeeComponent & {
   source_name?: string;
   hourly_rate?: number | string;
   duration_minutes?: number;
+  time_dependent?: boolean;
 };
 
 export function normalizeServiceFeeComponents(
@@ -41,6 +46,7 @@ export function normalizeServiceFeeComponents(
     mode: component.mode ?? 'percentage',
     hourlyRate: component.hourlyRate ?? component.hourly_rate,
     durationMinutes: component.durationMinutes ?? component.duration_minutes,
+    timeDependent: component.timeDependent ?? component.time_dependent,
   }));
 }
 
@@ -70,11 +76,15 @@ export function calculateServiceFeeComponents(
   const durationMinutes = calculateBillableMinutes(options.startedAt, options.frozenAt, options.now ?? Date.now());
   return (components ?? [])
     .filter((component) =>
-      (component.mode ?? 'percentage') === 'hourly'
-        ? Number(component.hourlyRate ?? 0) > 0
-        : Number(component.percent ?? 0) > 0,
+      component.mode === 'formula'
+        ? true
+        : (component.mode ?? 'percentage') === 'hourly'
+          ? Number(component.hourlyRate ?? 0) > 0
+          : Number(component.percent ?? 0) > 0,
     )
     .map((component) => {
+      // Custom formulas are evaluated by the backend or local agent using exact arithmetic.
+      if (component.mode === 'formula') return { ...component };
       if ((component.mode ?? 'percentage') === 'hourly') {
         const minutes = options.startedAt ? durationMinutes : Number(component.durationMinutes ?? 0);
         return {
@@ -95,16 +105,20 @@ export function calculateServiceFeeComponents(
 
 export function buildServiceFeeRows(
   components: PosServiceFeeComponent[] | null | undefined,
-  labels: Record<PosServiceFeeScope, string> & { hourly?: string },
+  labels: Record<PosServiceFeeScope, string> & { hourly?: string; serviceFee: string },
 ): PosServiceFeeRow[] {
   return (components ?? [])
-    .filter((component) => Number(component.percent ?? 0) > 0 || Number(component.amount) > 0)
+    .filter(
+      (component) => component.mode === 'formula' || Number(component.percent ?? 0) > 0 || Number(component.amount) > 0,
+    )
     .map((component) => ({
       scope: component.scope,
       label:
-        (component.mode ?? 'percentage') === 'hourly'
-          ? `${labels[component.scope]} (${labels.hourly ?? 'Soatlik'})`
-          : `${labels[component.scope]} (${formatPercent(Number(component.percent ?? 0))}%)`,
+        component.mode === 'formula'
+          ? labels.serviceFee
+          : (component.mode ?? 'percentage') === 'hourly'
+            ? `${labels[component.scope]} (${labels.hourly ?? 'Soatlik'})`
+            : `${labels[component.scope]} (${formatPercent(Number(component.percent ?? 0))}%)`,
       amount: Number(component.amount ?? 0),
     }));
 }

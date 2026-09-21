@@ -59,6 +59,7 @@ export function OpenChecksDetail({
     hall: copy.hallServiceFee,
     table: copy.tableServiceFee,
     hourly: copy.hourlyServiceFee,
+    serviceFee: copy.serviceFee,
   });
   const vatEnabled = Boolean(order.vatEnabled);
   const vatPercent = Number(order.vatPercent ?? 0);

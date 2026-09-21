@@ -1,4 +1,4 @@
-﻿import { Box, useMediaQuery } from '@mui/material';
+﻿import { Alert, Box, useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -121,6 +121,7 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
         {
           scope: 'restaurant',
           mode: session.restaurantContext.serviceFeeMode ?? 'percentage',
+          formula: session.restaurantContext.serviceFeeFormula,
           percent: session.restaurantContext.serviceFeePercent ?? 0,
           hourlyRate: session.restaurantContext.serviceFeeHourlyRate ?? 0,
         },
@@ -229,6 +230,7 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
     hall: copy.hallServiceFee,
     table: copy.tableServiceFee,
     hourly: copy.hourlyServiceFee,
+    serviceFee: copy.serviceFee,
   });
   const vatEnabled = Boolean(currentOrder?.vatEnabled);
   const vatPercent = Number(currentOrder?.vatPercent ?? 0);
@@ -312,9 +314,14 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
     [categories, menuItemMeta.countMap],
   );
   const canTakePayment = canAccessCashierPayments(session?.user);
-  const isSubmitDisabled = !currentOrder || submitOrderMutation.isPending || hasPendingOperations;
+  const feeBlocked = !!(currentOrder?.serviceFeeError || currentOrder?.serviceFeePending);
+  const isSubmitDisabled = feeBlocked || !currentOrder || submitOrderMutation.isPending || hasPendingOperations;
   const isPrecheckDisabled =
-    !currentOrder || printPrecheckMutation.isPending || submitOrderMutation.isPending || hasPendingOperations;
+    feeBlocked ||
+    !currentOrder ||
+    printPrecheckMutation.isPending ||
+    submitOrderMutation.isPending ||
+    hasPendingOperations;
 
   const handlePrintPrecheck = () => {
     if (isPrecheckDisabled) {
@@ -374,6 +381,12 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
           onSettingsOpen={(event) => setSettingsAnchor(event.currentTarget)}
         />
       }>
+      {currentOrder?.serviceFeeError && (
+        <Alert severity="error">
+          {copy.serviceFeeCalculationFailed}: {currentOrder.serviceFeeError.message}
+        </Alert>
+      )}
+      {currentOrder?.serviceFeePending && <Alert severity="info">{copy.serviceFeeCalculating}</Alert>}
       <Box
         sx={{
           flex: 1,
