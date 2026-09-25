@@ -174,6 +174,8 @@ const localeDictionary = {
     fiscalReceiptFailed: 'Fiskal chek chiqarilmadi',
     fiscalReceiptRetryHint:
       'To‘lov qabul qilingan. Fiskal qurilma ulanishini tekshiring va «Amal holatini tekshirish»ni bosing. Qayta to‘lov olmang.',
+    fiscalReconciliationWifiHint:
+      'To‘lov qabul qilingan. Wi-Fi’ni o‘chirib, qayta yoqing. Internet tiklangach «Amal holatini tekshirish»ni bosing. Qayta to‘lov olmang.',
     receiptNumber: 'Chek raqami',
     receiptMethod: "To'lov turi",
     receiptAmount: "To'langan summa",
@@ -496,6 +498,8 @@ const localeDictionary = {
     fiscalReceiptFailed: 'Фискал чек чиқарилмади',
     fiscalReceiptRetryHint:
       'Тўлов қабул қилинган. Фискал қурилма уланишини текширинг ва «Амал ҳолатини текшириш»ни босинг. Қайта тўлов олманг.',
+    fiscalReconciliationWifiHint:
+      'Тўлов қабул қилинган. Wi-Fi’ни ўчириб, қайта ёқинг. Интернет тиклангач «Амал ҳолатини текшириш»ни босинг. Қайта тўлов олманг.',
     receiptNumber: 'Чек рақами',
     receiptMethod: 'Тўлов тури',
     receiptAmount: 'Тўланган сумма',
@@ -818,6 +822,8 @@ const localeDictionary = {
     fiscalReceiptFailed: 'Фискальный чек не выдан',
     fiscalReceiptRetryHint:
       'Оплата принята. Проверьте подключение фискального устройства и нажмите «Проверить состояние операции». Не принимайте оплату повторно.',
+    fiscalReconciliationWifiHint:
+      'Оплата принята. Выключите и снова включите Wi-Fi. После восстановления интернета нажмите «Проверить состояние операции». Не принимайте оплату повторно.',
     receiptNumber: 'Номер чека',
     receiptMethod: 'Способ оплаты',
     receiptAmount: 'Оплачено',

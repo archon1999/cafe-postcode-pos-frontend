@@ -15,6 +15,14 @@ export function getMutationErrorDetail(error: unknown) {
   return getMutationErrorPayload(error)?.detail ?? '';
 }
 
+export function isFiscalReconciliationRequiredError(error: unknown) {
+  const payload = getMutationErrorPayload(error) as (MutationErrorPayload & { code?: string }) | undefined;
+  return (
+    payload?.code === 'EDGE_FISCAL_RECONCILIATION_REQUIRED' ||
+    payload?.detail?.includes('EDGE_FISCAL_RECONCILIATION_REQUIRED') === true
+  );
+}
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
 }

@@ -1247,6 +1247,38 @@ describe('PaymentPageContent', () => {
     expect(navigateMock).toHaveBeenCalledWith('/cashier/open-checks', { replace: true });
   });
 
+  it('recommends reconnecting Wi-Fi for a fiscal reconciliation error', async () => {
+    paymentMutateAsyncMock.mockResolvedValueOnce({
+      order: {
+        orderNumber: 102,
+        items: [],
+        subtotal: 60000,
+        serviceFee: 0,
+        total: 60000,
+        note: '',
+        status: 'closed',
+      },
+      payment: {
+        method: 'cash',
+        amount: 60000,
+        paidAt: '2026-04-18T10:00:00Z',
+      },
+      receipt: {
+        id: 'receipt-reconciliation-required',
+        status: 'failed',
+        fiscalErrorCode: 'EDGE_FISCAL_RECONCILIATION_REQUIRED',
+        fiscalErrorMessage: 'another device receipt has an unknown outcome',
+        payload: {},
+      },
+    });
+
+    render(<PaymentPageContent orderId="order-1" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Chek' }));
+
+    expect(await screen.findByText(/Wi-Fi’ni o‘chirib, qayta yoqing/)).toBeTruthy();
+    expect(screen.getByText(/Qayta to‘lov olmang/)).toBeTruthy();
+  });
+
   it('shows backend payment detail when payment mutation fails', async () => {
     paymentMutationStateMock = {
       isPending: false,
@@ -1266,6 +1298,27 @@ describe('PaymentPageContent', () => {
     expect(
       await screen.findByText('SoftPOS is not ready. Open standby screen and keep the app in foreground'),
     ).toBeTruthy();
+  });
+
+  it('replaces the fiscal reconciliation error code with the Wi-Fi recovery message', async () => {
+    paymentMutationStateMock = {
+      isPending: false,
+      isError: true,
+      isSuccess: false,
+      error: {
+        response: {
+          data: {
+            code: 'EDGE_FISCAL_RECONCILIATION_REQUIRED',
+            detail: 'EDGE_FISCAL_RECONCILIATION_REQUIRED: another device receipt has an unknown outcome',
+          },
+        },
+      },
+    };
+
+    render(<PaymentPageContent orderId="order-1" />);
+
+    expect(await screen.findByText(/Wi-Fi’ni o‘chirib, qayta yoqing/)).toBeTruthy();
+    expect(screen.queryByText(/EDGE_FISCAL_RECONCILIATION_REQUIRED/)).toBeNull();
   });
 
   it('shows copyable MARTA request and response JSON for non-2xx terminal errors', async () => {
