@@ -9,7 +9,11 @@ import {
 } from 'modules/cashier/domain';
 import type { PosServiceFeeQuote } from 'shared/pos/service-fees';
 
-import { getMartaNon2xxDebugJson, getMutationErrorDetail } from './payment-error-debug';
+import {
+  getMartaNon2xxDebugJson,
+  getMutationErrorDetail,
+  isFiscalReconciliationRequiredError,
+} from './payment-error-debug';
 import type { SplitPaymentPart } from './usePaymentEditorState';
 
 type PaymentCommand = {
@@ -37,6 +41,7 @@ type Options = {
   orderId: string | null;
   paymentAmount: number;
   paymentFailedMessage: string;
+  fiscalReconciliationWifiMessage: string;
   splitParts: SplitPaymentPart[] | null;
   finalTotal?: number;
   serviceFeeQuote?: PosServiceFeeQuote | null;
@@ -52,6 +57,7 @@ export function usePaymentSubmission({
   orderId,
   paymentAmount,
   paymentFailedMessage,
+  fiscalReconciliationWifiMessage,
   splitParts,
   finalTotal,
   serviceFeeQuote,
@@ -87,7 +93,9 @@ export function usePaymentSubmission({
       setFailedPaymentAttempt(null);
       return;
     }
-    const detail = getMutationErrorDetail(error) || fallback;
+    const detail = isFiscalReconciliationRequiredError(error)
+      ? fiscalReconciliationWifiMessage
+      : getMutationErrorDetail(error) || fallback;
     setErrorMessage(detail);
     setErrorToastOpen(true);
     const financialFailure = getPaymentFailureState(error);

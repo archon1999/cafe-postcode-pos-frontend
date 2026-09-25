@@ -213,7 +213,15 @@ export function ReceiptDialogs({
     (receipt) => receipt?.kind === 'fiscal' || receipt?.status === 'sent' || receipt?.fiscalState === 'registered',
   );
   const failedReceipt = receipts.find((receipt) => receipt?.status === 'failed');
-  const fiscalReceiptError = failedReceipt ? copy.fiscalReceiptRetryHint : null;
+  const fiscalReconciliationRequired = Boolean(
+    failedReceipt?.fiscalErrorCode === 'EDGE_FISCAL_RECONCILIATION_REQUIRED' ||
+      failedReceipt?.fiscalErrorMessage?.includes('EDGE_FISCAL_RECONCILIATION_REQUIRED'),
+  );
+  const fiscalReceiptError = failedReceipt
+    ? fiscalReconciliationRequired
+      ? copy.fiscalReconciliationWifiHint
+      : copy.fiscalReceiptRetryHint
+    : null;
   const fiscalUnknown = receipts.some(
     (receipt) =>
       receipt?.status === 'unknown' || receipt?.status === 'registering' || receipt?.fiscalState === 'unknown',

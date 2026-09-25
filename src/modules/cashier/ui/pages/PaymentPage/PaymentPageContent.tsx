@@ -219,6 +219,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     orderId: normalizedOrderId,
     paymentAmount,
     paymentFailedMessage: copy.paymentFailed,
+    fiscalReconciliationWifiMessage: copy.fiscalReconciliationWifiHint,
     splitParts,
     finalTotal: totalEditable ? paymentAmount : undefined,
     serviceFeeQuote: orderQuery.data?.serviceFeeQuote,

@@ -9,6 +9,7 @@ export type CashierFiscalReceipt = {
   fiscalState?: 'pending' | 'registered' | 'unknown' | 'failed';
   ofdState?: 'pending' | 'acknowledged' | 'unknown';
   printDocument?: string | null;
+  fiscalErrorCode?: string | null;
   fiscalErrorMessage?: string | null;
   payload?: {
     receiptNumber?: string;
