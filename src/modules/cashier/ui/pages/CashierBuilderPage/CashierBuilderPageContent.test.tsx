@@ -71,6 +71,7 @@ vi.mock('modules/cashier/application', () => ({
   cashierKeys: {
     builderOrders: ['cashier', 'builder-orders'],
     menu: ['cashier', 'menu'],
+    paymentOrder: (orderId: string | null) => ['cashier', 'payment-order', orderId],
   },
   useCashierBuilderOrdersQuery: (...args: unknown[]) => useCashierBuilderOrdersQueryMock(...args),
   useCashierMenuQuery: (...args: unknown[]) => useCashierMenuQueryMock(...args),
@@ -86,6 +87,7 @@ vi.mock('modules/cashier/application', () => ({
 vi.mock('modules/cashier/data-access', () => ({
   cashierRepository: {
     getOpenOrders: vi.fn(),
+    getOrder: vi.fn(),
     createBuilderOrder: (...args: unknown[]) => createBuilderOrderMock(...args),
     addOrderItem: (...args: unknown[]) => addOrderItemMock(...args),
     removeOrderItem: vi.fn(),
@@ -229,6 +231,9 @@ describe('CashierBuilderPageContent', () => {
     useCashierPaymentOrderQueryMock.mockReset();
     useCashierPaymentOrderQueryMock.mockReturnValue({
       data: null,
+      error: null,
+      isError: false,
+      isLoading: false,
       refetch: vi.fn(),
     });
     useOptimisticBuilderOrderMock.mockReset();
@@ -260,6 +265,47 @@ describe('CashierBuilderPageContent', () => {
     fireEvent.click(screen.getByRole('button', { name: 'solar:chef-hat-bold-duotone' }));
 
     expect(navigateMock).toHaveBeenCalledWith('/menu/catalog?source=cashier&channel=takeaway');
+  });
+
+  it('waits for the exact swiped order instead of rendering an unrelated empty builder', () => {
+    searchParamsValue = 'orderId=table-order-247&channel=hall';
+    useCashierBuilderOrdersQueryMock.mockReturnValue({
+      isLoading: false,
+      data: [{ id: 'unrelated-counter-order', tableSession: null, status: 'open', openedBy: 'user-1' }],
+      refetch: vi.fn(),
+    });
+    useCashierPaymentOrderQueryMock.mockReturnValue({
+      data: undefined,
+      error: null,
+      isError: false,
+      isLoading: true,
+      refetch: vi.fn(),
+    });
+
+    render(<CashierBuilderPageContent />);
+
+    expect(screen.getByText('loading')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Cola/ })).toBeNull();
+    expect(useOptimisticBuilderOrderMock).toHaveBeenCalledWith(expect.objectContaining({ baseOrder: undefined }));
+  });
+
+  it('keeps a failed edit order closed and lets the cashier retry loading it', () => {
+    searchParamsValue = 'orderId=table-order-247&channel=hall';
+    const refetch = vi.fn();
+    useCashierPaymentOrderQueryMock.mockReturnValue({
+      data: undefined,
+      error: new Error('Local Agent buyurtmani qaytarmadi'),
+      isError: true,
+      isLoading: false,
+      refetch,
+    });
+
+    render(<CashierBuilderPageContent />);
+
+    expect(screen.getByText('Local Agent buyurtmani qaytarmadi')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Cola/ })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Yangilash' }));
+    expect(refetch).toHaveBeenCalledTimes(1);
   });
 
   it('keeps the order note separate from an item-level note', async () => {

@@ -13,6 +13,7 @@ import { useOptimisticBuilderOrder } from './useOptimisticBuilderOrder';
 vi.mock('sonner', () => ({
   toast: {
     error: vi.fn(),
+    info: vi.fn(),
   },
 }));
 
@@ -316,7 +317,41 @@ describe('useOptimisticBuilderOrder', () => {
     });
 
     expect(result.current.currentOrder?.items).toHaveLength(1);
-    expect(toast.error).toHaveBeenCalledWith('sync failed');
+    expect(toast.error).toHaveBeenCalledWith('offline');
+  });
+
+  it('keeps a saved add visible and reports delayed refresh without claiming a rollback', async () => {
+    const baseOrder = createOrder();
+    const canonicalQueryFn = vi.fn<() => Promise<TestOrder[]>>().mockRejectedValue(new Error('refresh offline'));
+    const queryKey = ['test', 'add-refresh-delayed'] as const;
+    queryClient.setQueryDefaults(queryKey, { retry: false });
+
+    const { result } = renderHook(() =>
+      useOptimisticBuilderOrder<TestMenuItem, TestOrderItem, TestOrder, TestOrder[]>({
+        baseOrder,
+        canonicalQueryKey: queryKey,
+        canonicalQueryFn,
+        channel: 'hall',
+        createOrder: async () => baseOrder.id,
+        defaultServiceFeePercent: 10,
+        removeOrderItem: async () => undefined,
+        selectCurrentOrder: (orders) => orders[0],
+        addOrderItem: async () =>
+          createOrderItem({ id: 'saved-item', catalogItem: 'menu-2', catalogItemName: 'Cake', lineTotal: 18000 }),
+        syncErrorMessage: 'sync failed',
+        syncPendingMessage: 'saved, refreshing',
+      }),
+    );
+
+    act(() => {
+      result.current.addItem(createMenuItem({ id: 'menu-2', name: 'Cake', price: 18000 }), '');
+    });
+
+    await waitFor(() => expect(result.current.hasPendingOperations).toBe(false));
+
+    expect(result.current.currentOrder?.items.map((item) => item.id)).toEqual(['item-1', 'saved-item']);
+    expect(toast.info).toHaveBeenCalledWith('saved, refreshing');
+    expect(toast.error).not.toHaveBeenCalled();
   });
 
   it('does not report a rollback when delete succeeds and a follow-up refresh recovers on retry', async () => {

@@ -8,6 +8,7 @@ import type {
   CashierCreateOrderResponse,
   CashierMenuCategory,
   CashierOrder,
+  CashierOrderItem,
   CashierPaymentResponse,
   CashierPrecheckPrintDocumentResponse,
   CashierScanOrderMarkingResponse,
@@ -77,7 +78,7 @@ export interface CashierRepository {
     note: string,
     selectedModifiers?: PosModifierSelection[],
     manualPrice?: number,
-  ): Promise<{ kitchenPrintDocuments?: string[] }>;
+  ): Promise<CashierOrderItem & { kitchenPrintDocuments?: string[] }>;
   addOrderItems(
     orderId: string,
     items: Array<{
@@ -87,7 +88,7 @@ export interface CashierRepository {
       selectedModifiers?: PosModifierSelection[];
       manualPrice?: number;
     }>,
-  ): Promise<{ kitchenPrintDocuments?: string[] }>;
+  ): Promise<{ items: CashierOrderItem[]; kitchenPrintDocuments?: string[] }>;
   scanOrderMarking(
     orderId: string,
     rawCode: string,

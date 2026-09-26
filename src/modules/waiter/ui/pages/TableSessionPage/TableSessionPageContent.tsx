@@ -192,6 +192,7 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
         })),
       ),
     syncErrorMessage: copy.itemSyncFailed,
+    syncPendingMessage: copy.itemSyncPending,
   });
   const { removeItem, inventoryCancellationDialog } = useInventoryCancellation(
     currentOrder?.items,

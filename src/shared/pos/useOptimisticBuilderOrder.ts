@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
+import { getApiErrorMessage } from 'shared/api/errorMessage';
 import { queryClient } from 'shared/api/query-client';
 import { getSaleUnit, isValidSaleQuantity } from 'shared/domain/sale-units';
 import type { InventoryDisposition } from 'shared/pos/inventory';
@@ -50,7 +51,7 @@ type UseOptimisticBuilderOrderOptions<
     note: string,
     selectedModifiers?: PosModifierSelection[],
     manualPrice?: number,
-  ) => Promise<{ kitchenPrintDocuments?: string[] } | void>;
+  ) => Promise<(TItem & { kitchenPrintDocuments?: string[] }) | void>;
   addOrderItems?: (
     orderId: string,
     items: Array<{
@@ -60,11 +61,12 @@ type UseOptimisticBuilderOrderOptions<
       selectedModifiers?: PosModifierSelection[];
       manualPrice?: number;
     }>,
-  ) => Promise<{ kitchenPrintDocuments?: string[] } | void>;
+  ) => Promise<{ items?: TItem[]; kitchenPrintDocuments?: string[] } | void>;
   onPrintDocuments?: (documentIds: string[]) => void;
   onOrderRemoved?: (removedOrder: TOrder | undefined) => void;
   resetKey?: unknown;
   syncErrorMessage: string;
+  syncPendingMessage?: string;
 };
 
 function createOperationId() {
@@ -97,6 +99,7 @@ export function useOptimisticBuilderOrder<
     addOrderItem,
     addOrderItems,
     syncErrorMessage,
+    syncPendingMessage = syncErrorMessage,
   } = options;
   const [resolvedBaseOrder, setResolvedBaseOrder] = useState<TOrder | undefined>(baseOrder);
   const [serviceFeeNow, setServiceFeeNow] = useState(() => Date.now());
@@ -159,6 +162,59 @@ export function useOptimisticBuilderOrder<
     return currentOrder;
   }, [canonicalQueryFn, canonicalQueryKey, selectCurrentOrder]);
 
+  const refreshAfterMutation = useCallback(async () => {
+    try {
+      return { ok: true as const, order: await refreshCurrentOrder() };
+    } catch {
+      try {
+        return { ok: true as const, order: await refreshCurrentOrder() };
+      } catch {
+        return { ok: false as const, order: undefined };
+      }
+    }
+  }, [refreshCurrentOrder]);
+
+  const preserveAcknowledgedAdds = useCallback(
+    (operations: PendingAddOperation<TMenuItem>[], orderId: string, serverItems: Array<TItem | undefined> = []) => {
+      setResolvedBaseOrder((base) => {
+        const projected = deriveOptimisticBuilderOrder<TMenuItem, TItem, TOrder>({
+          baseOrder: base,
+          channel,
+          defaultServiceFeeEnabled,
+          defaultServiceFeePercent,
+          defaultServiceFeeComponents,
+          defaultServiceFeeStartedAt,
+          serviceFeeNow: Date.now(),
+          defaultVatEnabled,
+          defaultVatPercent,
+          pendingAdds: operations,
+          pendingRemoves: [],
+          tempOrderId: orderId,
+        });
+        if (!projected) return base;
+        const replacements = new Map(
+          operations.flatMap((operation, index) => {
+            const serverItem = serverItems[index];
+            return serverItem ? [[operation.tempItemId, serverItem] as const] : [];
+          }),
+        );
+        return {
+          ...projected,
+          items: projected.items.map((item) => replacements.get(item.id) ?? item),
+        } as TOrder;
+      });
+    },
+    [
+      channel,
+      defaultServiceFeeComponents,
+      defaultServiceFeeEnabled,
+      defaultServiceFeePercent,
+      defaultServiceFeeStartedAt,
+      defaultVatEnabled,
+      defaultVatPercent,
+    ],
+  );
+
   const enqueue = useCallback((task: () => Promise<void>) => {
     queueRef.current = queueRef.current.then(task).catch(() => undefined);
   }, []);
@@ -176,15 +232,12 @@ export function useOptimisticBuilderOrder<
         return;
       }
 
-      let createdOrderId: string | null = null;
-
       try {
         let orderId = resolvedOrderIdRef.current;
 
         if (!orderId) {
           orderId = await createOrder();
           resolvedOrderIdRef.current = orderId;
-          createdOrderId = orderId;
         }
 
         const operationBeforeAdd = getPendingAddById(opId);
@@ -232,16 +285,17 @@ export function useOptimisticBuilderOrder<
             if (removalResult?.kitchenPrintDocuments?.length) {
               onPrintDocuments?.(removalResult.kitchenPrintDocuments);
             }
-            await refreshCurrentOrder();
+            await refreshAfterMutation();
           }
         } else {
-          await refreshCurrentOrder();
+          preserveAcknowledgedAdds([operationBeforeAdd], orderId, mutationResult ? [mutationResult] : []);
+          if (!(await refreshAfterMutation()).ok) {
+            toast.info(syncPendingMessage);
+          }
         }
-      } catch {
-        if (!createdOrderId || resolvedBaseOrder) {
-          await refreshCurrentOrder().catch(() => undefined);
-        }
-        toast.error(syncErrorMessage);
+      } catch (error) {
+        await refreshAfterMutation();
+        toast.error(getApiErrorMessage(error, syncErrorMessage));
       } finally {
         settleAddOperation(opId);
       }
@@ -251,11 +305,13 @@ export function useOptimisticBuilderOrder<
       createOrder,
       getPendingAddById,
       onPrintDocuments,
+      preserveAcknowledgedAdds,
+      refreshAfterMutation,
       refreshCurrentOrder,
       removeOrderItem,
-      resolvedBaseOrder,
       settleAddOperation,
       syncErrorMessage,
+      syncPendingMessage,
     ],
   );
 
@@ -267,9 +323,9 @@ export function useOptimisticBuilderOrder<
           mutationResult = await (operation.inventoryDisposition
             ? removeOrderItem(operation.itemId, operation.inventoryDisposition)
             : removeOrderItem(operation.itemId));
-        } catch {
-          await refreshCurrentOrder().catch(() => undefined);
-          toast.error(syncErrorMessage);
+        } catch (error) {
+          await refreshAfterMutation();
+          toast.error(getApiErrorMessage(error, syncErrorMessage));
           return;
         }
 
@@ -288,7 +344,7 @@ export function useOptimisticBuilderOrder<
               ? ({ ...current, items: current.items.filter((item) => item.id !== operation.itemId) } as TOrder)
               : current,
           );
-          await refreshCurrentOrder().catch(() => refreshCurrentOrder().catch(() => undefined));
+          await refreshAfterMutation();
         }
       } finally {
         settleRemoveOperation(operation.opId);
@@ -298,7 +354,7 @@ export function useOptimisticBuilderOrder<
       canonicalQueryKey,
       onOrderRemoved,
       onPrintDocuments,
-      refreshCurrentOrder,
+      refreshAfterMutation,
       removeOrderItem,
       resolvedBaseOrder,
       settleRemoveOperation,
@@ -316,13 +372,11 @@ export function useOptimisticBuilderOrder<
         return;
       }
 
-      let createdOrderId: string | null = null;
       try {
         let orderId = resolvedOrderIdRef.current;
         if (!orderId) {
           orderId = await createOrder();
           resolvedOrderIdRef.current = orderId;
-          createdOrderId = orderId;
         }
 
         const operationsBeforeAdd = queuedOperations.filter(
@@ -343,7 +397,14 @@ export function useOptimisticBuilderOrder<
           onPrintDocuments?.(mutationResult.kitchenPrintDocuments);
         }
 
-        let refreshedOrder = await refreshCurrentOrder();
+        preserveAcknowledgedAdds(operationsBeforeAdd, orderId, mutationResult?.items ?? []);
+        let refreshedOrder: TOrder | undefined;
+        const refreshResult = await refreshAfterMutation();
+        if (refreshResult.ok) {
+          refreshedOrder = refreshResult.order;
+        } else {
+          toast.info(syncPendingMessage);
+        }
         for (const operation of operationsBeforeAdd) {
           if (!getPendingAddById(operation.opId)?.canceled) continue;
           const createdItem = findLatestOrderItem(refreshedOrder?.items, {
@@ -364,14 +425,15 @@ export function useOptimisticBuilderOrder<
             if (removalResult?.kitchenPrintDocuments?.length) {
               onPrintDocuments?.(removalResult.kitchenPrintDocuments);
             }
-            refreshedOrder = await refreshCurrentOrder();
+            const removalRefresh = await refreshAfterMutation();
+            if (removalRefresh.ok) {
+              refreshedOrder = removalRefresh.order;
+            }
           }
         }
-      } catch {
-        if (!createdOrderId || resolvedBaseOrder) {
-          await refreshCurrentOrder().catch(() => undefined);
-        }
-        toast.error(syncErrorMessage);
+      } catch (error) {
+        await refreshAfterMutation();
+        toast.error(getApiErrorMessage(error, syncErrorMessage));
       } finally {
         opIds.forEach(settleAddOperation);
       }
@@ -381,11 +443,12 @@ export function useOptimisticBuilderOrder<
       createOrder,
       getPendingAddById,
       onPrintDocuments,
-      refreshCurrentOrder,
+      preserveAcknowledgedAdds,
+      refreshAfterMutation,
       removeOrderItem,
-      resolvedBaseOrder,
       settleAddOperation,
       syncErrorMessage,
+      syncPendingMessage,
     ],
   );
 

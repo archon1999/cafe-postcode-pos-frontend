@@ -7,6 +7,7 @@ import type {
   WaiterCreateOrderResponse,
   WaiterMenuCategory,
   WaiterOrder,
+  WaiterOrderItem,
   WaiterPrecheckPrintDocumentResponse,
   WaiterSessionResponse,
 } from '../entities';
@@ -34,7 +35,7 @@ export interface WaiterRepository {
     note: string,
     selectedModifiers?: PosModifierSelection[],
     manualPrice?: number,
-  ): Promise<{ kitchenPrintDocuments?: string[] }>;
+  ): Promise<WaiterOrderItem & { kitchenPrintDocuments?: string[] }>;
   addOrderItems(
     orderId: string,
     items: Array<{
@@ -44,7 +45,7 @@ export interface WaiterRepository {
       selectedModifiers?: PosModifierSelection[];
       manualPrice?: number;
     }>,
-  ): Promise<{ kitchenPrintDocuments?: string[] }>;
+  ): Promise<{ items: WaiterOrderItem[]; kitchenPrintDocuments?: string[] }>;
   removeOrderItem(
     itemId: string,
     inventoryDisposition?: import('shared/pos/inventory').InventoryDisposition,
