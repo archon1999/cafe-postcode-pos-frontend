@@ -84,6 +84,7 @@ function WaiterMenuCatalogPage({ sessionId }: { sessionId: string | null }) {
         })),
       ),
     syncErrorMessage: copy.itemSyncFailed,
+    syncPendingMessage: copy.itemSyncPending,
   });
   const { removeItem, inventoryCancellationDialog } = useInventoryCancellation(
     currentOrder?.items,
@@ -165,6 +166,7 @@ function CashierMenuCatalogPage({ channel }: { channel: CashierBuilderOrderChann
         })),
       ),
     syncErrorMessage: copy.itemSyncFailed,
+    syncPendingMessage: copy.itemSyncPending,
   });
   const { removeItem, inventoryCancellationDialog } = useInventoryCancellation(
     currentOrder?.items,

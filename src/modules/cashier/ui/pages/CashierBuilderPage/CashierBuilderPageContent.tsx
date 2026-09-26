@@ -1,4 +1,4 @@
-import { Alert, Box, Snackbar, useMediaQuery } from '@mui/material';
+import { Alert, Box, Button, Snackbar, useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
@@ -126,8 +126,11 @@ export function CashierBuilderPageContent() {
       ]
     : [];
   const serverOrder = useMemo(
-    () => editOrderQuery.data ?? getCurrentCashierBuilderOrder(ordersQuery.data, session?.user.id),
-    [editOrderQuery.data, ordersQuery.data, session?.user.id],
+    () =>
+      editOrderId
+        ? (editOrderQuery.data ?? undefined)
+        : getCurrentCashierBuilderOrder(ordersQuery.data, session?.user.id),
+    [editOrderId, editOrderQuery.data, ordersQuery.data, session?.user.id],
   );
   const {
     currentOrder,
@@ -142,6 +145,12 @@ export function CashierBuilderPageContent() {
       editOrderId ? [await cashierRepository.getOrder(editOrderId)] : cashierRepository.getOpenOrders(),
     channel: builderChannel,
     createOrder: async () => {
+      if (editOrderId) {
+        if (!editOrderQuery.data) {
+          throw new Error(copy.orderLoadFailed);
+        }
+        return editOrderQuery.data.id;
+      }
       const response = await cashierRepository.createBuilderOrder({ channel: builderChannel, note: kitchenNote });
       return response.id;
     },
@@ -181,6 +190,7 @@ export function CashierBuilderPageContent() {
         })),
       ),
     syncErrorMessage: copy.itemSyncFailed,
+    syncPendingMessage: copy.itemSyncPending,
   });
   const { removeItem, inventoryCancellationDialog } = useInventoryCancellation(
     currentOrder?.items,
@@ -393,10 +403,27 @@ export function CashierBuilderPageContent() {
     }
   }, [groupedOrderItems, selectedCartItemKey]);
 
-  const isInitialLoading = menuQuery.isLoading && !menuQuery.data;
+  const isEditOrderLoading = Boolean(editOrderId) && editOrderQuery.isLoading && !editOrderQuery.data;
+  const isInitialLoading = (menuQuery.isLoading && !menuQuery.data) || isEditOrderLoading;
 
   if (isInitialLoading) {
     return <PosBuilderPageSkeleton mobile={isMobile} />;
+  }
+
+  if (editOrderId && !editOrderQuery.data) {
+    return (
+      <Box sx={{ p: { xs: 2, md: 3 } }}>
+        <Alert
+          action={
+            <Button color="inherit" onClick={() => void editOrderQuery.refetch()} size="small">
+              {copy.refresh}
+            </Button>
+          }
+          severity="error">
+          {getApiErrorMessage(editOrderQuery.error, copy.orderLoadFailed)}
+        </Alert>
+      </Box>
+    );
   }
 
   const currentOrderLabel = currentOrder
