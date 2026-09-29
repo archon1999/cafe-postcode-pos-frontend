@@ -3,7 +3,7 @@ import {
   Alert,
   Box,
   Button,
-  Checkbox,
+  ButtonBase,
   Chip,
   Dialog,
   DialogActions,
@@ -11,13 +11,14 @@ import {
   DialogTitle,
   FormControl,
   InputLabel,
+  IconButton,
   MenuItem,
   Select,
   Stack,
   Typography,
   alpha,
 } from '@mui/material';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 
 import type { ActiveSession, DiningTable, Hall } from 'modules/waiter/domain';
 import type { getPosCopy } from 'shared/locale/copy';
@@ -66,6 +67,9 @@ export function TableOperationsDialog({
   onClose,
   onConfirm,
 }: Props) {
+  const titleId = useId();
+  const instructionId = useId();
+  const hallLabelId = useId();
   const sourceHall = halls.find((hall) => hall.tables.some((table) => table.id === sourceTable?.id));
   const [hallId, setHallId] = useState('');
   const [targetTableId, setTargetTableId] = useState('');
@@ -112,29 +116,59 @@ export function TableOperationsDialog({
     mode === 'transfer'
       ? Boolean(selectedTarget && (!selectedTargetSessions.length || targetSessionId))
       : groupTableIds.length > 0;
+  const selectedTables = candidates.filter((table) =>
+    mode === 'transfer' ? table.id === targetTableId : groupTableIds.includes(table.id),
+  );
+  const instruction =
+    mode === 'transfer' ? copy.chooseTargetTable : mode === 'group' ? copy.chooseGroupTables : copy.chooseUngroupTables;
 
   return (
-    <Dialog open={open} onClose={pending ? undefined : onClose} maxWidth="md" fullWidth>
-      <DialogTitle>
+    <Dialog
+      open={open}
+      onClose={pending ? undefined : onClose}
+      aria-labelledby={titleId}
+      aria-describedby={instructionId}
+      maxWidth="sm"
+      fullWidth
+      slotProps={{ paper: { sx: { m: { xs: 1.5, sm: 4 }, width: { xs: 'calc(100% - 24px)', sm: '100%' } } } }}>
+      <DialogTitle id={titleId} sx={{ px: { xs: 2, sm: 3 }, pt: 2.5, pb: 2, pr: 7 }}>
         {mode === 'transfer' ? copy.moveTable : mode === 'group' ? copy.groupTables : copy.ungroupTables}
       </DialogTitle>
-      <DialogContent>
-        <Stack spacing={2.25} sx={{ pt: 1 }}>
-          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-            <Chip icon={<Icon icon="solar:chair-2-bold-duotone" />} label={sourceTable?.name ?? ''} />
-            <Typography color="text.secondary">
-              {mode === 'transfer'
-                ? copy.chooseTargetTable
-                : mode === 'group'
-                  ? copy.chooseGroupTables
-                  : copy.ungroupTables}
+      <IconButton
+        aria-label={copy.close}
+        onClick={onClose}
+        disabled={pending}
+        sx={{ position: 'absolute', top: 12, right: 12, width: 44, height: 44 }}>
+        <Icon icon="solar:close-circle-linear" width={24} />
+      </IconButton>
+      <DialogContent sx={{ px: { xs: 2, sm: 3 }, pb: 2.5 }}>
+        <Stack spacing={2.5}>
+          <Stack
+            direction="row"
+            spacing={1.25}
+            alignItems="center"
+            sx={{ p: 1.5, borderRadius: 2, bgcolor: 'action.hover' }}>
+            <Box sx={{ display: 'flex', color: 'text.secondary' }}>
+              <Icon icon="solar:chair-2-bold-duotone" width={28} />
+            </Box>
+            <Stack sx={{ minWidth: 0 }}>
+              <Typography variant="caption" color="text.secondary">
+                {copy.currentTable}
+              </Typography>
+              <Typography fontWeight={700} sx={{ overflowWrap: 'anywhere' }}>
+                {sourceTable ? tableLabel(sourceTable) : ''}
+              </Typography>
+            </Stack>
+            <Typography variant="body2" color="text.secondary" sx={{ ml: 'auto !important', textAlign: 'right' }}>
+              {sourceHall?.name}
             </Typography>
           </Stack>
 
           {mode === 'transfer' && halls.length > 1 ? (
-            <FormControl fullWidth>
-              <InputLabel>{copy.hall}</InputLabel>
+            <FormControl fullWidth disabled={pending}>
+              <InputLabel id={hallLabelId}>{copy.hall}</InputLabel>
               <Select
+                labelId={hallLabelId}
                 label={copy.hall}
                 value={hallId}
                 onChange={(event) => {
@@ -151,49 +185,87 @@ export function TableOperationsDialog({
             </FormControl>
           ) : null}
 
+          <Typography id={instructionId} variant="subtitle2" fontWeight={700}>
+            {instruction}
+          </Typography>
+          {!candidates.length ? <Alert severity="info">{copy.noSelectableTables}</Alert> : null}
           <Box
             sx={{
               display: 'grid',
               gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(3, minmax(0, 1fr))' },
               gap: 1.25,
-              maxHeight: 360,
-              overflowY: 'auto',
-              pr: 0.5,
+              p: 0.5,
+              m: -0.5,
             }}>
             {candidates.map((table) => {
               const selected = mode === 'transfer' ? table.id === targetTableId : groupTableIds.includes(table.id);
               const occupied = Boolean(table.activeSessions?.length);
               return (
-                <Button
+                <ButtonBase
                   key={table.id}
-                  variant={selected ? 'contained' : 'outlined'}
+                  aria-pressed={selected}
+                  disabled={pending}
                   onClick={() => (mode === 'transfer' ? selectTransferTarget(table) : toggleGroupTable(table.id))}
                   sx={(theme) => ({
-                    minHeight: 92,
+                    minHeight: 112,
                     justifyContent: 'space-between',
                     alignItems: 'flex-start',
                     textAlign: 'left',
-                    px: 1.5,
-                    py: 1.25,
-                    borderRadius: 2.5,
-                    backgroundImage: 'none',
-                    ...(selected
-                      ? {}
-                      : {
-                          backgroundColor: alpha(
-                            theme.palette.background.paper,
-                            theme.palette.mode === 'dark' ? 0.42 : 0.72,
-                          ),
-                        }),
+                    gap: 1,
+                    p: 1.5,
+                    borderRadius: 2,
+                    border: '2px solid',
+                    borderColor: selected ? 'primary.main' : 'divider',
+                    color: 'text.primary',
+                    bgcolor: selected ? alpha(theme.palette.primary.main, 0.12) : 'background.paper',
+                    transition: theme.transitions.create(['background-color', 'border-color']),
+                    '&:hover': {
+                      borderColor: 'primary.main',
+                      bgcolor: alpha(theme.palette.primary.main, selected ? 0.18 : 0.06),
+                    },
+                    '&.Mui-focusVisible': { outline: `3px solid ${theme.palette.primary.main}`, outlineOffset: 2 },
+                    '&.Mui-disabled': { opacity: 0.65 },
                   })}>
-                  <Stack spacing={0.5} alignItems="flex-start">
-                    <Typography fontWeight={800}>{tableLabel(table)}</Typography>
-                    <Typography variant="caption" sx={{ opacity: 0.78 }}>
-                      {occupied ? copy.occupied : copy.available}
+                  <Stack spacing={1.25} alignItems="flex-start" sx={{ minWidth: 0 }}>
+                    <Typography fontWeight={800} sx={{ overflowWrap: 'anywhere' }}>
+                      {tableLabel(table)}
                     </Typography>
+                    <Stack direction="row" spacing={0.75} alignItems="center">
+                      <Box
+                        component="span"
+                        sx={{
+                          width: 7,
+                          height: 7,
+                          flexShrink: 0,
+                          borderRadius: '50%',
+                          bgcolor: occupied ? 'warning.main' : 'success.main',
+                        }}
+                      />
+                      <Typography variant="caption" color="text.secondary">
+                        {occupied ? copy.occupied : copy.available}
+                      </Typography>
+                    </Stack>
                   </Stack>
-                  {mode !== 'transfer' ? <Checkbox checked={selected} tabIndex={-1} sx={{ p: 0 }} /> : null}
-                </Button>
+                  <Box
+                    component="span"
+                    aria-hidden="true"
+                    sx={{
+                      display: 'grid',
+                      placeItems: 'center',
+                      width: 22,
+                      height: 22,
+                      flexShrink: 0,
+                      borderRadius: mode === 'transfer' ? '50%' : 0.75,
+                      border: '2px solid',
+                      borderColor: selected ? 'primary.main' : 'text.disabled',
+                      bgcolor: selected ? 'primary.main' : 'transparent',
+                      color: 'primary.contrastText',
+                      fontSize: 16,
+                      fontWeight: 800,
+                    }}>
+                    {selected ? '\u2713' : null}
+                  </Box>
+                </ButtonBase>
               );
             })}
           </Box>
@@ -203,43 +275,70 @@ export function TableOperationsDialog({
               {selectedTargetSessions.length ? copy.targetTableOccupied : copy.targetTableEmpty}
             </Alert>
           ) : mode !== 'transfer' && groupTableIds.length ? (
-            <Alert severity="info">{copy.groupTablesHint}</Alert>
+            <Alert severity="info">{mode === 'group' ? copy.groupTablesHint : copy.ungroupTablesHint}</Alert>
           ) : null}
 
           {mode === 'transfer' && selectedTargetSessions.length > 1 ? (
             <Stack spacing={1}>
+              <Typography variant="subtitle2">{copy.chooseTargetSession}</Typography>
               {selectedTargetSessions.map((session, index) => (
                 <Button
                   key={session.id}
                   variant={targetSessionId === session.id ? 'contained' : 'outlined'}
+                  aria-pressed={targetSessionId === session.id}
+                  disabled={pending}
                   onClick={() => setTargetSessionId(session.id)}>
-                  {copy.openTable} #{index + 1} · {session.guestCount} {copy.guests}
+                  {copy.tableCheck} #{index + 1} · {session.guestCount} {copy.guests}
                 </Button>
               ))}
             </Stack>
           ) : null}
         </Stack>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} disabled={pending}>
-          {copy.close}
-        </Button>
-        <Button
-          variant="contained"
-          disabled={!canConfirm || pending}
-          onClick={() => {
-            if (mode === 'transfer' && selectedTarget) {
-              onConfirm({ mode, targetTable: selectedTarget, targetSessionId: targetSessionId || undefined });
-            } else if (mode !== 'transfer' && groupTableIds.length) {
-              onConfirm({ mode, tableIds: groupTableIds });
-            }
-          }}>
-          {mode === 'transfer'
-            ? copy.confirmMoveTable
-            : mode === 'group'
-              ? copy.confirmGroupTables
-              : copy.confirmUngroupTables}
-        </Button>
+      <DialogActions
+        sx={{
+          flexDirection: 'column',
+          alignItems: 'stretch',
+          gap: 2,
+          p: { xs: 2, sm: 3 },
+          borderTop: 1,
+          borderColor: 'divider',
+          '& > :not(style) ~ :not(style)': { ml: 0 },
+        }}>
+        <Stack spacing={1} aria-live="polite">
+          <Typography variant="caption" color="text.secondary">
+            {selectedTables.length ? `${copy.selectedTables}: ${selectedTables.length}` : instruction}
+          </Typography>
+          {selectedTables.length ? (
+            <Stack direction="row" gap={0.75} flexWrap="wrap" sx={{ maxHeight: 80, overflowY: 'auto' }}>
+              {selectedTables.map((table) => (
+                <Chip key={table.id} size="small" label={tableLabel(table)} sx={{ maxWidth: '100%' }} />
+              ))}
+            </Stack>
+          ) : null}
+        </Stack>
+        <Stack direction={{ xs: 'column-reverse', sm: 'row' }} spacing={1} justifyContent="flex-end">
+          <Button variant="outlined" color="inherit" onClick={onClose} disabled={pending}>
+            {copy.cancel}
+          </Button>
+          <Button
+            variant="contained"
+            loading={pending}
+            disabled={!canConfirm || pending}
+            onClick={() => {
+              if (mode === 'transfer' && selectedTarget) {
+                onConfirm({ mode, targetTable: selectedTarget, targetSessionId: targetSessionId || undefined });
+              } else if (mode !== 'transfer' && groupTableIds.length) {
+                onConfirm({ mode, tableIds: groupTableIds });
+              }
+            }}>
+            {mode === 'transfer'
+              ? copy.confirmMoveTable
+              : mode === 'group'
+                ? copy.confirmGroupTables
+                : copy.confirmUngroupTables}
+          </Button>
+        </Stack>
       </DialogActions>
     </Dialog>
   );
