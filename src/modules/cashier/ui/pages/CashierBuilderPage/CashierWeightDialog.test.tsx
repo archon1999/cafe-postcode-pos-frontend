@@ -75,6 +75,31 @@ describe('CashierWeightDialog', () => {
   });
 });
 
+describe('piece quantities', () => {
+  afterEach(cleanup);
+
+  it('accepts a whole number of pieces and rejects fractional quantities', () => {
+    const onConfirm = vi.fn();
+    render(
+      <CashierWeightDialog
+        item={{ id: 'tea', name: 'Choy', price: 5000, saleUnit: 'piece' }}
+        selections={[]}
+        locale="uz"
+        onClose={vi.fn()}
+        onConfirm={onConfirm}
+      />,
+    );
+
+    const input = screen.getByLabelText('Miqdor (dona)');
+    expect(input.getAttribute('inputmode')).toBe('numeric');
+    fireEvent.change(input, { target: { value: '2.5' } });
+    expect(screen.getByRole('button', { name: "Buyurtmaga qo'shish" })).toHaveProperty('disabled', true);
+    fireEvent.change(input, { target: { value: '3' } });
+    fireEvent.click(screen.getByRole('button', { name: "Buyurtmaga qo'shish" }));
+    expect(onConfirm).toHaveBeenCalledWith(3, '');
+  });
+});
+
 describe('portion quantities', () => {
   afterEach(cleanup);
   it.each(['0.5', '1', '1.5', '2', '2.5', '0,5'])('accepts %s pors', (value) => {

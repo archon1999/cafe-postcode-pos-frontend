@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { PosMenuItemCard } from './PosMenuItemCard';
@@ -28,6 +28,7 @@ const item = {
 describe('PosMenuItemCard', () => {
   afterEach(() => {
     cleanup();
+    vi.useRealTimers();
   });
 
   it('blocks touch, click and keyboard additions when ingredients run out while keeping removal available', () => {
@@ -163,5 +164,63 @@ describe('PosMenuItemCard', () => {
 
     expect(onAddWithNote).toHaveBeenCalledOnce();
     expect(onAdd).not.toHaveBeenCalled();
+  });
+
+  it('opens quantity entry after holding a piece item for three seconds without adding one', async () => {
+    vi.useFakeTimers();
+    const onAdd = vi.fn();
+    const onEnterQuantity = vi.fn();
+    render(
+      <PosMenuItemCard
+        item={{ ...item, saleUnit: 'piece' }}
+        locale="uz"
+        menuLabel="Menyu"
+        selectedCount={0}
+        onAdd={onAdd}
+        onEnterQuantity={onEnterQuantity}
+        onRemove={vi.fn()}
+      />,
+    );
+
+    const card = screen.getByRole('button', { name: /Choyxona osh/ });
+    dispatchPointer(card, 'pointerdown', 100, 40);
+    await act(async () => vi.advanceTimersByTime(2999));
+    expect(onEnterQuantity).not.toHaveBeenCalled();
+    await act(async () => vi.advanceTimersByTime(1));
+    dispatchPointer(card, 'pointerup', 100, 40);
+    fireEvent.click(card);
+
+    expect(onEnterQuantity).toHaveBeenCalledOnce();
+    expect(onAdd).not.toHaveBeenCalled();
+  });
+
+  it('cancels quantity entry when the press ends early or the card moves', async () => {
+    vi.useFakeTimers();
+    const onAdd = vi.fn();
+    const onEnterQuantity = vi.fn();
+    render(
+      <PosMenuItemCard
+        item={{ ...item, saleUnit: 'piece' }}
+        locale="uz"
+        menuLabel="Menyu"
+        selectedCount={0}
+        onAdd={onAdd}
+        onEnterQuantity={onEnterQuantity}
+        onRemove={vi.fn()}
+      />,
+    );
+
+    const card = screen.getByRole('button', { name: /Choyxona osh/ });
+    dispatchPointer(card, 'pointerdown', 100, 40);
+    await act(async () => vi.advanceTimersByTime(1000));
+    dispatchPointer(card, 'pointerup', 100, 40);
+    fireEvent.click(card);
+    dispatchPointer(card, 'pointerdown', 100, 40);
+    dispatchPointer(card, 'pointermove', 100, 65);
+    await act(async () => vi.advanceTimersByTime(3000));
+    dispatchPointer(card, 'pointercancel', 100, 65);
+
+    expect(onAdd).toHaveBeenCalledOnce();
+    expect(onEnterQuantity).not.toHaveBeenCalled();
   });
 });

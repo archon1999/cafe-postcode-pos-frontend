@@ -89,7 +89,9 @@ export function PosWeightedItemDialog({
             onChange={(event) => setValue(event.target.value)}
             error={value.length > 0 && quantity === null}
             helperText={quantity === null ? copy[rule.posInvalidKey] : copy[rule.posTitleKey]}
-            slotProps={{ htmlInput: { inputMode: 'decimal', min: 0, step: rule.step } }}
+            slotProps={{
+              htmlInput: { inputMode: rule.precision === 0 ? 'numeric' : 'decimal', min: 0, step: rule.step },
+            }}
             fullWidth
           />
 

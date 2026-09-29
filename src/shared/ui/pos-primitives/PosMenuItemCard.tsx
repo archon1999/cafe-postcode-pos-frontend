@@ -1,6 +1,6 @@
 import { Icon } from '@iconify/react';
 import { Box, Stack, Typography, alpha } from '@mui/material';
-import { useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 
 import { resolveApiBaseUrl } from 'shared/api/apiUrl';
 import { getSaleUnit, saleUnitLabel } from 'shared/domain/sale-units';
@@ -25,6 +25,7 @@ type PosMenuItemCardProps = {
   menuLabel: string;
   selectedCount: number;
   onAdd: () => void;
+  onEnterQuantity?: () => void;
   onAddWithNote?: () => void;
   onRemove: () => void;
 };
@@ -47,6 +48,7 @@ export function PosMenuItemCard({
   menuLabel,
   selectedCount,
   onAdd,
+  onEnterQuantity,
   onAddWithNote,
   onRemove,
 }: PosMenuItemCardProps) {
@@ -57,8 +59,23 @@ export function PosMenuItemCard({
   const price = formatMoneyParts(Number(item.price ?? 0), locale);
   const [noteActionVisible, setNoteActionVisible] = useState(false);
   const swipeStartRef = useRef<{ pointerId: number; x: number; y: number } | null>(null);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressTriggeredRef = useRef(false);
   const suppressClickUntilRef = useRef(0);
   const noteSwipeEnabled = Boolean(onAddWithNote) && !blocked;
+  const quantityLongPressEnabled = (item.saleUnit ?? 'piece') === 'piece' && Boolean(onEnterQuantity) && !blocked;
+
+  const clearLongPressTimer = () => {
+    if (longPressTimerRef.current !== null) clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = null;
+  };
+
+  useEffect(
+    () => () => {
+      if (longPressTimerRef.current !== null) clearTimeout(longPressTimerRef.current);
+    },
+    [],
+  );
 
   const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key !== 'Enter' && event.key !== ' ') {
@@ -69,12 +86,23 @@ export function PosMenuItemCard({
   };
 
   const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    if (!noteSwipeEnabled) return;
+    if (!noteSwipeEnabled && !quantityLongPressEnabled) return;
     if (event.isPrimary === false || (event.pointerType === 'mouse' && event.button !== 0)) return;
     if ((event.target as Element).closest('button')) return;
+    clearLongPressTimer();
+    longPressTriggeredRef.current = false;
     swipeStartRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
     event.currentTarget.setPointerCapture?.(event.pointerId);
     setNoteActionVisible(false);
+    if (quantityLongPressEnabled) {
+      longPressTimerRef.current = setTimeout(() => {
+        longPressTimerRef.current = null;
+        longPressTriggeredRef.current = true;
+        suppressClickUntilRef.current = Date.now() + 1000;
+        swipeStartRef.current = null;
+        onEnterQuantity?.();
+      }, 3000);
+    }
   };
 
   const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
@@ -83,11 +111,18 @@ export function PosMenuItemCard({
 
     const deltaX = event.clientX - start.x;
     const deltaY = event.clientY - start.y;
+    if (Math.hypot(deltaX, deltaY) > 12) clearLongPressTimer();
+    if (!noteSwipeEnabled) return;
     if (Math.abs(deltaY) > Math.abs(deltaX)) return;
     setNoteActionVisible(deltaX < -28);
   };
 
   const finishPointer = (event: PointerEvent<HTMLDivElement>) => {
+    clearLongPressTimer();
+    if (longPressTriggeredRef.current) {
+      suppressClickUntilRef.current = Date.now() + 1000;
+      return;
+    }
     const start = swipeStartRef.current;
     swipeStartRef.current = null;
     setNoteActionVisible(false);
@@ -115,8 +150,12 @@ export function PosMenuItemCard({
       onPointerMove={handlePointerMove}
       onPointerUp={finishPointer}
       onPointerCancel={() => {
+        clearLongPressTimer();
         swipeStartRef.current = null;
         setNoteActionVisible(false);
+      }}
+      onContextMenu={(event) => {
+        if (quantityLongPressEnabled) event.preventDefault();
       }}
       onDragStart={(event) => event.preventDefault()}
       sx={(theme) => ({
@@ -132,7 +171,7 @@ export function PosMenuItemCard({
         opacity: blocked ? 0.65 : 1,
         textAlign: 'left',
         userSelect: 'none',
-        touchAction: noteSwipeEnabled ? 'pan-y' : 'auto',
+        touchAction: noteSwipeEnabled || quantityLongPressEnabled ? 'pan-y' : 'auto',
         transition: 'transform 0.16s ease',
         '&:hover': {
           transform: 'translateY(-2px)',

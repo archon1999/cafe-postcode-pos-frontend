@@ -92,6 +92,7 @@ export function CashierBuilderPageContent() {
     item: CashierMenuItem;
     initialNote?: string;
     initialSelections?: PosModifierSelection[];
+    enterQuantity?: boolean;
   } | null>(null);
   const [configuringGroup, setConfiguringGroup] = useState<CashierMenuItemGroup | null>(null);
   const [weighingItem, setWeighingItem] = useState<{
@@ -286,7 +287,7 @@ export function CashierBuilderPageContent() {
 
     return { countMap, latestItemMap };
   }, [currentOrder?.items]);
-  const requestAddItem = (menuItem: CashierMenuItem, sourceItem?: PosCartItem) => {
+  const requestAddItem = (menuItem: CashierMenuItem, sourceItem?: PosCartItem, enterQuantity = false) => {
     if (menuItem.modifierGroups?.length) {
       setConfiguringItem({
         item: menuItem,
@@ -294,6 +295,7 @@ export function CashierBuilderPageContent() {
         initialSelections: sourceItem
           ? selectionsFromOrderModifiers(menuItem.modifierGroups, sourceItem.modifiers)
           : undefined,
+        enterQuantity,
       });
       return;
     }
@@ -301,7 +303,7 @@ export function CashierBuilderPageContent() {
       setPricingService({ item: menuItem, initialNote: sourceItem?.note ?? '', selections: [] });
       return;
     }
-    if (getSaleUnit(menuItem.saleUnit).quantityInput) {
+    if (enterQuantity || getSaleUnit(menuItem.saleUnit).quantityInput) {
       setWeighingItem({ item: menuItem, initialNote: sourceItem?.note ?? '', selections: [] });
       return;
     }
@@ -475,6 +477,7 @@ export function CashierBuilderPageContent() {
           total={currentOrder?.total}
           billsLabel={copy.bills}
           onAdd={requestAddItem}
+          onEnterQuantity={(menuItem) => requestAddItem(menuItem, undefined, true)}
           onAddWithNote={requestAddItemWithNote}
           onOpenGroup={setConfiguringGroup}
           onCartOpen={() => setCartOpen(true)}
@@ -588,7 +591,7 @@ export function CashierBuilderPageContent() {
           onConfirm={(menuItem, selections, note) => {
             if (menuItem.itemType === 'service') {
               setPricingService({ item: menuItem, initialNote: note, selections });
-            } else if (getSaleUnit(menuItem.saleUnit).quantityInput) {
+            } else if (configuringItem.enterQuantity || getSaleUnit(menuItem.saleUnit).quantityInput) {
               setWeighingItem({ item: menuItem, initialNote: note, selections });
             } else {
               addItem(menuItem, note, selections);

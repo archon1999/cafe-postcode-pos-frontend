@@ -105,6 +105,7 @@ type PosBuilderMenuPanelProps<TItem extends PosBuilderMenuItem, TGroup extends P
   total?: number | string | null;
   billsLabel: string;
   onAdd: (menuItem: TItem) => void;
+  onEnterQuantity: (menuItem: TItem) => void;
   onAddWithNote: (menuItem: TItem) => void;
   onOpenGroup: (group: TGroup) => void;
   onCartOpen: () => void;
@@ -122,6 +123,7 @@ export function PosBuilderMenuPanel<TItem extends PosBuilderMenuItem, TGroup ext
   total,
   billsLabel,
   onAdd,
+  onEnterQuantity,
   onAddWithNote,
   onOpenGroup,
   onCartOpen,
@@ -178,6 +180,11 @@ export function PosBuilderMenuPanel<TItem extends PosBuilderMenuItem, TGroup ext
               menuLabel={menuLabel}
               selectedCount={itemCounts.get(menuItem.id) ?? 0}
               onAdd={() => onAdd(menuItem)}
+              onEnterQuantity={
+                (menuItem.saleUnit ?? 'piece') === 'piece' && menuItem.itemType !== 'service'
+                  ? () => onEnterQuantity(menuItem)
+                  : undefined
+              }
               onAddWithNote={
                 !menuItem.modifierGroups?.length &&
                 menuItem.itemType !== 'service' &&
