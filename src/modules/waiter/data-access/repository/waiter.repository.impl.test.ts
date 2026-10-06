@@ -25,6 +25,19 @@ describe('waiter order item delete transport contract', () => {
     apiPostMock.mockReset();
   });
 
+  it.each([undefined, {}, { code: 'local_response_too_large' }])(
+    'rejects invalid successful menu responses %j',
+    async (payload) => {
+      apiGetMock.mockResolvedValueOnce(payload);
+      await expect(waiterRepository.getMenu()).rejects.toThrow('Invalid menu response');
+    },
+  );
+
+  it('accepts an actual empty menu', async () => {
+    apiGetMock.mockResolvedValueOnce([]);
+    await expect(waiterRepository.getMenu()).resolves.toEqual([]);
+  });
+
   it('returns unavailable when a reconciled session is absent from the active projection', async () => {
     apiGetMock.mockRejectedValueOnce({ isAxiosError: true, response: { status: 404 } });
     await expect(waiterRepository.getTableSession('closed-session')).resolves.toBeNull();

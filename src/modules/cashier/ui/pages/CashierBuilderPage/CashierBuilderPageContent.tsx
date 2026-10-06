@@ -49,6 +49,7 @@ import {
   PosSettingsMenu,
 } from 'shared/ui/pos-primitives';
 import type { PosCartItem } from 'shared/ui/pos-primitives/PosCartItemGroups';
+import { PosMenuLoadBoundary } from 'shared/ui/pos-primitives/PosMenuLoadBoundary';
 import { useInventoryCancellation } from 'shared/ui/pos-primitives/useInventoryCancellation';
 
 import { CashierBuilderDesktopCart, CashierBuilderMobileCart } from './CashierBuilderCart';
@@ -434,7 +435,7 @@ export function CashierBuilderPageContent() {
       : getCashierOrderDisplayName(currentOrder)
     : '#';
 
-  return (
+  const content = (
     <PosPageFrame
       header={
         <PosBuilderHeader
@@ -711,5 +712,16 @@ export function CashierBuilderPageContent() {
       />
       {inventoryCancellationDialog}
     </PosPageFrame>
+  );
+
+  return (
+    <PosMenuLoadBoundary
+      failed={menuQuery.isError}
+      hasData={Boolean(menuQuery.data)}
+      isFetching={menuQuery.isFetching}
+      locale={locale}
+      onRetry={() => void menuQuery.refetch()}>
+      {content}
+    </PosMenuLoadBoundary>
   );
 }

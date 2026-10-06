@@ -12,6 +12,7 @@ import type {
   WaiterSessionResponse,
 } from 'modules/waiter/domain';
 import { apiDelete, apiGet, apiPatch, apiPost, unwrapCollection } from 'shared/api/client';
+import { unwrapMenuCollection } from 'shared/api/menuResponse';
 
 import {
   mapHalls,
@@ -75,7 +76,7 @@ class WaiterRepositoryImpl implements WaiterRepository {
 
   async getMenu(): Promise<WaiterMenuCategory[]> {
     return mapWaiterMenuCategories(
-      unwrapCollection(await apiGet<CollectionPayload<WaiterMenuCategory>>('/pos/catalog/menu/')),
+      unwrapMenuCollection<WaiterMenuCategory>(await apiGet<unknown>('/pos/catalog/menu/')),
     );
   }
 
@@ -110,7 +111,7 @@ class WaiterRepositoryImpl implements WaiterRepository {
     selectedModifiers: Parameters<WaiterRepository['addOrderItem']>[3] = [],
     manualPrice?: number,
   ) {
-    return apiPost<{ kitchenPrintDocuments?: string[] }>(`/pos/sales/orders/${orderId}/items/`, {
+    return apiPost<Awaited<ReturnType<WaiterRepository['addOrderItem']>>>(`/pos/sales/orders/${orderId}/items/`, {
       catalogItem: catalogItemId,
       quantity: 1,
       note,

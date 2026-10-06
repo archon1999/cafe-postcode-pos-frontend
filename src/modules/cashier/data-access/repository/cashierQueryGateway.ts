@@ -8,6 +8,7 @@ import type {
   CashierOrder,
 } from 'modules/cashier/domain';
 import { apiGet, unwrapCollection } from 'shared/api/client';
+import { unwrapMenuCollection } from 'shared/api/menuResponse';
 
 import { mapCashierMenuCategories, mapCashierOrder, mapCashierOrders } from '../mappers';
 
@@ -38,7 +39,7 @@ export const cashierQueryGateway = {
 
   async getMenu(): Promise<CashierMenuCategory[]> {
     return mapCashierMenuCategories(
-      unwrapCollection(await apiGet<CollectionPayload<CashierMenuCategory>>('/pos/catalog/menu/')),
+      unwrapMenuCollection<CashierMenuCategory>(await apiGet<unknown>('/pos/catalog/menu/')),
     );
   },
 

@@ -267,6 +267,35 @@ describe('CashierBuilderPageContent', () => {
     expect(navigateMock).toHaveBeenCalledWith('/menu/catalog?source=cashier&channel=takeaway');
   });
 
+  it('shows a menu load error and retries without displaying a false empty menu', () => {
+    const retry = vi.fn();
+    useCashierMenuQueryMock.mockReturnValue({
+      data: undefined,
+      isError: true,
+      isLoading: false,
+      isFetching: false,
+      refetch: retry,
+    });
+    render(<CashierBuilderPageContent />);
+    expect(screen.getByRole('alert').textContent).toContain('Menyuni yuklab bo‘lmadi');
+    fireEvent.click(screen.getByRole('button', { name: 'Yangilash' }));
+    expect(retry).toHaveBeenCalledOnce();
+    expect(screen.queryByText('Cola')).toBeNull();
+  });
+
+  it('keeps cached products visible after a failed menu refresh', () => {
+    useCashierMenuQueryMock.mockReturnValue({
+      data: [{ id: 'cat-1', name: 'Ichimliklar', items: [{ id: 'item-1', name: 'Cola', price: 12000 }] }],
+      isError: true,
+      isLoading: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    });
+    render(<CashierBuilderPageContent />);
+    expect(screen.getByRole('alert').textContent).toContain('Saqlangan menyu ko‘rsatilmoqda');
+    expect(screen.getByText('Cola')).toBeTruthy();
+  });
+
   it('waits for the exact swiped order instead of rendering an unrelated empty builder', () => {
     searchParamsValue = 'orderId=table-order-247&channel=hall';
     useCashierBuilderOrdersQueryMock.mockReturnValue({

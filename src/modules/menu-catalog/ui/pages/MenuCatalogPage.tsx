@@ -21,6 +21,7 @@ import { waiterRepository } from 'modules/waiter/data-access';
 import type { WaiterMenuCategory, WaiterMenuItem, WaiterOrderItem } from 'modules/waiter/domain';
 import { getPosCopy } from 'shared/locale/copy';
 import { useOptimisticBuilderOrder } from 'shared/pos/useOptimisticBuilderOrder';
+import { PosMenuLoadBoundary } from 'shared/ui/pos-primitives/PosMenuLoadBoundary';
 import { useInventoryCancellation } from 'shared/ui/pos-primitives/useInventoryCancellation';
 
 import {
@@ -105,19 +106,26 @@ function WaiterMenuCatalogPage({ sessionId }: { sessionId: string | null }) {
   }
 
   return (
-    <>
-      {inventoryCancellationDialog}
-      <PriceHiddenCatalogContent
-        categories={(menuQuery.data ?? []) as Array<WaiterMenuCategory & CatalogCategoryLike<WaiterMenuItem>>}
-        orderItems={currentOrder?.items}
-        isLoading={menuQuery.isLoading && !menuQuery.data}
-        hasPendingOperations={hasPendingOperations}
-        returnPath={`/waiter/table-session?sessionId=${encodeURIComponent(sessionId)}`}
-        addItem={addItem}
-        addItems={addItems}
-        removeItem={removeItem}
-      />
-    </>
+    <PosMenuLoadBoundary
+      failed={menuQuery.isError}
+      hasData={Boolean(menuQuery.data)}
+      isFetching={menuQuery.isFetching}
+      locale={locale}
+      onRetry={() => void menuQuery.refetch()}>
+      <>
+        {inventoryCancellationDialog}
+        <PriceHiddenCatalogContent
+          categories={(menuQuery.data ?? []) as Array<WaiterMenuCategory & CatalogCategoryLike<WaiterMenuItem>>}
+          orderItems={currentOrder?.items}
+          isLoading={menuQuery.isLoading && !menuQuery.data}
+          hasPendingOperations={hasPendingOperations}
+          returnPath={`/waiter/table-session?sessionId=${encodeURIComponent(sessionId)}`}
+          addItem={addItem}
+          addItems={addItems}
+          removeItem={removeItem}
+        />
+      </>
+    </PosMenuLoadBoundary>
   );
 }
 
@@ -179,19 +187,26 @@ function CashierMenuCatalogPage({ channel }: { channel: CashierBuilderOrderChann
   }
 
   return (
-    <>
-      {inventoryCancellationDialog}
-      <PriceHiddenCatalogContent
-        categories={(menuQuery.data ?? []) as Array<CashierMenuCategory & CatalogCategoryLike<CashierMenuItem>>}
-        orderItems={currentOrder?.items as CashierOrderItem[] | undefined}
-        isLoading={(menuQuery.isLoading && !menuQuery.data) || (ordersQuery.isLoading && !ordersQuery.data)}
-        hasPendingOperations={hasPendingOperations}
-        returnPath={`/cashier/builder?channel=${channel}`}
-        addItem={addItem}
-        addItems={addItems}
-        removeItem={removeItem}
-      />
-    </>
+    <PosMenuLoadBoundary
+      failed={menuQuery.isError}
+      hasData={Boolean(menuQuery.data)}
+      isFetching={menuQuery.isFetching}
+      locale={locale}
+      onRetry={() => void menuQuery.refetch()}>
+      <>
+        {inventoryCancellationDialog}
+        <PriceHiddenCatalogContent
+          categories={(menuQuery.data ?? []) as Array<CashierMenuCategory & CatalogCategoryLike<CashierMenuItem>>}
+          orderItems={currentOrder?.items as CashierOrderItem[] | undefined}
+          isLoading={(menuQuery.isLoading && !menuQuery.data) || (ordersQuery.isLoading && !ordersQuery.data)}
+          hasPendingOperations={hasPendingOperations}
+          returnPath={`/cashier/builder?channel=${channel}`}
+          addItem={addItem}
+          addItems={addItems}
+          removeItem={removeItem}
+        />
+      </>
+    </PosMenuLoadBoundary>
   );
 }
 

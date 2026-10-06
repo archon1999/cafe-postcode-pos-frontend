@@ -50,6 +50,7 @@ import {
   PosWeightedItemDialog,
 } from 'shared/ui/pos-primitives';
 import type { PosCartItem } from 'shared/ui/pos-primitives/PosCartItemGroups';
+import { PosMenuLoadBoundary } from 'shared/ui/pos-primitives/PosMenuLoadBoundary';
 import { useInventoryCancellation } from 'shared/ui/pos-primitives/useInventoryCancellation';
 
 import { TableSessionDesktopCart } from './TableSessionDesktopCart';
@@ -369,7 +370,7 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
     return <PosBuilderPageSkeleton mobile={isMobile} />;
   }
 
-  return (
+  const content = (
     <PosPageFrame
       header={
         <PosBuilderHeader
@@ -633,5 +634,16 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
       />
       {inventoryCancellationDialog}
     </PosPageFrame>
+  );
+
+  return (
+    <PosMenuLoadBoundary
+      failed={menuQuery.isError}
+      hasData={Boolean(menuQuery.data)}
+      isFetching={menuQuery.isFetching}
+      locale={locale}
+      onRetry={() => void menuQuery.refetch()}>
+      {content}
+    </PosMenuLoadBoundary>
   );
 }

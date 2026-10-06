@@ -399,6 +399,22 @@ describe('TableSessionPageContent', () => {
     expect(screen.getByRole('img', { name: 'Osh' }).getAttribute('src')).toBe('https://cdn.example.com/osh.png');
   });
 
+  it('shows a failed menu load and lets the waiter retry', () => {
+    const retry = vi.fn();
+    useWaiterMenuQueryMock.mockReturnValue({
+      data: undefined,
+      isError: true,
+      isLoading: false,
+      isFetching: false,
+      refetch: retry,
+    });
+    render(<TableSessionPageContent sessionId="session-1" mode="hall" />);
+    expect(screen.getByRole('alert').textContent).toContain('Menyuni yuklab bo‘lmadi');
+    fireEvent.click(screen.getByRole('button', { name: 'Yangilash' }));
+    expect(retry).toHaveBeenCalledOnce();
+    expect(screen.queryByText('Osh')).toBeNull();
+  });
+
   it('shows included VAT in the order summary without changing the grand total', () => {
     render(<TableSessionPageContent sessionId="session-1" mode="hall" />);
 

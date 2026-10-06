@@ -78,6 +78,14 @@ describe('cashier query transport contract', () => {
     expect(result[0]?.items[0]).toMatchObject({ imageUrl: 'tea.png' });
   });
 
+  it.each([undefined, {}, { code: 'local_response_too_large' }])(
+    'rejects invalid successful menu responses %j',
+    async (payload) => {
+      apiGetMock.mockResolvedValueOnce(payload);
+      await expect(cashierRepository.getMenu()).rejects.toThrow('Invalid menu response');
+    },
+  );
+
   it('unwraps and maps the open-order collection', async () => {
     apiGetMock.mockResolvedValueOnce([orderResponse()]);
 
