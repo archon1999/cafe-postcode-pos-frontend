@@ -22,7 +22,17 @@ export class EdgePrintRepositoryImpl implements EdgePrintRepository {
         : await apiPost<EdgePrintResponse>('/print-jobs', payload, { timeout: 15_000 });
     } catch (error) {
       if (isRemote || error instanceof EdgePrintError) throw error;
-      throw new EdgePrintError('Local Agent bilan bog\u2018lanib bo\u2018lmadi.', 'EDGE_UNAVAILABLE');
+      const failure = error as { response?: { status?: number; data?: EdgePrintResponse } };
+      if (failure.response?.data?.job) return this.validateJob(failure.response.data.job);
+      const now = new Date().toISOString();
+      // A lost POST response does not prove rejection. Keep the same ID for
+      // Agent diagnostics; never silently issue another physical print.
+      const uncertain = !failure.response || (failure.response.status ?? 0) >= 500;
+      throw new EdgePrintError(
+        'Local Agent bilan bog\u2018lanib bo\u2018lmadi.',
+        'EDGE_UNAVAILABLE',
+        uncertain ? { ...payload, status: 'queued', attempts: 0, createdAt: now, updatedAt: now } : undefined,
+      );
     }
     if (!response.job) {
       throw new EdgePrintError(response.error || 'Local Agent print job qaytarmadi.', 'EDGE_REJECTED');

@@ -110,4 +110,26 @@ describe('EdgePrintRepositoryImpl', () => {
     });
     expect(apiPostMock).toHaveBeenCalledTimes(1);
   });
+
+  it('retains the original operation for diagnostics when the POST response is lost', async () => {
+    apiPostMock.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    await expect(
+      new EdgePrintRepositoryImpl().print({
+        documentId: job('queued').documentId,
+        operationId: 'pos:original',
+      }),
+    ).rejects.toMatchObject({ job: { operationId: 'pos:original', status: 'queued' } });
+    expect(apiPostMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('preserves the final job returned in an HTTP error response', async () => {
+    apiPostMock.mockRejectedValueOnce({ response: { status: 422, data: { job: job('failed') } } });
+    await expect(
+      new EdgePrintRepositoryImpl().print({
+        documentId: job('failed').documentId,
+        operationId: 'pos:operation-1',
+      }),
+    ).rejects.toMatchObject({ code: 'EDGE_REJECTED', job: { status: 'failed', lastError: 'printer offline' } });
+    expect(apiPostMock).toHaveBeenCalledTimes(1);
+  });
 });

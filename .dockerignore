@@ -50,3 +50,5 @@ docker-compose*
 
 # Storybook
 storybook-static
+output
+.codex-security-retries

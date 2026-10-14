@@ -35,3 +35,5 @@ storybook-static
 .env.development
 .env.production
 .git.preexisting-*
+/output/
+/.codex-security-retries/
