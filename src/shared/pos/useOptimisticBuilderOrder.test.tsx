@@ -117,6 +117,145 @@ describe('useOptimisticBuilderOrder', () => {
     vi.clearAllMocks();
   });
 
+  it.each([
+    { mode: 'single', returnsItem: true, quantity: 1 },
+    { mode: 'single', returnsItem: false, quantity: 1 },
+    { mode: 'batch', returnsItem: true, quantity: 0.5 },
+    { mode: 'batch', returnsItem: false, quantity: 0.5 },
+  ])('counts a $mode add once while refreshing (returnsItem=$returnsItem)', async ({ mode, returnsItem, quantity }) => {
+    const mutation = deferred<void>();
+    const refresh = deferred<TestOrder[]>();
+    const menuItem = createMenuItem({ saleUnit: 'kg' });
+    const savedItem = createOrderItem({ id: 'saved-item', quantity, lineTotal: 12000 * quantity });
+    const savedOrder = createOrder({
+      items: [savedItem],
+      subtotal: 12000 * quantity,
+      serviceFee: 1200 * quantity,
+      total: 13200 * quantity,
+      vatEnabled: true,
+      vatPercent: 12,
+    });
+    const canonicalQueryFn = vi.fn(() => refresh.promise);
+    const renderedTotals: Array<number | string | undefined> = [];
+    const { result, rerender } = renderHook(
+      ({ baseOrder }: { baseOrder?: TestOrder }) => {
+        const order = useOptimisticBuilderOrder<TestMenuItem, TestOrderItem, TestOrder, TestOrder[]>({
+          baseOrder,
+          canonicalQueryKey: ['test', 'delayed-add-refresh', mode, returnsItem],
+          canonicalQueryFn,
+          channel: 'hall',
+          createOrder: async () => savedOrder.id,
+          defaultServiceFeePercent: 10,
+          defaultVatEnabled: true,
+          defaultVatPercent: 12,
+          removeOrderItem: async () => undefined,
+          selectCurrentOrder: (orders) => orders[0],
+          addOrderItem: async () => {
+            await mutation.promise;
+            return returnsItem ? savedItem : undefined;
+          },
+          addOrderItems: async () => {
+            await mutation.promise;
+            return returnsItem ? { items: [savedItem] } : undefined;
+          },
+          syncErrorMessage: 'sync failed',
+        });
+        renderedTotals.push(order.currentOrder?.total);
+        return order;
+      },
+      { initialProps: { baseOrder: undefined }, wrapper: StrictModeWrapper },
+    );
+
+    act(() => {
+      if (mode === 'single') result.current.addItem(menuItem, '');
+      else result.current.addItems([{ menuItem, quantity, note: '' }]);
+    });
+
+    const expectOneItem = () => {
+      expect(result.current.currentOrder?.items).toHaveLength(1);
+      expect(result.current.currentOrder?.items[0]?.quantity).toBe(quantity);
+      expect(result.current.currentOrder?.subtotal).toBe(savedOrder.subtotal);
+      expect(result.current.currentOrder?.serviceFee).toBe(savedOrder.serviceFee);
+      expect(result.current.currentOrder?.total).toBe(savedOrder.total);
+      expect(result.current.currentOrder?.vatAmount).toBe(Math.round((Number(savedOrder.total) * 12) / 112));
+    };
+    expectOneItem();
+
+    await act(async () => mutation.resolve());
+    await waitFor(() => expect(canonicalQueryFn).toHaveBeenCalled());
+    expect(result.current.hasPendingOperations).toBe(true);
+    expectOneItem();
+
+    // The query observer can publish the canonical order before the refresh promise settles.
+    rerender({ baseOrder: savedOrder });
+    expect(result.current.hasPendingOperations).toBe(true);
+    expectOneItem();
+
+    await act(async () => refresh.resolve([savedOrder]));
+    await waitFor(() => expect(result.current.hasPendingOperations).toBe(false));
+    expectOneItem();
+    expect(renderedTotals.every((total) => total === undefined || total === savedOrder.total)).toBe(true);
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it('keeps queued adds of the same product visible without recounting acknowledged adds', async () => {
+    const baseOrder = createOrder();
+    const firstMutation = deferred<TestOrderItem>();
+    const secondMutation = deferred<TestOrderItem>();
+    const firstRefresh = deferred<TestOrder[]>();
+    const secondRefresh = deferred<TestOrder[]>();
+    const secondItem = createOrderItem({ id: 'item-2' });
+    const thirdItem = createOrderItem({ id: 'item-3' });
+    const canonicalQueryFn = vi
+      .fn()
+      .mockImplementationOnce(() => firstRefresh.promise)
+      .mockImplementationOnce(() => secondRefresh.promise);
+    const addOrderItem = vi
+      .fn()
+      .mockImplementationOnce(() => firstMutation.promise)
+      .mockImplementationOnce(() => secondMutation.promise);
+    const { result } = renderHook(() =>
+      useOptimisticBuilderOrder<TestMenuItem, TestOrderItem, TestOrder, TestOrder[]>({
+        baseOrder,
+        canonicalQueryKey: ['test', 'queued-add-refresh'],
+        canonicalQueryFn,
+        channel: 'hall',
+        createOrder: async () => baseOrder.id,
+        defaultServiceFeePercent: 10,
+        removeOrderItem: async () => undefined,
+        selectCurrentOrder: (orders) => orders[0],
+        addOrderItem,
+        syncErrorMessage: 'sync failed',
+      }),
+    );
+
+    act(() => {
+      result.current.addItem(createMenuItem(), '');
+      result.current.addItem(createMenuItem(), '');
+    });
+    const expectThreeItems = () => {
+      expect(result.current.currentOrder?.items).toHaveLength(3);
+      expect(result.current.currentOrder?.total).toBe(39600);
+    };
+    expectThreeItems();
+    await act(async () => firstMutation.resolve(secondItem));
+    await waitFor(() => expect(canonicalQueryFn).toHaveBeenCalledTimes(1));
+    expectThreeItems();
+    expect(addOrderItem).toHaveBeenCalledTimes(1);
+
+    await act(async () => firstRefresh.resolve([createOrder({ items: [...baseOrder.items, secondItem] })]));
+    await waitFor(() => expect(addOrderItem).toHaveBeenCalledTimes(2));
+    expectThreeItems();
+
+    await act(async () => secondMutation.resolve(thirdItem));
+    await waitFor(() => expect(canonicalQueryFn).toHaveBeenCalledTimes(2));
+    expectThreeItems();
+
+    await act(async () => secondRefresh.resolve([createOrder({ items: [...baseOrder.items, secondItem, thirdItem] })]));
+    await waitFor(() => expect(result.current.hasPendingOperations).toBe(false));
+    expectThreeItems();
+  });
+
   it('creates on the first item and replaces the temporary identity with the canonical order', async () => {
     let canonicalOrders: TestOrder[] = [];
     const createRemoteOrder = vi.fn(async () => 'order-12');
@@ -172,6 +311,46 @@ describe('useOptimisticBuilderOrder', () => {
     );
     expect(result.current.currentOrder?.id).toBe('order-12');
     expect(result.current.currentOrder?.orderNumber).toBe(12);
+  });
+
+  it('still cancels an in-flight batch item after its add is acknowledged', async () => {
+    const mutation = deferred<{ items: TestOrderItem[] }>();
+    const refresh = deferred<TestOrder[]>();
+    const savedItem = createOrderItem();
+    const canonicalQueryFn = vi
+      .fn<() => Promise<TestOrder[]>>()
+      .mockImplementationOnce(() => refresh.promise)
+      .mockResolvedValue([]);
+    const removeOrderItem = vi.fn(async () => undefined);
+    const addOrderItems = vi.fn(() => mutation.promise);
+    const { result } = renderHook(() =>
+      useOptimisticBuilderOrder<TestMenuItem, TestOrderItem, TestOrder, TestOrder[]>({
+        canonicalQueryKey: ['test', 'cancel-acknowledged-batch'],
+        canonicalQueryFn,
+        channel: 'takeaway',
+        createOrder: async () => 'order-1',
+        defaultServiceFeePercent: 0,
+        removeOrderItem,
+        selectCurrentOrder: (orders) => orders[0],
+        addOrderItem: async () => undefined,
+        addOrderItems,
+        syncErrorMessage: 'sync failed',
+      }),
+    );
+
+    act(() => result.current.addItems([{ menuItem: createMenuItem(), quantity: 1, note: '' }]));
+    await waitFor(() => expect(addOrderItems).toHaveBeenCalledTimes(1));
+    const tempItemId = result.current.currentOrder!.items[0].id;
+    act(() => result.current.removeItem(tempItemId));
+    await act(async () => mutation.resolve({ items: [savedItem] }));
+    await waitFor(() => expect(canonicalQueryFn).toHaveBeenCalledTimes(1));
+    expect(result.current.hasPendingOperations).toBe(true);
+
+    await act(async () => refresh.resolve([createOrder({ items: [savedItem] })]));
+    await waitFor(() => expect(result.current.hasPendingOperations).toBe(false));
+    expect(removeOrderItem).toHaveBeenCalledExactlyOnceWith(savedItem.id);
+    expect(result.current.currentOrder).toBeUndefined();
+    expect(toast.error).not.toHaveBeenCalled();
   });
 
   it('cancels a temporary item locally without issuing a delete request', async () => {
@@ -350,6 +529,8 @@ describe('useOptimisticBuilderOrder', () => {
     await waitFor(() => expect(result.current.hasPendingOperations).toBe(false));
 
     expect(result.current.currentOrder?.items.map((item) => item.id)).toEqual(['item-1', 'saved-item']);
+    expect(result.current.currentOrder?.subtotal).toBe(30000);
+    expect(result.current.currentOrder?.total).toBe(33000);
     expect(toast.info).toHaveBeenCalledWith('saved, refreshing');
     expect(toast.error).not.toHaveBeenCalled();
   });

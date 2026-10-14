@@ -62,6 +62,7 @@ export type PendingAddOperation<TMenuItem extends BuilderMenuItemLike> = {
   manualPrice?: number;
   quantity?: number;
   canceled: boolean;
+  acknowledged?: boolean;
 };
 
 export type PendingRemoveOperation = {
@@ -171,7 +172,9 @@ export function deriveOptimisticBuilderOrder<
   } = options;
   const removedItemIds = new Set(pendingRemoves.map((operation) => operation.itemId));
   const visibleBaseItems = (baseOrder?.items ?? []).filter((item) => !removedItemIds.has(item.id));
-  const visiblePendingItems = pendingAdds.filter((operation) => !operation.canceled).map(createOptimisticItem);
+  const visiblePendingItems = pendingAdds
+    .filter((operation) => !operation.canceled && !operation.acknowledged)
+    .map(createOptimisticItem);
   const items = [...visibleBaseItems, ...visiblePendingItems];
 
   if (!baseOrder && items.length === 0) {

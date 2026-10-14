@@ -203,6 +203,14 @@ export function useOptimisticBuilderOrder<
           items: projected.items.map((item) => replacements.get(item.id) ?? item),
         } as TOrder;
       });
+      // These items are now in the base order. Keep their operations pending for
+      // refresh/cancellation tracking, but do not project the same items again.
+      const acknowledgedIds = new Set(operations.map((operation) => operation.opId));
+      setPendingAdds((current) =>
+        current.map((operation) =>
+          acknowledgedIds.has(operation.opId) ? { ...operation, acknowledged: true } : operation,
+        ),
+      );
     },
     [
       channel,
