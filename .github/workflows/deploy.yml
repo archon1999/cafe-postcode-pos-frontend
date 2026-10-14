@@ -63,7 +63,7 @@ jobs:
               git stash push --message "pre-deploy-$(date -u +%Y%m%dT%H%M%SZ)"
             fi
             git fetch --prune origin production
-            git checkout --detach origin/production
+            git checkout --detach '${{ github.sha }}'
             export DOCKER_CONFIG="$(mktemp -d)"
             trap 'rm -rf -- "${DOCKER_CONFIG}"' EXIT
             login_ok=0
