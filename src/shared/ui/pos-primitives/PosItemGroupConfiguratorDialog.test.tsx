@@ -6,6 +6,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PosBuilderMenuItemGroup } from './PosBuilderCatalog';
 import { PosItemGroupConfiguratorDialog } from './PosItemGroupConfiguratorDialog';
 
+// These interaction tests do not need remote icon downloads or their callbacks
+// after jsdom has been torn down.
+vi.mock('@iconify/react', () => ({
+  Icon: () => <span aria-hidden="true" />,
+}));
+
 afterEach(cleanup);
 
 const copy = {
