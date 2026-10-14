@@ -46,12 +46,9 @@ describe('CashierBuilderDesktopCart', () => {
         serviceFeeLabel="Xizmat haqi"
         showMissingMarkings={false}
         showServiceFee={false}
-        showVat={false}
         subtotal={10_000}
         total={10_000}
         userName="Cashier"
-        vatAmount={0}
-        vatLabel="QQS"
         onAdd={vi.fn()}
         onEditItemNote={onEditItemNote}
         onChannelChange={vi.fn()}
@@ -66,8 +63,9 @@ describe('CashierBuilderDesktopCart', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Izoh qo‘shish' }));
 
     expect(onEditItemNote).toHaveBeenCalledWith(cartItem);
-    expect(document.querySelector('[data-order-avatar="#4"]')).toBeTruthy();
-    expect(document.querySelector('[data-operator-emphasis="true"]')?.textContent).toBe('Cashier');
+    expect(screen.getByRole('heading', { name: '#4' })).toBeTruthy();
+    expect(document.querySelector('[data-order-avatar="#4"]')).toBeNull();
+    expect(screen.queryByText('Cashier')).toBeNull();
     expect(screen.queryByText('TG')).toBeNull();
   });
 });

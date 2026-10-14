@@ -415,11 +415,11 @@ describe('TableSessionPageContent', () => {
     expect(screen.queryByText('Osh')).toBeNull();
   });
 
-  it('shows included VAT in the order summary without changing the grand total', () => {
+  it('hides the included VAT breakdown without changing the grand total', () => {
     render(<TableSessionPageContent sessionId="session-1" mode="hall" />);
 
-    expect(screen.getAllByText('QQS (12%):').length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/3\s536 so'm/).length).toBeGreaterThan(0);
+    expect(screen.queryByText('QQS (12%):')).toBeNull();
+    expect(screen.queryByText(/3\s536 so'm/)).toBeNull();
     expect(screen.getAllByText(/33\s000 so'm/).length).toBeGreaterThan(0);
   });
 

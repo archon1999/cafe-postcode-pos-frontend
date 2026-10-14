@@ -59,10 +59,6 @@ import { useCashierBuilderActions } from './useCashierBuilderActions';
 
 const EMPTY_CATEGORIES: CashierMenuCategory[] = [];
 
-function formatPercent(value: number) {
-  return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/\.?0+$/, '');
-}
-
 function resolveBuilderChannel(value: string | null): CashierBuilderOrderChannel {
   return value === 'delivery' || value === 'takeaway' ? value : 'hall';
 }
@@ -342,11 +338,7 @@ export function CashierBuilderPageContent() {
     hourly: copy.hourlyServiceFee,
     serviceFee: copy.serviceFee,
   });
-  const vatEnabled = Boolean(currentOrder?.vatEnabled);
-  const vatPercent = Number(currentOrder?.vatPercent ?? 0);
-  const vatAmount = Number(currentOrder?.vatAmount ?? 0);
-  const shouldShowVat = vatEnabled && vatPercent > 0;
-  const vatLabel = `${copy.vat} (${formatPercent(vatPercent)}%)`;
+
   const markingCheckEnabled = Boolean(session?.restaurantContext?.markingCheckEnabled);
   const missingMarkingCount = useMemo(
     () => getCashierOrderMissingMarkingCount(currentOrder?.items),
@@ -490,6 +482,7 @@ export function CashierBuilderPageContent() {
           channelSwitchDisabled={channelSwitchDisabled}
           copy={copy}
           currentOrderLabel={currentOrderLabel}
+          hasTableSession={Boolean(currentOrder?.tableSession)}
           groups={groupedOrderItems}
           isSubmitDisabled={isSubmitDisabled}
           isSubmitting={submitOrderMutation.isPending}
@@ -503,12 +496,9 @@ export function CashierBuilderPageContent() {
           serviceFeeRows={serviceFeeRows}
           showMissingMarkings={hasMissingMarkings}
           showServiceFee={shouldShowServiceFee}
-          showVat={shouldShowVat}
           subtotal={currentOrder?.subtotal}
           total={currentOrder?.total}
           userName={session?.user.fullName}
-          vatAmount={vatAmount}
-          vatLabel={vatLabel}
           onAdd={requestAddItem}
           onEditItemNote={setEditingItemNote}
           onChannelChange={(channel) => void builderActions.changeChannel(channel)}
@@ -539,12 +529,9 @@ export function CashierBuilderPageContent() {
         serviceFeeRows={serviceFeeRows}
         showMissingMarkings={hasMissingMarkings}
         showServiceFee={shouldShowServiceFee}
-        showVat={shouldShowVat}
         subtotal={currentOrder?.subtotal}
         total={currentOrder?.total}
         userName={session?.user.fullName}
-        vatAmount={vatAmount}
-        vatLabel={vatLabel}
         onAdd={requestAddItem}
         onEditItemNote={setEditingItemNote}
         onChannelChange={(channel) => void builderActions.changeChannel(channel)}

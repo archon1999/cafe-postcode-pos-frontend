@@ -3,6 +3,7 @@ import { Box, Divider, Drawer, Stack, TextField, Typography } from '@mui/materia
 import { formatCompactMoney } from 'shared/pos/utils';
 import { PosIconAction } from 'shared/ui/pos-primitives';
 import { PosCartItemGroups } from 'shared/ui/pos-primitives/PosCartItemGroups';
+import { PosLocationHeading } from 'shared/ui/pos-primitives/PosLocationHeading';
 
 import { TableSessionActions, type TableSessionDesktopCartProps } from './TableSessionDesktopCart';
 
@@ -29,31 +30,7 @@ export function TableSessionMobileCart({
         <Stack direction="row" spacing={1.2} alignItems="center" justifyContent="space-between" sx={{ px: 2, py: 1.5 }}>
           <Stack spacing={0.25}>
             <Typography variant="h6">{props.copy.bills}</Typography>
-            {props.zoneLabel || props.hallLabel ? (
-              <Stack spacing={0.15} data-location-emphasis="true" sx={{ minWidth: 0 }}>
-                {props.zoneLabel ? (
-                  <Typography
-                    variant="subtitle2"
-                    color="text.secondary"
-                    data-location-level="zone"
-                    noWrap
-                    title={props.zoneLabel}
-                    sx={{ fontWeight: 650, lineHeight: 1.2 }}>
-                    {props.zoneLabel}
-                  </Typography>
-                ) : null}
-                {props.hallLabel ? (
-                  <Typography
-                    variant="subtitle1"
-                    data-location-level="hall"
-                    noWrap
-                    title={props.hallLabel}
-                    sx={{ fontWeight: 750, lineHeight: 1.2 }}>
-                    {props.hallLabel}
-                  </Typography>
-                ) : null}
-              </Stack>
-            ) : null}
+            <PosLocationHeading zone={props.zoneLabel} hall={props.hallLabel} compact />
           </Stack>
           <PosIconAction icon="solar:close-circle-bold-duotone" onClick={onClose} />
         </Stack>
@@ -105,14 +82,6 @@ export function TableSessionMobileCart({
                 {props.serviceFeeLabel}
               </Typography>
               <Typography variant="body2">{formatCompactMoney(props.serviceFee, props.locale)}</Typography>
-            </Stack>
-          ) : null}
-          {props.showVat ? (
-            <Stack direction="row" justifyContent="space-between">
-              <Typography variant="body2" color="text.secondary">
-                {props.vatLabel}
-              </Typography>
-              <Typography variant="body2">{formatCompactMoney(props.vatAmount, props.locale)}</Typography>
             </Stack>
           ) : null}
           <Stack direction="row" justifyContent="space-between">

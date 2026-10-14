@@ -3,6 +3,30 @@ import { useEffect, useRef } from 'react';
 
 type PosSectionTabItem = { value: string; label: string; count?: number };
 
+function SectionTabCount({ count, isActive }: { count: number; isActive: boolean }) {
+  return (
+    <Box
+      component="span"
+      sx={(theme) => ({
+        minWidth: 26,
+        height: { xs: 22, md: 26 },
+        px: 0.8,
+        flexShrink: 0,
+        borderRadius: 999,
+        display: 'grid',
+        placeItems: 'center',
+        backgroundColor: isActive ? alpha('#ffffff', 0.18) : theme.palette.mode === 'dark' ? '#1d1f23' : '#ffffff',
+        color: isActive ? '#ffffff' : theme.palette.mode === 'dark' ? '#f4f6f8' : theme.palette.text.primary,
+        fontSize: { xs: 11.5, md: 13 },
+        fontWeight: 700,
+        fontVariantNumeric: 'tabular-nums',
+        lineHeight: 1,
+      })}>
+      {count}
+    </Box>
+  );
+}
+
 export function PosSectionTabs({
   value,
   items,
@@ -49,12 +73,14 @@ export function PosSectionTabs({
                 color: isActive ? 'var(--pos-tab-active-color)' : 'var(--pos-tab-idle-color)',
                 fontSize: { xs: 13.5, md: 14.5, xl: 15.5 },
                 fontWeight: 600,
+                gap: 1,
                 boxShadow: isActive ? 'var(--pos-tab-active-shadow)' : 'none',
                 '&:hover': {
                   backgroundColor: isActive ? 'var(--pos-tab-active-hover-bg)' : 'var(--pos-tab-idle-hover-bg)',
                 },
               }}>
               {item.label}
+              {item.count !== undefined ? <SectionTabCount count={item.count} isActive={isActive} /> : null}
             </Button>
           );
         })}
@@ -128,32 +154,7 @@ export function PosSectionTabs({
                   },
                 }}>
                 {item.label}
-                {(item.count ?? 0) > 0 ? (
-                  <Box
-                    sx={(theme) => ({
-                      minWidth: 26,
-                      height: { xs: 22, md: 26 },
-                      px: 0.8,
-                      borderRadius: 999,
-                      display: 'grid',
-                      placeItems: 'center',
-                      backgroundColor: isActive
-                        ? alpha('#ffffff', 0.18)
-                        : theme.palette.mode === 'dark'
-                          ? '#1d1f23'
-                          : '#ffffff',
-                      color: isActive
-                        ? '#ffffff'
-                        : theme.palette.mode === 'dark'
-                          ? '#f4f6f8'
-                          : theme.palette.text.primary,
-                      fontSize: { xs: 11.5, md: 13 },
-                      fontWeight: 700,
-                      lineHeight: 1,
-                    })}>
-                    {item.count}
-                  </Box>
-                ) : null}
+                {(item.count ?? 0) > 0 ? <SectionTabCount count={item.count!} isActive={isActive} /> : null}
               </Button>
             );
           })}

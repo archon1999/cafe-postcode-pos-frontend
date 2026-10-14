@@ -24,10 +24,7 @@ type PaymentCheckoutSummaryProps = {
   serviceFeeLabel: string;
   serviceFeeRows?: PosServiceFeeRow[];
   shouldShowServiceFee: boolean;
-  shouldShowVat: boolean;
   subtotal: number | string | undefined;
-  vatAmount: number;
-  vatLabel: string;
 };
 
 export function PaymentCheckoutSummary({
@@ -50,10 +47,7 @@ export function PaymentCheckoutSummary({
   serviceFeeLabel,
   serviceFeeRows,
   shouldShowServiceFee,
-  shouldShowVat,
   subtotal,
-  vatAmount,
-  vatLabel,
 }: PaymentCheckoutSummaryProps) {
   return (
     <>
@@ -83,16 +77,6 @@ export function PaymentCheckoutSummary({
             </Typography>
             <Typography variant="body1" color="text.secondary">
               {formatCompactMoney(serviceFee, locale)}
-            </Typography>
-          </Stack>
-        ) : null}
-        {shouldShowVat ? (
-          <Stack direction="row" justifyContent="space-between">
-            <Typography variant="body1" color="text.secondary">
-              {vatLabel}:
-            </Typography>
-            <Typography variant="body1" color="text.secondary">
-              {formatCompactMoney(vatAmount, locale)}
             </Typography>
           </Stack>
         ) : null}

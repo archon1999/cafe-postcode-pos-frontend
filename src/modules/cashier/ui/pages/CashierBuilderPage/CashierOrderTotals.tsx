@@ -13,9 +13,6 @@ type Props = {
   serviceFeeLabel: string;
   serviceFeeRows?: PosServiceFeeRow[];
   showServiceFee: boolean;
-  vatAmount: number;
-  vatLabel: string;
-  showVat: boolean;
   total: number | string | undefined;
 };
 
@@ -28,9 +25,6 @@ export function CashierOrderTotals({
   serviceFeeLabel,
   serviceFeeRows,
   showServiceFee,
-  vatAmount,
-  vatLabel,
-  showVat,
   total,
 }: Props) {
   const rowVariant = compact ? 'body2' : 'body1';
@@ -65,17 +59,6 @@ export function CashierOrderTotals({
           </Typography>
           <Typography variant={rowVariant} color={compact ? undefined : 'text.secondary'}>
             {formatCompactMoney(serviceFee, locale)}
-          </Typography>
-        </Stack>
-      ) : null}
-      {showVat ? (
-        <Stack direction="row" justifyContent="space-between">
-          <Typography variant={rowVariant} color="text.secondary">
-            {vatLabel}
-            {compact ? '' : ':'}
-          </Typography>
-          <Typography variant={rowVariant} color={compact ? undefined : 'text.secondary'}>
-            {formatCompactMoney(vatAmount, locale)}
           </Typography>
         </Stack>
       ) : null}

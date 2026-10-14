@@ -62,10 +62,6 @@ export type TableSessionPageContentProps = {
   source?: string | null;
 };
 
-function formatPercent(value: number) {
-  return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/\.?0+$/, '');
-}
-
 export function TableSessionPageContent({ sessionId, mode, source: _source = null }: TableSessionPageContentProps) {
   const navigate = useNavigate();
   const { session, locale, setLocale, setSession, themeColor, setThemeColor, themeMode, setThemeMode } =
@@ -132,7 +128,6 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
   const defaultServiceFeeComponents = isTakeawayMode
     ? restaurantServiceFeeComponents
     : (sessionQuery.data?.serviceFeeComponents ?? []);
-  const currentOperatorName = session?.user.fullName ?? '';
   const {
     currentOrder,
     addItem,
@@ -235,11 +230,7 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
     hourly: copy.hourlyServiceFee,
     serviceFee: copy.serviceFee,
   });
-  const vatEnabled = Boolean(currentOrder?.vatEnabled);
-  const vatPercent = Number(currentOrder?.vatPercent ?? 0);
-  const vatAmount = Number(currentOrder?.vatAmount ?? 0);
-  const shouldShowVat = vatEnabled && vatPercent > 0;
-  const vatLabel = `${copy.vat} (${formatPercent(vatPercent)}%)`;
+
   const orderModeMeta = isTakeawayMode ? `${1} ${copy.guests}` : `${sessionQuery.data?.guestCount ?? 0} ${copy.guests}`;
   const tableNumberLabel = getPosTableNumberLabel(sessionQuery.data ?? undefined);
   const tableZoneLabel = isTakeawayMode ? '' : getPosZoneContextLabel(sessionQuery.data ?? undefined);
@@ -435,9 +426,6 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
           locale={locale}
           hallLabel={tableHallLabel}
           menuItems={menuItemById}
-          operatorName={
-            isTakeawayMode ? currentOperatorName : (sessionQuery.data?.assignedWaiterName ?? currentOperatorName)
-          }
           orderModeMeta={orderModeMeta}
           orderSent={orderSent}
           selectedItemKey={selectedCartItemKey}
@@ -445,11 +433,8 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
           serviceFeeLabel={serviceFeeLabel}
           serviceFeeRows={serviceFeeRows}
           showServiceFee={shouldShowServiceFee}
-          showVat={shouldShowVat}
           subtotal={currentOrder?.subtotal}
           total={currentOrder?.total}
-          vatAmount={vatAmount}
-          vatLabel={vatLabel}
           zoneLabel={tableZoneLabel}
           onAdd={requestAddItem}
           onEditItemNote={setEditingItemNote}
@@ -480,7 +465,6 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
         locale={locale}
         hallLabel={tableHallLabel}
         menuItems={menuItemById}
-        operatorName=""
         orderModeMeta=""
         orderSent={orderSent}
         selectedItemKey={selectedCartItemKey}
@@ -488,11 +472,8 @@ export function TableSessionPageContent({ sessionId, mode, source: _source = nul
         serviceFeeLabel={serviceFeeLabel}
         serviceFeeRows={serviceFeeRows}
         showServiceFee={shouldShowServiceFee}
-        showVat={shouldShowVat}
         subtotal={currentOrder?.subtotal}
         total={currentOrder?.total}
-        vatAmount={vatAmount}
-        vatLabel={vatLabel}
         zoneLabel={tableZoneLabel}
         onAdd={requestAddItem}
         onEditItemNote={setEditingItemNote}

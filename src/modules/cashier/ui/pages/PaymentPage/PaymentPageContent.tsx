@@ -49,10 +49,6 @@ export type PaymentPageContentProps = {
   orderId?: string | null;
 };
 
-function formatPercent(value: number) {
-  return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/\.?0+$/, '');
-}
-
 export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
   const navigate = useNavigate();
   const { session, locale, setLocale, setSession, themeColor, setThemeColor, themeMode, setThemeMode } =
@@ -275,11 +271,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
     hourly: copy.hourlyServiceFee,
     serviceFee: copy.serviceFee,
   });
-  const vatEnabled = Boolean(orderQuery.data?.vatEnabled);
-  const vatPercent = Number(orderQuery.data?.vatPercent ?? 0);
-  const vatAmount = Number(orderQuery.data?.vatAmount ?? 0);
-  const shouldShowVat = vatEnabled && vatPercent > 0;
-  const vatLabel = `${copy.vat} (${formatPercent(vatPercent)}%)`;
+
   useScannerInput({
     enabled: Boolean(normalizedOrderId && canProcessPayments && !receiptData),
     onScan: async (rawCode) => {
@@ -420,10 +412,7 @@ export function PaymentPageContent({ orderId }: PaymentPageContentProps) {
               serviceFeeLabel={serviceFeeLabel}
               serviceFeeRows={serviceFeeRows}
               shouldShowServiceFee={shouldShowServiceFee}
-              shouldShowVat={shouldShowVat}
               subtotal={orderQuery.data?.subtotal}
-              vatAmount={vatAmount}
-              vatLabel={vatLabel}
             />
           </Stack>
         </Box>

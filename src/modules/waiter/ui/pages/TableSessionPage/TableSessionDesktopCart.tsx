@@ -7,6 +7,7 @@ import type { PosServiceFeeRow } from 'shared/pos/service-fees';
 import { formatCompactMoney } from 'shared/pos/utils';
 import type { PosCartItemGroupsProps } from 'shared/ui/pos-primitives/PosCartItemGroups';
 import { PosCartItemGroups } from 'shared/ui/pos-primitives/PosCartItemGroups';
+import { PosLocationHeading } from 'shared/ui/pos-primitives/PosLocationHeading';
 
 export type TableSessionDesktopCartProps = {
   avatarLabel: string;
@@ -22,7 +23,6 @@ export type TableSessionDesktopCartProps = {
   locale: PosLocale;
   hallLabel: string;
   menuItems: ReadonlyMap<string, WaiterMenuItem>;
-  operatorName: string;
   orderModeMeta: string;
   orderSent: boolean;
   selectedItemKey: string | null;
@@ -30,11 +30,8 @@ export type TableSessionDesktopCartProps = {
   serviceFeeLabel: string;
   serviceFeeRows?: PosServiceFeeRow[];
   showServiceFee: boolean;
-  showVat: boolean;
   subtotal: number | string | undefined;
   total: number | string | undefined;
-  vatAmount: number;
-  vatLabel: string;
   zoneLabel: string;
   onAdd: PosCartItemGroupsProps<WaiterMenuItem>['onAdd'];
   onEditItemNote: PosCartItemGroupsProps<WaiterMenuItem>['onEditNote'];
@@ -120,42 +117,12 @@ export function TableSessionDesktopCart(props: TableSessionDesktopCartProps) {
             {props.avatarLabel}
           </Box>
           <Stack spacing={0.65} sx={{ minWidth: 0 }}>
-            {props.zoneLabel || props.hallLabel ? (
-              <Stack spacing={0.2} data-location-emphasis="true" sx={{ minWidth: 0 }}>
-                {props.zoneLabel ? (
-                  <Typography
-                    variant="subtitle2"
-                    color="text.secondary"
-                    data-location-level="zone"
-                    noWrap
-                    title={props.zoneLabel}
-                    sx={{ fontWeight: 650, lineHeight: 1.2 }}>
-                    {props.zoneLabel}
-                  </Typography>
-                ) : null}
-                {props.hallLabel ? (
-                  <Typography
-                    variant="h6"
-                    data-location-level="hall"
-                    noWrap
-                    title={props.hallLabel}
-                    sx={{ fontWeight: 750, lineHeight: 1.2 }}>
-                    {props.hallLabel}
-                  </Typography>
-                ) : null}
-              </Stack>
-            ) : null}
+            <PosLocationHeading zone={props.zoneLabel} hall={props.hallLabel} />
             <Stack direction="row" spacing={1.4} alignItems="center" useFlexGap flexWrap="wrap">
               <Stack direction="row" spacing={0.7} alignItems="center" minWidth={0}>
                 <Icon icon="solar:user-rounded-bold-duotone" width={18} />
                 <Typography variant="body2" color="text.secondary" noWrap>
                   {props.orderModeMeta}
-                </Typography>
-              </Stack>
-              <Stack direction="row" spacing={0.7} alignItems="center" minWidth={0}>
-                <Icon icon="solar:plate-bold-duotone" width={18} />
-                <Typography variant="body2" color="text.secondary" noWrap>
-                  {props.operatorName}
                 </Typography>
               </Stack>
             </Stack>
@@ -237,16 +204,6 @@ export function TableSessionDesktopCart(props: TableSessionDesktopCartProps) {
             </Typography>
             <Typography variant="body1" color="text.secondary">
               {formatCompactMoney(props.serviceFee, props.locale)}
-            </Typography>
-          </Stack>
-        ) : null}
-        {props.showVat ? (
-          <Stack direction="row" justifyContent="space-between">
-            <Typography variant="body1" color="text.secondary">
-              {props.vatLabel}:
-            </Typography>
-            <Typography variant="body1" color="text.secondary">
-              {formatCompactMoney(props.vatAmount, props.locale)}
             </Typography>
           </Stack>
         ) : null}

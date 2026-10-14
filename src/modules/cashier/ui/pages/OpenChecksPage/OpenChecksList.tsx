@@ -119,7 +119,7 @@ export function OpenChecksList({
               overflow: 'visible',
               ...getOpenChecksCardSx(selectedOrderId === order.id)(theme),
               transform: swipedOrderId === order.id ? 'translateX(-54px)' : 'translateX(0)',
-              transition: 'transform 140ms ease',
+              transition: 'transform 140ms ease, background-color 160ms ease, box-shadow 160ms ease',
               userSelect: 'none',
               touchAction: 'pan-y',
               '&::after': {

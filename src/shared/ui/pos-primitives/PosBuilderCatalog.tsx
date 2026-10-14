@@ -286,23 +286,23 @@ export function PosMenuItemGroupCard<TItem extends PosBuilderMenuItem>({
         borderRadius: '10px',
         cursor: 'pointer',
         textAlign: 'left',
-        transition: 'transform 0.16s ease',
+        boxShadow: 'var(--pos-card-shadow)',
+        transition: 'box-shadow 0.16s ease',
         '&:hover': {
-          transform: 'translateY(-2px)',
+          boxShadow: 'var(--pos-card-hover-shadow)',
           '& [data-menu-item-surface]': {
             backgroundColor: 'var(--pos-menu-product-card-hover-bg)',
-            boxShadow:
-              theme.palette.mode === 'dark'
-                ? '0 14px 26px rgba(0,0,0,0.26), inset 0 0 0 1px rgba(255,255,255,0.06)'
-                : '0 14px 28px rgba(40,51,65,0.12), inset 0 0 0 1px rgba(40,51,65,0.08)',
           },
         },
-        '&:active': { transform: 'translateY(0) scale(0.985)' },
+        '&:active': {
+          boxShadow: 'var(--pos-card-shadow)',
+          '& [data-menu-item-surface]': { backgroundColor: 'var(--pos-check-card-selected-bg)' },
+        },
         '&:focus-visible': { outline: `2px solid ${theme.palette.primary.main}`, outlineOffset: 2 },
       })}>
       <Box
         data-menu-item-surface
-        sx={(theme) => ({
+        sx={{
           position: 'relative',
           width: '100%',
           height: '100%',
@@ -310,20 +310,18 @@ export function PosMenuItemGroupCard<TItem extends PosBuilderMenuItem>({
           display: 'flex',
           overflow: 'hidden',
           borderRadius: '10px',
-          backgroundColor: 'var(--pos-menu-product-card-bg)',
+          backgroundColor:
+            selectedCount > 0 ? 'var(--pos-menu-product-card-hover-bg)' : 'var(--pos-menu-product-card-bg)',
           backgroundImage: 'none',
-          transition: 'box-shadow 0.16s ease, background-color 0.16s ease',
-          boxShadow:
-            theme.palette.mode === 'dark'
-              ? 'inset 0 0 0 1px rgba(255,255,255,0.04)'
-              : 'inset 0 0 0 1px rgba(40,51,65,0.06)',
+          transition: 'background-color 0.16s ease',
+          boxShadow: 'none',
           ...(selectedCount > 0
             ? {
                 WebkitMaskImage: 'radial-gradient(circle 25px at calc(100% - 14px) 11px, transparent 24px, #000 25px)',
                 maskImage: 'radial-gradient(circle 25px at calc(100% - 14px) 11px, transparent 24px, #000 25px)',
               }
             : null),
-        })}>
+        }}>
         <Stack justifyContent="space-between" sx={{ flex: 1, minHeight: 0 }}>
           <Stack spacing={0.75} sx={{ p: { xs: 1.25, md: 1.45, xl: 1.85 } }}>
             <Typography variant="body2" color="text.secondary">

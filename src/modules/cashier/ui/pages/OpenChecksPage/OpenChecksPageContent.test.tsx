@@ -214,17 +214,20 @@ describe('OpenChecksPageContent', () => {
 
     expect(screen.queryByRole('button', { name: "Menyuga o'tish" })).toBeNull();
     expect(screen.getAllByText('VIP kabina').length).toBeGreaterThan(0);
+    expect(screen.getByRole('heading', { name: '#101 · Stol 7' })).toBeTruthy();
   });
 
-  it('keeps the balanced card, hides the order id, and emphasizes the hall and zone', () => {
+  it('keeps location details in the list and uses a compact order and table header in the detail panel', () => {
     openOrdersState = [{ ...openOrdersState[0], displayName: 'VIP mijoz', hallName: 'VIP 1' }];
     render(<OpenChecksPageContent />);
 
-    expect(document.querySelectorAll('[data-card-design="balanced"]')).toHaveLength(2);
-    expect(document.querySelectorAll('[data-location-emphasis="true"]')).toHaveLength(2);
-    expect(document.querySelectorAll('[data-guest-chip-layout="inline"]')).toHaveLength(1);
+    expect(document.querySelectorAll('[data-card-design="balanced"]')).toHaveLength(1);
+    expect(document.querySelectorAll('[data-location-emphasis="true"]')).toHaveLength(1);
+    expect(document.querySelectorAll('[data-guest-chip-layout="inline"]')).toHaveLength(0);
     expect(document.querySelectorAll('[data-guest-chip-layout="below"]')).toHaveLength(1);
-    expect(screen.getAllByText('VIP kabina · VIP 1')).toHaveLength(2);
+    expect(screen.getByText('VIP kabina').getAttribute('data-location-level')).toBe('zone');
+    expect(screen.getByText('VIP 1').getAttribute('data-location-level')).toBe('hall');
+    expect(screen.getByRole('heading', { name: 'VIP mijoz · Stol 7' })).toBeTruthy();
     expect(screen.queryByText('Buyurtma: ID 101')).toBeNull();
     expect(screen.queryByRole('button', { name: '2 Axborot' })).toBeNull();
   });
@@ -269,7 +272,7 @@ describe('OpenChecksPageContent', () => {
 
     render(<OpenChecksPageContent />);
 
-    expect(document.querySelectorAll('[data-order-avatar="S"]')).toHaveLength(2);
+    expect(document.querySelectorAll('[data-order-avatar="S"]')).toHaveLength(1);
     expect(document.querySelectorAll('[data-order-avatar="D"]')).toHaveLength(1);
     expect(document.querySelectorAll('[data-order-avatar="Z"]')).toHaveLength(1);
     expect(document.querySelectorAll('[data-location-emphasis="true"]')).toHaveLength(0);

@@ -39,9 +39,9 @@ export function OpenChecksHeader({
         value={selectedTab}
         onChange={(value) => onTabChange(value as CashierCheckStatus)}
         items={[
-          { value: 'open', label: `${copy.openChecks} (${openCount})` },
-          { value: 'closed', label: `${copy.closedChecks} (${closedCount})` },
-          { value: 'fiscal_closed', label: `${copy.fiscalChecks} (${fiscalCount})` },
+          { value: 'open', label: copy.openChecks, count: openCount },
+          { value: 'closed', label: copy.closedChecks, count: closedCount },
+          { value: 'fiscal_closed', label: copy.fiscalChecks, count: fiscalCount },
         ]}
       />
       <Stack direction="row" spacing={1.5}>

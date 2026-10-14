@@ -441,9 +441,9 @@ describe('CashierBuilderPageContent', () => {
 
     render(<CashierBuilderPageContent />);
 
-    expect(screen.getAllByText('Buyurtma: #').length).toBeGreaterThan(0);
+    expect(screen.getByRole('heading', { name: '#' })).toBeTruthy();
     expect(screen.queryByText('Buyurtma: #0')).toBeNull();
-    expect(document.querySelector('[data-order-avatar="#"]')).toBeTruthy();
+    expect(document.querySelector('[data-order-avatar]')).toBeNull();
   });
 
   it('hides the local order id until the server assigns the real order number', () => {
@@ -467,9 +467,9 @@ describe('CashierBuilderPageContent', () => {
 
     render(<CashierBuilderPageContent />);
 
-    expect(screen.getAllByText('Buyurtma: Yaratilmoqda...').length).toBeGreaterThan(0);
+    expect(screen.getByRole('heading', { name: 'Yaratilmoqda...' })).toBeTruthy();
     expect(screen.queryByText(/L-c14d6e/)).toBeNull();
-    expect(document.querySelector('[data-order-avatar="#"]')).toBeTruthy();
+    expect(document.querySelector('[data-order-avatar]')).toBeNull();
   });
 
   it('aggregates matching cart lines while preserving note and status boundaries', () => {

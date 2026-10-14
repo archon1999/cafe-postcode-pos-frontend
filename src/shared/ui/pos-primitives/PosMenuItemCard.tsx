@@ -172,18 +172,18 @@ export function PosMenuItemCard({
         textAlign: 'left',
         userSelect: 'none',
         touchAction: noteSwipeEnabled || quantityLongPressEnabled ? 'pan-y' : 'auto',
-        transition: 'transform 0.16s ease',
+        boxShadow: 'var(--pos-card-shadow)',
+        transition: 'box-shadow 0.16s ease',
         '&:hover': {
-          transform: 'translateY(-2px)',
+          boxShadow: blocked ? 'var(--pos-card-shadow)' : 'var(--pos-card-hover-shadow)',
           '& [data-menu-item-surface]': {
             backgroundColor: 'var(--pos-menu-product-card-hover-bg)',
-            boxShadow:
-              theme.palette.mode === 'dark'
-                ? '0 14px 26px rgba(0,0,0,0.26), inset 0 0 0 1px rgba(255,255,255,0.06)'
-                : '0 14px 28px rgba(40,51,65,0.12), inset 0 0 0 1px rgba(40,51,65,0.08)',
           },
         },
-        '&:active': { transform: 'translateY(0) scale(0.985)' },
+        '&:active': {
+          boxShadow: 'var(--pos-card-shadow)',
+          '& [data-menu-item-surface]': { backgroundColor: 'var(--pos-check-card-selected-bg)' },
+        },
         '&:focus-visible': { outline: `2px solid ${theme.palette.primary.main}`, outlineOffset: 2 },
       })}>
       <Box
@@ -218,7 +218,7 @@ export function PosMenuItemCard({
           data-menu-item-surface
           data-swipe-revealed={noteActionVisible ? 'true' : undefined}
           data-testid="menu-item-card-surface"
-          sx={(theme) => ({
+          sx={{
             position: 'relative',
             zIndex: 1,
             width: '100%',
@@ -227,14 +227,12 @@ export function PosMenuItemCard({
             display: 'flex',
             overflow: 'hidden',
             borderRadius: '10px',
-            backgroundColor: 'var(--pos-menu-product-card-bg)',
+            backgroundColor:
+              selectedCount > 0 ? 'var(--pos-menu-product-card-hover-bg)' : 'var(--pos-menu-product-card-bg)',
             backgroundImage: 'none',
             transform: noteActionVisible ? 'translateX(-54px)' : 'translateX(0)',
-            transition: 'transform 140ms ease, box-shadow 0.16s ease, background-color 0.16s ease',
-            boxShadow:
-              theme.palette.mode === 'dark'
-                ? 'inset 0 0 0 1px rgba(255,255,255,0.04)'
-                : 'inset 0 0 0 1px rgba(40,51,65,0.06)',
+            transition: 'transform 140ms ease, background-color 0.16s ease',
+            boxShadow: 'none',
             ...(selectedCount > 0
               ? {
                   WebkitMaskImage:
@@ -242,7 +240,7 @@ export function PosMenuItemCard({
                   maskImage: 'radial-gradient(circle 25px at calc(100% - 14px) 11px, transparent 24px, #000 25px)',
                 }
               : null),
-          })}>
+          }}>
           {imageUrl ? (
             <Box
               component="img"

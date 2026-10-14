@@ -10,10 +10,6 @@ import { OpenCheckOrderSummary } from './OpenChecksCardDesign';
 
 type CashierPaymentMethod = NonNullable<CashierOrder['payments']>[number]['method'];
 
-function formatPercent(value: number) {
-  return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/\.?0+$/, '');
-}
-
 export function OpenChecksDetail({
   copy,
   groupedItems,
@@ -61,11 +57,6 @@ export function OpenChecksDetail({
     hourly: copy.hourlyServiceFee,
     serviceFee: copy.serviceFee,
   });
-  const vatEnabled = Boolean(order.vatEnabled);
-  const vatPercent = Number(order.vatPercent ?? 0);
-  const vatAmount = Number(order.vatAmount ?? 0);
-  const shouldShowVat = vatEnabled && vatPercent > 0;
-  const vatLabel = `${copy.vat} (${formatPercent(vatPercent)}%)`;
 
   return (
     <Box
@@ -198,16 +189,6 @@ export function OpenChecksDetail({
             </Typography>
             <Typography variant="body1" color="text.secondary">
               {formatCompactMoney(order.serviceFee, locale)}
-            </Typography>
-          </Stack>
-        ) : null}
-        {shouldShowVat ? (
-          <Stack direction="row" justifyContent="space-between">
-            <Typography variant="body1" color="text.secondary">
-              {vatLabel}:
-            </Typography>
-            <Typography variant="body1" color="text.secondary">
-              {formatCompactMoney(vatAmount, locale)}
             </Typography>
           </Stack>
         ) : null}

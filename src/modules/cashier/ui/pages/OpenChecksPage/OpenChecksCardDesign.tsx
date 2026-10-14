@@ -4,8 +4,9 @@ import { Box, IconButton, Stack, Typography, alpha } from '@mui/material';
 import { getCashierOrderDisplayName } from 'modules/cashier/domain';
 import type { CashierCheckStatus, CashierOrder } from 'modules/cashier/domain/entities/order.types';
 import { type PosLocale, getPosCopy } from 'shared/locale/copy';
-import { getPosOrderLocationLabel, getPosTableNumberLabel } from 'shared/pos/orderLocation';
+import { getPosOrderLocationLabel, getPosTableNumberLabel, getPosZoneContextLabel } from 'shared/pos/orderLocation';
 import { formatCompactMoney, formatTime } from 'shared/pos/utils';
+import { PosLocationHeading } from 'shared/ui/pos-primitives/PosLocationHeading';
 
 function RenameAction({ copy, onRename }: { copy: ReturnType<typeof getPosCopy>; onRename?: () => void }) {
   if (!onRename) return null;
@@ -125,58 +126,54 @@ export function OpenCheckOrderSummary({
       : order.channel === 'takeaway'
         ? copy.takeawayLabel
         : `${order.guestCount} ${copy.guests}`;
-  const operator = selectedTab === 'closed' ? (order.cashierName ?? order.openedByName) : order.openedByName;
   const tableNumber = getPosTableNumberLabel(order);
+  if (!isList) {
+    const contextLabel =
+      order.channel === 'delivery'
+        ? copy.deliveryLabel
+        : order.channel === 'takeaway'
+          ? copy.takeawayLabel
+          : tableNumber === '0'
+            ? copy.hallLabel
+            : `${copy.tableLabel} ${tableNumber}`;
+    const title = `${order.displayName?.trim() ? displayName : `#${order.orderNumber}`} · ${contextLabel}`;
+
+    return (
+      <Typography
+        variant="subtitle1"
+        component="h2"
+        noWrap
+        title={title}
+        data-card-design="compact"
+        sx={{ px: 2.5, py: 1.5, flexShrink: 0, fontWeight: 700 }}>
+        {title}
+      </Typography>
+    );
+  }
   const avatar =
     order.channel === 'delivery' ? 'D' : order.channel === 'takeaway' ? 'S' : tableNumber === '0' ? 'Z' : tableNumber;
-  const padding = isList ? { xs: 1.55, md: 1.8 } : { xs: 1.8, md: 2.35 };
 
   return (
     <Stack
       direction="row"
       spacing={{ xs: 1.2, md: 1.55 }}
       alignItems="center"
-      sx={{ p: padding }}
+      sx={{ p: { xs: 1.55, md: 1.8 } }}
       data-card-design="balanced">
-      <OrderAvatar label={avatar} size={isList ? 60 : 66} />
-      <Stack spacing={0.52} sx={{ flex: 1, minWidth: 0 }}>
-        <Stack direction="row" spacing={0.35} alignItems="center">
-          <Typography variant={isList ? 'h6' : 'h5'} noWrap sx={{ minWidth: 0 }}>
+      <OrderAvatar label={avatar} size={60} />
+      <Stack spacing={0.5} sx={{ flex: 1, minWidth: 0 }}>
+        <Stack direction="row" spacing={0.5} alignItems="center">
+          <Typography variant="h6" noWrap sx={{ minWidth: 0 }}>
             {displayName}
           </Typography>
           <RenameAction copy={copy} onRename={onRename} />
         </Stack>
-        <Stack
-          direction={isList ? 'row' : 'column'}
-          spacing={isList ? 1 : 0.55}
-          alignItems={isList ? 'center' : 'flex-start'}
-          data-guest-chip-layout={isList ? 'inline' : 'below'}
-          sx={{ minWidth: 0 }}>
-          {location ? (
-            <Stack
-              direction="row"
-              spacing={0.55}
-              alignItems="center"
-              color="text.primary"
-              data-location-emphasis="true"
-              title={location}
-              sx={{ minWidth: 0 }}>
-              <Icon icon="solar:map-point-bold-duotone" width={18} />
-              <Typography
-                variant={isList ? 'subtitle1' : 'h6'}
-                noWrap={isList}
-                sx={{ minWidth: 0, fontWeight: 750, lineHeight: 1.2 }}>
-                {location}
-              </Typography>
-            </Stack>
-          ) : null}
+        {location ? <PosLocationHeading zone={getPosZoneContextLabel(order)} hall={order.hallName} inline /> : null}
+        <Stack direction="row" data-guest-chip-layout="below">
           <MetaPill icon="solar:users-group-rounded-linear" label={channel} />
         </Stack>
-        <Typography variant="caption" color="text.secondary" noWrap>
-          {operator}
-        </Typography>
       </Stack>
-      {isList ? <PriceBlock locale={locale} order={order} selectedTab={selectedTab} /> : null}
+      <PriceBlock locale={locale} order={order} selectedTab={selectedTab} />
     </Stack>
   );
 }
@@ -185,21 +182,13 @@ export function getOpenChecksCardSx(selected: boolean) {
   return (theme: import('@mui/material/styles').Theme) => ({
     borderRadius: '16px',
     backgroundColor: selected ? 'var(--pos-check-card-selected-bg)' : 'var(--pos-check-card-bg)',
-    border: `1px solid ${selected ? alpha(theme.palette.primary.main, 0.3) : alpha(theme.palette.text.primary, 0.05)}`,
-    boxShadow: 'none',
-    '&::before': {
-      content: '""',
-      position: 'absolute',
-      top: 12,
-      bottom: 12,
-      left: 0,
-      width: 3,
-      borderRadius: '0 4px 4px 0',
-      backgroundColor: selected ? theme.palette.primary.main : 'transparent',
-    },
+    border: 0,
+    boxShadow: 'var(--pos-card-shadow)',
     '&:hover': {
-      borderColor: alpha(theme.palette.primary.main, 0.28),
-      backgroundColor: selected ? 'var(--pos-check-card-selected-bg)' : alpha(theme.palette.primary.main, 0.055),
+      boxShadow: 'var(--pos-card-hover-shadow)',
+      backgroundColor: selected ? 'var(--pos-check-card-selected-bg)' : 'var(--pos-cart-item-hover-bg)',
     },
+    '&:active': { backgroundColor: 'var(--pos-check-card-selected-bg)', boxShadow: 'var(--pos-card-shadow)' },
+    '&:focus-visible': { outline: `2px solid ${theme.palette.primary.main}`, outlineOffset: -2 },
   });
 }

@@ -16,6 +16,7 @@ type CartProps = {
   channelSwitchDisabled: boolean;
   copy: ReturnType<typeof getPosCopy>;
   currentOrderLabel: string;
+  hasTableSession?: boolean;
   groups: PosCartItemGroupsProps<CashierMenuItem>['groups'];
   isSubmitDisabled: boolean;
   isSubmitting: boolean;
@@ -29,12 +30,9 @@ type CartProps = {
   serviceFeeRows?: PosServiceFeeRow[];
   showMissingMarkings: boolean;
   showServiceFee: boolean;
-  showVat: boolean;
   subtotal: number | string | undefined;
   total: number | string | undefined;
   userName: string | undefined;
-  vatAmount: number;
-  vatLabel: string;
   onAdd: PosCartItemGroupsProps<CashierMenuItem>['onAdd'];
   onEditItemNote: PosCartItemGroupsProps<CashierMenuItem>['onEditNote'];
   onChannelChange: (channel: Channel) => void;
@@ -126,9 +124,6 @@ function CartFooter(props: CartProps & { compact?: boolean; dense?: boolean }) {
         serviceFeeLabel={props.serviceFeeLabel}
         serviceFeeRows={props.serviceFeeRows}
         showServiceFee={props.showServiceFee}
-        vatAmount={props.vatAmount}
-        vatLabel={props.vatLabel}
-        showVat={props.showVat}
         total={props.total}
       />
       {props.showMissingMarkings ? (
@@ -164,34 +159,40 @@ export function CashierBuilderDesktopCart(props: CartProps) {
       })}>
       <Box sx={{ p: dense ? 1.5 : 2.25 }}>
         <Stack spacing={dense ? 1.15 : 1.7}>
-          <Stack direction="row" spacing={1.5} alignItems="center">
-            <Box
-              data-order-avatar={props.currentOrderLabel === props.copy.orderCreating ? '#' : props.currentOrderLabel}
-              sx={{
-                minWidth: dense ? 52 : 64,
-                height: dense ? 52 : 64,
-                borderRadius: '10px',
-                backgroundColor: 'var(--pos-order-avatar-bg)',
-                display: 'grid',
-                placeItems: 'center',
-                fontSize: 28,
-                fontWeight: 700,
-              }}>
-              {props.currentOrderLabel === props.copy.orderCreating ? '#' : props.currentOrderLabel}
-            </Box>
-            <Stack spacing={0.45}>
-              <Typography variant="body1" color="text.secondary">
-                {props.copy.orders}: {props.currentOrderLabel}
-              </Typography>
-              <Typography
-                variant="subtitle1"
-                color="text.secondary"
-                data-operator-emphasis="true"
-                sx={{ fontWeight: 650, lineHeight: 1.25 }}>
-                {props.userName}
-              </Typography>
+          {!props.hasTableSession ? (
+            <Typography component="h2" variant="h6" sx={{ fontWeight: 700 }}>
+              {props.currentOrderLabel}
+            </Typography>
+          ) : (
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <Box
+                data-order-avatar={props.currentOrderLabel === props.copy.orderCreating ? '#' : props.currentOrderLabel}
+                sx={{
+                  minWidth: dense ? 52 : 64,
+                  height: dense ? 52 : 64,
+                  borderRadius: '10px',
+                  backgroundColor: 'var(--pos-order-avatar-bg)',
+                  display: 'grid',
+                  placeItems: 'center',
+                  fontSize: 28,
+                  fontWeight: 700,
+                }}>
+                {props.currentOrderLabel === props.copy.orderCreating ? '#' : props.currentOrderLabel}
+              </Box>
+              <Stack spacing={0.45}>
+                <Typography variant="body1" color="text.secondary">
+                  {props.copy.orders}: {props.currentOrderLabel}
+                </Typography>
+                <Typography
+                  variant="subtitle1"
+                  color="text.secondary"
+                  data-operator-emphasis="true"
+                  sx={{ fontWeight: 650, lineHeight: 1.25 }}>
+                  {props.userName}
+                </Typography>
+              </Stack>
             </Stack>
-          </Stack>
+          )}
           <PosOrderChannelSegment
             takeawayLabel={props.copy.takeaway}
             channel={props.channel}

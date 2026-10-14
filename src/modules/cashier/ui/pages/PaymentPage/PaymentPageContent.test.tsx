@@ -440,11 +440,11 @@ describe('PaymentPageContent', () => {
     expect(screen.getByText('Buyurtma: ID 101')).toBeTruthy();
   });
 
-  it('shows included VAT in the payment totals without changing the grand total', () => {
+  it('hides the included VAT breakdown without changing the grand total', () => {
     render(<PaymentPageContent orderId="order-1" />);
 
-    expect(screen.getByText('QQS (12%):')).toBeTruthy();
-    expect(screen.getByText(/3\s214 so'm/)).toBeTruthy();
+    expect(screen.queryByText('QQS (12%):')).toBeNull();
+    expect(screen.queryByText(/3\s214 so'm/)).toBeNull();
     expect(screen.getAllByText(/30\s000 so'm/).length).toBeGreaterThan(0);
   });
 

@@ -247,17 +247,15 @@ export function PosCartItemGroups<TMenuItem extends PosCartMenuItem>({
               textAlign: 'left',
               borderRadius: mobile ? '12px' : '10px',
               overflow: 'hidden',
-              backgroundColor: 'var(--pos-cart-item-bg)',
-              boxShadow: selected ? `inset 0 0 0 1px ${alpha(theme.palette.primary.main, 0.44)}` : 'none',
-              ...(!mobile && {
-                transition:
-                  'background-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease, border-color 0.16s ease',
-                '&:hover': {
-                  backgroundColor: 'var(--pos-cart-item-hover-bg)',
-                  transform: 'translateY(-1px)',
-                },
-                '&:active': { transform: 'translateY(0) scale(0.992)' },
-              }),
+              backgroundColor: selected ? 'var(--pos-check-card-selected-bg)' : 'var(--pos-cart-item-bg)',
+              boxShadow: 'var(--pos-card-shadow)',
+              transition: 'background-color 0.16s ease, box-shadow 0.16s ease',
+              '&:hover': {
+                boxShadow: 'var(--pos-card-hover-shadow)',
+                backgroundColor: selected ? 'var(--pos-check-card-selected-bg)' : 'var(--pos-cart-item-hover-bg)',
+              },
+              '&:active': { backgroundColor: 'var(--pos-check-card-selected-bg)', boxShadow: 'var(--pos-card-shadow)' },
+              '&:focus-visible': { outline: `2px solid ${theme.palette.primary.main}`, outlineOffset: -2 },
             })}>
             <Stack
               direction="row"
