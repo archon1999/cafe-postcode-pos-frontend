@@ -402,6 +402,13 @@ async function establishLocalAgentSecureChannel(
     });
     if (!response.ok) return false;
     payload = await readBoundedJSONResponse<HandshakeResponse>(response, HANDSHAKE_MAX_RESPONSE_BYTES);
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new Error(
+        'Kassadagi Local Agent bilan aloqa o‘rnatilmadi. Kassa va bu qurilmaning tarmoq ulanishini tekshiring.',
+      );
+    }
+    throw error;
   } finally {
     globalThis.clearTimeout(timeout);
   }

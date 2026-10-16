@@ -10,7 +10,7 @@ import { dispatchPosSessionLocked } from 'modules/auth/data-access/storage/sessi
 import { persistSession, readStoredLocale, readStoredSession } from 'modules/auth/data-access/storage/session.storage';
 
 import { resolveApiBaseUrl, resolveRemoteApiBaseUrl } from './apiUrl';
-import { readOrCreateEdgeTerminalIdentity } from './edgeConnection';
+import { readOrCreateEdgeTerminalIdentity, readTransportConnection } from './edgeConnection';
 import {
   ensureLocalAgentSecureChannel,
   protectLocalAxiosRequest,
@@ -75,7 +75,7 @@ apiClient.interceptors.request.use(async (config) => {
   if (config.method && config.method.toLowerCase() !== 'get' && !config.headers['X-Edge-Operation-ID']) {
     config.headers['X-Edge-Operation-ID'] = createEdgeOperationId();
   }
-  if (config.baseURL !== resolveRemoteApiBaseUrl()) await protectLocalAxiosRequest(config);
+  if (config.baseURL !== resolveRemoteApiBaseUrl()) await protectWithAddressRecovery(config);
   await applyDeviceProof(config);
   return config;
 });
@@ -87,7 +87,7 @@ publicApiClient.interceptors.request.use(async (config) => {
 
   config.headers['Accept-Language'] = locale;
   config.headers['X-Language'] = locale;
-  if (config.baseURL !== resolveRemoteApiBaseUrl()) await protectLocalAxiosRequest(config);
+  if (config.baseURL !== resolveRemoteApiBaseUrl()) await protectWithAddressRecovery(config);
   await applyDeviceProof(config);
   return config;
 });
@@ -112,6 +112,36 @@ remoteApiClient.interceptors.request.use(async (config) => {
   await applyDeviceProof(config);
   return config;
 });
+
+type AddressRecoveryConfig = AxiosRequestConfig & { _edgeRestaurantId?: string; _edgeAddressRetried?: boolean };
+
+async function recoverAgentAddress(config: AddressRecoveryConfig) {
+  if (!config._edgeRestaurantId) return false;
+  const origin = new URL(config.baseURL || '', window.location.origin).origin;
+  const { recoverLocalAgentConnection } = await import('./transportResolver');
+  return recoverLocalAgentConnection(origin, config._edgeRestaurantId);
+}
+
+async function protectWithAddressRecovery(config: AddressRecoveryConfig) {
+  config._edgeRestaurantId = readTransportConnection()?.restaurantId;
+  if (!config.timeout && isAddressRetrySafe(config)) config.timeout = 15_000;
+  try {
+    await protectLocalAxiosRequest(config);
+  } catch (error) {
+    // No application request has been sent yet, so it is safe to prepare it
+    // against the newly verified address, including financial mutations.
+    if (!(await recoverAgentAddress(config))) throw error;
+    config.baseURL = resolveApiBaseUrl();
+    await protectLocalAxiosRequest(config);
+  }
+}
+
+function isAddressRetrySafe(config: AxiosRequestConfig) {
+  return (
+    (config.method || 'get').toLowerCase() === 'get' ||
+    ['/pos/auth/pin-login/', '/pos/auth/unlock/'].includes(config.url || '')
+  );
+}
 
 function handleApiError(error: unknown) {
   if (axios.isAxiosError(error)) {
@@ -155,10 +185,28 @@ function handleApiError(error: unknown) {
 }
 
 async function handleLocalResponseError(error: unknown) {
+  if (axios.isAxiosError(error) && !error.response && error.config && error.code !== 'ERR_CANCELED') {
+    const config = error.config as AddressRecoveryConfig;
+    const connection = readTransportConnection();
+    if (
+      connection?.mode === 'router' &&
+      config.baseURL &&
+      config.baseURL !== resolveRemoteApiBaseUrl() &&
+      !config._edgeAddressRetried &&
+      (await recoverAgentAddress(config))
+    ) {
+      // Repair the address for all future calls, but never automatically
+      // replay a mutation whose outcome may already have been committed.
+      if (isAddressRetrySafe(config) && (await resetLocalAxiosRequestForRetry(config))) {
+        config._edgeAddressRetried = true;
+        return apiClient.request(config);
+      }
+    }
+  }
   if (axios.isAxiosError(error) && error.response) {
     await unprotectLocalAxiosResponse(error.response);
     const payload = error.response.data as { code?: unknown } | undefined;
-    const config = error.config as (AxiosRequestConfig & { _edgeChannelRetried?: boolean }) | undefined;
+    const config = error.config as (AddressRecoveryConfig & { _edgeChannelRetried?: boolean }) | undefined;
     const baseURL = config?.baseURL || '';
     if (
       config &&
@@ -168,9 +216,12 @@ async function handleLocalResponseError(error: unknown) {
     ) {
       config._edgeChannelRetried = true;
       const origin = new URL(baseURL, window.location.origin).origin;
-      if ((await resetLocalAxiosRequestForRetry(config)) && (await ensureLocalAgentSecureChannel(origin, '', true))) {
-        return apiClient.request(config);
+      if (await resetLocalAxiosRequestForRetry(config)) {
+        const renewed = await ensureLocalAgentSecureChannel(origin, '', true).catch(() => false);
+        if (renewed || (await recoverAgentAddress(config))) return apiClient.request(config);
       }
+      // A rejected transport channel is not a revoked employee session.
+      throw error;
     }
   }
   return handleApiError(error);
@@ -211,6 +262,19 @@ export async function apiPostRemotePublic<T>(url: string, payload?: unknown, con
 
 export async function apiPostRemote<T>(url: string, payload?: unknown, config?: AxiosRequestConfig) {
   const response = await remoteApiClient.post<T>(url, payload, config);
+  return response.data;
+}
+
+export async function apiPostDeviceRemote<T>(url: string, payload?: unknown, config?: AxiosRequestConfig) {
+  const signed = await applyDeviceProof({
+    ...config,
+    baseURL: resolveRemoteApiBaseUrl(),
+    url,
+    method: 'POST',
+    data: payload,
+  });
+  // The public client deliberately omits the employee/Edge session token.
+  const response = await remotePublicApiClient.request<T>(signed);
   return response.data;
 }
 

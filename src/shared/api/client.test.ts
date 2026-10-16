@@ -15,7 +15,13 @@ import {
   readStoredSession,
 } from 'modules/auth/data-access';
 
-import { apiGetRemotePublic, apiPostRemote, remoteApiClient, remotePublicApiClient } from './client';
+import {
+  apiGetRemotePublic,
+  apiPostDeviceRemote,
+  apiPostRemote,
+  remoteApiClient,
+  remotePublicApiClient,
+} from './client';
 import { TRANSPORT_STORAGE_KEY } from './edgeConnection';
 
 describe('remote public API client', () => {
@@ -59,6 +65,37 @@ describe('remote public API client', () => {
     expect(requestConfig?.baseURL).not.toContain('127.0.0.1:18181');
     expect(requestConfig?.headers?.['X-Edge-Token']).toBeUndefined();
     expect(requestConfig?.headers?.['X-TV-Token']).toBe('tv-token');
+  });
+
+  it('signs device discovery without sending the local employee session token', async () => {
+    Object.defineProperty(window, 'crypto', { configurable: true, value: webcrypto });
+    const identity = await createPosDeviceIdentity();
+    await persistDeviceIdentity({
+      ...identity,
+      device: {
+        id: '11111111-1111-4111-8111-111111111111',
+        type: 'POS_TERMINAL',
+        name: 'POS',
+        status: 'ACTIVE',
+        leaseExpiresAt: new Date(Date.now() + 60_000).toISOString(),
+      },
+    });
+    persistSession({
+      token: 'agent-employee-token',
+      user: { id: '1', username: 'cashier', fullName: 'Cashier', permissionCodes: [] },
+    });
+    let request: AxiosRequestConfig | undefined;
+    remotePublicApiClient.defaults.adapter = async (config) => {
+      request = config;
+      return { data: { ok: true }, status: 200, statusText: 'OK', headers: {}, config };
+    };
+    await apiPostDeviceRemote('/pos/auth/device-transport/', {}, { timeout: 8_000 });
+    expect(request?.headers?.['Authorization']).toBeUndefined();
+    expect(request?.headers?.['X-Device-Id']).toBe('11111111-1111-4111-8111-111111111111');
+    expect(request?.headers?.['X-Device-Signature']).toEqual(expect.any(String));
+    expect(request?.data).toBe('{}');
+    expect(request?.timeout).toBe(8_000);
+    expect(readStoredSession()?.token).toBe('agent-employee-token');
   });
 
   it('sends the employee session to the remote backend without the edge token', async () => {

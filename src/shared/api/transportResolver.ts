@@ -1,8 +1,13 @@
-import { readStoredDeviceIdentity } from 'modules/auth/data-access/device/device-identity.store';
+import axios from 'axios';
+
+import {
+  readStoredDeviceIdentity,
+  updateStoredDeviceIdentity,
+} from 'modules/auth/data-access/device/device-identity.store';
 import { persistSession, readStoredSession } from 'modules/auth/data-access/storage/session.storage';
 import type { PosRestaurantContext } from 'modules/auth/domain';
 
-import { apiPost, apiPostRemote } from './client';
+import { apiPost, apiPostDeviceRemote, apiPostRemote } from './client';
 import {
   DEFAULT_EDGE_ORIGIN,
   isLoopbackEdgeOrigin,
@@ -171,6 +176,39 @@ async function selectCoordinator(restaurantId: string, coordinator?: Coordinator
 }
 
 async function discoverCoordinator(restaurantId: string) {
+  const identity = await readStoredDeviceIdentity();
+  if (identity?.device?.status === 'ACTIVE' && identity.restaurantContext?.restaurantId === restaurantId) {
+    const discover = () =>
+      apiPostDeviceRemote<{ restaurantId: string; coordinator?: Coordinator | null }>(
+        '/pos/auth/device-transport/',
+        {},
+        { timeout: 8_000 },
+      );
+    let response;
+    try {
+      response = await discover();
+    } catch (error) {
+      if (!axios.isAxiosError(error) || error.response?.data?.code !== 'device_lease_expired') throw error;
+      const lease = await apiPostDeviceRemote<{ leaseExpiresAt: string }>(
+        '/devices/lease/renew/',
+        {},
+        { timeout: 8_000 },
+      );
+      await updateStoredDeviceIdentity((current) => {
+        if (
+          current.device?.id !== identity.device?.id ||
+          current.publicKeyFingerprint !== identity.publicKeyFingerprint
+        )
+          throw new Error('POS device changed during discovery.');
+        return {
+          ...current,
+          device: current.device ? { ...current.device, leaseExpiresAt: lease.leaseExpiresAt } : undefined,
+        };
+      });
+      response = await discover();
+    }
+    return response.restaurantId === restaurantId ? (response.coordinator ?? null) : null;
+  }
   const session = readStoredSession();
   if (!session?.token) return null;
   const response = await apiPostRemote<{ restaurantId: string; coordinator?: Coordinator | null }>(
@@ -181,7 +219,39 @@ async function discoverCoordinator(restaurantId: string) {
   return response.restaurantId === restaurantId ? (response.coordinator ?? null) : null;
 }
 
-export async function refreshTransportMode() {
+let refreshFlight: ReturnType<typeof refreshTransportModeOnce> | null = null;
+const discoveryRetryAfter = new Map<string, number>();
+
+export function refreshTransportMode() {
+  if (!refreshFlight) {
+    refreshFlight = refreshTransportModeOnce().finally(() => {
+      refreshFlight = null;
+    });
+  }
+  return refreshFlight;
+}
+
+export async function recoverLocalAgentConnection(failedOrigin: string, restaurantId: string) {
+  const current = readTransportConnection();
+  if (!current || current.mode === 'remote' || current.restaurantId !== restaurantId) return false;
+  if (current.origin !== failedOrigin) return Boolean(current.backendOnline);
+  if (current.mode !== 'router') return false;
+  try {
+    await refreshTransportMode();
+  } catch {
+    return false;
+  }
+  const next = readTransportConnection();
+  return Boolean(
+    next &&
+      next.mode !== 'remote' &&
+      next.restaurantId === current.restaurantId &&
+      next.backendOnline &&
+      next.origin !== failedOrigin,
+  );
+}
+
+async function refreshTransportModeOnce() {
   const storedConnection = readTransportConnection();
   const sessionRestaurantId = readStoredSession()?.restaurantContext?.restaurantId;
   const pairedRestaurantId =
@@ -224,6 +294,34 @@ export async function refreshTransportMode() {
       if (result.status === 'incompatible') throw new LocalAgentCompatibilityError(result.protocolVersion);
       next = result.status === 'selected' ? result.connection : null;
     }
+    if (!next && current.mode === 'router') {
+      const key = `${current.restaurantId}|${current.origin}`;
+      if (Date.now() >= (discoveryRetryAfter.get(key) || 0)) {
+        discoveryRetryAfter.set(key, Date.now() + 15_000);
+        try {
+          const coordinator = await discoverCoordinator(current.restaurantId);
+          const trust = coordinatorTrust(coordinator);
+          if (coordinator?.restaurantId === current.restaurantId && trust) {
+            // Re-probing old/loopback addresses only adds latency. Every new
+            // address must prove the backend-attested Agent identity first.
+            for (const value of [...new Set(coordinator.coordinatorUrls || [])].slice(0, 8)) {
+              const origin = safeNormalizeEdgeOrigin(value);
+              if (!origin || origin === current.origin || isLoopbackEdgeOrigin(origin)) continue;
+              const candidate = await probe(origin, current.restaurantId, trust);
+              if (candidate.status === 'selected') {
+                next = candidate.connection;
+                break;
+              }
+              if (candidate.status === 'incompatible')
+                throw new LocalAgentCompatibilityError(candidate.protocolVersion);
+            }
+          }
+        } catch (error) {
+          if (error instanceof LocalAgentCompatibilityError) throw error;
+        }
+        if (next) discoveryRetryAfter.delete(key);
+      }
+    }
   }
   if (!next) {
     next =
@@ -244,8 +342,21 @@ export async function refreshTransportMode() {
   }
   const currentGroup = current.mode === 'remote' ? 'remote' : 'edge';
   const nextGroup = next.mode === 'remote' ? 'remote' : 'edge';
+  // A logout/re-pair in another flow must not be overwritten by a late probe.
+  const latest = readTransportConnection();
+  if (
+    latest?.restaurantId !== storedConnection?.restaurantId ||
+    latest?.mode !== storedConnection?.mode ||
+    latest?.origin !== storedConnection?.origin
+  ) {
+    return { changed: false, requiresRelogin: false, mode: readTransportConnection()?.mode ?? 'remote' };
+  }
   persistTransportConnection(next);
-  return { changed: current.mode !== next.mode, requiresRelogin: currentGroup !== nextGroup, mode: next.mode };
+  return {
+    changed: current.mode !== next.mode || current.origin !== next.origin,
+    requiresRelogin: currentGroup !== nextGroup,
+    mode: next.mode,
+  };
 }
 
 export async function refreshTransportAndSync() {
